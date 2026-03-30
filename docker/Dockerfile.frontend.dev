@@ -28,4 +28,7 @@ WORKDIR /workspace/frontend
 
 COPY frontend/package.json /workspace/frontend/package.json
 
+RUN mkdir -p /workspace/frontend/node_modules \
+  && chown -R ${USER_UID}:${USER_GID} /workspace
+
 USER ${USERNAME}
