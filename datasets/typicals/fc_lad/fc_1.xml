@@ -1,0 +1,2438 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Document>
+  <Engineering version="V20" />
+  <SW.Blocks.FC ID="0">
+    <AttributeList>
+      <AutoNumber>false</AutoNumber>
+      <Interface><Sections xmlns="http://www.siemens.com/automation/Openness/SW/Interface/v5">
+  <Section Name="Input" />
+  <Section Name="Output" />
+  <Section Name="InOut" />
+  <Section Name="Temp" />
+  <Section Name="Constant" />
+  <Section Name="Return">
+    <Member Name="Ret_Val" Datatype="Void" />
+  </Section>
+</Sections></Interface>
+      <MemoryLayout>Optimized</MemoryLayout>
+      <Name>FC_Sequenza_Start</Name>
+      <Namespace />
+      <Number>300</Number>
+      <ProgrammingLanguage>LAD</ProgrammingLanguage>
+      <SetENOAutomatically>false</SetENOAutomatically>
+    </AttributeList>
+    <ObjectList>
+      <MultilingualText ID="1" CompositionName="Comment">
+        <ObjectList>
+          <MultilingualTextItem ID="2" CompositionName="Items">
+            <AttributeList>
+              <Culture>en-US</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+        </ObjectList>
+      </MultilingualText>
+      <SW.Blocks.CompileUnit ID="3" CompositionName="CompileUnits">
+        <AttributeList>
+          <NetworkSource><FlgNet xmlns="http://www.siemens.com/automation/Openness/SW/NetworkSource/FlgNet/v5">
+  <Parts>
+    <Access Scope="GlobalVariable" UId="21">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 1" />
+        <Component Name="Automatico" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="22">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 1" />
+        <Component Name="Selezionato" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="23">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 2" />
+        <Component Name="Automatico" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="24">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 2" />
+        <Component Name="Selezionato" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="25">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 3" />
+        <Component Name="Automatico" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="26">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 3" />
+        <Component Name="Selezionato" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="27">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 2" />
+        <Component Name="Automatico" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="28">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 2" />
+        <Component Name="Selezionato" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="29">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 3" />
+        <Component Name="Automatico" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="30">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 3" />
+        <Component Name="Selezionato" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="31">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Ventilator_Selezionati_zona_1" />
+      </Symbol>
+    </Access>
+    <Part Name="Contact" UId="32" />
+    <Part Name="Contact" UId="33" />
+    <Part Name="Contact" UId="34" />
+    <Part Name="Contact" UId="35" />
+    <Part Name="Contact" UId="36" />
+    <Part Name="Contact" UId="37" />
+    <Part Name="Contact" UId="38" />
+    <Part Name="Contact" UId="39" />
+    <Part Name="Contact" UId="40" />
+    <Part Name="Contact" UId="41" />
+    <Part Name="O" UId="42">
+      <TemplateValue Name="Card" Type="Cardinality">3</TemplateValue>
+    </Part>
+    <Part Name="Coil" UId="43" />
+  </Parts>
+  <Wires>
+    <Wire UId="44">
+      <Powerrail />
+      <NameCon UId="32" Name="in" />
+      <NameCon UId="38" Name="in" />
+    </Wire>
+    <Wire UId="45">
+      <IdentCon UId="21" />
+      <NameCon UId="32" Name="operand" />
+    </Wire>
+    <Wire UId="46">
+      <NameCon UId="32" Name="out" />
+      <NameCon UId="33" Name="in" />
+    </Wire>
+    <Wire UId="47">
+      <IdentCon UId="22" />
+      <NameCon UId="33" Name="operand" />
+    </Wire>
+    <Wire UId="48">
+      <NameCon UId="33" Name="out" />
+      <NameCon UId="34" Name="in" />
+      <NameCon UId="36" Name="in" />
+    </Wire>
+    <Wire UId="49">
+      <IdentCon UId="23" />
+      <NameCon UId="34" Name="operand" />
+    </Wire>
+    <Wire UId="50">
+      <NameCon UId="34" Name="out" />
+      <NameCon UId="35" Name="in" />
+    </Wire>
+    <Wire UId="51">
+      <IdentCon UId="24" />
+      <NameCon UId="35" Name="operand" />
+    </Wire>
+    <Wire UId="52">
+      <NameCon UId="35" Name="out" />
+      <NameCon UId="42" Name="in1" />
+    </Wire>
+    <Wire UId="53">
+      <IdentCon UId="25" />
+      <NameCon UId="36" Name="operand" />
+    </Wire>
+    <Wire UId="54">
+      <NameCon UId="36" Name="out" />
+      <NameCon UId="37" Name="in" />
+    </Wire>
+    <Wire UId="55">
+      <IdentCon UId="26" />
+      <NameCon UId="37" Name="operand" />
+    </Wire>
+    <Wire UId="56">
+      <NameCon UId="37" Name="out" />
+      <NameCon UId="42" Name="in2" />
+    </Wire>
+    <Wire UId="57">
+      <IdentCon UId="27" />
+      <NameCon UId="38" Name="operand" />
+    </Wire>
+    <Wire UId="58">
+      <NameCon UId="38" Name="out" />
+      <NameCon UId="39" Name="in" />
+    </Wire>
+    <Wire UId="59">
+      <IdentCon UId="28" />
+      <NameCon UId="39" Name="operand" />
+    </Wire>
+    <Wire UId="60">
+      <NameCon UId="39" Name="out" />
+      <NameCon UId="40" Name="in" />
+    </Wire>
+    <Wire UId="61">
+      <IdentCon UId="29" />
+      <NameCon UId="40" Name="operand" />
+    </Wire>
+    <Wire UId="62">
+      <NameCon UId="40" Name="out" />
+      <NameCon UId="41" Name="in" />
+    </Wire>
+    <Wire UId="63">
+      <IdentCon UId="30" />
+      <NameCon UId="41" Name="operand" />
+    </Wire>
+    <Wire UId="64">
+      <NameCon UId="41" Name="out" />
+      <NameCon UId="42" Name="in3" />
+    </Wire>
+    <Wire UId="65">
+      <NameCon UId="42" Name="out" />
+      <NameCon UId="43" Name="in" />
+    </Wire>
+    <Wire UId="66">
+      <IdentCon UId="31" />
+      <NameCon UId="43" Name="operand" />
+    </Wire>
+  </Wires>
+</FlgNet></NetworkSource>
+          <ProgrammingLanguage>LAD</ProgrammingLanguage>
+        </AttributeList>
+        <ObjectList>
+          <MultilingualText ID="4" CompositionName="Comment">
+            <ObjectList>
+              <MultilingualTextItem ID="5" CompositionName="Items">
+                <AttributeList>
+                  <Culture>en-US</Culture>
+                  <Text />
+                </AttributeList>
+              </MultilingualTextItem>
+            </ObjectList>
+          </MultilingualText>
+          <MultilingualText ID="6" CompositionName="Title">
+            <ObjectList>
+              <MultilingualTextItem ID="7" CompositionName="Items">
+                <AttributeList>
+                  <Culture>en-US</Culture>
+                  <Text>Controllo ventilatori zona 1</Text>
+                </AttributeList>
+              </MultilingualTextItem>
+            </ObjectList>
+          </MultilingualText>
+        </ObjectList>
+      </SW.Blocks.CompileUnit>
+      <SW.Blocks.CompileUnit ID="8" CompositionName="CompileUnits">
+        <AttributeList>
+          <NetworkSource><FlgNet xmlns="http://www.siemens.com/automation/Openness/SW/NetworkSource/FlgNet/v5">
+  <Parts>
+    <Access Scope="GlobalVariable" UId="21">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 4" />
+        <Component Name="Automatico" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="22">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 4" />
+        <Component Name="Selezionato" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="23">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 5" />
+        <Component Name="Automatico" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="24">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 5" />
+        <Component Name="Selezionato" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="25">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 6" />
+        <Component Name="Automatico" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="26">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 6" />
+        <Component Name="Selezionato" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="27">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 5" />
+        <Component Name="Automatico" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="28">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 5" />
+        <Component Name="Automatico" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="29">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 6" />
+        <Component Name="Automatico" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="30">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 6" />
+        <Component Name="Selezionato" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="31">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Ventilator_Selezionati_zona_2" />
+      </Symbol>
+    </Access>
+    <Part Name="Contact" UId="32" />
+    <Part Name="Contact" UId="33" />
+    <Part Name="Contact" UId="34" />
+    <Part Name="Contact" UId="35" />
+    <Part Name="Contact" UId="36" />
+    <Part Name="Contact" UId="37" />
+    <Part Name="Contact" UId="38" />
+    <Part Name="Contact" UId="39" />
+    <Part Name="Contact" UId="40" />
+    <Part Name="Contact" UId="41" />
+    <Part Name="O" UId="42">
+      <TemplateValue Name="Card" Type="Cardinality">3</TemplateValue>
+    </Part>
+    <Part Name="Coil" UId="43" />
+  </Parts>
+  <Wires>
+    <Wire UId="44">
+      <Powerrail />
+      <NameCon UId="32" Name="in" />
+      <NameCon UId="38" Name="in" />
+    </Wire>
+    <Wire UId="45">
+      <IdentCon UId="21" />
+      <NameCon UId="32" Name="operand" />
+    </Wire>
+    <Wire UId="46">
+      <NameCon UId="32" Name="out" />
+      <NameCon UId="33" Name="in" />
+    </Wire>
+    <Wire UId="47">
+      <IdentCon UId="22" />
+      <NameCon UId="33" Name="operand" />
+    </Wire>
+    <Wire UId="48">
+      <NameCon UId="33" Name="out" />
+      <NameCon UId="34" Name="in" />
+      <NameCon UId="36" Name="in" />
+    </Wire>
+    <Wire UId="49">
+      <IdentCon UId="23" />
+      <NameCon UId="34" Name="operand" />
+    </Wire>
+    <Wire UId="50">
+      <NameCon UId="34" Name="out" />
+      <NameCon UId="35" Name="in" />
+    </Wire>
+    <Wire UId="51">
+      <IdentCon UId="24" />
+      <NameCon UId="35" Name="operand" />
+    </Wire>
+    <Wire UId="52">
+      <NameCon UId="35" Name="out" />
+      <NameCon UId="42" Name="in1" />
+    </Wire>
+    <Wire UId="53">
+      <IdentCon UId="25" />
+      <NameCon UId="36" Name="operand" />
+    </Wire>
+    <Wire UId="54">
+      <NameCon UId="36" Name="out" />
+      <NameCon UId="37" Name="in" />
+    </Wire>
+    <Wire UId="55">
+      <IdentCon UId="26" />
+      <NameCon UId="37" Name="operand" />
+    </Wire>
+    <Wire UId="56">
+      <NameCon UId="37" Name="out" />
+      <NameCon UId="42" Name="in2" />
+    </Wire>
+    <Wire UId="57">
+      <IdentCon UId="27" />
+      <NameCon UId="38" Name="operand" />
+    </Wire>
+    <Wire UId="58">
+      <NameCon UId="38" Name="out" />
+      <NameCon UId="39" Name="in" />
+    </Wire>
+    <Wire UId="59">
+      <IdentCon UId="28" />
+      <NameCon UId="39" Name="operand" />
+    </Wire>
+    <Wire UId="60">
+      <NameCon UId="39" Name="out" />
+      <NameCon UId="40" Name="in" />
+    </Wire>
+    <Wire UId="61">
+      <IdentCon UId="29" />
+      <NameCon UId="40" Name="operand" />
+    </Wire>
+    <Wire UId="62">
+      <NameCon UId="40" Name="out" />
+      <NameCon UId="41" Name="in" />
+    </Wire>
+    <Wire UId="63">
+      <IdentCon UId="30" />
+      <NameCon UId="41" Name="operand" />
+    </Wire>
+    <Wire UId="64">
+      <NameCon UId="41" Name="out" />
+      <NameCon UId="42" Name="in3" />
+    </Wire>
+    <Wire UId="65">
+      <NameCon UId="42" Name="out" />
+      <NameCon UId="43" Name="in" />
+    </Wire>
+    <Wire UId="66">
+      <IdentCon UId="31" />
+      <NameCon UId="43" Name="operand" />
+    </Wire>
+  </Wires>
+</FlgNet></NetworkSource>
+          <ProgrammingLanguage>LAD</ProgrammingLanguage>
+        </AttributeList>
+        <ObjectList>
+          <MultilingualText ID="9" CompositionName="Comment">
+            <ObjectList>
+              <MultilingualTextItem ID="A" CompositionName="Items">
+                <AttributeList>
+                  <Culture>en-US</Culture>
+                  <Text />
+                </AttributeList>
+              </MultilingualTextItem>
+            </ObjectList>
+          </MultilingualText>
+          <MultilingualText ID="B" CompositionName="Title">
+            <ObjectList>
+              <MultilingualTextItem ID="C" CompositionName="Items">
+                <AttributeList>
+                  <Culture>en-US</Culture>
+                  <Text>Controllo ventilatori zona 2</Text>
+                </AttributeList>
+              </MultilingualTextItem>
+            </ObjectList>
+          </MultilingualText>
+        </ObjectList>
+      </SW.Blocks.CompileUnit>
+      <SW.Blocks.CompileUnit ID="D" CompositionName="CompileUnits">
+        <AttributeList>
+          <NetworkSource><FlgNet xmlns="http://www.siemens.com/automation/Openness/SW/NetworkSource/FlgNet/v5">
+  <Parts>
+    <Access Scope="GlobalVariable" UId="21">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 7" />
+        <Component Name="Automatico" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="22">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 7" />
+        <Component Name="Selezionato" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="23">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Ventilatore_7_Automatico_e_Selezionato" />
+      </Symbol>
+    </Access>
+    <Part Name="Contact" UId="24" />
+    <Part Name="Contact" UId="25" />
+    <Part Name="Coil" UId="26" />
+  </Parts>
+  <Wires>
+    <Wire UId="27">
+      <Powerrail />
+      <NameCon UId="24" Name="in" />
+    </Wire>
+    <Wire UId="28">
+      <IdentCon UId="21" />
+      <NameCon UId="24" Name="operand" />
+    </Wire>
+    <Wire UId="29">
+      <NameCon UId="24" Name="out" />
+      <NameCon UId="25" Name="in" />
+    </Wire>
+    <Wire UId="30">
+      <IdentCon UId="22" />
+      <NameCon UId="25" Name="operand" />
+    </Wire>
+    <Wire UId="31">
+      <NameCon UId="25" Name="out" />
+      <NameCon UId="26" Name="in" />
+    </Wire>
+    <Wire UId="32">
+      <IdentCon UId="23" />
+      <NameCon UId="26" Name="operand" />
+    </Wire>
+  </Wires>
+</FlgNet></NetworkSource>
+          <ProgrammingLanguage>LAD</ProgrammingLanguage>
+        </AttributeList>
+        <ObjectList>
+          <MultilingualText ID="E" CompositionName="Comment">
+            <ObjectList>
+              <MultilingualTextItem ID="F" CompositionName="Items">
+                <AttributeList>
+                  <Culture>en-US</Culture>
+                  <Text />
+                </AttributeList>
+              </MultilingualTextItem>
+            </ObjectList>
+          </MultilingualText>
+          <MultilingualText ID="10" CompositionName="Title">
+            <ObjectList>
+              <MultilingualTextItem ID="11" CompositionName="Items">
+                <AttributeList>
+                  <Culture>en-US</Culture>
+                  <Text>Controllo ventilatore 7</Text>
+                </AttributeList>
+              </MultilingualTextItem>
+            </ObjectList>
+          </MultilingualText>
+        </ObjectList>
+      </SW.Blocks.CompileUnit>
+      <SW.Blocks.CompileUnit ID="12" CompositionName="CompileUnits">
+        <AttributeList>
+          <NetworkSource><FlgNet xmlns="http://www.siemens.com/automation/Openness/SW/NetworkSource/FlgNet/v5">
+  <Parts>
+    <Access Scope="GlobalVariable" UId="21">
+      <Symbol>
+        <Component Name="DB_Mapping_DI" />
+        <Component Name="DI_HV-001_OPEN" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="22">
+      <Symbol>
+        <Component Name="DB_Mapping_DI" />
+        <Component Name="DI_HV-002_OPEN" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="23">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Ventilator_Selezionati_zona_1" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="24">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Ventilatore_7_Automatico_e_Selezionato" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="25">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Pls_Start_Supervisione" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="26">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Sequenza_Start_Avviata_Zona_1" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="27">
+      <Symbol>
+        <Component Name="DB_Mapping_DI" />
+        <Component Name="DI_HV-002_OPEN" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="28">
+      <Symbol>
+        <Component Name="DB_Mapping_DI" />
+        <Component Name="DI_HV-001_OPEN" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="29">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Ventilator_Selezionati_zona_2" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="30">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Ventilatore_7_Automatico_e_Selezionato" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="31">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Pls_Start_Supervisione" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="32">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Sequenza_Start_Avviata_Zona_2" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="33">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Sequenza_Stop_Avviata_Zona_1" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="34">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Sequenza_Stop_Avviata_Zona_2" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="35">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Reset_Timer_Accensione" />
+      </Symbol>
+    </Access>
+    <Part Name="Contact" UId="36" />
+    <Part Name="Contact" UId="37">
+      <Negated Name="operand" />
+    </Part>
+    <Part Name="Contact" UId="38" />
+    <Part Name="Contact" UId="39" />
+    <Part Name="Contact" UId="40" />
+    <Part Name="SCoil" UId="41" />
+    <Part Name="Contact" UId="42" />
+    <Part Name="Contact" UId="43">
+      <Negated Name="operand" />
+    </Part>
+    <Part Name="Contact" UId="44" />
+    <Part Name="Contact" UId="45" />
+    <Part Name="Contact" UId="46" />
+    <Part Name="SCoil" UId="47" />
+    <Part Name="O" UId="48">
+      <TemplateValue Name="Card" Type="Cardinality">2</TemplateValue>
+    </Part>
+    <Part Name="RCoil" UId="49" />
+    <Part Name="RCoil" UId="50" />
+    <Part Name="RCoil" UId="51" />
+  </Parts>
+  <Wires>
+    <Wire UId="52">
+      <Powerrail />
+      <NameCon UId="36" Name="in" />
+      <NameCon UId="42" Name="in" />
+    </Wire>
+    <Wire UId="53">
+      <IdentCon UId="21" />
+      <NameCon UId="36" Name="operand" />
+    </Wire>
+    <Wire UId="54">
+      <NameCon UId="36" Name="out" />
+      <NameCon UId="37" Name="in" />
+    </Wire>
+    <Wire UId="55">
+      <IdentCon UId="22" />
+      <NameCon UId="37" Name="operand" />
+    </Wire>
+    <Wire UId="56">
+      <NameCon UId="37" Name="out" />
+      <NameCon UId="38" Name="in" />
+    </Wire>
+    <Wire UId="57">
+      <IdentCon UId="23" />
+      <NameCon UId="38" Name="operand" />
+    </Wire>
+    <Wire UId="58">
+      <NameCon UId="38" Name="out" />
+      <NameCon UId="39" Name="in" />
+    </Wire>
+    <Wire UId="59">
+      <IdentCon UId="24" />
+      <NameCon UId="39" Name="operand" />
+    </Wire>
+    <Wire UId="60">
+      <NameCon UId="39" Name="out" />
+      <NameCon UId="40" Name="in" />
+    </Wire>
+    <Wire UId="61">
+      <IdentCon UId="25" />
+      <NameCon UId="40" Name="operand" />
+    </Wire>
+    <Wire UId="62">
+      <NameCon UId="40" Name="out" />
+      <NameCon UId="41" Name="in" />
+    </Wire>
+    <Wire UId="63">
+      <IdentCon UId="26" />
+      <NameCon UId="41" Name="operand" />
+    </Wire>
+    <Wire UId="64">
+      <NameCon UId="41" Name="out" />
+      <NameCon UId="48" Name="in1" />
+    </Wire>
+    <Wire UId="65">
+      <IdentCon UId="27" />
+      <NameCon UId="42" Name="operand" />
+    </Wire>
+    <Wire UId="66">
+      <NameCon UId="42" Name="out" />
+      <NameCon UId="43" Name="in" />
+    </Wire>
+    <Wire UId="67">
+      <IdentCon UId="28" />
+      <NameCon UId="43" Name="operand" />
+    </Wire>
+    <Wire UId="68">
+      <NameCon UId="43" Name="out" />
+      <NameCon UId="44" Name="in" />
+    </Wire>
+    <Wire UId="69">
+      <IdentCon UId="29" />
+      <NameCon UId="44" Name="operand" />
+    </Wire>
+    <Wire UId="70">
+      <NameCon UId="44" Name="out" />
+      <NameCon UId="45" Name="in" />
+    </Wire>
+    <Wire UId="71">
+      <IdentCon UId="30" />
+      <NameCon UId="45" Name="operand" />
+    </Wire>
+    <Wire UId="72">
+      <NameCon UId="45" Name="out" />
+      <NameCon UId="46" Name="in" />
+    </Wire>
+    <Wire UId="73">
+      <IdentCon UId="31" />
+      <NameCon UId="46" Name="operand" />
+    </Wire>
+    <Wire UId="74">
+      <NameCon UId="46" Name="out" />
+      <NameCon UId="47" Name="in" />
+    </Wire>
+    <Wire UId="75">
+      <IdentCon UId="32" />
+      <NameCon UId="47" Name="operand" />
+    </Wire>
+    <Wire UId="76">
+      <NameCon UId="47" Name="out" />
+      <NameCon UId="48" Name="in2" />
+    </Wire>
+    <Wire UId="77">
+      <NameCon UId="48" Name="out" />
+      <NameCon UId="49" Name="in" />
+    </Wire>
+    <Wire UId="78">
+      <IdentCon UId="33" />
+      <NameCon UId="49" Name="operand" />
+    </Wire>
+    <Wire UId="79">
+      <NameCon UId="49" Name="out" />
+      <NameCon UId="50" Name="in" />
+    </Wire>
+    <Wire UId="80">
+      <IdentCon UId="34" />
+      <NameCon UId="50" Name="operand" />
+    </Wire>
+    <Wire UId="81">
+      <NameCon UId="50" Name="out" />
+      <NameCon UId="51" Name="in" />
+    </Wire>
+    <Wire UId="82">
+      <IdentCon UId="35" />
+      <NameCon UId="51" Name="operand" />
+    </Wire>
+  </Wires>
+</FlgNet></NetworkSource>
+          <ProgrammingLanguage>LAD</ProgrammingLanguage>
+        </AttributeList>
+        <ObjectList>
+          <MultilingualText ID="13" CompositionName="Comment">
+            <ObjectList>
+              <MultilingualTextItem ID="14" CompositionName="Items">
+                <AttributeList>
+                  <Culture>en-US</Culture>
+                  <Text />
+                </AttributeList>
+              </MultilingualTextItem>
+            </ObjectList>
+          </MultilingualText>
+          <MultilingualText ID="15" CompositionName="Title">
+            <ObjectList>
+              <MultilingualTextItem ID="16" CompositionName="Items">
+                <AttributeList>
+                  <Culture>en-US</Culture>
+                  <Text>Selezione zona ventilatore 7</Text>
+                </AttributeList>
+              </MultilingualTextItem>
+            </ObjectList>
+          </MultilingualText>
+        </ObjectList>
+      </SW.Blocks.CompileUnit>
+      <SW.Blocks.CompileUnit ID="17" CompositionName="CompileUnits">
+        <AttributeList>
+          <NetworkSource><FlgNet xmlns="http://www.siemens.com/automation/Openness/SW/NetworkSource/FlgNet/v5">
+  <Parts>
+    <Access Scope="GlobalVariable" UId="21">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Sequenza_Start_Avviata_Zona_1" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="22">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 1" />
+        <Component Name="Automatico" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="23">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 1" />
+        <Component Name="Selezionato" />
+      </Symbol>
+    </Access>
+    <Access Scope="LiteralConstant" UId="24">
+      <Constant>
+        <ConstantType>Bool</ConstantType>
+        <ConstantValue>TRUE</ConstantValue>
+      </Constant>
+    </Access>
+    <Access Scope="GlobalVariable" UId="25">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Reset_Timer_Accensione" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="26">
+      <Symbol>
+        <Component Name="DB_Servizio_Timer" />
+        <Component Name="Timer_8" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="27">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Accensione_Ventilatore_1_Completato" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="28">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Attivazione_Auto_Ventilatore_1" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="29">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Attivazione_Auto_Ventilatore_1" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="30">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 1" />
+        <Component Name="Attivazione_Auto" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="31">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 2" />
+        <Component Name="Automatico" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="32">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 2" />
+        <Component Name="Selezionato" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="33">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Accensione_Ventilatore_1_Completato" />
+      </Symbol>
+    </Access>
+    <Access Scope="LiteralConstant" UId="34">
+      <Constant>
+        <ConstantType>Bool</ConstantType>
+        <ConstantValue>FALSE</ConstantValue>
+      </Constant>
+    </Access>
+    <Access Scope="GlobalVariable" UId="35">
+      <Symbol>
+        <Component Name="DB_Servizio_Timer" />
+        <Component Name="Timer_9" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="36">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Accensione_Ventilatore_2_Completato" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="37">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Attivazione_Auto_Ventilatore_2" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="38">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Attivazione_Auto_Ventilatore_2" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="39">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 2" />
+        <Component Name="Attivazione_Auto" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="40">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 3" />
+        <Component Name="Automatico" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="41">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 3" />
+        <Component Name="Selezionato" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="42">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Accensione_Ventilatore_2_Completato" />
+      </Symbol>
+    </Access>
+    <Access Scope="LiteralConstant" UId="43">
+      <Constant>
+        <ConstantType>Bool</ConstantType>
+        <ConstantValue>FALSE</ConstantValue>
+      </Constant>
+    </Access>
+    <Access Scope="GlobalVariable" UId="44">
+      <Symbol>
+        <Component Name="DB_Servizio_Timer" />
+        <Component Name="Timer_10" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="45">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Accensione_Ventilatore_3_Completato" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="46">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Attivazione_Auto_Ventilatore_3" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="47">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Attivazione_Auto_Ventilatore_3" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="48">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 3" />
+        <Component Name="Attivazione_Auto" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="49">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 7" />
+        <Component Name="Automatico" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="50">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 7" />
+        <Component Name="Selezionato" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="51">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Accensione_Ventilatore_3_Completato" />
+      </Symbol>
+    </Access>
+    <Access Scope="LiteralConstant" UId="52">
+      <Constant>
+        <ConstantType>Bool</ConstantType>
+        <ConstantValue>FALSE</ConstantValue>
+      </Constant>
+    </Access>
+    <Access Scope="GlobalVariable" UId="53">
+      <Symbol>
+        <Component Name="DB_Servizio_Timer" />
+        <Component Name="Timer_11" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="54">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Accensione_Ventilatore_7_Completato" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="55">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Attivazione_Auto_Ventilatore_7" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="56">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Attivazione_Auto_Ventilatore_7" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="57">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 7" />
+        <Component Name="Attivazione_Auto" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="58">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Sequenza_Start_Avviata_Zona_2" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="59">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 4" />
+        <Component Name="Automatico" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="60">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 4" />
+        <Component Name="Selezionato" />
+      </Symbol>
+    </Access>
+    <Access Scope="LiteralConstant" UId="61">
+      <Constant>
+        <ConstantType>Bool</ConstantType>
+        <ConstantValue>TRUE</ConstantValue>
+      </Constant>
+    </Access>
+    <Access Scope="GlobalVariable" UId="62">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Reset_Timer_Accensione" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="63">
+      <Symbol>
+        <Component Name="DB_Servizio_Timer" />
+        <Component Name="Timer_12" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="64">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Accensione_Ventilatore_4_Completato" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="65">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Attivazione_Auto_Ventilatore_4" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="66">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Attivazione_Auto_Ventilatore_4" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="67">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 4" />
+        <Component Name="Attivazione_Auto" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="68">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 5" />
+        <Component Name="Automatico" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="69">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 5" />
+        <Component Name="Selezionato" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="70">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Accensione_Ventilatore_4_Completato" />
+      </Symbol>
+    </Access>
+    <Access Scope="LiteralConstant" UId="71">
+      <Constant>
+        <ConstantType>Bool</ConstantType>
+        <ConstantValue>FALSE</ConstantValue>
+      </Constant>
+    </Access>
+    <Access Scope="GlobalVariable" UId="72">
+      <Symbol>
+        <Component Name="DB_Servizio_Timer" />
+        <Component Name="Timer_13" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="73">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Accensione_Ventilatore_5_Completato" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="74">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Attivazione_Auto_Ventilatore_5" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="75">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Attivazione_Auto_Ventilatore_5" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="76">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 5" />
+        <Component Name="Attivazione_Auto" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="77">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 6" />
+        <Component Name="Automatico" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="78">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 6" />
+        <Component Name="Selezionato" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="79">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Accensione_Ventilatore_5_Completato" />
+      </Symbol>
+    </Access>
+    <Access Scope="LiteralConstant" UId="80">
+      <Constant>
+        <ConstantType>Bool</ConstantType>
+        <ConstantValue>FALSE</ConstantValue>
+      </Constant>
+    </Access>
+    <Access Scope="GlobalVariable" UId="81">
+      <Symbol>
+        <Component Name="DB_Servizio_Timer" />
+        <Component Name="Timer_14" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="82">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Accensione_Ventilatore_6_Completato" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="83">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Attivazione_Auto_Ventilatore_6" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="84">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Attivazione_Auto_Ventilatore_6" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="85">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 6" />
+        <Component Name="Attivazione_Auto" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="86">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 7" />
+        <Component Name="Automatico" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="87">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 7" />
+        <Component Name="Selezionato" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="88">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Accensione_Ventilatore_6_Completato" />
+      </Symbol>
+    </Access>
+    <Access Scope="LiteralConstant" UId="89">
+      <Constant>
+        <ConstantType>Bool</ConstantType>
+        <ConstantValue>FALSE</ConstantValue>
+      </Constant>
+    </Access>
+    <Access Scope="GlobalVariable" UId="90">
+      <Symbol>
+        <Component Name="DB_Servizio_Timer" />
+        <Component Name="Timer_15" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="91">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Accensione_Ventilatore_7_Completato" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="92">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Attivazione_Auto_Ventilatore_7" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="93">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Attivazione_Auto_Ventilatore_7" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="94">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 7" />
+        <Component Name="Attivazione_Auto" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="95">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Accensione_Ventilatore_7_Completato" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="96">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Reset_Timer_Accensione" />
+      </Symbol>
+    </Access>
+    <Part Name="Contact" UId="97" />
+    <Call UId="98">
+      <CallInfo Name="FC_Start_Ventilatori" BlockType="FC">
+        <Parameter Name="Ventilatore_Auto" Section="Input" Type="Bool" />
+        <Parameter Name="Ventilatore_Selezionato" Section="Input" Type="Bool" />
+        <Parameter Name="Prossimo_Ventilatore_IN" Section="Input" Type="Bool" />
+        <Parameter Name="Reset_Timer_Accensione" Section="Input" Type="Bool" />
+        <Parameter Name="CMD_OUT" Section="Output" Type="Bool" />
+        <Parameter Name="Timer" Section="InOut" Type="IEC_TIMER" />
+        <Parameter Name="Prossimo_Ventilatore_OUT" Section="InOut" Type="Bool" />
+      </CallInfo>
+    </Call>
+    <Part Name="Contact" UId="99" />
+    <Part Name="SCoil" UId="100" />
+    <Call UId="101">
+      <CallInfo Name="FC_Start_Ventilatori" BlockType="FC">
+        <Parameter Name="Ventilatore_Auto" Section="Input" Type="Bool" />
+        <Parameter Name="Ventilatore_Selezionato" Section="Input" Type="Bool" />
+        <Parameter Name="Prossimo_Ventilatore_IN" Section="Input" Type="Bool" />
+        <Parameter Name="Reset_Timer_Accensione" Section="Input" Type="Bool" />
+        <Parameter Name="CMD_OUT" Section="Output" Type="Bool" />
+        <Parameter Name="Timer" Section="InOut" Type="IEC_TIMER" />
+        <Parameter Name="Prossimo_Ventilatore_OUT" Section="InOut" Type="Bool" />
+      </CallInfo>
+    </Call>
+    <Part Name="Contact" UId="102" />
+    <Part Name="SCoil" UId="103" />
+    <Call UId="104">
+      <CallInfo Name="FC_Start_Ventilatori" BlockType="FC">
+        <Parameter Name="Ventilatore_Auto" Section="Input" Type="Bool" />
+        <Parameter Name="Ventilatore_Selezionato" Section="Input" Type="Bool" />
+        <Parameter Name="Prossimo_Ventilatore_IN" Section="Input" Type="Bool" />
+        <Parameter Name="Reset_Timer_Accensione" Section="Input" Type="Bool" />
+        <Parameter Name="CMD_OUT" Section="Output" Type="Bool" />
+        <Parameter Name="Timer" Section="InOut" Type="IEC_TIMER" />
+        <Parameter Name="Prossimo_Ventilatore_OUT" Section="InOut" Type="Bool" />
+      </CallInfo>
+    </Call>
+    <Part Name="Contact" UId="105" />
+    <Part Name="SCoil" UId="106" />
+    <Call UId="107">
+      <CallInfo Name="FC_Start_Ventilatori" BlockType="FC">
+        <Parameter Name="Ventilatore_Auto" Section="Input" Type="Bool" />
+        <Parameter Name="Ventilatore_Selezionato" Section="Input" Type="Bool" />
+        <Parameter Name="Prossimo_Ventilatore_IN" Section="Input" Type="Bool" />
+        <Parameter Name="Reset_Timer_Accensione" Section="Input" Type="Bool" />
+        <Parameter Name="CMD_OUT" Section="Output" Type="Bool" />
+        <Parameter Name="Timer" Section="InOut" Type="IEC_TIMER" />
+        <Parameter Name="Prossimo_Ventilatore_OUT" Section="InOut" Type="Bool" />
+      </CallInfo>
+    </Call>
+    <Part Name="Contact" UId="108" />
+    <Part Name="SCoil" UId="109" />
+    <Part Name="Contact" UId="110" />
+    <Call UId="111">
+      <CallInfo Name="FC_Start_Ventilatori" BlockType="FC">
+        <Parameter Name="Ventilatore_Auto" Section="Input" Type="Bool" />
+        <Parameter Name="Ventilatore_Selezionato" Section="Input" Type="Bool" />
+        <Parameter Name="Prossimo_Ventilatore_IN" Section="Input" Type="Bool" />
+        <Parameter Name="Reset_Timer_Accensione" Section="Input" Type="Bool" />
+        <Parameter Name="CMD_OUT" Section="Output" Type="Bool" />
+        <Parameter Name="Timer" Section="InOut" Type="IEC_TIMER" />
+        <Parameter Name="Prossimo_Ventilatore_OUT" Section="InOut" Type="Bool" />
+      </CallInfo>
+    </Call>
+    <Part Name="Contact" UId="112" />
+    <Part Name="SCoil" UId="113" />
+    <Call UId="114">
+      <CallInfo Name="FC_Start_Ventilatori" BlockType="FC">
+        <Parameter Name="Ventilatore_Auto" Section="Input" Type="Bool" />
+        <Parameter Name="Ventilatore_Selezionato" Section="Input" Type="Bool" />
+        <Parameter Name="Prossimo_Ventilatore_IN" Section="Input" Type="Bool" />
+        <Parameter Name="Reset_Timer_Accensione" Section="Input" Type="Bool" />
+        <Parameter Name="CMD_OUT" Section="Output" Type="Bool" />
+        <Parameter Name="Timer" Section="InOut" Type="IEC_TIMER" />
+        <Parameter Name="Prossimo_Ventilatore_OUT" Section="InOut" Type="Bool" />
+      </CallInfo>
+    </Call>
+    <Part Name="Contact" UId="115" />
+    <Part Name="SCoil" UId="116" />
+    <Call UId="117">
+      <CallInfo Name="FC_Start_Ventilatori" BlockType="FC">
+        <Parameter Name="Ventilatore_Auto" Section="Input" Type="Bool" />
+        <Parameter Name="Ventilatore_Selezionato" Section="Input" Type="Bool" />
+        <Parameter Name="Prossimo_Ventilatore_IN" Section="Input" Type="Bool" />
+        <Parameter Name="Reset_Timer_Accensione" Section="Input" Type="Bool" />
+        <Parameter Name="CMD_OUT" Section="Output" Type="Bool" />
+        <Parameter Name="Timer" Section="InOut" Type="IEC_TIMER" />
+        <Parameter Name="Prossimo_Ventilatore_OUT" Section="InOut" Type="Bool" />
+      </CallInfo>
+    </Call>
+    <Part Name="Contact" UId="118" />
+    <Part Name="SCoil" UId="119" />
+    <Call UId="120">
+      <CallInfo Name="FC_Start_Ventilatori" BlockType="FC">
+        <Parameter Name="Ventilatore_Auto" Section="Input" Type="Bool" />
+        <Parameter Name="Ventilatore_Selezionato" Section="Input" Type="Bool" />
+        <Parameter Name="Prossimo_Ventilatore_IN" Section="Input" Type="Bool" />
+        <Parameter Name="Reset_Timer_Accensione" Section="Input" Type="Bool" />
+        <Parameter Name="CMD_OUT" Section="Output" Type="Bool" />
+        <Parameter Name="Timer" Section="InOut" Type="IEC_TIMER" />
+        <Parameter Name="Prossimo_Ventilatore_OUT" Section="InOut" Type="Bool" />
+      </CallInfo>
+    </Call>
+    <Part Name="Contact" UId="121" />
+    <Part Name="SCoil" UId="122" />
+    <Part Name="Contact" UId="123" />
+    <Part Name="SCoil" UId="124" />
+  </Parts>
+  <Wires>
+    <Wire UId="125">
+      <Powerrail />
+      <NameCon UId="97" Name="in" />
+      <NameCon UId="110" Name="in" />
+      <NameCon UId="123" Name="in" />
+    </Wire>
+    <Wire UId="126">
+      <IdentCon UId="21" />
+      <NameCon UId="97" Name="operand" />
+    </Wire>
+    <Wire UId="127">
+      <NameCon UId="97" Name="out" />
+      <NameCon UId="98" Name="en" />
+      <NameCon UId="101" Name="en" />
+      <NameCon UId="104" Name="en" />
+      <NameCon UId="107" Name="en" />
+    </Wire>
+    <Wire UId="128">
+      <IdentCon UId="22" />
+      <NameCon UId="98" Name="Ventilatore_Auto" />
+    </Wire>
+    <Wire UId="129">
+      <IdentCon UId="23" />
+      <NameCon UId="98" Name="Ventilatore_Selezionato" />
+    </Wire>
+    <Wire UId="130">
+      <IdentCon UId="24" />
+      <NameCon UId="98" Name="Prossimo_Ventilatore_IN" />
+    </Wire>
+    <Wire UId="131">
+      <IdentCon UId="25" />
+      <NameCon UId="98" Name="Reset_Timer_Accensione" />
+    </Wire>
+    <Wire UId="132">
+      <IdentCon UId="26" />
+      <NameCon UId="98" Name="Timer" />
+    </Wire>
+    <Wire UId="133">
+      <IdentCon UId="27" />
+      <NameCon UId="98" Name="Prossimo_Ventilatore_OUT" />
+    </Wire>
+    <Wire UId="134">
+      <NameCon UId="98" Name="eno" />
+      <NameCon UId="99" Name="in" />
+    </Wire>
+    <Wire UId="135">
+      <NameCon UId="98" Name="CMD_OUT" />
+      <IdentCon UId="28" />
+    </Wire>
+    <Wire UId="136">
+      <IdentCon UId="29" />
+      <NameCon UId="99" Name="operand" />
+    </Wire>
+    <Wire UId="137">
+      <NameCon UId="99" Name="out" />
+      <NameCon UId="100" Name="in" />
+    </Wire>
+    <Wire UId="138">
+      <IdentCon UId="30" />
+      <NameCon UId="100" Name="operand" />
+    </Wire>
+    <Wire UId="139">
+      <IdentCon UId="31" />
+      <NameCon UId="101" Name="Ventilatore_Auto" />
+    </Wire>
+    <Wire UId="140">
+      <IdentCon UId="32" />
+      <NameCon UId="101" Name="Ventilatore_Selezionato" />
+    </Wire>
+    <Wire UId="141">
+      <IdentCon UId="33" />
+      <NameCon UId="101" Name="Prossimo_Ventilatore_IN" />
+    </Wire>
+    <Wire UId="142">
+      <IdentCon UId="34" />
+      <NameCon UId="101" Name="Reset_Timer_Accensione" />
+    </Wire>
+    <Wire UId="143">
+      <IdentCon UId="35" />
+      <NameCon UId="101" Name="Timer" />
+    </Wire>
+    <Wire UId="144">
+      <IdentCon UId="36" />
+      <NameCon UId="101" Name="Prossimo_Ventilatore_OUT" />
+    </Wire>
+    <Wire UId="145">
+      <NameCon UId="101" Name="eno" />
+      <NameCon UId="102" Name="in" />
+    </Wire>
+    <Wire UId="146">
+      <NameCon UId="101" Name="CMD_OUT" />
+      <IdentCon UId="37" />
+    </Wire>
+    <Wire UId="147">
+      <IdentCon UId="38" />
+      <NameCon UId="102" Name="operand" />
+    </Wire>
+    <Wire UId="148">
+      <NameCon UId="102" Name="out" />
+      <NameCon UId="103" Name="in" />
+    </Wire>
+    <Wire UId="149">
+      <IdentCon UId="39" />
+      <NameCon UId="103" Name="operand" />
+    </Wire>
+    <Wire UId="150">
+      <IdentCon UId="40" />
+      <NameCon UId="104" Name="Ventilatore_Auto" />
+    </Wire>
+    <Wire UId="151">
+      <IdentCon UId="41" />
+      <NameCon UId="104" Name="Ventilatore_Selezionato" />
+    </Wire>
+    <Wire UId="152">
+      <IdentCon UId="42" />
+      <NameCon UId="104" Name="Prossimo_Ventilatore_IN" />
+    </Wire>
+    <Wire UId="153">
+      <IdentCon UId="43" />
+      <NameCon UId="104" Name="Reset_Timer_Accensione" />
+    </Wire>
+    <Wire UId="154">
+      <IdentCon UId="44" />
+      <NameCon UId="104" Name="Timer" />
+    </Wire>
+    <Wire UId="155">
+      <IdentCon UId="45" />
+      <NameCon UId="104" Name="Prossimo_Ventilatore_OUT" />
+    </Wire>
+    <Wire UId="156">
+      <NameCon UId="104" Name="eno" />
+      <NameCon UId="105" Name="in" />
+    </Wire>
+    <Wire UId="157">
+      <NameCon UId="104" Name="CMD_OUT" />
+      <IdentCon UId="46" />
+    </Wire>
+    <Wire UId="158">
+      <IdentCon UId="47" />
+      <NameCon UId="105" Name="operand" />
+    </Wire>
+    <Wire UId="159">
+      <NameCon UId="105" Name="out" />
+      <NameCon UId="106" Name="in" />
+    </Wire>
+    <Wire UId="160">
+      <IdentCon UId="48" />
+      <NameCon UId="106" Name="operand" />
+    </Wire>
+    <Wire UId="161">
+      <IdentCon UId="49" />
+      <NameCon UId="107" Name="Ventilatore_Auto" />
+    </Wire>
+    <Wire UId="162">
+      <IdentCon UId="50" />
+      <NameCon UId="107" Name="Ventilatore_Selezionato" />
+    </Wire>
+    <Wire UId="163">
+      <IdentCon UId="51" />
+      <NameCon UId="107" Name="Prossimo_Ventilatore_IN" />
+    </Wire>
+    <Wire UId="164">
+      <IdentCon UId="52" />
+      <NameCon UId="107" Name="Reset_Timer_Accensione" />
+    </Wire>
+    <Wire UId="165">
+      <IdentCon UId="53" />
+      <NameCon UId="107" Name="Timer" />
+    </Wire>
+    <Wire UId="166">
+      <IdentCon UId="54" />
+      <NameCon UId="107" Name="Prossimo_Ventilatore_OUT" />
+    </Wire>
+    <Wire UId="167">
+      <NameCon UId="107" Name="eno" />
+      <NameCon UId="108" Name="in" />
+    </Wire>
+    <Wire UId="168">
+      <NameCon UId="107" Name="CMD_OUT" />
+      <IdentCon UId="55" />
+    </Wire>
+    <Wire UId="169">
+      <IdentCon UId="56" />
+      <NameCon UId="108" Name="operand" />
+    </Wire>
+    <Wire UId="170">
+      <NameCon UId="108" Name="out" />
+      <NameCon UId="109" Name="in" />
+    </Wire>
+    <Wire UId="171">
+      <IdentCon UId="57" />
+      <NameCon UId="109" Name="operand" />
+    </Wire>
+    <Wire UId="172">
+      <IdentCon UId="58" />
+      <NameCon UId="110" Name="operand" />
+    </Wire>
+    <Wire UId="173">
+      <NameCon UId="110" Name="out" />
+      <NameCon UId="111" Name="en" />
+      <NameCon UId="114" Name="en" />
+      <NameCon UId="117" Name="en" />
+      <NameCon UId="120" Name="en" />
+    </Wire>
+    <Wire UId="174">
+      <IdentCon UId="59" />
+      <NameCon UId="111" Name="Ventilatore_Auto" />
+    </Wire>
+    <Wire UId="175">
+      <IdentCon UId="60" />
+      <NameCon UId="111" Name="Ventilatore_Selezionato" />
+    </Wire>
+    <Wire UId="176">
+      <IdentCon UId="61" />
+      <NameCon UId="111" Name="Prossimo_Ventilatore_IN" />
+    </Wire>
+    <Wire UId="177">
+      <IdentCon UId="62" />
+      <NameCon UId="111" Name="Reset_Timer_Accensione" />
+    </Wire>
+    <Wire UId="178">
+      <IdentCon UId="63" />
+      <NameCon UId="111" Name="Timer" />
+    </Wire>
+    <Wire UId="179">
+      <IdentCon UId="64" />
+      <NameCon UId="111" Name="Prossimo_Ventilatore_OUT" />
+    </Wire>
+    <Wire UId="180">
+      <NameCon UId="111" Name="eno" />
+      <NameCon UId="112" Name="in" />
+    </Wire>
+    <Wire UId="181">
+      <NameCon UId="111" Name="CMD_OUT" />
+      <IdentCon UId="65" />
+    </Wire>
+    <Wire UId="182">
+      <IdentCon UId="66" />
+      <NameCon UId="112" Name="operand" />
+    </Wire>
+    <Wire UId="183">
+      <NameCon UId="112" Name="out" />
+      <NameCon UId="113" Name="in" />
+    </Wire>
+    <Wire UId="184">
+      <IdentCon UId="67" />
+      <NameCon UId="113" Name="operand" />
+    </Wire>
+    <Wire UId="185">
+      <IdentCon UId="68" />
+      <NameCon UId="114" Name="Ventilatore_Auto" />
+    </Wire>
+    <Wire UId="186">
+      <IdentCon UId="69" />
+      <NameCon UId="114" Name="Ventilatore_Selezionato" />
+    </Wire>
+    <Wire UId="187">
+      <IdentCon UId="70" />
+      <NameCon UId="114" Name="Prossimo_Ventilatore_IN" />
+    </Wire>
+    <Wire UId="188">
+      <IdentCon UId="71" />
+      <NameCon UId="114" Name="Reset_Timer_Accensione" />
+    </Wire>
+    <Wire UId="189">
+      <IdentCon UId="72" />
+      <NameCon UId="114" Name="Timer" />
+    </Wire>
+    <Wire UId="190">
+      <IdentCon UId="73" />
+      <NameCon UId="114" Name="Prossimo_Ventilatore_OUT" />
+    </Wire>
+    <Wire UId="191">
+      <NameCon UId="114" Name="eno" />
+      <NameCon UId="115" Name="in" />
+    </Wire>
+    <Wire UId="192">
+      <NameCon UId="114" Name="CMD_OUT" />
+      <IdentCon UId="74" />
+    </Wire>
+    <Wire UId="193">
+      <IdentCon UId="75" />
+      <NameCon UId="115" Name="operand" />
+    </Wire>
+    <Wire UId="194">
+      <NameCon UId="115" Name="out" />
+      <NameCon UId="116" Name="in" />
+    </Wire>
+    <Wire UId="195">
+      <IdentCon UId="76" />
+      <NameCon UId="116" Name="operand" />
+    </Wire>
+    <Wire UId="196">
+      <IdentCon UId="77" />
+      <NameCon UId="117" Name="Ventilatore_Auto" />
+    </Wire>
+    <Wire UId="197">
+      <IdentCon UId="78" />
+      <NameCon UId="117" Name="Ventilatore_Selezionato" />
+    </Wire>
+    <Wire UId="198">
+      <IdentCon UId="79" />
+      <NameCon UId="117" Name="Prossimo_Ventilatore_IN" />
+    </Wire>
+    <Wire UId="199">
+      <IdentCon UId="80" />
+      <NameCon UId="117" Name="Reset_Timer_Accensione" />
+    </Wire>
+    <Wire UId="200">
+      <IdentCon UId="81" />
+      <NameCon UId="117" Name="Timer" />
+    </Wire>
+    <Wire UId="201">
+      <IdentCon UId="82" />
+      <NameCon UId="117" Name="Prossimo_Ventilatore_OUT" />
+    </Wire>
+    <Wire UId="202">
+      <NameCon UId="117" Name="eno" />
+      <NameCon UId="118" Name="in" />
+    </Wire>
+    <Wire UId="203">
+      <NameCon UId="117" Name="CMD_OUT" />
+      <IdentCon UId="83" />
+    </Wire>
+    <Wire UId="204">
+      <IdentCon UId="84" />
+      <NameCon UId="118" Name="operand" />
+    </Wire>
+    <Wire UId="205">
+      <NameCon UId="118" Name="out" />
+      <NameCon UId="119" Name="in" />
+    </Wire>
+    <Wire UId="206">
+      <IdentCon UId="85" />
+      <NameCon UId="119" Name="operand" />
+    </Wire>
+    <Wire UId="207">
+      <IdentCon UId="86" />
+      <NameCon UId="120" Name="Ventilatore_Auto" />
+    </Wire>
+    <Wire UId="208">
+      <IdentCon UId="87" />
+      <NameCon UId="120" Name="Ventilatore_Selezionato" />
+    </Wire>
+    <Wire UId="209">
+      <IdentCon UId="88" />
+      <NameCon UId="120" Name="Prossimo_Ventilatore_IN" />
+    </Wire>
+    <Wire UId="210">
+      <IdentCon UId="89" />
+      <NameCon UId="120" Name="Reset_Timer_Accensione" />
+    </Wire>
+    <Wire UId="211">
+      <IdentCon UId="90" />
+      <NameCon UId="120" Name="Timer" />
+    </Wire>
+    <Wire UId="212">
+      <IdentCon UId="91" />
+      <NameCon UId="120" Name="Prossimo_Ventilatore_OUT" />
+    </Wire>
+    <Wire UId="213">
+      <NameCon UId="120" Name="eno" />
+      <NameCon UId="121" Name="in" />
+    </Wire>
+    <Wire UId="214">
+      <NameCon UId="120" Name="CMD_OUT" />
+      <IdentCon UId="92" />
+    </Wire>
+    <Wire UId="215">
+      <IdentCon UId="93" />
+      <NameCon UId="121" Name="operand" />
+    </Wire>
+    <Wire UId="216">
+      <NameCon UId="121" Name="out" />
+      <NameCon UId="122" Name="in" />
+    </Wire>
+    <Wire UId="217">
+      <IdentCon UId="94" />
+      <NameCon UId="122" Name="operand" />
+    </Wire>
+    <Wire UId="218">
+      <IdentCon UId="95" />
+      <NameCon UId="123" Name="operand" />
+    </Wire>
+    <Wire UId="219">
+      <NameCon UId="123" Name="out" />
+      <NameCon UId="124" Name="in" />
+    </Wire>
+    <Wire UId="220">
+      <IdentCon UId="96" />
+      <NameCon UId="124" Name="operand" />
+    </Wire>
+  </Wires>
+</FlgNet></NetworkSource>
+          <ProgrammingLanguage>LAD</ProgrammingLanguage>
+        </AttributeList>
+        <ObjectList>
+          <MultilingualText ID="18" CompositionName="Comment">
+            <ObjectList>
+              <MultilingualTextItem ID="19" CompositionName="Items">
+                <AttributeList>
+                  <Culture>en-US</Culture>
+                  <Text />
+                </AttributeList>
+              </MultilingualTextItem>
+            </ObjectList>
+          </MultilingualText>
+          <MultilingualText ID="1A" CompositionName="Title">
+            <ObjectList>
+              <MultilingualTextItem ID="1B" CompositionName="Items">
+                <AttributeList>
+                  <Culture>en-US</Culture>
+                  <Text>Accensione ventilatori</Text>
+                </AttributeList>
+              </MultilingualTextItem>
+            </ObjectList>
+          </MultilingualText>
+        </ObjectList>
+      </SW.Blocks.CompileUnit>
+      <SW.Blocks.CompileUnit ID="1C" CompositionName="CompileUnits">
+        <AttributeList>
+          <NetworkSource><FlgNet xmlns="http://www.siemens.com/automation/Openness/SW/NetworkSource/FlgNet/v5">
+  <Parts>
+    <Access Scope="GlobalVariable" UId="21">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 1" />
+        <Component Name="Automatico" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="22">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 1" />
+        <Component Name="Selezionato" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="23">
+      <Symbol>
+        <Component Name="DB_Servizo_Fronti" />
+        <Component Name="Fronte_27" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="24">
+      <Symbol>
+        <Component Name="DB_Servizo_Fronti" />
+        <Component Name="Fronte_28" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="25">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Spegnimento_Assenza_Condizioni_Ventilatore_1" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="26">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Spegnimento_Assenza_Condizioni_Ventilatore_1" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="27">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 1" />
+        <Component Name="Attivazione_Auto" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="28">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 2" />
+        <Component Name="Automatico" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="29">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 2" />
+        <Component Name="Selezionato" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="30">
+      <Symbol>
+        <Component Name="DB_Servizo_Fronti" />
+        <Component Name="Fronte_29" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="31">
+      <Symbol>
+        <Component Name="DB_Servizo_Fronti" />
+        <Component Name="Fronte_30" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="32">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Spegnimento_Assenza_Condizioni_Ventilatore_2" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="33">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Spegnimento_Assenza_Condizioni_Ventilatore_2" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="34">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 2" />
+        <Component Name="Attivazione_Auto" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="35">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 3" />
+        <Component Name="Automatico" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="36">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 3" />
+        <Component Name="Selezionato" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="37">
+      <Symbol>
+        <Component Name="DB_Servizo_Fronti" />
+        <Component Name="Fronte_31" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="38">
+      <Symbol>
+        <Component Name="DB_Servizo_Fronti" />
+        <Component Name="Fronte_32" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="39">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Spegnimento_Assenza_Condizioni_Ventilatore_3" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="40">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Spegnimento_Assenza_Condizioni_Ventilatore_3" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="41">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 3" />
+        <Component Name="Attivazione_Auto" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="42">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 4" />
+        <Component Name="Automatico" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="43">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 4" />
+        <Component Name="Selezionato" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="44">
+      <Symbol>
+        <Component Name="DB_Servizo_Fronti" />
+        <Component Name="Fronte_33" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="45">
+      <Symbol>
+        <Component Name="DB_Servizo_Fronti" />
+        <Component Name="Fronte_34" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="46">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Spegnimento_Assenza_Condizioni_Ventilatore_4" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="47">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Spegnimento_Assenza_Condizioni_Ventilatore_4" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="48">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 4" />
+        <Component Name="Attivazione_Auto" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="49">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 5" />
+        <Component Name="Automatico" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="50">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 5" />
+        <Component Name="Selezionato" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="51">
+      <Symbol>
+        <Component Name="DB_Servizo_Fronti" />
+        <Component Name="Fronte_35" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="52">
+      <Symbol>
+        <Component Name="DB_Servizo_Fronti" />
+        <Component Name="Fronte_36" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="53">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Spegnimento_Assenza_Condizioni_Ventilatore_5" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="54">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Spegnimento_Assenza_Condizioni_Ventilatore_5" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="55">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 5" />
+        <Component Name="Attivazione_Auto" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="56">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 6" />
+        <Component Name="Automatico" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="57">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 6" />
+        <Component Name="Selezionato" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="58">
+      <Symbol>
+        <Component Name="DB_Servizo_Fronti" />
+        <Component Name="Fronte_37" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="59">
+      <Symbol>
+        <Component Name="DB_Servizo_Fronti" />
+        <Component Name="Fronte_38" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="60">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Spegnimento_Assenza_Condizioni_Ventilatore_6" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="61">
+      <Symbol>
+        <Component Name="DB_Sequenza_Start_Stop" />
+        <Component Name="Spegnimento_Assenza_Condizioni_Ventilatore_6" />
+      </Symbol>
+    </Access>
+    <Access Scope="GlobalVariable" UId="62">
+      <Symbol>
+        <Component Name="DB_Mapping_Motori" />
+        <Component Name="Ventilatore 6" />
+        <Component Name="Attivazione_Auto" />
+      </Symbol>
+    </Access>
+    <Call UId="63">
+      <CallInfo Name="FC_Gestione_Accensionee_Sequenza_Attiva" BlockType="FC">
+        <Parameter Name="Ventilatore_Automatico" Section="Input" Type="Bool" />
+        <Parameter Name="Ventilatore_Selezionato" Section="Input" Type="Bool" />
+        <Parameter Name="CMD_OUT" Section="Output" Type="Bool" />
+        <Parameter Name="Fronte_1" Section="InOut" Type="Bool" />
+        <Parameter Name="Fronte_2" Section="InOut" Type="Bool" />
+      </CallInfo>
+    </Call>
+    <Part Name="Contact" UId="64" />
+    <Part Name="RCoil" UId="65" />
+    <Call UId="66">
+      <CallInfo Name="FC_Gestione_Accensionee_Sequenza_Attiva" BlockType="FC">
+        <Parameter Name="Ventilatore_Automatico" Section="Input" Type="Bool" />
+        <Parameter Name="Ventilatore_Selezionato" Section="Input" Type="Bool" />
+        <Parameter Name="CMD_OUT" Section="Output" Type="Bool" />
+        <Parameter Name="Fronte_1" Section="InOut" Type="Bool" />
+        <Parameter Name="Fronte_2" Section="InOut" Type="Bool" />
+      </CallInfo>
+    </Call>
+    <Part Name="Contact" UId="67" />
+    <Part Name="RCoil" UId="68" />
+    <Call UId="69">
+      <CallInfo Name="FC_Gestione_Accensionee_Sequenza_Attiva" BlockType="FC">
+        <Parameter Name="Ventilatore_Automatico" Section="Input" Type="Bool" />
+        <Parameter Name="Ventilatore_Selezionato" Section="Input" Type="Bool" />
+        <Parameter Name="CMD_OUT" Section="Output" Type="Bool" />
+        <Parameter Name="Fronte_1" Section="InOut" Type="Bool" />
+        <Parameter Name="Fronte_2" Section="InOut" Type="Bool" />
+      </CallInfo>
+    </Call>
+    <Part Name="Contact" UId="70" />
+    <Part Name="RCoil" UId="71" />
+    <Call UId="72">
+      <CallInfo Name="FC_Gestione_Accensionee_Sequenza_Attiva" BlockType="FC">
+        <Parameter Name="Ventilatore_Automatico" Section="Input" Type="Bool" />
+        <Parameter Name="Ventilatore_Selezionato" Section="Input" Type="Bool" />
+        <Parameter Name="CMD_OUT" Section="Output" Type="Bool" />
+        <Parameter Name="Fronte_1" Section="InOut" Type="Bool" />
+        <Parameter Name="Fronte_2" Section="InOut" Type="Bool" />
+      </CallInfo>
+    </Call>
+    <Part Name="Contact" UId="73" />
+    <Part Name="RCoil" UId="74" />
+    <Call UId="75">
+      <CallInfo Name="FC_Gestione_Accensionee_Sequenza_Attiva" BlockType="FC">
+        <Parameter Name="Ventilatore_Automatico" Section="Input" Type="Bool" />
+        <Parameter Name="Ventilatore_Selezionato" Section="Input" Type="Bool" />
+        <Parameter Name="CMD_OUT" Section="Output" Type="Bool" />
+        <Parameter Name="Fronte_1" Section="InOut" Type="Bool" />
+        <Parameter Name="Fronte_2" Section="InOut" Type="Bool" />
+      </CallInfo>
+    </Call>
+    <Part Name="Contact" UId="76" />
+    <Part Name="RCoil" UId="77" />
+    <Call UId="78">
+      <CallInfo Name="FC_Gestione_Accensionee_Sequenza_Attiva" BlockType="FC">
+        <Parameter Name="Ventilatore_Automatico" Section="Input" Type="Bool" />
+        <Parameter Name="Ventilatore_Selezionato" Section="Input" Type="Bool" />
+        <Parameter Name="CMD_OUT" Section="Output" Type="Bool" />
+        <Parameter Name="Fronte_1" Section="InOut" Type="Bool" />
+        <Parameter Name="Fronte_2" Section="InOut" Type="Bool" />
+      </CallInfo>
+    </Call>
+    <Part Name="Contact" UId="79" />
+    <Part Name="RCoil" UId="80" />
+  </Parts>
+  <Wires>
+    <Wire UId="81">
+      <Powerrail />
+      <NameCon UId="63" Name="en" />
+      <NameCon UId="66" Name="en" />
+      <NameCon UId="69" Name="en" />
+      <NameCon UId="72" Name="en" />
+      <NameCon UId="75" Name="en" />
+      <NameCon UId="78" Name="en" />
+    </Wire>
+    <Wire UId="82">
+      <IdentCon UId="21" />
+      <NameCon UId="63" Name="Ventilatore_Automatico" />
+    </Wire>
+    <Wire UId="83">
+      <IdentCon UId="22" />
+      <NameCon UId="63" Name="Ventilatore_Selezionato" />
+    </Wire>
+    <Wire UId="84">
+      <IdentCon UId="23" />
+      <NameCon UId="63" Name="Fronte_1" />
+    </Wire>
+    <Wire UId="85">
+      <IdentCon UId="24" />
+      <NameCon UId="63" Name="Fronte_2" />
+    </Wire>
+    <Wire UId="86">
+      <NameCon UId="63" Name="eno" />
+      <NameCon UId="64" Name="in" />
+    </Wire>
+    <Wire UId="87">
+      <NameCon UId="63" Name="CMD_OUT" />
+      <IdentCon UId="25" />
+    </Wire>
+    <Wire UId="88">
+      <IdentCon UId="26" />
+      <NameCon UId="64" Name="operand" />
+    </Wire>
+    <Wire UId="89">
+      <NameCon UId="64" Name="out" />
+      <NameCon UId="65" Name="in" />
+    </Wire>
+    <Wire UId="90">
+      <IdentCon UId="27" />
+      <NameCon UId="65" Name="operand" />
+    </Wire>
+    <Wire UId="91">
+      <IdentCon UId="28" />
+      <NameCon UId="66" Name="Ventilatore_Automatico" />
+    </Wire>
+    <Wire UId="92">
+      <IdentCon UId="29" />
+      <NameCon UId="66" Name="Ventilatore_Selezionato" />
+    </Wire>
+    <Wire UId="93">
+      <IdentCon UId="30" />
+      <NameCon UId="66" Name="Fronte_1" />
+    </Wire>
+    <Wire UId="94">
+      <IdentCon UId="31" />
+      <NameCon UId="66" Name="Fronte_2" />
+    </Wire>
+    <Wire UId="95">
+      <NameCon UId="66" Name="eno" />
+      <NameCon UId="67" Name="in" />
+    </Wire>
+    <Wire UId="96">
+      <NameCon UId="66" Name="CMD_OUT" />
+      <IdentCon UId="32" />
+    </Wire>
+    <Wire UId="97">
+      <IdentCon UId="33" />
+      <NameCon UId="67" Name="operand" />
+    </Wire>
+    <Wire UId="98">
+      <NameCon UId="67" Name="out" />
+      <NameCon UId="68" Name="in" />
+    </Wire>
+    <Wire UId="99">
+      <IdentCon UId="34" />
+      <NameCon UId="68" Name="operand" />
+    </Wire>
+    <Wire UId="100">
+      <IdentCon UId="35" />
+      <NameCon UId="69" Name="Ventilatore_Automatico" />
+    </Wire>
+    <Wire UId="101">
+      <IdentCon UId="36" />
+      <NameCon UId="69" Name="Ventilatore_Selezionato" />
+    </Wire>
+    <Wire UId="102">
+      <IdentCon UId="37" />
+      <NameCon UId="69" Name="Fronte_1" />
+    </Wire>
+    <Wire UId="103">
+      <IdentCon UId="38" />
+      <NameCon UId="69" Name="Fronte_2" />
+    </Wire>
+    <Wire UId="104">
+      <NameCon UId="69" Name="eno" />
+      <NameCon UId="70" Name="in" />
+    </Wire>
+    <Wire UId="105">
+      <NameCon UId="69" Name="CMD_OUT" />
+      <IdentCon UId="39" />
+    </Wire>
+    <Wire UId="106">
+      <IdentCon UId="40" />
+      <NameCon UId="70" Name="operand" />
+    </Wire>
+    <Wire UId="107">
+      <NameCon UId="70" Name="out" />
+      <NameCon UId="71" Name="in" />
+    </Wire>
+    <Wire UId="108">
+      <IdentCon UId="41" />
+      <NameCon UId="71" Name="operand" />
+    </Wire>
+    <Wire UId="109">
+      <IdentCon UId="42" />
+      <NameCon UId="72" Name="Ventilatore_Automatico" />
+    </Wire>
+    <Wire UId="110">
+      <IdentCon UId="43" />
+      <NameCon UId="72" Name="Ventilatore_Selezionato" />
+    </Wire>
+    <Wire UId="111">
+      <IdentCon UId="44" />
+      <NameCon UId="72" Name="Fronte_1" />
+    </Wire>
+    <Wire UId="112">
+      <IdentCon UId="45" />
+      <NameCon UId="72" Name="Fronte_2" />
+    </Wire>
+    <Wire UId="113">
+      <NameCon UId="72" Name="eno" />
+      <NameCon UId="73" Name="in" />
+    </Wire>
+    <Wire UId="114">
+      <NameCon UId="72" Name="CMD_OUT" />
+      <IdentCon UId="46" />
+    </Wire>
+    <Wire UId="115">
+      <IdentCon UId="47" />
+      <NameCon UId="73" Name="operand" />
+    </Wire>
+    <Wire UId="116">
+      <NameCon UId="73" Name="out" />
+      <NameCon UId="74" Name="in" />
+    </Wire>
+    <Wire UId="117">
+      <IdentCon UId="48" />
+      <NameCon UId="74" Name="operand" />
+    </Wire>
+    <Wire UId="118">
+      <IdentCon UId="49" />
+      <NameCon UId="75" Name="Ventilatore_Automatico" />
+    </Wire>
+    <Wire UId="119">
+      <IdentCon UId="50" />
+      <NameCon UId="75" Name="Ventilatore_Selezionato" />
+    </Wire>
+    <Wire UId="120">
+      <IdentCon UId="51" />
+      <NameCon UId="75" Name="Fronte_1" />
+    </Wire>
+    <Wire UId="121">
+      <IdentCon UId="52" />
+      <NameCon UId="75" Name="Fronte_2" />
+    </Wire>
+    <Wire UId="122">
+      <NameCon UId="75" Name="eno" />
+      <NameCon UId="76" Name="in" />
+    </Wire>
+    <Wire UId="123">
+      <NameCon UId="75" Name="CMD_OUT" />
+      <IdentCon UId="53" />
+    </Wire>
+    <Wire UId="124">
+      <IdentCon UId="54" />
+      <NameCon UId="76" Name="operand" />
+    </Wire>
+    <Wire UId="125">
+      <NameCon UId="76" Name="out" />
+      <NameCon UId="77" Name="in" />
+    </Wire>
+    <Wire UId="126">
+      <IdentCon UId="55" />
+      <NameCon UId="77" Name="operand" />
+    </Wire>
+    <Wire UId="127">
+      <IdentCon UId="56" />
+      <NameCon UId="78" Name="Ventilatore_Automatico" />
+    </Wire>
+    <Wire UId="128">
+      <IdentCon UId="57" />
+      <NameCon UId="78" Name="Ventilatore_Selezionato" />
+    </Wire>
+    <Wire UId="129">
+      <IdentCon UId="58" />
+      <NameCon UId="78" Name="Fronte_1" />
+    </Wire>
+    <Wire UId="130">
+      <IdentCon UId="59" />
+      <NameCon UId="78" Name="Fronte_2" />
+    </Wire>
+    <Wire UId="131">
+      <NameCon UId="78" Name="eno" />
+      <NameCon UId="79" Name="in" />
+    </Wire>
+    <Wire UId="132">
+      <NameCon UId="78" Name="CMD_OUT" />
+      <IdentCon UId="60" />
+    </Wire>
+    <Wire UId="133">
+      <IdentCon UId="61" />
+      <NameCon UId="79" Name="operand" />
+    </Wire>
+    <Wire UId="134">
+      <NameCon UId="79" Name="out" />
+      <NameCon UId="80" Name="in" />
+    </Wire>
+    <Wire UId="135">
+      <IdentCon UId="62" />
+      <NameCon UId="80" Name="operand" />
+    </Wire>
+  </Wires>
+</FlgNet></NetworkSource>
+          <ProgrammingLanguage>LAD</ProgrammingLanguage>
+        </AttributeList>
+        <ObjectList>
+          <MultilingualText ID="1D" CompositionName="Comment">
+            <ObjectList>
+              <MultilingualTextItem ID="1E" CompositionName="Items">
+                <AttributeList>
+                  <Culture>en-US</Culture>
+                  <Text />
+                </AttributeList>
+              </MultilingualTextItem>
+            </ObjectList>
+          </MultilingualText>
+          <MultilingualText ID="1F" CompositionName="Title">
+            <ObjectList>
+              <MultilingualTextItem ID="20" CompositionName="Items">
+                <AttributeList>
+                  <Culture>en-US</Culture>
+                  <Text>Gestione avvio pompe a sequenza attiva</Text>
+                </AttributeList>
+              </MultilingualTextItem>
+            </ObjectList>
+          </MultilingualText>
+        </ObjectList>
+      </SW.Blocks.CompileUnit>
+      <MultilingualText ID="21" CompositionName="Title">
+        <ObjectList>
+          <MultilingualTextItem ID="22" CompositionName="Items">
+            <AttributeList>
+              <Culture>en-US</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+        </ObjectList>
+      </MultilingualText>
+    </ObjectList>
+  </SW.Blocks.FC>
+</Document>

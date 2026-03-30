@@ -1,0 +1,11 @@
+.docker
+.devcontainer
+tmp
+output
+datasets
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+frontend/node_modules
+frontend/.next
+backend/.venv
