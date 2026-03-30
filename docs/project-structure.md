@@ -8,6 +8,8 @@ Questa repository serve a portare il progetto da analisi manuale e reverse engin
   Backend FastAPI. Qui vivono API, servizi applicativi, parser, generatori e test backend locali.
 - `frontend/`
   Interfaccia Next.js per pilotare il workflow, mostrare esiti, errori e artefatti generati.
+- `tia_bridge/`
+  Servizio dedicato al layer di orchestrazione `TIA Portal Openness`, separato dal backend che genera XML.
 - `src/`
   Spazio riservato alla libreria core condivisa del convertitore, separata dalla superficie API/UI.
 - `tests/`
@@ -31,6 +33,7 @@ Questa repository serve a portare il progetto da analisi manuale e reverse engin
 - I file generati dal tool non vanno salvati in `datasets/typicals/`.
 - Un file validato con import riuscito e usato come riferimento stabile va promosso in `datasets/golden/`.
 - Le logiche condivise del convertitore dovrebbero convergere in `src/`, evitando di spargerle tra UI, script e backend.
+- Le integrazioni verso TIA/Openness non vanno mescolate nel backend di generazione: devono restare isolate nel servizio `tia_bridge/`.
 - Gli esperimenti temporanei vanno in `tmp/`, non in root.
 
 ## Organizzazione dataset

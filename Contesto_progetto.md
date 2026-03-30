@@ -1,4 +1,4 @@
-# Report aggiornato del 26-03-2026
+# Report aggiornato del 30-03-2026
 
 ## Progetto
 Conversione di sequenziatori PLC da AWL a GRAPH in TIA Portal V20 tramite XML.
@@ -44,6 +44,16 @@ Le due direttrici del progetto restano:
 - mappatura verso un modello GRAPH;
 - generazione automatica di XML compatibile con TIA Portal V20;
 - generazione automatica del `GlobalDB` companion.
+
+### 2.3 Automazione di import/export XML tramite TIA Openness
+- apertura o connessione automatica a un'istanza TIA Portal;
+- apertura o creazione automatica del progetto di destinazione;
+- import automatico degli XML generati (`FB` GRAPH, `GlobalDB`, eventuali `FC`) nel progetto TIA;
+- export automatico da TIA degli XML/strutture utili come baseline di reverse engineering, regressione e confronto;
+- eventuale compilazione e validazione post-import con raccolta degli esiti;
+- integrazione del ciclo end-to-end `generazione -> import -> validazione -> export -> confronto` con minimo intervento manuale.
+
+Questa direttrice estende il progetto dal solo livello di generazione XML al livello di orchestrazione completa del ciclo tecnico. Nel materiale Openness disponibile risultano infatti presenti funzioni per aprire o collegarsi a TIA Portal, creare/aprire/salvare progetti e usare funzioni di import/export e gestione sorgenti PLC; nel progetto corrente queste capacità vanno assunte come base architetturale da adattare e verificare sul target TIA Portal V20.
 
 ---
 
@@ -3821,3 +3831,194 @@ La situazione consolidata del progetto impone che il tool Python validi e serial
    - presenza/assenza dei campi tollerati.
 
 Il backend non può considerare valido un XML solo perché la topologia del graph è corretta: deve anche serializzare il wrapper nel dialetto XML che TIA accetta davvero.
+
+---
+
+## 69. TIA Portal Openness nel progetto
+
+Dalla rilettura della documentazione Siemens disponibile su TIA Portal Openness emerge un insieme di elementi che vanno integrati stabilmente nella visione del progetto, pur tenendo conto che il documento di riferimento disponibile è relativo a TIA Portal Openness V17 e quindi va usato come base concettuale e architetturale, non come prova finale di compatibilità runtime per il target V20.
+
+### 69.1 Conferma del ruolo di Openness nel progetto
+
+La documentazione conferma che TIA Portal Openness è pensato per automatizzare attività di engineering su TIA Portal e che il suo feature set comprende funzioni direttamente rilevanti per questo progetto:
+
+- apertura di una nuova istanza TIA Portal;
+- connessione a un'istanza TIA Portal già esistente;
+- creazione, apertura, salvataggio e chiusura di progetti;
+- navigazione dell'albero logico e fisico del progetto;
+- compilazione di elementi del progetto;
+- import di elementi come Simatic ML;
+- import/export di strutture come Simatic ML;
+- aggiunta di sorgenti esterne PLC;
+- generazione di blocchi da sorgente esterna;
+- generazione di sorgente a partire da blocchi esistenti.
+
+Per il progetto AWL -> GRAPH questo significa che Openness non va considerato solo come accessorio finale, ma come possibile **quarto backend operativo** che automatizza il test loop di validazione del generatore XML.
+
+### 69.2 Prerequisiti e vincoli operativi da fissare nel progetto
+
+Dal materiale Siemens emergono alcuni prerequisiti che devono entrare nella specifica tecnica del layer Openness:
+
+- Openness richiede l'installazione del TIA Portal corrispondente;
+- le DLL Openness sono fornite con l'installazione TIA/STEP 7;
+- l'applicazione usa le DLL `Siemens.Engineering.*`;
+- l'utente Windows deve appartenere al gruppo locale `Siemens TIA Openness`;
+- al primo avvio va gestita la finestra di autorizzazione accesso;
+- contenuto e disponibilità delle funzioni dipendono anche dai moduli installati;
+- la documentazione disponibile segnala esplicitamente che non è garantita compatibilità automatica tra versioni diverse.
+
+Conseguenza pratica:
+
+> il layer Openness del progetto deve essere progettato come **adapter versionato**, da validare esplicitamente sul target TIA Portal V20 e non da assumere come automaticamente portabile dalla documentazione V17.
+
+### 69.3 Due pipeline Openness distinte da non confondere
+
+La documentazione rende chiaro che esistono **due famiglie operative diverse**, entrambe utili al progetto ma con ruoli separati.
+
+#### A. Pipeline Simatic ML / XML
+
+Serve per lavorare con gli XML strutturali TIA.
+
+Operazioni rilevanti:
+
+- `Import Element as Simatic ML`;
+- `Import Structure as Simatic ML`;
+- `Export Structure as Simatic ML`.
+
+Questa è la pipeline naturale per:
+
+- importare il `FB` GRAPH generato;
+- importare il `GlobalDB` companion;
+- importare eventuali `FC` di servizio;
+- esportare baseline XML da TIA per confronto, regressione e reverse engineering.
+
+#### B. Pipeline PLC external sources
+
+Serve per lavorare con sorgenti PLC testuali.
+
+Operazioni rilevanti:
+
+- `Add external source`;
+- `Generate blocks from external source`;
+- `Generate source from block`.
+
+I formati citati nella documentazione per le external source sono:
+
+- `*.awl`
+- `*.scl`
+- `*.db`
+- `*.udt`
+
+Questa pipeline è importante per il progetto perché permette di:
+
+- importare AWL testuali come sorgenti esterne in TIA;
+- generare blocchi TIA a partire da sorgenti testuali quando il caso d'uso lo consente;
+- riesportare sorgenti da blocchi esistenti per analisi comparativa.
+
+### 69.4 Regola architetturale nuova per il tool
+
+Dalla documentazione Siemens deriva una regola progettuale molto importante:
+
+> il tool deve separare il backend di generazione XML dal backend di orchestrazione Openness.
+
+In termini pratici, l'architettura completa del progetto va letta così:
+
+`AWL input -> parser -> IR sequenza/dati/reti -> compiler GRAPH + compiler DB + compiler FC -> validator XML -> backend Openness -> import/compile/export/compare`
+
+Il backend Openness non genera la logica; la **orchestra e la valida** dentro TIA.
+
+### 69.5 Struttura software consigliata del layer Openness
+
+La documentazione del demo Siemens mostra una separazione netta fra GUI, ViewModel e servizi, e soprattutto conferma che l'accesso effettivo alla API è concentrato nei service layer.
+
+Per il progetto corrente questo suggerisce una struttura minima del backend Openness composta da:
+
+1. `tia_portal_session_service`
+   - open / connect / disconnect / close;
+
+2. `tia_project_service`
+   - create / open / save / close project;
+
+3. `tia_tree_locator`
+   - ricerca dell'elemento di destinazione nell'albero logico o fisico;
+
+4. `simaticml_service`
+   - import element;
+   - import structure;
+   - export structure;
+
+5. `plc_external_source_service`
+   - add external source;
+   - generate blocks from source;
+   - generate source from block;
+
+6. `tia_compile_service`
+   - compilazione dell'elemento target;
+   - raccolta messaggi, warning, errori;
+
+7. `tia_version_adapter`
+   - isolamento delle differenze fra V17/V20 o fra diverse installazioni.
+
+### 69.6 Regola operativa su accessi esclusivi e transazioni
+
+La documentazione mostra che almeno per l'import di strutture e per l'aggiunta di external source vengono usati `ExclusiveAccess` e transazioni con commit esplicito.
+
+Questo implica che il backend Openness del progetto non deve limitarsi a chiamare API isolate, ma deve modellare correttamente:
+
+- acquisizione dell'accesso esclusivo quando richiesto;
+- apertura della transazione;
+- esecuzione dell'operazione;
+- commit solo in caso di esito valido;
+- log degli errori e degli esiti.
+
+Questa è una regola importante perché sposta il problema da “saper invocare la funzione” a “saper gestire correttamente il contesto di engineering TIA”.
+
+### 69.7 Flusso end-to-end Openness raccomandato per il progetto
+
+Il flusso operativo da assumere come obiettivo concreto diventa quindi:
+
+1. aprire oppure collegarsi a TIA Portal;
+2. aprire o creare il progetto di test;
+3. individuare il nodo corretto dell'albero di progetto;
+4. importare gli XML generati tramite pipeline Simatic ML;
+5. in alternativa o in aggiunta, importare AWL/SCL/DB/UDT come external source;
+6. generare eventuali blocchi da sorgente esterna quando applicabile;
+7. compilare il target interessato;
+8. raccogliere esiti, warning ed errori;
+9. esportare nuovamente strutture o sorgenti utili;
+10. confrontare export TIA e output del generatore.
+
+Questo flusso deve diventare il riferimento del futuro smoke test automatico del progetto.
+
+### 69.8 Nuovo obiettivo pratico derivato
+
+Alla luce della documentazione, l'obiettivo Openness del progetto va raffinato così:
+
+- non solo `import/export automatico XML`;
+- ma **validazione automatica del ciclo tecnico completo** `generate -> import -> compile -> export -> compare`.
+
+### 69.9 Limite metodologico da mantenere esplicito
+
+È necessario fissare una distinzione chiara:
+
+- la documentazione disponibile prova che il paradigma Openness supporta le operazioni necessarie;
+- non prova da sola che ogni chiamata, namespace, comportamento o vincolo sia identico in V20.
+
+Quindi, per il progetto, la regola corretta è:
+
+> usare il materiale V17 come base di architettura e nomenclatura, ma validare sperimentalmente su TIA Portal V20 ogni tratto del backend Openness che entrerà nel flusso automatico reale.
+
+### 69.10 Stato aggiornato del progetto dopo questa integrazione
+
+Dopo questa lettura documentale, il progetto non va più considerato come composto solo da:
+
+1. interpretazione AWL;
+2. generazione GRAPH XML;
+3. generazione DB/FC XML.
+
+Ma da quattro livelli coordinati:
+
+1. **estrazione semantica dal codice AWL**;
+2. **generazione deterministica degli artefatti XML TIA**;
+3. **validazione strutturale e semantica pre-import**;
+4. **orchestrazione automatica TIA Portal tramite Openness per import, compile, export e confronto**.

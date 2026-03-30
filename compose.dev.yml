@@ -1,4 +1,51 @@
 services:
+  tia-bridge:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.tia.dev
+      args:
+        USER_UID: ${USER_UID:-1000}
+        USER_GID: ${USER_GID:-1000}
+        USERNAME: ${USERNAME:-dev}
+    image: plconversiontool-tia-bridge:dev
+    environment:
+      TZ: ${TZ:-UTC}
+      LANG: C.UTF-8
+      LC_ALL: C.UTF-8
+      PYTHONHASHSEED: "0"
+      GIT_CONFIG_GLOBAL: /tmp/.gitconfig
+      TIA_BRIDGE_HOST: 0.0.0.0
+      TIA_BRIDGE_PORT: ${TIA_BRIDGE_PORT:-8010}
+      TIA_BRIDGE_MODE: ${TIA_BRIDGE_MODE:-stub}
+      TIA_PROJECT_ROOT: /workspace
+      TIA_OUTPUT_DIR: /workspace/output
+      TIA_TMP_DIR: /workspace/tmp
+    working_dir: /workspace/tia_bridge
+    ports:
+      - "${TIA_BRIDGE_PORT:-8010}:8010"
+    volumes:
+      - ./:/workspace:delegated
+      - ./output:/workspace/output
+      - ./tmp:/workspace/tmp
+      - ./.docker/cache:/home/${USERNAME:-dev}/.cache
+      - ${HOME}/.gitconfig:/home/${USERNAME:-dev}/.gitconfig:ro
+      - ${HOME}/.ssh:/home/${USERNAME:-dev}/.ssh:ro
+    command:
+      [
+        "bash",
+        "-lc",
+        "git config --global --add safe.directory /workspace && git config --global --add safe.directory /workspace/tia_bridge && uvicorn app.main:app --host 0.0.0.0 --port 8010 --reload",
+      ]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8010/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - plconversiontool_net
+    init: true
+
   backend:
     build:
       context: .
@@ -16,6 +63,10 @@ services:
       GIT_CONFIG_GLOBAL: /tmp/.gitconfig
       BACKEND_HOST: 0.0.0.0
       BACKEND_PORT: ${BACKEND_PORT:-8000}
+      TIA_BRIDGE_INTERNAL_URL: "http://tia-bridge:8010"
+    depends_on:
+      tia-bridge:
+        condition: service_healthy
     working_dir: /workspace/backend
     ports:
       - "${BACKEND_PORT:-8000}:8000"
@@ -38,6 +89,8 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+    networks:
+      - plconversiontool_net
     init: true
 
   frontend:
@@ -55,8 +108,12 @@ services:
       GIT_CONFIG_GLOBAL: /tmp/.gitconfig
       BACKEND_INTERNAL_URL: "http://backend:8000"
       NEXT_PUBLIC_BACKEND_URL: "http://localhost:${BACKEND_PORT:-8000}"
+      TIA_BRIDGE_INTERNAL_URL: "http://tia-bridge:8010"
+      NEXT_PUBLIC_TIA_BRIDGE_URL: "http://localhost:${TIA_BRIDGE_PORT:-8010}"
     depends_on:
       backend:
+        condition: service_healthy
+      tia-bridge:
         condition: service_healthy
     working_dir: /workspace/frontend
     ports:
@@ -73,7 +130,13 @@ services:
         "-lc",
         "git config --global --add safe.directory /workspace && git config --global --add safe.directory /workspace/frontend && npm install --no-fund --no-audit && npm run dev -- --hostname 0.0.0.0 --port 3000",
       ]
+    networks:
+      - plconversiontool_net
     init: true
 
 volumes:
   frontend_node_modules:
+
+networks:
+  plconversiontool_net:
+    name: plconversiontool_net

@@ -10,6 +10,7 @@
 
 ### Workflow operativo (TIA / import / validazione)
 - `workflow/import-checklists.md`
+- `tia-bridge-service.md`
 
 ### Convenzioni
 - `conventions/naming.md`

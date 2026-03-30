@@ -1,0 +1,39 @@
+FROM python:3.12-slim
+
+ARG USER_UID=1000
+ARG USER_GID=1000
+ARG USERNAME=dev
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends bash curl ca-certificates build-essential git openssh-client \
+  && rm -rf /var/lib/apt/lists/*
+
+RUN existing_group="$(getent group "${USER_GID}" | cut -d: -f1 || true)" \
+  && if [ -z "${existing_group}" ]; then \
+       groupadd --gid "${USER_GID}" "${USERNAME}"; \
+       existing_group="${USERNAME}"; \
+     fi \
+  && existing_user="$(getent passwd "${USER_UID}" | cut -d: -f1 || true)" \
+  && if [ -n "${existing_user}" ] && [ "${existing_user}" != "${USERNAME}" ]; then \
+       usermod --login "${USERNAME}" --home "/home/${USERNAME}" --move-home "${existing_user}"; \
+       existing_user="${USERNAME}"; \
+     fi \
+  && if [ -z "${existing_user}" ]; then \
+       useradd --uid "${USER_UID}" --gid "${USER_GID}" -m "${USERNAME}"; \
+     else \
+       usermod --gid "${USER_GID}" "${USERNAME}"; \
+     fi
+
+WORKDIR /workspace/tia_bridge
+
+COPY tia_bridge/requirements.txt /workspace/tia_bridge/requirements.txt
+RUN pip install -r requirements.txt
+
+COPY tia_bridge/ /workspace/tia_bridge/
+
+USER ${USERNAME}
