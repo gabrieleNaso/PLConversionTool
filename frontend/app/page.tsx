@@ -5,6 +5,12 @@ type ProjectSummary = {
   repositoryAreas: Array<{ name: string; purpose: string }>;
 };
 
+type HealthStatus = {
+  status: string;
+  service: string;
+  project: string;
+};
+
 async function fetchJson<T>(url: string, fallback: T): Promise<T> {
   try {
     const response = await fetch(url, { cache: "no-store" });
@@ -21,21 +27,26 @@ async function fetchJson<T>(url: string, fallback: T): Promise<T> {
 export default async function Page() {
   const internalBackendUrl = process.env.BACKEND_INTERNAL_URL ?? "http://backend:8000";
   const publicBackendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000";
-
-  const health = await fetchJson(`${internalBackendUrl}/health`, {
+  const defaultHealth: HealthStatus = {
     status: "unreachable",
     service: "backend",
     project: "PLConversionTool",
-  });
+  };
+  const defaultSummary: ProjectSummary = {
+    project: "PLConversionTool",
+    objective: "Convertire sequenziatori PLC AWL in blocchi GRAPH XML importabili.",
+    targets: ["TIA Portal V20", "GRAPH V2", "GlobalDB companion", "FC LAD di supporto"],
+    repositoryAreas: [],
+  };
+
+  const health = await fetchJson<HealthStatus>(
+    `${internalBackendUrl}/health`,
+    defaultHealth,
+  );
 
   const summary = await fetchJson<ProjectSummary>(
     `${internalBackendUrl}/api/project-summary`,
-    {
-      project: "PLConversionTool",
-      objective: "Convertire sequenziatori PLC AWL in blocchi GRAPH XML importabili.",
-      targets: ["TIA Portal V20", "GRAPH V2", "GlobalDB companion", "FC LAD di supporto"],
-      repositoryAreas: [],
-    },
+    defaultSummary,
   );
 
   return (
@@ -47,7 +58,7 @@ export default async function Page() {
         <div className="status-row">
           <div className="status-card">
             <span className="label">Backend status</span>
-            <strong>{String((health as { status?: string }).status ?? "unknown")}</strong>
+            <strong>{health.status}</strong>
           </div>
           <div className="status-card">
             <span className="label">Backend URL browser</span>
