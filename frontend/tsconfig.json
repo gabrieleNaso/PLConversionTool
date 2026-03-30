@@ -20,8 +20,7 @@
   },
   "include": [
     "next-env.d.ts",
-    "env-fallback.d.ts",
-    "jsx-fallback.d.ts",
+    "**/*.d.ts",
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts"
