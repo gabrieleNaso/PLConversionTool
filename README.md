@@ -31,11 +31,18 @@ Da root progetto:
 
 ```bash
 cp .env.example .env
+export HOME="$HOME"
 make doctor
 make build
 make up
 make logs
 ```
+
+Se hai collegato GitHub via SSH sul tuo host, il setup di sviluppo inoltra nei container:
+- `~/.gitconfig`
+- `~/.ssh`
+
+In questo modo `git`, fetch/pull e dipendenze private raggiungibili via GitHub restano utilizzabili anche dentro backend e frontend.
 
 Servizi attesi:
 - backend: `http://localhost:8000`

@@ -5,7 +5,7 @@ ARG USER_GID=1000
 ARG USERNAME=dev
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends bash ca-certificates \
+  && apt-get install -y --no-install-recommends bash ca-certificates git openssh-client \
   && rm -rf /var/lib/apt/lists/*
 
 RUN existing_group="$(getent group "${USER_GID}" | cut -d: -f1 || true)" \

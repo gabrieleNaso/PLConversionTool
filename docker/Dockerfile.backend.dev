@@ -10,7 +10,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends bash curl ca-certificates build-essential \
+  && apt-get install -y --no-install-recommends bash curl ca-certificates build-essential git openssh-client \
   && rm -rf /var/lib/apt/lists/*
 
 RUN existing_group="$(getent group "${USER_GID}" | cut -d: -f1 || true)" \

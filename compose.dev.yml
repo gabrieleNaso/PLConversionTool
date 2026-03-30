@@ -23,7 +23,14 @@ services:
       - ./output:/workspace/output
       - ./tmp:/workspace/tmp
       - ./.docker/cache:/home/${USERNAME:-dev}/.cache
-    command: ["bash", "-lc", "uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"]
+      - ${HOME}/.gitconfig:/home/${USERNAME:-dev}/.gitconfig:ro
+      - ${HOME}/.ssh:/home/${USERNAME:-dev}/.ssh:ro
+    command:
+      [
+        "bash",
+        "-lc",
+        "git config --global --add safe.directory /workspace && git config --global --add safe.directory /workspace/backend && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload",
+      ]
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/health"]
       interval: 10s
@@ -56,7 +63,14 @@ services:
       - ./:/workspace:delegated
       - ./.docker/cache:/home/${USERNAME:-dev}/.cache
       - frontend_node_modules:/workspace/frontend/node_modules
-    command: ["bash", "-lc", "npm install --no-fund --no-audit && npm run dev -- --hostname 0.0.0.0 --port 3000"]
+      - ${HOME}/.gitconfig:/home/${USERNAME:-dev}/.gitconfig:ro
+      - ${HOME}/.ssh:/home/${USERNAME:-dev}/.ssh:ro
+    command:
+      [
+        "bash",
+        "-lc",
+        "git config --global --add safe.directory /workspace && git config --global --add safe.directory /workspace/frontend && npm install --no-fund --no-audit && npm run dev -- --hostname 0.0.0.0 --port 3000",
+      ]
     init: true
 
 volumes:
