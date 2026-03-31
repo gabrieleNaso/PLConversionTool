@@ -11,6 +11,8 @@
 ### Workflow operativo (TIA / import / validazione)
 - `workflow/import-checklists.md`
 - `tia-bridge-service.md`
+- `tia-windows-vm-setup.md`
+- `tia-windows-agent-api.md`
 
 ### Convenzioni
 - `conventions/naming.md`

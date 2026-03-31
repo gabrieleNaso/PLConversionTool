@@ -18,7 +18,25 @@ Nel setup dev il container `tia-bridge`:
 - e' sempre sulla stessa rete Compose di `backend` e `frontend`;
 - espone una API minima di health/status;
 - monta `output/` e `tmp/` come aree condivise di scambio artefatti;
-- prepara il punto di integrazione per il futuro adapter Openness reale.
+- prepara il punto di integrazione verso una VM Windows che ospita `TIA Portal`.
+
+## VM Windows remota
+
+Se `TIA Portal` gira su una VM VMware Windows, la topologia consigliata e':
+
+- `backend/frontend` parlano con `tia-bridge` nel compose Linux;
+- `tia-bridge` parla con un agent HTTP o RPC esposto dalla VM Windows;
+- l'agent Windows usa localmente le DLL `TIA Portal Openness`.
+
+Questo vincolo e' importante: `Openness` non si collega da remoto direttamente come un normale servizio TCP. Serve un processo lato Windows vicino a TIA.
+
+## Variabili di configurazione principali
+
+- `TIA_VMWARE_NETWORK_MODE`
+- `TIA_WINDOWS_TRANSPORT`
+- `TIA_WINDOWS_HOST`
+- `TIA_WINDOWS_AGENT_PORT`
+- `TIA_WINDOWS_AGENT_URL`
 
 ## Nota importante
 

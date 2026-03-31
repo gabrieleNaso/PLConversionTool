@@ -22,6 +22,7 @@ Il contesto tecnico consolidato è descritto in [Contesto_progetto.md](/home/adm
 - `backend/`: FastAPI minimale per API e logica del tool
 - `frontend/`: Next.js per UI di supporto al workflow
 - `tia_bridge/`: servizio dedicato al layer `TIA Portal Openness`, separato dalla generazione XML
+- `tia_windows_agent/`: agent .NET da eseguire nella VM Windows che ospita TIA Portal
 - `docker/` + `compose.dev.yml`: ambiente di sviluppo standardizzato
 - `datasets/`: tipici, corpus e golden sample XML
 - `output/`: file generati dal tool
@@ -52,6 +53,13 @@ Servizi attesi:
 
 Nota architetturale:
 il container `tia-bridge` non esegue TIA Portal dentro Linux. Rappresenta il boundary service dedicato all'orchestrazione Openness, da collegare al target Windows/TIA reale mantenendo separato questo layer dal backend applicativo.
+
+Nel caso in cui `TIA Portal` giri su una VM Windows VMware, il pattern corretto e':
+- `backend/frontend` -> `tia-bridge` nel compose Linux;
+- `tia-bridge` -> agent di integrazione esposto dalla VM Windows;
+- agent Windows -> `TIA Portal Openness` locale alla VM.
+
+`TIA Portal Openness` non e' una API remota nativa: per lavorare con una VM Windows serve quindi un servizio lato Windows che faccia da adapter verso TIA.
 
 ## Comandi utili
 - `make build`: build immagini di sviluppo
