@@ -15,7 +15,14 @@ def build_project_summary() -> dict:
         "repositoryAreas": [
             {"name": "backend/", "purpose": "API e orchestrazione del workflow."},
             {"name": "frontend/", "purpose": "Interfaccia di supporto per il progetto."},
-            {"name": "src/", "purpose": "Core converter e logiche riusabili."},
+            {
+                "name": "tia_bridge/",
+                "purpose": "Boundary service verso il Windows agent e TIA Portal Openness.",
+            },
+            {
+                "name": "src/",
+                "purpose": "Core converter deterministico: modello intermedio, profili target e generatori.",
+            },
             {
                 "name": "datasets/typicals/",
                 "purpose": "XML di riferimento per reverse engineering.",
