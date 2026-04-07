@@ -71,6 +71,7 @@ Script pronti:
 
 - `bootstrap-vm.ps1`
 - `run-agent.ps1`
+- `stop-agent.ps1`
 - `publish-agent.ps1`
 - `install-firewall-rule.ps1`
 - `start-agent.cmd`
@@ -237,6 +238,15 @@ Comando consigliato:
 .\run-agent.ps1
 ```
 
+Per chiuderlo correttamente:
+
+- se la console e' aperta, premi `Ctrl+C`
+- se vuoi forzare lo stop del processo, usa:
+
+```powershell
+.\stop-agent.ps1
+```
+
 Oppure:
 
 ```powershell
@@ -339,7 +349,7 @@ $body = @{
   operation = "import"
   artifactPath = "C:\Users\Admin\Desktop\PLConverionTool\output\Type_28.xml"
   projectPath = "C:\Users\Admin\Desktop\prova_connessione_openness\prova_connessione_openness.ap20"
-  targetPath = "Program blocks"
+  targetPath = $null
   targetName = $null
   saveProject = $true
   notes = "test import"
@@ -351,6 +361,9 @@ Invoke-RestMethod `
   -ContentType "application/json" `
   -Body $body
 ```
+
+Nota:
+per importare nel gruppo root dei blocchi, usa preferibilmente `targetPath = $null`. Se vuoi un sottogruppo specifico, passa un path come `"Program blocks/Sottogruppo1"`.
 
 ### Compile
 

@@ -11,6 +11,8 @@ namespace PLConversionTool.TiaAgent;
 public static class Program
 {
     private static readonly JavaScriptSerializer Json = new JavaScriptSerializer();
+    private static volatile bool isStopping;
+    private static HttpListener listener;
 
     public static void Main()
     {
@@ -19,30 +21,61 @@ public static class Program
         var runtime = new ReflectionOpennessRuntime(options);
         var agentService = new TiaAgentService(jobStore, options, runtime);
 
-        using (var listener = new HttpListener())
+        listener = new HttpListener();
+        Console.CancelKeyPress += OnCancelKeyPress;
+        AppDomain.CurrentDomain.ProcessExit += OnProcessExit;
+
+        try
         {
             var prefix = NormalizePrefix(options.ListenUrl);
             listener.Prefixes.Add(prefix);
             listener.Start();
 
             Console.WriteLine($"TIA Windows Agent in ascolto su {prefix}");
+            Console.WriteLine("Premi Ctrl+C per chiudere il servizio.");
 
-            while (true)
+            while (!isStopping)
             {
-                var context = listener.GetContext();
+                HttpListenerContext context = null;
                 try
                 {
+                    context = listener.GetContext();
                     HandleRequest(context, options, jobStore, agentService);
+                }
+                catch (HttpListenerException)
+                {
+                    if (isStopping)
+                    {
+                        break;
+                    }
+
+                    throw;
+                }
+                catch (ObjectDisposedException)
+                {
+                    if (isStopping)
+                    {
+                        break;
+                    }
+
+                    throw;
                 }
                 catch (Exception ex)
                 {
-                    WriteJson(context, 500, new
+                    if (context != null)
                     {
-                        error = "internal_server_error",
-                        detail = ex.ToString(),
-                    });
+                        WriteJson(context, 500, new
+                        {
+                            error = "internal_server_error",
+                            detail = ex.ToString(),
+                        });
+                    }
                 }
             }
+        }
+        finally
+        {
+            StopListener();
         }
     }
 
@@ -351,5 +384,45 @@ public static class Program
         }
 
         return raw.Select(item => item.ToString()).ToList();
+    }
+
+    private static void OnCancelKeyPress(object sender, ConsoleCancelEventArgs args)
+    {
+        args.Cancel = true;
+        isStopping = true;
+        StopListener();
+    }
+
+    private static void OnProcessExit(object sender, EventArgs args)
+    {
+        isStopping = true;
+        StopListener();
+    }
+
+    private static void StopListener()
+    {
+        if (listener == null)
+        {
+            return;
+        }
+
+        try
+        {
+            if (listener.IsListening)
+            {
+                listener.Stop();
+            }
+        }
+        catch
+        {
+        }
+
+        try
+        {
+            listener.Close();
+        }
+        catch
+        {
+        }
     }
 }

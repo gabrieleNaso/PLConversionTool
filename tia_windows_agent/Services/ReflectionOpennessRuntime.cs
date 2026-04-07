@@ -388,8 +388,18 @@ public sealed class ReflectionOpennessRuntime(
             .Where(part => part.Length > 0)
             .ToArray();
 
+        if (parts.Length == 1 && IsRootBlockGroupName(rootBlockGroup, parts[0]))
+        {
+            return rootBlockGroup;
+        }
+
         foreach (var part in parts)
         {
+            if (IsRootBlockGroupName(current, part))
+            {
+                continue;
+            }
+
             current = FindChildGroupByName(current, part)
                 ?? throw new InvalidOperationException(
                     $"BlockGroup '{part}' non trovato nel path '{targetPath}'."
@@ -700,5 +710,24 @@ public sealed class ReflectionOpennessRuntime(
         }
 
         return value.IndexOf(fragment, StringComparison.OrdinalIgnoreCase) >= 0;
+    }
+
+    private static bool IsRootBlockGroupName(object blockGroup, string candidate)
+    {
+        var normalized = (candidate ?? string.Empty).Trim();
+        if (normalized.Length == 0)
+        {
+            return false;
+        }
+
+        var actualName = DescribeObject(blockGroup);
+        if (!string.IsNullOrWhiteSpace(actualName)
+            && string.Equals(actualName, normalized, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return string.Equals(normalized, "Program blocks", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(normalized, "Programma blocchi", StringComparison.OrdinalIgnoreCase);
     }
 }
