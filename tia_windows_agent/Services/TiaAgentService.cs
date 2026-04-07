@@ -74,7 +74,7 @@ public sealed class TiaAgentService(
                 current => current with
                 {
                     Status = "failed",
-                    Detail = ex.Message,
+                    Detail = BuildExceptionDetail(ex),
                     UpdatedAtUtc = DateTimeOffset.UtcNow,
                 }
             );
@@ -96,5 +96,19 @@ public sealed class TiaAgentService(
                 UpdatedAtUtc = DateTimeOffset.UtcNow,
             }
         );
+    }
+
+    private static string BuildExceptionDetail(Exception exception)
+    {
+        var chain = new List<string>();
+        var current = exception;
+
+        while (current is not null)
+        {
+            chain.Add($"{current.GetType().FullName}: {current.Message}");
+            current = current.InnerException!;
+        }
+
+        return string.Join(" | INNER -> ", chain);
     }
 }
