@@ -9,4 +9,8 @@
   <ItemGroup>
     <Reference Include="System.Web.Extensions" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="Endpoints\**\*.cs" />
+  </ItemGroup>
 </Project>

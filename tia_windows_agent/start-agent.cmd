@@ -1,2 +1,2 @@
 @echo off
-powershell -ExecutionPolicy Bypass -File "%~dp0run-agent.ps1"
+powershell -NoExit -ExecutionPolicy Bypass -File "%~dp0run-agent.ps1" -PauseOnExit
