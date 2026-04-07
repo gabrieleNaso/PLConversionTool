@@ -1,6 +1,5 @@
 using System.Collections;
 using System.Reflection;
-using Microsoft.Extensions.Options;
 using PLConversionTool.TiaAgent.Configuration;
 using PLConversionTool.TiaAgent.Contracts;
 using PLConversionTool.TiaAgent.Models;
@@ -8,12 +7,12 @@ using PLConversionTool.TiaAgent.Models;
 namespace PLConversionTool.TiaAgent.Services;
 
 public sealed class ReflectionOpennessRuntime(
-    IOptions<TiaAgentOptions> options
+    TiaAgentOptions options
 ) : IReflectionOpennessRuntime
 {
     public OpennessDiagnosticsResponse GetDiagnostics()
     {
-        var config = options.Value;
+        var config = options;
         var assemblyDirectoryExists = Directory.Exists(config.SiemensAssemblyDirectory);
         var engineeringAssemblyPath = Path.Combine(
             config.SiemensAssemblyDirectory,
@@ -74,7 +73,7 @@ public sealed class ReflectionOpennessRuntime(
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var config = options.Value;
+        var config = options;
         ValidateJob(job);
 
         if (!string.Equals(config.OpennessMode, "real", StringComparison.OrdinalIgnoreCase))

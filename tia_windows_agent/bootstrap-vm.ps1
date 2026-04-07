@@ -10,7 +10,7 @@ Set-Location $ScriptRoot
 Write-Host "Bootstrap VM Windows per TIA Windows Agent"
 
 if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
-    throw ".NET SDK o runtime non trovato. Installa .NET 8."
+    Write-Warning "dotnet non trovato. Va bene se compili con Visual Studio/MSBuild, ma gli script dotnet non funzioneranno."
 }
 
 if (-not (Test-Path ".\appsettings.Local.json")) {

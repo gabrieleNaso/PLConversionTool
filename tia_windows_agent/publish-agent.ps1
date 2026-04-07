@@ -9,6 +9,7 @@ Set-Location $ScriptRoot
 
 dotnet publish .\PLConversionTool.TiaAgent.csproj `
     --configuration $Configuration `
+    --framework net48 `
     --output $Output
 
 Write-Host "Publish completata in $Output"

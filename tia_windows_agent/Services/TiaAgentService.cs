@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Options;
 using PLConversionTool.TiaAgent.Configuration;
 using PLConversionTool.TiaAgent.Contracts;
 using PLConversionTool.TiaAgent.Models;
@@ -7,7 +6,7 @@ namespace PLConversionTool.TiaAgent.Services;
 
 public sealed class TiaAgentService(
     IJobStore jobStore,
-    IOptions<TiaAgentOptions> options,
+    TiaAgentOptions options,
     IReflectionOpennessRuntime runtime
 ) : ITiaAgentService
 {
@@ -18,7 +17,7 @@ public sealed class TiaAgentService(
         var now = DateTimeOffset.UtcNow;
         var jobId = $"job-{Guid.NewGuid():N}";
         var effectiveProjectPath = string.IsNullOrWhiteSpace(request.ProjectPath)
-            ? options.Value.DefaultProjectPath
+            ? options.DefaultProjectPath
             : request.ProjectPath;
 
         jobStore.Add(

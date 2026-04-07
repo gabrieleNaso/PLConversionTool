@@ -4,24 +4,24 @@ public sealed class TiaAgentOptions
 {
     public const string SectionName = "TiaAgent";
 
-    public string ListenUrl { get; init; } = "http://0.0.0.0:8050";
+    public string ListenUrl { get; set; } = "http://0.0.0.0:8050";
 
-    public string ProjectRoot { get; init; } = @"C:\PLConversionTool";
+    public string ProjectRoot { get; set; } = @"C:\PLConversionTool";
 
-    public string OutputDirectory { get; init; } = @"C:\PLConversionTool\output";
+    public string OutputDirectory { get; set; } = @"C:\PLConversionTool\output";
 
-    public string TempDirectory { get; init; } = @"C:\PLConversionTool\tmp";
+    public string TempDirectory { get; set; } = @"C:\PLConversionTool\tmp";
 
-    public string TiaPortalVersion { get; init; } = "V20";
+    public string TiaPortalVersion { get; set; } = "V20";
 
-    public string OpennessMode { get; init; } = "stub";
+    public string OpennessMode { get; set; } = "stub";
 
-    public string SiemensAssemblyDirectory { get; init; } =
+    public string SiemensAssemblyDirectory { get; set; } =
         @"C:\Program Files\Siemens\Automation\Portal V20\PublicAPI\V20";
 
-    public string? DefaultProjectPath { get; init; }
+    public string DefaultProjectPath { get; set; }
 
-    public bool LaunchUi { get; init; }
+    public bool LaunchUi { get; set; }
 
-    public IReadOnlyList<string> AllowedOrigins { get; init; } = ["http://localhost:8010"];
+    public IReadOnlyList<string> AllowedOrigins { get; set; } = new[] { "http://localhost:8010" };
 }

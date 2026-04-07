@@ -1,6 +1,6 @@
 # TIA Windows Agent
 
-Servizio `.NET 8` da eseguire nella VM Windows dove sono installati `TIA Portal` e `TIA Portal Openness`.
+Servizio Windows compatibile con `.NET Framework 4.8` da eseguire nella VM dove sono installati `TIA Portal` e `TIA Portal Openness`.
 
 ## Scopo
 
@@ -88,7 +88,8 @@ Prima di fare qualsiasi avvio, nella VM devono essere veri tutti questi punti:
 2. La versione TIA corrisponde al target del progetto, in questo momento `V20`.
 3. Le DLL `Openness` sono presenti nella macchina Windows.
 4. L'utente Windows che esegue l'agent appartiene al gruppo locale `Siemens TIA Openness`.
-5. Nella VM e' installato `.NET 8 SDK` oppure almeno il runtime necessario.
+5. Nella VM e' installato un ambiente di build compatibile con `net48`:
+   `Visual Studio Build Tools`, `MSBuild` oppure `dotnet SDK` capace di compilare il progetto.
 6. La VM e' raggiungibile dalla macchina Linux che esegue Docker.
 
 ## Dove verificare le DLL Siemens
@@ -239,7 +240,8 @@ Comando consigliato:
 Oppure:
 
 ```powershell
-dotnet run --configuration Release
+dotnet build -c Release
+.\bin\Release\net48\PLConversionTool.TiaAgent.exe
 ```
 
 Oppure con doppio click:

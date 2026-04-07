@@ -14,4 +14,16 @@ if (-not (Test-Path ".\appsettings.Local.json")) {
 }
 
 Write-Host "Avvio TIA Windows Agent dalla cartella $ScriptRoot"
-dotnet run --configuration $Configuration
+
+if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
+    throw "dotnet non trovato. Installa un SDK compatibile o compila il progetto con Visual Studio/MSBuild."
+}
+
+dotnet build .\PLConversionTool.TiaAgent.csproj --configuration $Configuration
+
+$exePath = ".\bin\$Configuration\net48\PLConversionTool.TiaAgent.exe"
+if (-not (Test-Path $exePath)) {
+    throw "Eseguibile non trovato: $exePath"
+}
+
+& $exePath
