@@ -347,7 +347,7 @@ public sealed class ReflectionOpennessRuntime(
     private static object? FindPlcSoftwareRecursive(object node)
     {
         var nodeTypeName = node.GetType().FullName ?? string.Empty;
-        if (nodeTypeName.Contains("PlcSoftware", StringComparison.OrdinalIgnoreCase))
+        if (ContainsIgnoreCase(nodeTypeName, "PlcSoftware"))
         {
             return node;
         }
@@ -357,7 +357,7 @@ public sealed class ReflectionOpennessRuntime(
             "Siemens.Engineering.HW.Features.SoftwareContainer"
         );
         var software = softwareContainer is null ? null : GetPropertyValue(softwareContainer, "Software");
-        if (software?.GetType().FullName?.Contains("PlcSoftware", StringComparison.OrdinalIgnoreCase) == true)
+        if (software != null && ContainsIgnoreCase(software.GetType().FullName, "PlcSoftware"))
         {
             return software;
         }
@@ -382,10 +382,11 @@ public sealed class ReflectionOpennessRuntime(
         }
 
         var current = rootBlockGroup;
-        var parts = targetPath.Split(
-            '/',
-            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries
-        );
+        var parts = targetPath
+            .Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(part => part.Trim())
+            .Where(part => part.Length > 0)
+            .ToArray();
 
         foreach (var part in parts)
         {
@@ -689,5 +690,15 @@ public sealed class ReflectionOpennessRuntime(
         {
             disposable.Dispose();
         }
+    }
+
+    private static bool ContainsIgnoreCase(string value, string fragment)
+    {
+        if (string.IsNullOrEmpty(value) || string.IsNullOrEmpty(fragment))
+        {
+            return false;
+        }
+
+        return value.IndexOf(fragment, StringComparison.OrdinalIgnoreCase) >= 0;
     }
 }

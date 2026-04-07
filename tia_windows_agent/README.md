@@ -179,13 +179,13 @@ Esempio realistico:
 {
   "TiaAgent": {
     "ListenUrl": "http://0.0.0.0:8050",
-    "ProjectRoot": "C:\\PLConversionTool",
-    "OutputDirectory": "C:\\PLConversionTool\\output",
-    "TempDirectory": "C:\\PLConversionTool\\tmp",
+    "ProjectRoot": "C:\\Users\\Admin\\Desktop\\PLConverionTool",
+    "OutputDirectory": "C:\\Users\\Admin\\Desktop\\PLConverionTool\\output",
+    "TempDirectory": "C:\\Users\\Admin\\Desktop\\PLConverionTool\\tmp",
     "TiaPortalVersion": "V20",
     "OpennessMode": "real",
     "SiemensAssemblyDirectory": "C:\\Program Files\\Siemens\\Automation\\Portal V20\\PublicAPI\\V20",
-    "DefaultProjectPath": "C:\\PLConversionTool\\projects\\Demo.ap20",
+    "DefaultProjectPath": "C:\\Users\\Admin\\Desktop\\prova_connessione_openness\\prova_connessione_openness.ap20",
     "LaunchUi": false,
     "AllowedOrigins": [
       "http://localhost:8010",
@@ -337,8 +337,8 @@ Esempio:
 ```powershell
 $body = @{
   operation = "import"
-  artifactPath = "C:\PLConversionTool\output\FB_Graph.xml"
-  projectPath = "C:\PLConversionTool\projects\Demo.ap20"
+  artifactPath = "C:\Users\Admin\Desktop\PLConverionTool\output\Type_28.xml"
+  projectPath = "C:\Users\Admin\Desktop\prova_connessione_openness\prova_connessione_openness.ap20"
   targetPath = "Program blocks"
   targetName = $null
   saveProject = $true
@@ -357,8 +357,8 @@ Invoke-RestMethod `
 ```powershell
 $body = @{
   operation = "compile"
-  artifactPath = "C:\PLConversionTool\tmp\compile-request.json"
-  projectPath = "C:\PLConversionTool\projects\Demo.ap20"
+  artifactPath = "C:\Users\Admin\Desktop\PLConverionTool\tmp\compile-request.json"
+  projectPath = "C:\Users\Admin\Desktop\prova_connessione_openness\prova_connessione_openness.ap20"
   targetPath = $null
   targetName = $null
   saveProject = $false
@@ -380,8 +380,8 @@ in questa versione `artifactPath` e' ancora obbligatorio come campo di contratto
 ```powershell
 $body = @{
   operation = "export"
-  artifactPath = "C:\PLConversionTool\output\export-target.xml"
-  projectPath = "C:\PLConversionTool\projects\Demo.ap20"
+  artifactPath = "C:\Users\Admin\Desktop\PLConverionTool\output\export-target.xml"
+  projectPath = "C:\Users\Admin\Desktop\prova_connessione_openness\prova_connessione_openness.ap20"
   targetPath = $null
   targetName = "FB_Graph"
   saveProject = $false
