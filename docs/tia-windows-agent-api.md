@@ -28,14 +28,24 @@ API minima prevista per l'agent Windows che gira vicino a `TIA Portal`.
   "operation": "import",
   "artifactPath": "C:\\PLConversionTool\\output\\FB_Graph.xml",
   "projectPath": "C:\\PLConversionTool\\projects\\Demo.ap20",
+  "targetPath": "Program blocks",
+  "targetName": null,
+  "saveProject": true,
   "notes": "import di validazione"
 }
 ```
 
 Per gli endpoint `import`, `compile` ed `export`, il campo `operation` viene normalizzato dal server in base alla route chiamata.
 
+Campi aggiuntivi:
+
+- `targetPath`: path logico del `BlockGroup` di destinazione per l'import
+- `targetName`: nome del blocco da esportare
+- `saveProject`: se `true`, prova a salvare il progetto dopo l'operazione
+
 ## Note
 
 - l'agent processa i job in modo seriale, scelta prudente per il runtime TIA;
 - in modalita' `real` prova a caricare `Siemens.Engineering.dll` via reflection e ad aprire una istanza `TiaPortal`;
-- l'implementazione reale di import/export/compile deve ancora essere completata con chiamate Openness specifiche del progetto.
+- in modalita' `real` prova davvero ad aprire il progetto, compilare e invocare metodi `Import` / `Export` compatibili via reflection;
+- se la firma API trovata nella tua installazione non coincide con una variante supportata, il job torna `blocked` con dettaglio diagnostico.

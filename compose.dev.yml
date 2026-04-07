@@ -22,9 +22,9 @@ services:
       TIA_TMP_DIR: /workspace/tmp
       TIA_VMWARE_NETWORK_MODE: ${TIA_VMWARE_NETWORK_MODE:-bridged}
       TIA_WINDOWS_TRANSPORT: ${TIA_WINDOWS_TRANSPORT:-http}
-      TIA_WINDOWS_HOST: ${TIA_WINDOWS_HOST:-host.docker.internal}
+      TIA_WINDOWS_HOST: ${TIA_WINDOWS_HOST:-192.167.1.41}
       TIA_WINDOWS_AGENT_PORT: ${TIA_WINDOWS_AGENT_PORT:-8050}
-      TIA_WINDOWS_AGENT_URL: ${TIA_WINDOWS_AGENT_URL:-http://host.docker.internal:8050}
+      TIA_WINDOWS_AGENT_URL: ${TIA_WINDOWS_AGENT_URL:-http://192.167.1.41:8050}
     working_dir: /workspace/tia_bridge
     ports:
       - "${TIA_BRIDGE_PORT:-8010}:8010"
@@ -112,9 +112,9 @@ services:
       NODE_ENV: development
       GIT_CONFIG_GLOBAL: /tmp/.gitconfig
       BACKEND_INTERNAL_URL: "http://backend:8000"
-      NEXT_PUBLIC_BACKEND_URL: "http://localhost:${BACKEND_PORT:-8000}"
+      NEXT_PUBLIC_BACKEND_URL: "http://192.167.1.20:${BACKEND_PORT:-8000}"
       TIA_BRIDGE_INTERNAL_URL: "http://tia-bridge:8010"
-      NEXT_PUBLIC_TIA_BRIDGE_URL: "http://localhost:${TIA_BRIDGE_PORT:-8010}"
+      NEXT_PUBLIC_TIA_BRIDGE_URL: "http://192.167.1.20:${TIA_BRIDGE_PORT:-8010}"
     depends_on:
       backend:
         condition: service_healthy

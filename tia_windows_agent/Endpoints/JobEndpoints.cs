@@ -38,6 +38,9 @@ public static class JobEndpoints
                     Operation: job.Operation,
                     ArtifactPath: job.ArtifactPath,
                     ProjectPath: job.ProjectPath,
+                    TargetPath: job.TargetPath,
+                    TargetName: job.TargetName,
+                    SaveProject: job.SaveProject,
                     Notes: job.Notes,
                     Detail: job.Detail
                 )

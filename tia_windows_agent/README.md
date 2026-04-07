@@ -36,22 +36,27 @@ In questa versione:
 - li esegue in background;
 - li processa in modo seriale;
 - controlla configurazione e path locali;
-- in modalita' `real` prova a caricare `Siemens.Engineering.dll`;
-- in modalita' `real` prova a creare una istanza `TiaPortal`.
+- in modalita' `real` carica `Siemens.Engineering.dll`;
+- in modalita' `real` crea una istanza `TiaPortal`;
+- apre il progetto `.ap20` indicato nel job;
+- prova la compile tramite `ICompilable`;
+- prova import/export blocchi via reflection sulle API Openness disponibili.
 
 Questa e' gia' una base eseguibile e utile per verificare che la VM sia preparata correttamente.
 
-## Cosa non fa ancora completamente
+## Limiti attuali
 
-La parte finale non e' ancora completa al 100%:
+La parte reale ora prova davvero `open project / compile / import / export`, ma resta sensibile alla variante API effettiva disponibile nella tua installazione TIA.
 
-- apertura reale del progetto TIA;
-- import reale di FB / DB / FC;
-- compile reale del progetto;
-- export reale degli artefatti da TIA;
-- mapping dettagliato degli errori Siemens sullo stato job.
+I casi ancora da affinare possono essere:
 
-Quindi questo pacchetto e' pronto per essere copiato ed eseguito, ma la parte finale delle chiamate Openness reali va rifinita dopo il primo test nella tua VM.
+- firme `Import` diverse da quelle previste dal fallback reflection;
+- firme `Export` diverse da quelle previste dal fallback reflection;
+- `TargetPath` non corretto per il `BlockGroup` di destinazione;
+- `TargetName` non corretto per il blocco da esportare;
+- esiti Siemens dettagliati ancora da tradurre in messaggi dominio-specifici.
+
+Quando il runtime non trova una firma compatibile, il job torna `blocked` con i metodi pubblici osservati, cosi' possiamo adattare velocemente il codice al comportamento reale della tua VM.
 
 ## Contenuto della cartella
 
@@ -165,6 +170,7 @@ Apri `appsettings.Local.json` e verifica con attenzione questi campi:
 - `TiaAgent:SiemensAssemblyDirectory`
 - `TiaAgent:DefaultProjectPath`
 - `TiaAgent:LaunchUi`
+- `TiaAgent:AllowedOrigins`
 
 Esempio realistico:
 
@@ -181,7 +187,8 @@ Esempio realistico:
     "DefaultProjectPath": "C:\\PLConversionTool\\projects\\Demo.ap20",
     "LaunchUi": false,
     "AllowedOrigins": [
-      "http://localhost:8010"
+      "http://localhost:8010",
+      "http://192.167.1.20:8010"
     ]
   }
 }
@@ -297,19 +304,29 @@ Nel progetto Linux, il servizio `tia-bridge` usa queste variabili in [compose.de
 - `TIA_WINDOWS_AGENT_PORT`
 - `TIA_WINDOWS_AGENT_URL`
 
-Esempio corretto quando la VM ha IP `192.168.1.50`:
+Esempio corretto quando la VM Windows ha IP `192.167.1.41`:
 
 ```env
 TIA_VMWARE_NETWORK_MODE=bridged
 TIA_WINDOWS_TRANSPORT=http
-TIA_WINDOWS_HOST=192.168.1.50
+TIA_WINDOWS_HOST=192.167.1.41
 TIA_WINDOWS_AGENT_PORT=8050
-TIA_WINDOWS_AGENT_URL=http://192.168.1.50:8050
+TIA_WINDOWS_AGENT_URL=http://192.167.1.41:8050
 ```
 
 Se lasci `host.docker.internal` ma TIA e' in una VM separata, quasi certamente punti al target sbagliato.
 
 ## Come usare gli endpoint job
+
+Campi del payload:
+
+- `operation`
+- `artifactPath`
+- `projectPath`
+- `targetPath`
+- `targetName`
+- `saveProject`
+- `notes`
 
 ### Import
 
@@ -320,6 +337,9 @@ $body = @{
   operation = "import"
   artifactPath = "C:\PLConversionTool\output\FB_Graph.xml"
   projectPath = "C:\PLConversionTool\projects\Demo.ap20"
+  targetPath = "Program blocks"
+  targetName = $null
+  saveProject = $true
   notes = "test import"
 } | ConvertTo-Json
 
@@ -337,6 +357,9 @@ $body = @{
   operation = "compile"
   artifactPath = "C:\PLConversionTool\tmp\compile-request.json"
   projectPath = "C:\PLConversionTool\projects\Demo.ap20"
+  targetPath = $null
+  targetName = $null
+  saveProject = $false
   notes = "test compile"
 } | ConvertTo-Json
 
@@ -357,6 +380,9 @@ $body = @{
   operation = "export"
   artifactPath = "C:\PLConversionTool\output\export-target.xml"
   projectPath = "C:\PLConversionTool\projects\Demo.ap20"
+  targetPath = $null
+  targetName = "FB_Graph"
+  saveProject = $false
   notes = "test export"
 } | ConvertTo-Json
 
@@ -394,10 +420,24 @@ Gli stati che puoi vedere oggi sono:
 
 Interpretazione pratica:
 
-- `completed`: il job e' passato in modalita' `stub`
-- `prepared`: il probe Openness reale e' riuscito, ma la logica finale di import/export/compile non e' ancora stata completata
+- `completed`: il job e' terminato correttamente, sia in `stub` sia in esecuzione reale
+- `prepared`: stato legacy di job vecchi, non dovrebbe piu' essere lo stato normale
 - `blocked`: manca qualcosa nell'ambiente Siemens
 - `failed`: errore di path o eccezione runtime
+
+## Come leggere i job `blocked`
+
+Se un job torna `blocked`, guarda il campo `detail`.
+
+I casi tipici sono:
+
+- ambiente Siemens non pronto;
+- `Import` non trovato sulla composition selezionata;
+- `Export` non trovato sul blocco selezionato;
+- `TargetPath` errato;
+- `TargetName` errato.
+
+Quando possibile, il runtime include anche le firme pubbliche osservate, cosi' possiamo vedere subito come adattare l'implementazione alla tua installazione TIA reale.
 
 ## Differenza tra `appsettings.json` e `appsettings.Local.json`
 
