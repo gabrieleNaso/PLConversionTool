@@ -561,6 +561,12 @@ public sealed class ReflectionOpennessRuntime(
                 continue;
             }
 
+            if (TryCreateOptionCandidates(parameter.ParameterType, out var optionCandidates))
+            {
+                candidateValues[index] = optionCandidates.Cast<object>().ToList();
+                continue;
+            }
+
             return false;
         }
 
@@ -661,6 +667,64 @@ public sealed class ReflectionOpennessRuntime(
         }
 
         return string.Join(" | INNER -> ", chain);
+    }
+
+    private static bool TryCreateOptionCandidates(Type parameterType, out object[] candidates)
+    {
+        candidates = null;
+
+        if (parameterType == typeof(string))
+        {
+            return false;
+        }
+
+        var ctor = parameterType.GetConstructor(Type.EmptyTypes);
+        if (ctor == null)
+        {
+            return false;
+        }
+
+        var instance = Activator.CreateInstance(parameterType);
+        var configuredInstance = Activator.CreateInstance(parameterType);
+
+        if (instance == null || configuredInstance == null)
+        {
+            return false;
+        }
+
+        ConfigureOptionVariant(configuredInstance, setBooleansToTrue: true);
+
+        candidates = new[] { instance, configuredInstance };
+        return true;
+    }
+
+    private static void ConfigureOptionVariant(object instance, bool setBooleansToTrue)
+    {
+        var properties = instance.GetType()
+            .GetProperties(BindingFlags.Instance | BindingFlags.Public)
+            .Where(property => property.CanWrite)
+            .ToList();
+
+        foreach (var property in properties)
+        {
+            try
+            {
+                if (property.PropertyType == typeof(bool))
+                {
+                    property.SetValue(instance, setBooleansToTrue);
+                    continue;
+                }
+
+                if (property.PropertyType.IsEnum)
+                {
+                    property.SetValue(instance, GetPreferredEnumValue(property.PropertyType));
+                }
+            }
+            catch
+            {
+                // Best effort only: leave default value if a property cannot be assigned.
+            }
+        }
     }
 
     private static void TrySaveProject(object project)

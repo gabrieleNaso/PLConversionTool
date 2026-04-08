@@ -5,6 +5,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $ScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$OriginalLocation = Get-Location
 Set-Location $ScriptRoot
 
 try {
@@ -39,6 +40,11 @@ catch {
     }
 }
 finally {
+    $currentPath = (Get-Location).Path
+    if ($currentPath -like "$ScriptRoot*") {
+        Set-Location $env:TEMP
+    }
+
     if ($PauseOnExit) {
         Write-Host ""
         Read-Host "Premi INVIO per chiudere"

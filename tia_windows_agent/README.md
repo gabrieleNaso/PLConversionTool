@@ -72,6 +72,7 @@ Script pronti:
 - `bootstrap-vm.ps1`
 - `run-agent.ps1`
 - `stop-agent.ps1`
+- `clean-agent.ps1`
 - `publish-agent.ps1`
 - `install-firewall-rule.ps1`
 - `start-agent.cmd`
@@ -246,6 +247,19 @@ Per chiuderlo correttamente:
 ```powershell
 .\stop-agent.ps1
 ```
+
+Per liberare anche la cartella e pulire i file di build:
+
+```powershell
+.\clean-agent.ps1
+```
+
+Questo script:
+
+- sposta la shell fuori dalla cartella dell'agent;
+- termina il processo se ancora presente;
+- rimuove `bin/` e `obj/`;
+- evita il caso tipico in cui Windows considera ancora la cartella "in uso".
 
 Oppure:
 
