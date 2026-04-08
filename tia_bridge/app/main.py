@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException
 
+from app.artifact_stager import stage_import_artifact
 from app.config import get_bridge_mode, get_remote_target, get_runtime_paths, get_windows_agent_url
 from app.schemas import (
     SUPPORTED_OPERATIONS,
@@ -125,7 +126,13 @@ async def queue_job(operation: str, request: JobRequest) -> dict:
         return stub_jobs.create_job(normalized_request, operation).model_dump()
 
     try:
-        return await get_windows_agent_client().queue_job(operation, normalized_request)
+        client = get_windows_agent_client()
+        staged_request = await stage_import_artifact(
+            client,
+            normalized_request,
+            get_runtime_paths()["workspace"],
+        )
+        return await client.queue_job(operation, staged_request)
     except (HTTPException, WindowsAgentError) as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 

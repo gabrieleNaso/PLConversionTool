@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import base64
+
 import httpx
+from pathlib import PureWindowsPath
 
 from app.schemas import JobRequest
 
@@ -27,6 +30,13 @@ class WindowsAgentClient:
         normalized_payload = payload.model_dump()
         normalized_payload["operation"] = operation
         return await self._request("POST", f"/api/jobs/{operation}", json=normalized_payload)
+
+    async def upload_file(self, destination_path: PureWindowsPath | str, content: bytes) -> dict:
+        payload = {
+            "destinationPath": str(destination_path),
+            "contentBase64": base64.b64encode(content).decode("ascii"),
+        }
+        return await self._request("POST", "/api/files/upload", json=payload)
 
     async def list_jobs(self) -> dict | list:
         return await self._request("GET", "/api/jobs")

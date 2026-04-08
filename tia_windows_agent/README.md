@@ -292,6 +292,24 @@ TIA_WINDOWS_AGENT_URL=http://192.167.1.41:8050
 
 Se lasci `host.docker.internal` ma TIA e' in una VM separata, quasi certamente punti al target sbagliato.
 
+## Workflow remoto Ubuntu -> Windows
+
+Quando lavori tramite `tia-bridge`, il flusso remoto e' questo:
+
+1. l'XML sta nella VM Ubuntu in una path visibile al container `tia-bridge`;
+2. il `tia-bridge` legge il file o la cartella XML;
+3. il `tia-bridge` carica gli XML nella directory temporanea della VM Windows tramite `POST /api/files/upload`;
+4. il `tia-bridge` crea il job `import` verso l'agent Windows usando il path Windows appena creato;
+5. l'agent Windows importa il contenuto in `TIA Portal`.
+
+Per il test remoto piu' semplice, usa file in:
+
+- `/workspace/output`
+- `/workspace/tmp`
+- oppure path relative come `output/Type_28.xml` e `tmp/mia_cartella_xml`
+
+Questi path sono gia' visibili al container `tia-bridge` nel `compose.dev.yml`.
+
 ## Come usare gli endpoint job
 
 Campi del payload:
@@ -303,6 +321,41 @@ Campi del payload:
 - `targetName`
 - `saveProject`
 - `notes`
+
+## Regole operative ed eccezioni dei comandi
+
+Queste regole valgono per tutti i comandi `import`, `compile` ed `export`.
+
+- `projectPath` e' obbligatorio per tutti i job reali.
+- `artifactPath` e' sempre obbligatorio, anche per `compile`.
+- `saveProject = $true` salva il progetto dopo l'operazione quando supportato.
+- `targetPath = $null` indica il gruppo root dei `Program blocks`.
+- `targetName` serve soprattutto per l'`export` di un singolo blocco.
+- Se `artifactPath` e' un file `.xml`, il job lavora su un solo file.
+- Se `artifactPath` e' una directory, `import` ed `export` lavorano su piu' file XML.
+
+Eccezioni operative principali:
+
+- `compile` non usa davvero il contenuto di `artifactPath`: quel campo resta un placeholder tecnico obbligatorio dal contratto.
+- `compile` non si blocca per i `warning`; si blocca solo quando TIA restituisce errori reali.
+- `export` esegue automaticamente una `compile` preliminare del `PlcSoftware`.
+- Se la `compile` preliminare dell'`export` trova errori reali, l'`export` viene annullato.
+- Per `import`, se `artifactPath` e' una directory, vengono importati tutti i `*.xml` trovati nella cartella e nelle sottocartelle, in ordine alfabetico.
+- Per `export`, se `artifactPath` e' una directory, vengono esportati tutti i blocchi del gruppo selezionato e dei suoi sottogruppi.
+- Per `export`, se `artifactPath` e' un file, devi indicare il blocco con `targetName` oppure usare un nome file coerente con il blocco da esportare.
+- Se `targetPath` punta a un gruppo inesistente, il job va in errore.
+- Se `targetName` punta a un blocco inesistente, l'`export` va in errore.
+- Se `artifactPath` di `import` non esiste come file o directory, il job va in errore.
+- Se `artifactPath` di `export` e' una cartella, l'agent la crea se manca.
+- Se `artifactPath` di `export` e' un file, l'agent crea automaticamente la directory padre se manca.
+
+Convenzioni consigliate:
+
+- usa `targetPath = $null` quando vuoi lavorare direttamente nel root `Program blocks`;
+- usa `targetPath = "Program blocks/Group_1"` quando vuoi limitare import/export a un gruppo preciso;
+- usa `saveProject = $true` per `import`;
+- usa `saveProject = $true` per `compile` quando vuoi mantenere lo stato compilato;
+- usa `saveProject = $false` per `export` se non hai bisogno di salvare altre modifiche.
 
 ### Import
 
@@ -328,6 +381,7 @@ Invoke-RestMethod `
 
 Nota:
 per importare nel gruppo root dei blocchi, usa preferibilmente `targetPath = $null`. Se vuoi un sottogruppo specifico, passa un path come `"Program blocks/Sottogruppo1"`.
+Se `artifactPath` punta a una directory, l'agent importa tutti i file `*.xml` trovati nella cartella e nelle sottocartelle, in ordine alfabetico.
 
 ### Compile
 
@@ -351,6 +405,7 @@ Invoke-RestMethod `
 
 Nota:
 in questa versione `artifactPath` e' ancora obbligatorio come campo di contratto, anche se per `compile` e' solo un placeholder tecnico.
+Se TIA restituisce solo `warning`, il job viene considerato riuscito.
 
 ### Export
 
@@ -373,6 +428,23 @@ Invoke-RestMethod `
   -ContentType "application/json" `
   -Body $body
 ```
+
+Se `artifactPath` punta a una directory invece che a un file:
+
+- l'agent compila automaticamente il progetto;
+- esporta tutti i blocchi del gruppo selezionato;
+- crea piu' file XML nella cartella di output;
+- mantiene la struttura dei sottogruppi come sottocartelle.
+
+Eccezioni pratiche dell'`export`:
+
+- con `artifactPath` file: esporta un solo blocco;
+- con `artifactPath` cartella: esporta tutti i blocchi del gruppo selezionato;
+- con `targetPath = $null`: parte dal root dei `Program blocks`;
+- con `targetPath = "Program blocks/Group_1"`: esporta solo quel gruppo;
+- con `targetName = $null` e `artifactPath` file: usa il nome file senza estensione come nome blocco da cercare;
+- con `targetName` valorizzato: usa esplicitamente quel blocco;
+- se il blocco o i tipi collegati sono inconsistenti, TIA puo' rifiutare l'export.
 
 ### Leggere i job
 
@@ -429,6 +501,85 @@ Invoke-RestMethod `
   -Body $body
 ```
 
+### Import reale da cartella
+
+```powershell
+$body = @{
+  operation = "import"
+  artifactPath = "C:\Users\Admin\Desktop\PLConverionTool\output"
+  projectPath = "C:\Users\Admin\Desktop\prova_connessione_openness\prova_connessione_openness.ap20"
+  targetPath = $null
+  targetName = $null
+  saveProject = $true
+  notes = "bulk import test"
+} | ConvertTo-Json
+
+Invoke-RestMethod `
+  -Method Post `
+  -Uri http://localhost:8050/api/jobs/import `
+  -ContentType "application/json" `
+  -Body $body
+```
+
+### Import reale da cartella esterna verso un gruppo specifico
+
+```powershell
+$body = @{
+  operation = "import"
+  artifactPath = "C:\Users\Admin\Desktop\mia_cartella_xml"
+  projectPath = "C:\Users\Admin\Desktop\prova_connessione_openness\prova_connessione_openness.ap20"
+  targetPath = "Program blocks/Group_1"
+  targetName = $null
+  saveProject = $true
+  notes = "bulk import in Group_1"
+} | ConvertTo-Json
+
+Invoke-RestMethod `
+  -Method Post `
+  -Uri http://localhost:8050/api/jobs/import `
+  -ContentType "application/json" `
+  -Body $body
+```
+
+### Import remoto passando per Ubuntu e `tia-bridge`
+
+Se il file XML e' sulla VM Ubuntu in `output/Type_28.xml`, puoi usare il bridge Linux cosi':
+
+```bash
+curl -X POST http://192.167.1.20:8010/api/jobs/import \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "artifactPath": "output/Type_28.xml",
+    "projectPath": "C:\\Users\\Admin\\Desktop\\prova_connessione_openness\\prova_connessione_openness.ap20",
+    "targetPath": null,
+    "targetName": null,
+    "saveProject": true,
+    "notes": "remote import from ubuntu"
+  }'
+```
+
+Se invece vuoi importare una cartella Linux con piu' XML:
+
+```bash
+curl -X POST http://192.167.1.20:8010/api/jobs/import \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "artifactPath": "output/mia_cartella_xml",
+    "projectPath": "C:\\Users\\Admin\\Desktop\\prova_connessione_openness\\prova_connessione_openness.ap20",
+    "targetPath": "Program blocks/Group_1",
+    "targetName": null,
+    "saveProject": true,
+    "notes": "remote bulk import from ubuntu"
+  }'
+```
+
+Eccezioni pratiche del workflow remoto:
+
+- il `tia-bridge` trasferisce automaticamente solo i file di `import`;
+- perche' il bridge veda il file, il path deve essere accessibile dentro il container;
+- il modo piu' semplice e' usare `output/...` o `tmp/...` del repository;
+- dopo il trasferimento, il job gira sul path Windows temporaneo creato dall'agent.
+
 ### Compile reale
 
 ```powershell
@@ -465,6 +616,54 @@ $body = @{
   targetName = "Type_28"
   saveProject = $false
   notes = "export test"
+} | ConvertTo-Json
+
+Invoke-RestMethod `
+  -Method Post `
+  -Uri http://localhost:8050/api/jobs/export `
+  -ContentType "application/json" `
+  -Body $body
+```
+
+### Export reale in cartella
+
+Per esportare piu' file XML in una directory di output:
+
+```powershell
+$body = @{
+  operation = "export"
+  artifactPath = "C:\Users\Admin\Desktop\PLConverionTool\output\bulk_export"
+  projectPath = "C:\Users\Admin\Desktop\prova_connessione_openness\prova_connessione_openness.ap20"
+  targetPath = $null
+  targetName = $null
+  saveProject = $false
+  notes = "bulk export test"
+} | ConvertTo-Json
+
+Invoke-RestMethod `
+  -Method Post `
+  -Uri http://localhost:8050/api/jobs/export `
+  -ContentType "application/json" `
+  -Body $body
+```
+
+Se vuoi limitare l'export a un gruppo specifico, imposta `targetPath`, per esempio:
+
+```powershell
+targetPath = "Program blocks/Sottogruppo1"
+```
+
+### Export reale di un solo gruppo
+
+```powershell
+$body = @{
+  operation = "export"
+  artifactPath = "C:\Users\Admin\Desktop\PLConverionTool\output\bulk_export"
+  projectPath = "C:\Users\Admin\Desktop\prova_connessione_openness\prova_connessione_openness.ap20"
+  targetPath = "Program blocks/Group_1"
+  targetName = $null
+  saveProject = $false
+  notes = "export Group_1"
 } | ConvertTo-Json
 
 Invoke-RestMethod `

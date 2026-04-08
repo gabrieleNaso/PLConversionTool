@@ -38,6 +38,9 @@ class TiaBridgeClient:
             "operation": operation,
             "artifactPath": payload.get("artifactPath", ""),
             "projectPath": payload.get("projectPath"),
+            "targetPath": payload.get("targetPath"),
+            "targetName": payload.get("targetName"),
+            "saveProject": bool(payload.get("saveProject", False)),
             "notes": payload.get("notes"),
         }
         return await self._request("POST", f"/api/jobs/{operation}", json=normalized_payload)

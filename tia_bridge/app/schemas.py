@@ -11,6 +11,9 @@ class JobRequest(BaseModel):
     operation: str = ""
     artifactPath: str
     projectPath: str | None = None
+    targetPath: str | None = None
+    targetName: str | None = None
+    saveProject: bool = False
     notes: str | None = None
 
 
@@ -20,6 +23,9 @@ class JobResponse(BaseModel):
     operation: str
     artifactPath: str
     projectPath: str | None = None
+    targetPath: str | None = None
+    targetName: str | None = None
+    saveProject: bool = False
     notes: str | None = None
     detail: str | None = None
 
@@ -29,6 +35,9 @@ class TiaJob(BaseModel):
     operation: str
     artifactPath: str
     projectPath: str | None = None
+    targetPath: str | None = None
+    targetName: str | None = None
+    saveProject: bool = False
     notes: str | None = None
     status: str
     detail: str | None = None
@@ -94,6 +103,9 @@ class StubJobStore:
             operation=operation,
             artifactPath=request.artifactPath,
             projectPath=request.projectPath,
+            targetPath=request.targetPath,
+            targetName=request.targetName,
+            saveProject=request.saveProject,
             notes=request.notes,
             status="completed",
             detail="Job completato in modalita' stub dal tia-bridge.",
@@ -108,6 +120,9 @@ class StubJobStore:
             operation=job.operation,
             artifactPath=job.artifactPath,
             projectPath=job.projectPath,
+            targetPath=job.targetPath,
+            targetName=job.targetName,
+            saveProject=job.saveProject,
             notes=job.notes,
             detail=job.detail,
         )

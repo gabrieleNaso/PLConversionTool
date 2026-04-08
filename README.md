@@ -45,6 +45,7 @@ Stato verificato:
 - l'import reale di un blocco XML in TIA e' stato eseguito con successo;
 - la compile reale del progetto e' stata eseguita con successo;
 - l'export reale del blocco da TIA verso XML e' stato eseguito con successo;
+- il `tia-bridge` puo' trasferire XML dalla VM Ubuntu alla VM Windows prima dell'import remoto;
 - gli errori Openness vengono intercettati e riportati nel `detail` dei job.
 
 Questo significa che l'intera catena tecnica:
@@ -69,6 +70,7 @@ In altre parole:
 - Openness funziona;
 - il progetto TIA viene aperto;
 - la pipeline reale di scambio XML con TIA e' attiva;
+- il bridge Linux puo' fare da punto di staging degli artefatti XML verso Windows;
 - il repository e' gia' in uno stato utilizzabile per continuare lo sviluppo del convertitore.
 
 ## Cosa Fa Oggi L'Agent Windows

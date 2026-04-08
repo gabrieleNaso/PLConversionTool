@@ -168,6 +168,12 @@ public static class Program
             return;
         }
 
+        if (method == "POST" && path == "/api/files/upload")
+        {
+            UploadFile(context, options);
+            return;
+        }
+
         WriteJson(context, 404, new { error = "not_found", path });
     }
 
@@ -211,6 +217,39 @@ public static class Program
             TargetName: GetOptionalString(payload, "targetName"),
             SaveProject: GetBool(payload, "saveProject"),
             Notes: GetOptionalString(payload, "notes")
+        );
+    }
+
+    private static void UploadFile(HttpListenerContext context, TiaAgentOptions options)
+    {
+        var requestBody = ReadBody(context.Request);
+        var payload = string.IsNullOrWhiteSpace(requestBody)
+            ? new Dictionary<string, object>()
+            : Json.Deserialize<Dictionary<string, object>>(requestBody);
+
+        var destinationPath = GetString(payload, "destinationPath");
+        var contentBase64 = GetString(payload, "contentBase64");
+        var normalizedDestination = Path.GetFullPath(destinationPath);
+
+        EnsurePathAllowed(normalizedDestination, options);
+
+        var directory = Path.GetDirectoryName(normalizedDestination);
+        if (string.IsNullOrWhiteSpace(directory))
+        {
+            throw new InvalidOperationException("DestinationPath non valido.");
+        }
+
+        Directory.CreateDirectory(directory);
+        var content = Convert.FromBase64String(contentBase64);
+        File.WriteAllBytes(normalizedDestination, content);
+
+        WriteJson(
+            context,
+            201,
+            new FileUploadResponse(
+                StoredPath: normalizedDestination,
+                SizeBytes: content.LongLength
+            )
         );
     }
 
@@ -324,6 +363,27 @@ public static class Program
 
         context.Response.Headers["Access-Control-Allow-Methods"] = "GET,POST,OPTIONS";
         context.Response.Headers["Access-Control-Allow-Headers"] = "Content-Type";
+    }
+
+    private static void EnsurePathAllowed(string destinationPath, TiaAgentOptions options)
+    {
+        var allowedRoots = new[]
+        {
+            options.ProjectRoot,
+            options.OutputDirectory,
+            options.TempDirectory,
+        }
+        .Where(path => !string.IsNullOrWhiteSpace(path))
+        .Select(Path.GetFullPath)
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .ToArray();
+
+        if (!allowedRoots.Any(root => destinationPath.StartsWith(root, StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new InvalidOperationException(
+                "DestinationPath non consentito. Usa un path sotto ProjectRoot, OutputDirectory o TempDirectory."
+            );
+        }
     }
 
     private static string GetString(IDictionary<string, object> payload, string key)

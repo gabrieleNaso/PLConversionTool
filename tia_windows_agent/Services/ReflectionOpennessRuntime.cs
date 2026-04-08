@@ -10,6 +10,8 @@ public sealed class ReflectionOpennessRuntime(
     TiaAgentOptions options
 ) : IReflectionOpennessRuntime
 {
+    private sealed record ExportBlockEntry(object Block, string RelativeGroupPath);
+
     public OpennessDiagnosticsResponse GetDiagnostics()
     {
         var config = options;
@@ -105,9 +107,21 @@ public sealed class ReflectionOpennessRuntime(
             throw new InvalidOperationException("ArtifactPath obbligatorio.");
         }
 
-        if (job.Operation is "import" && !File.Exists(job.ArtifactPath))
+        if (job.Operation is "import" && !File.Exists(job.ArtifactPath) && !Directory.Exists(job.ArtifactPath))
         {
             throw new FileNotFoundException("ArtifactPath non trovato.", job.ArtifactPath);
+        }
+
+        if (job.Operation is "export")
+        {
+            var outputDirectory = Path.GetExtension(job.ArtifactPath).Length > 0
+                ? Path.GetDirectoryName(job.ArtifactPath)
+                : job.ArtifactPath;
+
+            if (string.IsNullOrWhiteSpace(outputDirectory))
+            {
+                throw new InvalidOperationException("ArtifactPath non valido per export.");
+            }
         }
 
         if (job.Operation is "compile" or "import" or "export")
@@ -275,15 +289,23 @@ public sealed class ReflectionOpennessRuntime(
 
         var targetGroup = ResolveBlockGroup(rootBlockGroup, job.TargetPath);
         var importTarget = GetPropertyValue(targetGroup, "Blocks") ?? targetGroup;
-        var importFile = new FileInfo(job.ArtifactPath);
+        var importFiles = ResolveImportFiles(job.ArtifactPath);
 
-        if (!TryInvokeImport(importTarget, importFile, out var importDescription))
+        var importedCount = 0;
+        var importedFiles = new List<string>();
+        foreach (var importFile in importFiles)
         {
-            var available = DescribePublicMethods(importTarget, "Import");
-            return new OpennessExecutionResult(
-                "blocked",
-                $"Import non riuscito su {importTarget.GetType().FullName}. {importDescription} Metodi osservati: {available}"
-            );
+            if (!TryInvokeImport(importTarget, importFile, out var importDescription))
+            {
+                var available = DescribePublicMethods(importTarget, "Import");
+                return new OpennessExecutionResult(
+                    "blocked",
+                    $"Import non riuscito per '{importFile.FullName}' su {importTarget.GetType().FullName}. {importDescription} Metodi osservati: {available}"
+                );
+            }
+
+            importedCount++;
+            importedFiles.Add(importFile.Name);
         }
 
         if (job.SaveProject)
@@ -294,7 +316,7 @@ public sealed class ReflectionOpennessRuntime(
         await Task.CompletedTask;
         return new OpennessExecutionResult(
             "completed",
-            $"Import completato in '{DescribeObject(targetGroup)}'. {importDescription}"
+            $"Import completato in '{DescribeObject(targetGroup)}'. File importati: {importedCount}. [{string.Join(", ", importedFiles.Take(10))}{(importedFiles.Count > 10 ? ", ..." : string.Empty)}]"
         );
     }
 
@@ -326,6 +348,12 @@ public sealed class ReflectionOpennessRuntime(
 
         var rootBlockGroup = GetPropertyValue(plcSoftware, "BlockGroup")
             ?? throw new InvalidOperationException("BlockGroup non trovato su PlcSoftware.");
+
+        var exportAsDirectory = Path.GetExtension(job.ArtifactPath).Length == 0;
+        if (exportAsDirectory)
+        {
+            return await ExportMultipleAsync(project, rootBlockGroup, job, cancellationToken);
+        }
 
         var blockName = !string.IsNullOrWhiteSpace(job.TargetName)
             ? job.TargetName
@@ -360,6 +388,65 @@ public sealed class ReflectionOpennessRuntime(
         return new OpennessExecutionResult(
             "completed",
             $"Compile automatica preliminare riuscita. Export completato dal blocco '{blockName}' verso '{job.ArtifactPath}'. {exportDescription}"
+        );
+    }
+
+    private static async Task<OpennessExecutionResult> ExportMultipleAsync(
+        object project,
+        object rootBlockGroup,
+        TiaJob job,
+        CancellationToken cancellationToken
+    )
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var targetGroup = ResolveBlockGroup(rootBlockGroup, job.TargetPath);
+        var outputRoot = job.ArtifactPath;
+        Directory.CreateDirectory(outputRoot);
+
+        var blocks = EnumerateBlocksForExport(targetGroup, prefix: string.Empty).ToList();
+        if (blocks.Count == 0)
+        {
+            return new OpennessExecutionResult(
+                "blocked",
+                $"Nessun blocco esportabile trovato nel gruppo '{DescribeObject(targetGroup)}'."
+            );
+        }
+
+        var exportedFiles = new List<string>();
+        foreach (var blockEntry in blocks)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var relativePath = BuildRelativeExportPath(blockEntry.RelativeGroupPath, DescribeObject(blockEntry.Block));
+            var destinationPath = Path.Combine(outputRoot, relativePath);
+            var destinationFile = new FileInfo(destinationPath);
+            Directory.CreateDirectory(
+                destinationFile.DirectoryName
+                    ?? throw new InvalidOperationException("Directory export non valida.")
+            );
+
+            if (!TryInvokeExport(blockEntry.Block, destinationFile, out var exportDescription))
+            {
+                var available = DescribePublicMethods(blockEntry.Block, "Export");
+                return new OpennessExecutionResult(
+                    "blocked",
+                    $"Export non riuscito per il blocco '{DescribeObject(blockEntry.Block)}' verso '{destinationFile.FullName}'. {exportDescription} Metodi osservati: {available}"
+                );
+            }
+
+            exportedFiles.Add(relativePath);
+        }
+
+        if (job.SaveProject)
+        {
+            TrySaveProject(project);
+        }
+
+        await Task.CompletedTask;
+        return new OpennessExecutionResult(
+            "completed",
+            $"Compile automatica preliminare riuscita. Export cartella completato da '{DescribeObject(targetGroup)}'. File esportati: {exportedFiles.Count}. [{string.Join(", ", exportedFiles.Take(10))}{(exportedFiles.Count > 10 ? ", ..." : string.Empty)}]"
         );
     }
 
@@ -478,6 +565,70 @@ public sealed class ReflectionOpennessRuntime(
         }
 
         return null;
+    }
+
+    private static IReadOnlyList<FileInfo> ResolveImportFiles(string artifactPath)
+    {
+        if (Directory.Exists(artifactPath))
+        {
+            var files = Directory.GetFiles(artifactPath, "*.xml", SearchOption.AllDirectories)
+                .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
+                .Select(path => new FileInfo(path))
+                .ToList();
+
+            if (files.Count == 0)
+            {
+                throw new InvalidOperationException(
+                    $"Nessun file XML trovato nella directory di import '{artifactPath}'."
+                );
+            }
+
+            return files;
+        }
+
+        return new[] { new FileInfo(artifactPath) };
+    }
+
+    private static IEnumerable<ExportBlockEntry> EnumerateBlocksForExport(
+        object blockGroup,
+        string prefix
+    )
+    {
+        foreach (var block in EnumerateObjects(GetPropertyValue(blockGroup, "Blocks")))
+        {
+            yield return new ExportBlockEntry(block, prefix);
+        }
+
+        foreach (var childGroup in EnumerateObjects(GetPropertyValue(blockGroup, "Groups")))
+        {
+            var childName = SanitizePathSegment(DescribeObject(childGroup));
+            var childPrefix = string.IsNullOrWhiteSpace(prefix)
+                ? childName
+                : Path.Combine(prefix, childName);
+
+            foreach (var item in EnumerateBlocksForExport(childGroup, childPrefix))
+            {
+                yield return item;
+            }
+        }
+    }
+
+    private static string BuildRelativeExportPath(string relativeGroupPath, string blockName)
+    {
+        var safeFileName = $"{SanitizePathSegment(blockName)}.xml";
+        return string.IsNullOrWhiteSpace(relativeGroupPath)
+            ? safeFileName
+            : Path.Combine(relativeGroupPath, safeFileName);
+    }
+
+    private static string SanitizePathSegment(string value)
+    {
+        var invalidChars = Path.GetInvalidFileNameChars();
+        var sanitized = new string(
+            value.Select(ch => invalidChars.Contains(ch) ? '_' : ch).ToArray()
+        ).Trim();
+
+        return string.IsNullOrWhiteSpace(sanitized) ? "unnamed" : sanitized;
     }
 
     private static bool TryInvokeImport(object target, FileInfo fileInfo, out string description)
