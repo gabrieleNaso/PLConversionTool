@@ -264,7 +264,7 @@ public sealed class ReflectionOpennessRuntime(
             var available = DescribePublicMethods(importTarget, "Import");
             return new OpennessExecutionResult(
                 "blocked",
-                $"Import non riuscito: nessuna firma Import compatibile trovata su {importTarget.GetType().FullName}. Metodi osservati: {available}"
+                $"Import non riuscito su {importTarget.GetType().FullName}. {importDescription} Metodi osservati: {available}"
             );
         }
 
@@ -314,7 +314,7 @@ public sealed class ReflectionOpennessRuntime(
             var available = DescribePublicMethods(block, "Export");
             return new OpennessExecutionResult(
                 "blocked",
-                $"Export non riuscito: nessuna firma Export compatibile trovata su {block.GetType().FullName}. Metodi osservati: {available}"
+                $"Export non riuscito su {block.GetType().FullName}. {exportDescription} Metodi osservati: {available}"
             );
         }
 
@@ -450,6 +450,7 @@ public sealed class ReflectionOpennessRuntime(
     private static bool TryInvokeImport(object target, FileInfo fileInfo, out string description)
     {
         string lastError = null;
+        var diagnostics = new List<string>();
 
         foreach (var method in target.GetType().GetMethods(BindingFlags.Instance | BindingFlags.Public))
         {
@@ -459,8 +460,10 @@ public sealed class ReflectionOpennessRuntime(
             }
 
             object?[][] allArgs;
-            if (!TryBuildFileInvocationArguments(method, fileInfo, out allArgs))
+            string buildReason;
+            if (!TryBuildFileInvocationArguments(method, fileInfo, out allArgs, out buildReason))
             {
+                diagnostics.Add($"{DescribeMethod(method)} -> skipped: {buildReason}");
                 continue;
             }
 
@@ -475,19 +478,23 @@ public sealed class ReflectionOpennessRuntime(
                 catch (Exception ex)
                 {
                     lastError = BuildInvocationErrorDetail(ex);
+                    diagnostics.Add($"{DescribeMethod(method)} -> invoke failed: {lastError}");
                 }
             }
         }
 
-        description = lastError is null
-            ? "Nessuna overload Import compatibile invocata."
-            : $"Nessuna overload Import compatibile invocata. Ultimo errore: {lastError}";
+        description = BuildImportExportFailureDescription(
+            baseMessage: "Nessuna overload Import compatibile invocata.",
+            lastError: lastError,
+            diagnostics: diagnostics
+        );
         return false;
     }
 
     private static bool TryInvokeExport(object target, FileInfo fileInfo, out string description)
     {
         string lastError = null;
+        var diagnostics = new List<string>();
 
         foreach (var method in target.GetType().GetMethods(BindingFlags.Instance | BindingFlags.Public))
         {
@@ -497,8 +504,10 @@ public sealed class ReflectionOpennessRuntime(
             }
 
             object?[][] allArgs;
-            if (!TryBuildFileInvocationArguments(method, fileInfo, out allArgs))
+            string buildReason;
+            if (!TryBuildFileInvocationArguments(method, fileInfo, out allArgs, out buildReason))
             {
+                diagnostics.Add($"{DescribeMethod(method)} -> skipped: {buildReason}");
                 continue;
             }
 
@@ -513,27 +522,33 @@ public sealed class ReflectionOpennessRuntime(
                 catch (Exception ex)
                 {
                     lastError = BuildInvocationErrorDetail(ex);
+                    diagnostics.Add($"{DescribeMethod(method)} -> invoke failed: {lastError}");
                 }
             }
         }
 
-        description = lastError is null
-            ? "Nessuna overload Export compatibile invocata."
-            : $"Nessuna overload Export compatibile invocata. Ultimo errore: {lastError}";
+        description = BuildImportExportFailureDescription(
+            baseMessage: "Nessuna overload Export compatibile invocata.",
+            lastError: lastError,
+            diagnostics: diagnostics
+        );
         return false;
     }
 
     private static bool TryBuildFileInvocationArguments(
         MethodInfo method,
         FileInfo fileInfo,
-        out object?[][] argsSets
+        out object?[][] argsSets,
+        out string reason
     )
     {
         var parameters = method.GetParameters();
         argsSets = null;
+        reason = null;
 
         if (parameters.Length == 0 || parameters[0].ParameterType != typeof(FileInfo))
         {
+            reason = "primo parametro diverso da FileInfo o firma vuota";
             return false;
         }
 
@@ -579,19 +594,22 @@ public sealed class ReflectionOpennessRuntime(
                 continue;
             }
 
+            reason = $"parametro non supportato: {parameter.Name} ({parameter.ParameterType.FullName})";
             return false;
         }
 
         argsSets = BuildCartesianProduct(candidateValues);
+        reason = $"argomenti costruiti: {argsSets.Length} combinazioni";
         return true;
     }
 
     private static object?[] BuildFileArguments(MethodInfo method, FileInfo fileInfo)
     {
         object?[][] argsSets;
-        if (!TryBuildFileInvocationArguments(method, fileInfo, out argsSets) || argsSets.Length == 0)
+        string reason;
+        if (!TryBuildFileInvocationArguments(method, fileInfo, out argsSets, out reason) || argsSets.Length == 0)
         {
-            throw new InvalidOperationException($"Firma non supportata per il metodo {method.Name}.");
+            throw new InvalidOperationException($"Firma non supportata per il metodo {method.Name}. {reason}");
         }
 
         return argsSets[0];
@@ -669,6 +687,12 @@ public sealed class ReflectionOpennessRuntime(
 
     private static string BuildInvocationErrorDetail(Exception exception)
     {
+        var friendly = TryBuildFriendlyEngineeringError(exception);
+        if (!string.IsNullOrWhiteSpace(friendly))
+        {
+            return friendly;
+        }
+
         var chain = new List<string>();
         var current = exception;
 
@@ -679,6 +703,79 @@ public sealed class ReflectionOpennessRuntime(
         }
 
         return string.Join(" | INNER -> ", chain);
+    }
+
+    private static string TryBuildFriendlyEngineeringError(Exception exception)
+    {
+        var current = exception;
+        while (current != null)
+        {
+            var typeName = current.GetType().FullName ?? string.Empty;
+            if (typeName.IndexOf("LicenseNotFoundException", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return BuildLicenseErrorMessage(current.Message);
+            }
+
+            current = current.InnerException;
+        }
+
+        return null;
+    }
+
+    private static string BuildLicenseErrorMessage(string message)
+    {
+        var compact = NormalizeWhitespace(message);
+
+        if (compact.IndexOf("STEP 7 Professional", StringComparison.OrdinalIgnoreCase) >= 0)
+        {
+            return "Licenza mancante: TIA Openness riesce a eseguire l'import ma TIA rifiuta la creazione del blocco per assenza della licenza 'STEP 7 Professional'.";
+        }
+
+        return $"Licenza mancante rilevata da TIA Openness: {compact}";
+    }
+
+    private static string NormalizeWhitespace(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return string.Empty;
+        }
+
+        var parts = text
+            .Split(new[] { ' ', '\r', '\n', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+
+        return string.Join(" ", parts);
+    }
+
+    private static string BuildImportExportFailureDescription(
+        string baseMessage,
+        string lastError,
+        IReadOnlyList<string> diagnostics
+    )
+    {
+        var parts = new List<string> { baseMessage };
+
+        if (!string.IsNullOrWhiteSpace(lastError))
+        {
+            parts.Add($"Ultimo errore: {lastError}");
+        }
+
+        if (diagnostics != null && diagnostics.Count > 0)
+        {
+            parts.Add($"Diagnostica overload: {string.Join(" || ", diagnostics)}");
+        }
+
+        return string.Join(" ", parts);
+    }
+
+    private static string DescribeMethod(MethodInfo method)
+    {
+        var parameters = string.Join(
+            ", ",
+            method.GetParameters().Select(parameter => $"{parameter.ParameterType.Name} {parameter.Name}")
+        );
+
+        return $"{method.Name}({parameters})";
     }
 
     private static bool TryCreateOptionCandidates(Type parameterType, out object[] candidates)

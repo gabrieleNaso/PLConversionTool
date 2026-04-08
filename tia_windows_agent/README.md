@@ -44,6 +44,56 @@ In questa versione:
 
 Questa e' gia' una base eseguibile e utile per verificare che la VM sia preparata correttamente.
 
+## Stato reale raggiunto
+
+Ad oggi il progetto e' arrivato a questo punto operativo:
+
+1. il servizio Windows si avvia correttamente come host HTTP locale su `:8050`;
+2. la VM Linux raggiunge l'agent Windows via rete;
+3. `tia-bridge` nel compose Linux punta correttamente alla VM Windows;
+4. l'agent apre `TIA Portal Openness` in modalita' reale;
+5. l'agent apre il progetto `.ap20` configurato;
+6. l'agent trova il `PlcSoftware` del progetto;
+7. l'agent arriva davvero a invocare `PlcBlockComposition.Import(...)`;
+8. gli errori Openness vengono catturati e riportati nel `detail` dei job.
+
+Questo significa che tutta la catena tecnica principale e' stata verificata:
+
+- rete Linux -> Windows;
+- endpoint HTTP dell'agent;
+- permessi `Siemens TIA Openness`;
+- apertura progetto;
+- aggancio reale alle API Siemens;
+- chiamata reale alle funzioni di import.
+
+## Punto di blocco attuale
+
+Il blocco reale emerso nei test non e' piu' tecnico sul codice dell'agent, ma funzionale/licenza:
+
+- TIA arriva a eseguire `Import`;
+- TIA prova a creare un oggetto `SW.Blocks.FB`;
+- l'operazione viene rifiutata per licenza mancante `STEP 7 Professional`.
+
+In altre parole:
+
+- l'agent adesso funziona;
+- il runtime Openness funziona;
+- la chiamata reale di import viene eseguita;
+- il rifiuto arriva da TIA per requisito di licenza.
+
+## Errori riconosciuti in modo esplicito
+
+L'agent ora riconosce e semplifica almeno questi casi:
+
+- `LicenseNotFoundException`
+  Restituisce un messaggio corto e leggibile invece della cascata completa di reflection.
+- `EngineeringSecurityException`
+  E' il caso in cui l'utente Windows non appartiene al gruppo `Siemens TIA Openness`.
+- problemi di path progetto / XML
+  Vengono segnalati come errori diretti sui file locali.
+- overload `Import` / `Export`
+  Se una firma non viene invocata, l'agent mostra le overload osservate e la diagnostica di tentativo.
+
 ## Limiti attuali
 
 La parte reale ora prova davvero `open project / compile / import / export`, ma resta sensibile alla variante API effettiva disponibile nella tua installazione TIA.
@@ -57,6 +107,8 @@ I casi ancora da affinare possono essere:
 - esiti Siemens dettagliati ancora da tradurre in messaggi dominio-specifici.
 
 Quando il runtime non trova una firma compatibile, il job torna `blocked` con i metodi pubblici osservati, cosi' possiamo adattare velocemente il codice al comportamento reale della tua VM.
+
+Quando invece l'import arriva davvero in TIA e il blocco viene rifiutato per motivi di licenza, il `detail` viene ridotto a un messaggio leggibile di licenza mancante.
 
 ## Contenuto della cartella
 
