@@ -561,9 +561,21 @@ public sealed class ReflectionOpennessRuntime(
                 continue;
             }
 
+            if (TryGetStaticOptionCandidates(parameter.ParameterType, out var staticCandidates))
+            {
+                candidateValues[index] = staticCandidates.ToList();
+                continue;
+            }
+
             if (TryCreateOptionCandidates(parameter.ParameterType, out var optionCandidates))
             {
                 candidateValues[index] = optionCandidates.Cast<object>().ToList();
+                continue;
+            }
+
+            if (!parameter.ParameterType.IsValueType)
+            {
+                candidateValues[index] = new List<object> { null };
                 continue;
             }
 
@@ -695,6 +707,68 @@ public sealed class ReflectionOpennessRuntime(
 
         candidates = new[] { instance, configuredInstance };
         return true;
+    }
+
+    private static bool TryGetStaticOptionCandidates(Type parameterType, out List<object> candidates)
+    {
+        candidates = new List<object>();
+
+        foreach (var field in parameterType.GetFields(BindingFlags.Public | BindingFlags.Static))
+        {
+            if (parameterType.IsAssignableFrom(field.FieldType))
+            {
+                var value = field.GetValue(null);
+                if (value != null)
+                {
+                    candidates.Add(value);
+                }
+            }
+        }
+
+        foreach (var property in parameterType.GetProperties(BindingFlags.Public | BindingFlags.Static))
+        {
+            if (property.CanRead && parameterType.IsAssignableFrom(property.PropertyType))
+            {
+                var value = property.GetValue(null, null);
+                if (value != null)
+                {
+                    candidates.Add(value);
+                }
+            }
+        }
+
+        if (candidates.Count == 0)
+        {
+            return false;
+        }
+
+        var preferredNames = new[]
+        {
+            "Override",
+            "Replace",
+            "None",
+            "Default",
+            "IgnoreMissingReferencedObjects",
+            "IgnoreMissingReferencedObject",
+            "IgnoreStructuralChanges",
+            "IgnoreUnitAttributes",
+        };
+
+        candidates = candidates
+            .GroupBy(item => item.ToString())
+            .Select(group => group.First())
+            .OrderBy(item =>
+            {
+                var name = item.ToString() ?? string.Empty;
+                var index = Array.FindIndex(
+                    preferredNames,
+                    preferred => string.Equals(preferred, name, StringComparison.OrdinalIgnoreCase)
+                );
+                return index < 0 ? int.MaxValue : index;
+            })
+            .ToList();
+
+        return candidates.Count > 0;
     }
 
     private static object TryCreateOptionInstance(Type parameterType)
