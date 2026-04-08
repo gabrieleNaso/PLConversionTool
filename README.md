@@ -28,6 +28,81 @@ Il contesto tecnico consolidato è descritto in [Contesto_progetto.md](/home/adm
 - `output/`: file generati dal tool
 - `tmp/`: artefatti temporanei di lavoro
 
+## Stato attuale
+
+Il progetto non e' piu' solo nella fase di generazione XML: oggi esiste anche una pipeline reale di collegamento a `TIA Portal` tramite VM Windows.
+
+Stato verificato:
+
+- il compose Linux espone `backend`, `frontend` e `tia-bridge`;
+- `tia-bridge` punta alla VM Windows che ospita `TIA Portal`;
+- l'agent Windows si avvia localmente su `:8050`;
+- la VM Linux raggiunge correttamente l'agent Windows via rete;
+- l'agent Windows apre `TIA Portal Openness` in modalita' reale;
+- l'agent apre il progetto `.ap20` configurato;
+- l'agent trova il `PlcSoftware` del progetto;
+- l'agent arriva a invocare realmente `PlcBlockComposition.Import(...)`;
+- gli errori Openness vengono intercettati e riportati nel `detail` dei job.
+
+Questo significa che l'intera catena tecnica:
+
+- Linux -> `tia-bridge` -> VM Windows -> `TIA Portal Openness`
+
+e' stata verificata fino al punto dell'import reale nel progetto TIA.
+
+## Punto Di Blocco Attuale
+
+Il blocco reale emerso nei test non e' piu' nel codice dell'agent o nella connettivita', ma nel licensing di TIA:
+
+- l'import di un blocco `SW.Blocks.FB` parte davvero;
+- TIA tenta di creare il blocco;
+- l'operazione viene rifiutata con `LicenseNotFoundException`;
+- il messaggio esplicito restituito da TIA indica che manca la licenza `STEP 7 Professional`.
+
+In altre parole:
+
+- l'agent Windows ora funziona;
+- Openness ora funziona;
+- il progetto TIA viene aperto;
+- la chiamata reale di import viene eseguita;
+- il rifiuto arriva da TIA per requisito di licenza, non per errore applicativo del progetto.
+
+## Cosa Fa Oggi L'Agent Windows
+
+Il modulo [tia_windows_agent/README.md](/home/administrator/PLConversionTool/tia_windows_agent/README.md) contiene solo la guida operativa, ma sul piano funzionale oggi l'agent:
+
+- espone `GET /health`;
+- espone `GET /api/status`;
+- espone `GET /api/openness/diagnostics`;
+- espone `POST /api/jobs/import`;
+- espone `POST /api/jobs/compile`;
+- espone `POST /api/jobs/export`;
+- espone `GET /api/jobs`;
+- espone `GET /api/jobs/{jobId}`;
+- accoda i job in memoria;
+- li esegue in background;
+- li processa in modo seriale;
+- carica `Siemens.Engineering.dll`;
+- apre `TiaPortal`;
+- apre il progetto `.ap20`;
+- prova compile/import/export via reflection sulle API Siemens disponibili;
+- intercetta in modo esplicito errori come `EngineeringSecurityException` e `LicenseNotFoundException`.
+
+## Implicazione Tecnica
+
+Questo repository ha quindi gia' validato la parte architetturale piu' rischiosa del layer TIA:
+
+- adapter Linux separato da runtime Windows;
+- uso reale di `TIA Portal Openness`;
+- isolamento del layer di orchestrazione rispetto alla generazione XML;
+- diagnostica degli errori TIA a livello di job.
+
+I prossimi passi pratici non sono piu' "far parlare l'agent con TIA", ma:
+
+1. rendere disponibile una licenza `STEP 7 Professional` sulla VM;
+2. ripetere l'import reale del blocco;
+3. estendere la stessa pipeline a compile ed export con esiti consolidati.
+
 ## Quickstart
 Da root progetto:
 
@@ -80,6 +155,7 @@ Nel caso in cui `TIA Portal` giri su una VM Windows VMware, il pattern corretto 
 - `backend/`: API, servizi e test backend già avviati
 - `frontend/`: interfaccia Next.js
 - `tia_bridge/`: adapter service per il layer TIA / Openness
+- `tia_windows_agent/`: agent Windows compatibile con Openness usato per import/compile/export reali verso TIA
 - `docker/`: Dockerfile di sviluppo
 - `datasets/typicals/`: XML di riferimento usati per reverse engineering
 - `datasets/corpus/`: corpus da analizzare e classificare
