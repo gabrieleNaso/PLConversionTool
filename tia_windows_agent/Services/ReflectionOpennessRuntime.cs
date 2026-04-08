@@ -678,14 +678,13 @@ public sealed class ReflectionOpennessRuntime(
             return false;
         }
 
-        var ctor = parameterType.GetConstructor(Type.EmptyTypes);
-        if (ctor == null)
+        if (parameterType.IsAbstract || parameterType.IsInterface)
         {
             return false;
         }
 
-        var instance = Activator.CreateInstance(parameterType);
-        var configuredInstance = Activator.CreateInstance(parameterType);
+        var instance = TryCreateOptionInstance(parameterType);
+        var configuredInstance = TryCreateOptionInstance(parameterType);
 
         if (instance == null || configuredInstance == null)
         {
@@ -696,6 +695,38 @@ public sealed class ReflectionOpennessRuntime(
 
         candidates = new[] { instance, configuredInstance };
         return true;
+    }
+
+    private static object TryCreateOptionInstance(Type parameterType)
+    {
+        try
+        {
+            return Activator.CreateInstance(parameterType, true);
+        }
+        catch
+        {
+        }
+
+        if (parameterType.IsValueType)
+        {
+            try
+            {
+                return Activator.CreateInstance(parameterType);
+            }
+            catch
+            {
+            }
+        }
+
+        try
+        {
+            return FormatterServices.GetUninitializedObject(parameterType);
+        }
+        catch
+        {
+        }
+
+        return null;
     }
 
     private static void ConfigureOptionVariant(object instance, bool setBooleansToTrue)
