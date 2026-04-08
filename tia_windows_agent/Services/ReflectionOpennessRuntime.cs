@@ -309,6 +309,21 @@ public sealed class ReflectionOpennessRuntime(
         var plcSoftware = TryFindFirstPlcSoftware(project)
             ?? throw new InvalidOperationException("Nessun PlcSoftware trovato nel progetto.");
 
+        var compileBeforeExportResult = await CompileAsync(
+            project.GetType().Assembly,
+            project,
+            job with { Operation = "compile", SaveProject = true },
+            cancellationToken
+        );
+
+        if (!string.Equals(compileBeforeExportResult.Status, "completed", StringComparison.OrdinalIgnoreCase))
+        {
+            return new OpennessExecutionResult(
+                "blocked",
+                $"Export annullato: compile automatica preliminare non riuscita. {compileBeforeExportResult.Detail}"
+            );
+        }
+
         var rootBlockGroup = GetPropertyValue(plcSoftware, "BlockGroup")
             ?? throw new InvalidOperationException("BlockGroup non trovato su PlcSoftware.");
 
@@ -344,7 +359,7 @@ public sealed class ReflectionOpennessRuntime(
         await Task.CompletedTask;
         return new OpennessExecutionResult(
             "completed",
-            $"Export completato dal blocco '{blockName}' verso '{job.ArtifactPath}'. {exportDescription}"
+            $"Compile automatica preliminare riuscita. Export completato dal blocco '{blockName}' verso '{job.ArtifactPath}'. {exportDescription}"
         );
     }
 

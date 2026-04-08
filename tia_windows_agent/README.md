@@ -354,6 +354,8 @@ in questa versione `artifactPath` e' ancora obbligatorio come campo di contratto
 
 ### Export
 
+L'endpoint `export` esegue automaticamente una `compile` preliminare del `PlcSoftware` prima di tentare l'export. Se la compile trova errori reali, l'export viene annullato.
+
 ```powershell
 $body = @{
   operation = "export"
@@ -450,6 +452,9 @@ Invoke-RestMethod `
 ### Export reale
 
 Aggiorna solo `targetName` con il nome effettivo del blocco presente in TIA se diverso.
+
+Nota:
+prima dell'export l'agent esegue automaticamente una `compile` del `PlcSoftware`. I `warning` non bloccano l'operazione; gli errori reali si'.
 
 ```powershell
 $body = @{
