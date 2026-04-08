@@ -449,6 +449,8 @@ public sealed class ReflectionOpennessRuntime(
 
     private static bool TryInvokeImport(object target, FileInfo fileInfo, out string description)
     {
+        string lastError = null;
+
         foreach (var method in target.GetType().GetMethods(BindingFlags.Instance | BindingFlags.Public))
         {
             if (!string.Equals(method.Name, "Import", StringComparison.Ordinal))
@@ -456,28 +458,37 @@ public sealed class ReflectionOpennessRuntime(
                 continue;
             }
 
-            if (!TryBuildFileInvocationArguments(method, fileInfo, out var args))
+            object?[][] allArgs;
+            if (!TryBuildFileInvocationArguments(method, fileInfo, out allArgs))
             {
                 continue;
             }
 
-            try
+            foreach (var args in allArgs)
             {
-                method.Invoke(target, args);
-                description = $"Metodo {method.Name} invocato su {target.GetType().Name}.";
-                return true;
-            }
-            catch
-            {
+                try
+                {
+                    method.Invoke(target, args);
+                    description = $"Metodo {method.Name} invocato su {target.GetType().Name} con argomenti compatibili.";
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    lastError = BuildInvocationErrorDetail(ex);
+                }
             }
         }
 
-        description = "Nessuna overload Import compatibile invocata.";
+        description = lastError is null
+            ? "Nessuna overload Import compatibile invocata."
+            : $"Nessuna overload Import compatibile invocata. Ultimo errore: {lastError}";
         return false;
     }
 
     private static bool TryInvokeExport(object target, FileInfo fileInfo, out string description)
     {
+        string lastError = null;
+
         foreach (var method in target.GetType().GetMethods(BindingFlags.Instance | BindingFlags.Public))
         {
             if (!string.Equals(method.Name, "Export", StringComparison.Ordinal))
@@ -485,77 +496,87 @@ public sealed class ReflectionOpennessRuntime(
                 continue;
             }
 
-            if (!TryBuildFileInvocationArguments(method, fileInfo, out var args))
+            object?[][] allArgs;
+            if (!TryBuildFileInvocationArguments(method, fileInfo, out allArgs))
             {
                 continue;
             }
 
-            try
+            foreach (var args in allArgs)
             {
-                method.Invoke(target, args);
-                description = $"Metodo {method.Name} invocato su {target.GetType().Name}.";
-                return true;
-            }
-            catch
-            {
+                try
+                {
+                    method.Invoke(target, args);
+                    description = $"Metodo {method.Name} invocato su {target.GetType().Name} con argomenti compatibili.";
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    lastError = BuildInvocationErrorDetail(ex);
+                }
             }
         }
 
-        description = "Nessuna overload Export compatibile invocata.";
+        description = lastError is null
+            ? "Nessuna overload Export compatibile invocata."
+            : $"Nessuna overload Export compatibile invocata. Ultimo errore: {lastError}";
         return false;
     }
 
     private static bool TryBuildFileInvocationArguments(
         MethodInfo method,
         FileInfo fileInfo,
-        out object?[] args
+        out object?[][] argsSets
     )
     {
         var parameters = method.GetParameters();
-        args = new object?[parameters.Length];
+        argsSets = null;
 
         if (parameters.Length == 0 || parameters[0].ParameterType != typeof(FileInfo))
         {
             return false;
         }
 
-        args[0] = fileInfo;
+        var candidateValues = new List<object>[parameters.Length];
+        candidateValues[0] = new List<object> { fileInfo };
 
         for (var index = 1; index < parameters.Length; index++)
         {
             var parameter = parameters[index];
             if (parameter.HasDefaultValue)
             {
-                args[index] = parameter.DefaultValue;
+                candidateValues[index] = new List<object> { parameter.DefaultValue };
                 continue;
             }
 
             if (parameter.ParameterType == typeof(bool))
             {
-                args[index] = true;
+                candidateValues[index] = new List<object> { true, false };
                 continue;
             }
 
             if (parameter.ParameterType.IsEnum)
             {
-                args[index] = GetPreferredEnumValue(parameter.ParameterType);
+                candidateValues[index] = GetEnumCandidates(parameter.ParameterType).Cast<object>().ToList();
                 continue;
             }
 
             return false;
         }
 
+        argsSets = BuildCartesianProduct(candidateValues);
         return true;
     }
 
     private static object?[] BuildFileArguments(MethodInfo method, FileInfo fileInfo)
     {
-        if (!TryBuildFileInvocationArguments(method, fileInfo, out var args))
+        object?[][] argsSets;
+        if (!TryBuildFileInvocationArguments(method, fileInfo, out argsSets) || argsSets.Length == 0)
         {
             throw new InvalidOperationException($"Firma non supportata per il metodo {method.Name}.");
         }
 
-        return args;
+        return argsSets[0];
     }
 
     private static object GetPreferredEnumValue(Type enumType)
@@ -574,6 +595,72 @@ public sealed class ReflectionOpennessRuntime(
 
         return Enum.GetValues(enumType).GetValue(0)
             ?? throw new InvalidOperationException($"Enum vuoto non supportato: {enumType.FullName}");
+    }
+
+    private static Array GetEnumCandidates(Type enumType)
+    {
+        var values = Enum.GetValues(enumType).Cast<object>().ToList();
+        if (values.Count == 0)
+        {
+            throw new InvalidOperationException($"Enum vuoto non supportato: {enumType.FullName}");
+        }
+
+        if (values.Count == 1)
+        {
+            var single = Array.CreateInstance(enumType, 1);
+            single.SetValue(values[0], 0);
+            return single;
+        }
+
+        var preferred = GetPreferredEnumValue(enumType);
+        var ordered = new List<object> { preferred };
+        ordered.AddRange(values.Where(value => !Equals(value, preferred)));
+
+        var result = Array.CreateInstance(enumType, ordered.Count);
+        for (var index = 0; index < ordered.Count; index++)
+        {
+            result.SetValue(ordered[index], index);
+        }
+
+        return result;
+    }
+
+    private static object?[][] BuildCartesianProduct(IReadOnlyList<List<object>> values)
+    {
+        var results = new List<object?[]>();
+        var current = new object?[values.Count];
+
+        void Recurse(int index)
+        {
+            if (index == values.Count)
+            {
+                results.Add((object?[])current.Clone());
+                return;
+            }
+
+            foreach (var value in values[index])
+            {
+                current[index] = value;
+                Recurse(index + 1);
+            }
+        }
+
+        Recurse(0);
+        return results.ToArray();
+    }
+
+    private static string BuildInvocationErrorDetail(Exception exception)
+    {
+        var chain = new List<string>();
+        var current = exception;
+
+        while (current != null)
+        {
+            chain.Add($"{current.GetType().FullName}: {current.Message}");
+            current = current.InnerException;
+        }
+
+        return string.Join(" | INNER -> ", chain);
     }
 
     private static void TrySaveProject(object project)
