@@ -386,6 +386,95 @@ Dettaglio:
 Invoke-RestMethod http://localhost:8050/api/jobs/job-xxxxxxxx
 ```
 
+## Comandi utili gia' usati nei test reali
+
+Questi sono i comandi PowerShell usati nei test reali sulla VM Windows, mantenendo i path operativi gia' validati.
+
+### Avvio pulito dell'agent
+
+```powershell
+cd C:\Users\Admin\Desktop\tia_windows_agent
+.\clean-agent.ps1
+dotnet build .\PLConversionTool.TiaAgent.csproj --configuration Release
+.\run-agent.ps1
+```
+
+### Health e diagnostica
+
+```powershell
+Invoke-RestMethod http://localhost:8050/health
+Invoke-RestMethod http://localhost:8050/api/status
+Invoke-RestMethod http://localhost:8050/api/openness/diagnostics
+```
+
+### Import reale
+
+```powershell
+$body = @{
+  operation = "import"
+  artifactPath = "C:\Users\Admin\Desktop\PLConverionTool\output\Type_28.xml"
+  projectPath = "C:\Users\Admin\Desktop\prova_connessione_openness\prova_connessione_openness.ap20"
+  targetPath = $null
+  targetName = $null
+  saveProject = $true
+  notes = "import test"
+} | ConvertTo-Json
+
+Invoke-RestMethod `
+  -Method Post `
+  -Uri http://localhost:8050/api/jobs/import `
+  -ContentType "application/json" `
+  -Body $body
+```
+
+### Compile reale
+
+```powershell
+$body = @{
+  operation = "compile"
+  artifactPath = "C:\Users\Admin\Desktop\PLConverionTool\tmp\compile-request.json"
+  projectPath = "C:\Users\Admin\Desktop\prova_connessione_openness\prova_connessione_openness.ap20"
+  targetPath = $null
+  targetName = $null
+  saveProject = $true
+  notes = "compile before export"
+} | ConvertTo-Json
+
+Invoke-RestMethod `
+  -Method Post `
+  -Uri http://localhost:8050/api/jobs/compile `
+  -ContentType "application/json" `
+  -Body $body
+```
+
+### Export reale
+
+Aggiorna solo `targetName` con il nome effettivo del blocco presente in TIA se diverso.
+
+```powershell
+$body = @{
+  operation = "export"
+  artifactPath = "C:\Users\Admin\Desktop\PLConverionTool\output\Type_28_export.xml"
+  projectPath = "C:\Users\Admin\Desktop\prova_connessione_openness\prova_connessione_openness.ap20"
+  targetPath = $null
+  targetName = "Type_28"
+  saveProject = $false
+  notes = "export test"
+} | ConvertTo-Json
+
+Invoke-RestMethod `
+  -Method Post `
+  -Uri http://localhost:8050/api/jobs/export `
+  -ContentType "application/json" `
+  -Body $body
+```
+
+### Lettura rapida dell'ultimo job
+
+```powershell
+(Invoke-RestMethod http://localhost:8050/api/jobs) | Select-Object -Last 1
+```
+
 ## Significato degli stati job
 
 Gli stati che puoi vedere oggi sono:
@@ -490,10 +579,6 @@ Se vuoi andare dritto, fai esattamente questo:
 9. quando la diagnostica e' tutta corretta, aggiorna il `compose.dev.yml` Linux con l'IP reale della VM
 10. verifica dal Linux `curl http://IP_VM:8050/health`
 
-## Prossimo step tecnico
+## Nota operativa finale
 
-Quando l'agent parte correttamente nella VM e la diagnostica e' pulita, il passo successivo e':
-
-- completare le chiamate reali `open project / import / compile / export`.
-
-Quello e' il punto in cui i dettagli finali devono essere adattati al comportamento reale della tua installazione TIA.
+Quando import, compile ed export funzionano, il punto successivo non e' piu' il setup dell'agent ma l'integrazione del workflow automatico del progetto con questi endpoint gia' validati.

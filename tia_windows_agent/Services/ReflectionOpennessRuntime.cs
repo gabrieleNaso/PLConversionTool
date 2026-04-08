@@ -144,7 +144,7 @@ public sealed class ReflectionOpennessRuntime(
             {
                 return job.Operation switch
                 {
-                    "compile" => await CompileAsync(assembly, project, cancellationToken),
+                    "compile" => await CompileAsync(assembly, project, job, cancellationToken),
                     "import" => await ImportAsync(project, job, cancellationToken),
                     "export" => await ExportAsync(project, job, cancellationToken),
                     _ => throw new InvalidOperationException($"Operazione non supportata: {job.Operation}"),
@@ -196,6 +196,7 @@ public sealed class ReflectionOpennessRuntime(
     private static async Task<OpennessExecutionResult> CompileAsync(
         Assembly assembly,
         object project,
+        TiaJob job,
         CancellationToken cancellationToken
     )
     {
@@ -204,12 +205,13 @@ public sealed class ReflectionOpennessRuntime(
         var compilableType = assembly.GetType("Siemens.Engineering.Compiler.ICompilable")
             ?? throw new InvalidOperationException("Tipo Siemens.Engineering.Compiler.ICompilable non trovato.");
 
-        var candidates = new List<object> { project };
         var plcSoftware = TryFindFirstPlcSoftware(project);
+        var candidates = new List<object>();
         if (plcSoftware is not null)
         {
             candidates.Add(plcSoftware);
         }
+        candidates.Add(project);
 
         foreach (var candidate in candidates)
         {
@@ -229,10 +231,26 @@ public sealed class ReflectionOpennessRuntime(
             }
 
             var result = compileMethod.Invoke(compilable, Array.Empty<object?>());
-            var summary = DescribeCompilationResult(result);
+            var summary = DescribeCompilationResult(result, out var compileSucceeded);
             await Task.CompletedTask;
 
-            return new OpennessExecutionResult("completed", $"Compile completata. {summary}");
+            if (!compileSucceeded)
+            {
+                return new OpennessExecutionResult(
+                    "blocked",
+                    $"Compile eseguita ma TIA ha restituito un esito non valido su '{DescribeObject(candidate)}'. {summary}"
+                );
+            }
+
+            if (job.SaveProject)
+            {
+                TrySaveProject(project);
+            }
+
+            return new OpennessExecutionResult(
+                "completed",
+                $"Compile completata su '{DescribeObject(candidate)}'. {summary}"
+            );
         }
 
         return new OpennessExecutionResult(
@@ -1006,18 +1024,98 @@ public sealed class ReflectionOpennessRuntime(
         }
     }
 
-    private static string DescribeCompilationResult(object? result)
+    private static string DescribeCompilationResult(object? result, out bool succeeded)
     {
         if (result is null)
         {
+            succeeded = true;
             return "Nessun risultato dettagliato restituito dal compilatore.";
         }
 
         var state = GetPropertyValue(result, "State")?.ToString();
         var messages = GetPropertyValue(result, "Messages");
-        var messageCount = EnumerateObjects(messages).Count();
+        var messageList = EnumerateObjects(messages).ToList();
+        var messageCount = messageList.Count;
+        var sampleMessages = new List<string>();
+        var hasErrorMessage = false;
 
-        return $"State={state ?? "n/a"}, Messages={messageCount}.";
+        foreach (var message in messageList.Take(5))
+        {
+            var description = DescribeCompilationMessage(message);
+            if (!string.IsNullOrWhiteSpace(description))
+            {
+                sampleMessages.Add(description);
+            }
+
+            if (MessageLooksLikeError(message) || DescriptionIndicatesError(description))
+            {
+                hasErrorMessage = true;
+            }
+        }
+
+        succeeded = !StateIndicatesError(state) && !hasErrorMessage;
+
+        var details = sampleMessages.Count > 0
+            ? $" SampleMessages=[{string.Join(" | ", sampleMessages)}]."
+            : string.Empty;
+
+        return $"State={state ?? "n/a"}, Messages={messageCount}.{details}";
+    }
+
+    private static string DescribeCompilationMessage(object message)
+    {
+        var description = GetPropertyValue(message, "Description")?.ToString();
+        var text = GetPropertyValue(message, "Text")?.ToString();
+        var category = GetPropertyValue(message, "Category")?.ToString();
+        var severity = GetPropertyValue(message, "Severity")?.ToString();
+
+        var parts = new[] { severity, category, description, text }
+            .Where(part => !string.IsNullOrWhiteSpace(part))
+            .Distinct()
+            .ToArray();
+
+        return parts.Length == 0 ? message.ToString() ?? string.Empty : string.Join(" - ", parts);
+    }
+
+    private static bool MessageLooksLikeError(object message)
+    {
+        var severity = GetPropertyValue(message, "Severity")?.ToString();
+        var category = GetPropertyValue(message, "Category")?.ToString();
+
+        return StateIndicatesError(severity) || StateIndicatesError(category);
+    }
+
+    private static bool StateIndicatesError(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        var normalized = value.Trim().ToLowerInvariant();
+        return normalized.Contains("error")
+            || normalized.Contains("failed")
+            || normalized.Contains("fault")
+            || normalized.Contains("invalid");
+    }
+
+    private static bool DescriptionIndicatesError(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        var normalized = value.Trim().ToLowerInvariant();
+        if (normalized.Contains("errors: 0"))
+        {
+            return false;
+        }
+
+        return normalized.Contains("error")
+            || normalized.Contains("failed")
+            || normalized.Contains("fault")
+            || normalized.Contains("invalid");
     }
 
     private static string DescribeObject(object target)

@@ -42,30 +42,34 @@ Stato verificato:
 - l'agent apre il progetto `.ap20` configurato;
 - l'agent trova il `PlcSoftware` del progetto;
 - l'agent arriva a invocare realmente `PlcBlockComposition.Import(...)`;
+- l'import reale di un blocco XML in TIA e' stato eseguito con successo;
+- la compile reale del progetto e' stata eseguita con successo;
+- l'export reale del blocco da TIA verso XML e' stato eseguito con successo;
 - gli errori Openness vengono intercettati e riportati nel `detail` dei job.
 
 Questo significa che l'intera catena tecnica:
 
 - Linux -> `tia-bridge` -> VM Windows -> `TIA Portal Openness`
 
-e' stata verificata fino al punto dell'import reale nel progetto TIA.
+e' stata verificata end-to-end fino a import, compile ed export reali nel progetto TIA.
 
-## Punto Di Blocco Attuale
+## Risultato Operativo Attuale
 
-Il blocco reale emerso nei test non e' piu' nel codice dell'agent o nella connettivita', ma nel licensing di TIA:
+Lo stato attuale del progetto e' questo:
 
-- l'import di un blocco `SW.Blocks.FB` parte davvero;
-- TIA tenta di creare il blocco;
-- l'operazione viene rifiutata con `LicenseNotFoundException`;
-- il messaggio esplicito restituito da TIA indica che manca la licenza `STEP 7 Professional`.
+- il collegamento Linux -> Windows -> TIA e' funzionante;
+- il runtime Windows dell'agent e' funzionante;
+- gli endpoint HTTP dell'agent sono funzionanti;
+- i job `import`, `compile` ed `export` sono stati provati con esito positivo;
+- i path operativi della VM Windows sono stati fissati e validati nei test reali.
 
 In altre parole:
 
-- l'agent Windows ora funziona;
-- Openness ora funziona;
+- l'agent Windows funziona;
+- Openness funziona;
 - il progetto TIA viene aperto;
-- la chiamata reale di import viene eseguita;
-- il rifiuto arriva da TIA per requisito di licenza, non per errore applicativo del progetto.
+- la pipeline reale di scambio XML con TIA e' attiva;
+- il repository e' gia' in uno stato utilizzabile per continuare lo sviluppo del convertitore.
 
 ## Cosa Fa Oggi L'Agent Windows
 
@@ -99,9 +103,9 @@ Questo repository ha quindi gia' validato la parte architetturale piu' rischiosa
 
 I prossimi passi pratici non sono piu' "far parlare l'agent con TIA", ma:
 
-1. rendere disponibile una licenza `STEP 7 Professional` sulla VM;
-2. ripetere l'import reale del blocco;
-3. estendere la stessa pipeline a compile ed export con esiti consolidati.
+1. consolidare i test su piu' tipologie di blocchi XML;
+2. stabilizzare la gestione delle dipendenze progetto, blocchi e tipi;
+3. collegare il workflow automatico del convertitore AWL -> GRAPH alla pipeline TIA gia' validata.
 
 ## Quickstart
 Da root progetto:
