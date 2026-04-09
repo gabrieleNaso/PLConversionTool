@@ -174,6 +174,18 @@ public static class Program
             return;
         }
 
+        if (method == "POST" && path == "/api/files/read")
+        {
+            ReadFile(context, options);
+            return;
+        }
+
+        if (method == "POST" && path == "/api/files/list")
+        {
+            ListFiles(context, options);
+            return;
+        }
+
         WriteJson(context, 404, new { error = "not_found", path });
     }
 
@@ -249,6 +261,63 @@ public static class Program
             new FileUploadResponse(
                 StoredPath: normalizedDestination,
                 SizeBytes: content.LongLength
+            )
+        );
+    }
+
+    private static void ReadFile(HttpListenerContext context, TiaAgentOptions options)
+    {
+        var requestBody = ReadBody(context.Request);
+        var payload = string.IsNullOrWhiteSpace(requestBody)
+            ? new Dictionary<string, object>()
+            : Json.Deserialize<Dictionary<string, object>>(requestBody);
+
+        var filePath = Path.GetFullPath(GetString(payload, "path"));
+        EnsurePathAllowed(filePath, options);
+
+        if (!File.Exists(filePath))
+        {
+            throw new FileNotFoundException("File non trovato.", filePath);
+        }
+
+        var content = File.ReadAllBytes(filePath);
+        WriteJson(
+            context,
+            200,
+            new FileReadResponse(
+                SourcePath: filePath,
+                ContentBase64: Convert.ToBase64String(content),
+                SizeBytes: content.LongLength
+            )
+        );
+    }
+
+    private static void ListFiles(HttpListenerContext context, TiaAgentOptions options)
+    {
+        var requestBody = ReadBody(context.Request);
+        var payload = string.IsNullOrWhiteSpace(requestBody)
+            ? new Dictionary<string, object>()
+            : Json.Deserialize<Dictionary<string, object>>(requestBody);
+
+        var rootPath = Path.GetFullPath(GetString(payload, "rootPath"));
+        EnsurePathAllowed(rootPath, options);
+
+        if (!Directory.Exists(rootPath))
+        {
+            throw new DirectoryNotFoundException($"Directory non trovata: {rootPath}");
+        }
+
+        var files = Directory
+            .GetFiles(rootPath, "*.xml", SearchOption.AllDirectories)
+            .Select(path => path.Substring(rootPath.Length).TrimStart(Path.DirectorySeparatorChar))
+            .ToList();
+
+        WriteJson(
+            context,
+            200,
+            new FileListResponse(
+                RootPath: rootPath,
+                Files: files
             )
         );
     }

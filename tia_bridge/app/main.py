@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException
 
 from app.artifact_stager import stage_import_artifact
 from app.config import get_bridge_mode, get_remote_target, get_runtime_paths, get_windows_agent_url
+from app.export_sync import ExportSyncContext, stage_export_target, sync_exported_artifact
 from app.schemas import (
     SUPPORTED_OPERATIONS,
     BridgeHealth,
@@ -24,6 +25,7 @@ app = FastAPI(
 )
 
 stub_jobs = StubJobStore()
+export_sync_jobs: dict[str, ExportSyncContext] = {}
 
 
 def get_windows_agent_client() -> WindowsAgentClient:
@@ -60,7 +62,7 @@ async def health() -> BridgeHealth:
         remoteAgentUrl=remote_target["agentUrl"],
         remoteHost=remote_target["host"],
         remotePort=remote_target["port"],
-        remoteReachable=await probe_remote_health(),
+        remoteReachable=None,
     )
 
 
@@ -132,7 +134,20 @@ async def queue_job(operation: str, request: JobRequest) -> dict:
             normalized_request,
             get_runtime_paths()["workspace"],
         )
-        return await client.queue_job(operation, staged_request)
+        staged_request, export_context = await stage_export_target(
+            client,
+            staged_request,
+            get_runtime_paths()["workspace"],
+        )
+        response = await client.queue_job(operation, staged_request)
+        response_job_id = response.get("jobId") or response.get("JobId")
+        if export_context is not None and response_job_id:
+            export_sync_jobs[response_job_id] = export_context
+            if "artifactPath" in response:
+                response["artifactPath"] = export_context.local_path
+            if "ArtifactPath" in response:
+                response["ArtifactPath"] = export_context.local_path
+        return response
     except (HTTPException, WindowsAgentError) as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
@@ -143,7 +158,11 @@ async def list_jobs() -> dict | list:
         return [job.model_dump() for job in stub_jobs.list_jobs()]
 
     try:
-        return await get_windows_agent_client().list_jobs()
+        client = get_windows_agent_client()
+        jobs = await client.list_jobs()
+        if isinstance(jobs, list):
+            return [await _maybe_sync_export_job(client, job) for job in jobs]
+        return jobs
     except (HTTPException, WindowsAgentError) as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
@@ -157,6 +176,29 @@ async def get_job(job_id: str) -> dict:
         return job.model_dump()
 
     try:
-        return await get_windows_agent_client().get_job(job_id)
+        client = get_windows_agent_client()
+        job = await client.get_job(job_id)
+        return await _maybe_sync_export_job(client, job)
     except (HTTPException, WindowsAgentError) as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
+async def _maybe_sync_export_job(client: WindowsAgentClient, job: dict) -> dict:
+    job_id = job.get("JobId") or job.get("jobId")
+    if not job_id or job_id not in export_sync_jobs:
+        return job
+
+    context = export_sync_jobs[job_id]
+    status = (job.get("Status") or job.get("status") or "").lower()
+    if status == "completed" and not context.synced:
+        await sync_exported_artifact(client, context)
+
+    job["ArtifactPath"] = context.local_path
+    detail = job.get("Detail") or job.get("detail") or ""
+    if context.synced and "Ubuntu sync" not in detail:
+        detail = f"{detail} Ubuntu sync completato verso '{context.local_path}'.".strip()
+    if "Detail" in job:
+        job["Detail"] = detail
+    else:
+        job["detail"] = detail
+    return job

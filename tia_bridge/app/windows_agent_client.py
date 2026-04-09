@@ -38,6 +38,12 @@ class WindowsAgentClient:
         }
         return await self._request("POST", "/api/files/upload", json=payload)
 
+    async def read_file(self, path: PureWindowsPath | str) -> dict:
+        return await self._request("POST", "/api/files/read", json={"path": str(path)})
+
+    async def list_files(self, root_path: PureWindowsPath | str) -> dict:
+        return await self._request("POST", "/api/files/list", json={"rootPath": str(root_path)})
+
     async def list_jobs(self) -> dict | list:
         return await self._request("GET", "/api/jobs")
 

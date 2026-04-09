@@ -16,7 +16,7 @@ services:
       GIT_CONFIG_GLOBAL: /tmp/.gitconfig
       TIA_BRIDGE_HOST: 0.0.0.0
       TIA_BRIDGE_PORT: ${TIA_BRIDGE_PORT:-8010}
-      TIA_BRIDGE_MODE: ${TIA_BRIDGE_MODE:-stub}
+      TIA_BRIDGE_MODE: ${TIA_BRIDGE_MODE:-real}
       TIA_PROJECT_ROOT: /workspace
       TIA_OUTPUT_DIR: /workspace/output
       TIA_TMP_DIR: /workspace/tmp

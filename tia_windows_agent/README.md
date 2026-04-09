@@ -207,9 +207,11 @@ Per liberare anche la cartella e pulire i file di build:
 Questo script:
 
 - sposta la shell fuori dalla cartella dell'agent;
-- termina il processo se ancora presente;
+- richiama `stop-agent.ps1`;
+- termina il processo agent e prova a chiudere anche eventuali processi figli ancora vivi;
 - rimuove `bin/` e `obj/`;
-- evita il caso tipico in cui Windows considera ancora la cartella "in uso".
+- fa piu' tentativi di rimozione;
+- riduce il caso tipico in cui Windows considera ancora la cartella "in uso".
 
 Oppure:
 
@@ -302,6 +304,30 @@ Quando lavori tramite `tia-bridge`, il flusso remoto e' questo:
 4. il `tia-bridge` crea il job `import` verso l'agent Windows usando il path Windows appena creato;
 5. l'agent Windows importa il contenuto in `TIA Portal`.
 
+Stato operativo verificato:
+
+- questo workflow remoto e' stato testato con successo;
+- un file XML presente in `output/` sulla VM Ubuntu viene caricato nella `TempDirectory` Windows;
+- il job remoto passa poi all'import reale in `TIA Portal`;
+- non serve piu' copiare manualmente il file XML sulla VM Windows per l'import.
+
+## Workflow remoto Windows -> Ubuntu
+
+Quando lavori tramite `tia-bridge` per l'`export`, il flusso remoto e' questo:
+
+1. la richiesta di `export` parte dalla VM Ubuntu con `artifactPath` Linux;
+2. il `tia-bridge` prepara una path temporanea nella `TempDirectory` Windows;
+3. l'agent Windows esegue `compile` automatica preliminare e poi l'`export` verso quella path temporanea;
+4. il `tia-bridge` legge i file esportati dalla VM Windows;
+5. il `tia-bridge` sincronizza il risultato nella path Linux richiesta sulla VM Ubuntu.
+
+Stato operativo verificato:
+
+- questo workflow remoto di `export` e' stato testato con successo;
+- il file esportato compare sulla VM Ubuntu senza copia manuale dalla VM Windows;
+- per l'`export` di un singolo blocco conviene usare `artifactPath` Linux con nome file `.xml` esplicito;
+- per l'`export` di un gruppo intero conviene usare `artifactPath` Linux come directory.
+
 Per il test remoto piu' semplice, usa file in:
 
 - `/workspace/output`
@@ -343,6 +369,7 @@ Eccezioni operative principali:
 - Per `import`, se `artifactPath` e' una directory, vengono importati tutti i `*.xml` trovati nella cartella e nelle sottocartelle, in ordine alfabetico.
 - Per `export`, se `artifactPath` e' una directory, vengono esportati tutti i blocchi del gruppo selezionato e dei suoi sottogruppi.
 - Per `export`, se `artifactPath` e' un file, devi indicare il blocco con `targetName` oppure usare un nome file coerente con il blocco da esportare.
+- Per `export`, se `artifactPath` e' una directory ma `targetName` e' valorizzato, viene esportato un solo blocco dentro quella directory.
 - Se `targetPath` punta a un gruppo inesistente, il job va in errore.
 - Se `targetName` punta a un blocco inesistente, l'`export` va in errore.
 - Se `artifactPath` di `import` non esiste come file o directory, il job va in errore.
@@ -579,6 +606,10 @@ Eccezioni pratiche del workflow remoto:
 - perche' il bridge veda il file, il path deve essere accessibile dentro il container;
 - il modo piu' semplice e' usare `output/...` o `tmp/...` del repository;
 - dopo il trasferimento, il job gira sul path Windows temporaneo creato dall'agent.
+- se il job remoto mostra ancora un `artifactPath` Linux nel dettaglio finale, il `tia-bridge` non sta usando la versione aggiornata.
+- se il job remoto va in `completed`, in TIA conviene comunque fare refresh o riaprire il progetto per vedere subito il blocco importato.
+- per l'`export`, la sync verso Ubuntu avviene quando il bridge legge il job completato tramite `/api/jobs` o `/api/jobs/{jobId}`.
+- se l'`export` remoto finisce ma il file non compare su Ubuntu, controlla che il `tia-bridge` sia aggiornato e che tu abbia interrogato il job dopo il completamento.
 
 ### Compile reale
 
@@ -671,6 +702,35 @@ Invoke-RestMethod `
   -Uri http://localhost:8050/api/jobs/export `
   -ContentType "application/json" `
   -Body $body
+```
+
+### Export remoto da Windows a Ubuntu di un solo blocco
+
+Dalla VM Ubuntu:
+
+```bash
+curl -X POST http://192.167.1.20:8010/api/jobs/export \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "artifactPath": "output/remote_exports/Graph_StressTest_Impianto_v3.xml",
+    "projectPath": "C:\\Users\\Admin\\Desktop\\prova_connessione_openness\\prova_connessione_openness.ap20",
+    "targetPath": null,
+    "targetName": "Graph_StressTest_Impianto_v3",
+    "saveProject": false,
+    "notes": "remote single export to ubuntu"
+  }'
+```
+
+Poi leggi il job per attivare la sync verso Ubuntu:
+
+```bash
+curl http://192.167.1.20:8010/api/jobs
+```
+
+E controlla il file sulla VM Ubuntu:
+
+```bash
+ls -l /home/administrator/PLConversionTool/output/remote_exports/Graph_StressTest_Impianto_v3.xml
 ```
 
 ### Lettura rapida dell'ultimo job

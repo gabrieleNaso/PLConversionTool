@@ -30,7 +30,7 @@ async def stage_import_artifact(
         return request
 
     remote_status = await client.get_status()
-    remote_temp_directory = remote_status.get("tempDirectory")
+    remote_temp_directory = remote_status.get("tempDirectory") or remote_status.get("TempDirectory")
     if not remote_temp_directory:
         return request
 

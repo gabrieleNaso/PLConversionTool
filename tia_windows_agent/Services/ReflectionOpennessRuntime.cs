@@ -349,22 +349,26 @@ public sealed class ReflectionOpennessRuntime(
         var rootBlockGroup = GetPropertyValue(plcSoftware, "BlockGroup")
             ?? throw new InvalidOperationException("BlockGroup non trovato su PlcSoftware.");
 
+        var blockName = !string.IsNullOrWhiteSpace(job.TargetName)
+            ? job.TargetName
+            : Path.GetFileNameWithoutExtension(job.ArtifactPath);
+
         var exportAsDirectory = Path.GetExtension(job.ArtifactPath).Length == 0;
-        if (exportAsDirectory)
+        if (exportAsDirectory && string.IsNullOrWhiteSpace(job.TargetName))
         {
             return await ExportMultipleAsync(project, rootBlockGroup, job, cancellationToken);
         }
 
-        var blockName = !string.IsNullOrWhiteSpace(job.TargetName)
-            ? job.TargetName
-            : Path.GetFileNameWithoutExtension(job.ArtifactPath);
+        var effectiveArtifactPath = exportAsDirectory
+            ? Path.Combine(job.ArtifactPath, $"{SanitizePathSegment(blockName!)}.xml")
+            : job.ArtifactPath;
 
         var block = FindBlockByName(rootBlockGroup, blockName!)
             ?? throw new InvalidOperationException(
                 $"Blocco '{blockName}' non trovato nel progetto. Specifica TargetName se necessario."
             );
 
-        var exportFile = new FileInfo(job.ArtifactPath);
+        var exportFile = new FileInfo(effectiveArtifactPath);
         Directory.CreateDirectory(
             exportFile.DirectoryName
                 ?? throw new InvalidOperationException("Directory export non valida.")
@@ -387,7 +391,7 @@ public sealed class ReflectionOpennessRuntime(
         await Task.CompletedTask;
         return new OpennessExecutionResult(
             "completed",
-            $"Compile automatica preliminare riuscita. Export completato dal blocco '{blockName}' verso '{job.ArtifactPath}'. {exportDescription}"
+            $"Compile automatica preliminare riuscita. Export completato dal blocco '{blockName}' verso '{effectiveArtifactPath}'. {exportDescription}"
         );
     }
 
