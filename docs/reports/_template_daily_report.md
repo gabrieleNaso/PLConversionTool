@@ -33,5 +33,5 @@
 
 ### Link rapidi
 - **Indice docs**: `../INDEX.md`
-- **Report consolidato**: `../../Contesto_progetto.md`
-
+- **Report consolidato**: `../../report_del_09-04-2026.md`
+- **Specifica generatore XML**: `../../Specifica_regole_generatore_xml_tia_v20.md`

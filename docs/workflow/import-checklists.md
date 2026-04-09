@@ -1,7 +1,7 @@
 ## Checklist operative (TIA Portal V20 / GRAPH V2)
 
 Queste checklist sono “da eseguire sempre” prima di perdere tempo su debug casuale.
-La fonte è il report consolidato `Contesto_progetto.md` (sezioni “Checklist” e “Prossimi passi”).
+La fonte è il report consolidato `report_del_09-04-2026.md` insieme alla specifica `Specifica_regole_generatore_xml_tia_v20.md`.
 
 ### A) Checklist rapida — FB GRAPH importabile
 - **Documento/namespace**: root `Document` senza prefissi tipo `ns0:`, namespace `Interface` e `Graph` dichiarati localmente.
@@ -29,4 +29,3 @@ La fonte è il report consolidato `Contesto_progetto.md` (sezioni “Checklist�
 - **Prima**: validare struttura XML (hard) prima dei metadati runtime (soft).
 - **Poi**: isolare la causa con “diff mentale” rispetto a un golden sample importato.
 - **Regola pratica**: nei GRAPH complessi serve coerenza più stretta tra `Sequence`, `Static`, `Temp` e `FlgNet`.
-

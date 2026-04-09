@@ -6,7 +6,7 @@ Servizio Windows compatibile con `.NET Framework 4.8` da eseguire nella VM dove 
 
 Questo file contiene solo le istruzioni operative per installare, avviare, fermare e testare l'agent Windows.
 
-Per lo stato complessivo del progetto e il punto tecnico raggiunto dall'integrazione con TIA, fare riferimento al [README generale](/home/administrator/PLConversionTool/README.md).
+Per lo stato complessivo del progetto e il punto tecnico raggiunto dall'integrazione con TIA, fare riferimento al [README generale](/home/administrator/PLConversionTool/README.md) e al [report consolidato](/home/administrator/PLConversionTool/report_del_09-04-2026.md).
 
 ## Contenuto della cartella
 
