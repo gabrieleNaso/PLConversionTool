@@ -31,6 +31,7 @@ Documentazione utile:
 
 - [docs/tia-windows-vm-setup.md](/home/administrator/PLConversionTool/docs/tia-windows-vm-setup.md)
 - [docs/tia-windows-agent-api.md](/home/administrator/PLConversionTool/docs/tia-windows-agent-api.md)
+- [COMMANDS.md](/home/administrator/PLConversionTool/tia_windows_agent/COMMANDS.md)
 
 ## Prerequisiti nella VM Windows
 
