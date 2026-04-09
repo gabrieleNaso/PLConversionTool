@@ -71,3 +71,207 @@ class ConversionScaffold:
 
     def to_dict(self) -> dict:
         return asdict(self)
+
+
+@dataclass(slots=True)
+class AwlInstruction:
+    line_no: int
+    network_index: int
+    label: str | None
+    opcode: str
+    args: list[str]
+    raw: str
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+@dataclass(slots=True)
+class AwlNetwork:
+    index: int
+    title: str | None
+    raw_lines: list[str]
+    instructions: list[AwlInstruction] = field(default_factory=list)
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+@dataclass(slots=True)
+class StepCandidate:
+    name: str
+    source_networks: list[int] = field(default_factory=list)
+    activation_networks: list[int] = field(default_factory=list)
+    action_networks: list[int] = field(default_factory=list)
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+@dataclass(slots=True)
+class TransitionCandidate:
+    transition_id: str
+    source_step: str
+    target_step: str
+    network_index: int
+    guard_expression: str
+    guard_operands: list[str] = field(default_factory=list)
+    jump_labels: list[str] = field(default_factory=list)
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+@dataclass(slots=True)
+class TimerCandidate:
+    source_timer: str
+    network_index: int
+    kind: str
+    preset: str | None = None
+    trigger_operands: list[str] = field(default_factory=list)
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+@dataclass(slots=True)
+class MemoryCandidate:
+    name: str
+    role: str
+    network_index: int
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+@dataclass(slots=True)
+class FaultCandidate:
+    name: str
+    network_index: int
+    evidence: str
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+@dataclass(slots=True)
+class OutputCandidate:
+    name: str
+    network_index: int
+    action: str
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+@dataclass(slots=True)
+class AwlIR:
+    sequence_name: str
+    source_name: str
+    networks: list[AwlNetwork]
+    steps: list[StepCandidate]
+    transitions: list[TransitionCandidate]
+    timers: list[TimerCandidate]
+    memories: list[MemoryCandidate]
+    faults: list[FaultCandidate]
+    outputs: list[OutputCandidate]
+    manual_logic_networks: list[int] = field(default_factory=list)
+    auto_logic_networks: list[int] = field(default_factory=list)
+    external_refs: list[str] = field(default_factory=list)
+    assumptions: list[str] = field(default_factory=list)
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+@dataclass(slots=True)
+class ValidationIssue:
+    level: str
+    code: str
+    message: str
+    context: str | None = None
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+@dataclass(slots=True)
+class ArtifactPreview:
+    artifact_type: str
+    file_name: str
+    content: str
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+@dataclass(slots=True)
+class GraphStepNode:
+    name: str
+    step_no: int
+    init: bool
+    source_step: str
+    action_networks: list[int] = field(default_factory=list)
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+@dataclass(slots=True)
+class GraphTransitionNode:
+    name: str
+    transition_no: int
+    source_step: str
+    target_step: str
+    guard_expression: str
+    network_index: int
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+@dataclass(slots=True)
+class GraphBranchNode:
+    name: str
+    branch_type: str
+    owner_step: str
+    transition_targets: list[str] = field(default_factory=list)
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+@dataclass(slots=True)
+class GraphConnection:
+    source_ref: str
+    target_ref: str
+    link_type: str
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+@dataclass(slots=True)
+class GraphTopology:
+    step_nodes: list[GraphStepNode]
+    transition_nodes: list[GraphTransitionNode]
+    branch_nodes: list[GraphBranchNode]
+    connections: list[GraphConnection]
+    entry_step: str | None
+    terminal_steps: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+@dataclass(slots=True)
+class ConversionAnalysis:
+    scaffold: ConversionScaffold
+    ir: AwlIR
+    graph_topology: GraphTopology
+    validation_issues: list[ValidationIssue]
+    artifact_previews: list[ArtifactPreview]
+
+    def to_dict(self) -> dict:
+        return asdict(self)

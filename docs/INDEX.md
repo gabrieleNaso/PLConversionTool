@@ -1,7 +1,7 @@
 ## Indice documentazione (PLConversionTool)
 
 ### Contesto e stato progetto
-- **Report consolidato 09-04-2026**: `../report_del_09-04-2026.md`
+- **Report consolidato 09-04-2026**: `../report_del_09-04-2026 (1).md`
 - **Struttura operativa repository**: `project-structure.md`
 
 ### Report giornalieri

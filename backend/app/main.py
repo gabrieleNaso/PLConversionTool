@@ -1,6 +1,11 @@
 from fastapi import FastAPI, HTTPException
 
-from app.core_converter import bootstrap_conversion, get_target_profile
+from app.core_converter import (
+    analyze_conversion,
+    bootstrap_conversion,
+    export_conversion_bundle,
+    get_target_profile,
+)
 from app.project_context import build_project_summary
 from app.tia_bridge_client import TiaBridgeClient, TiaBridgeClientError
 
@@ -49,6 +54,38 @@ def conversion_bootstrap(payload: dict) -> dict:
         include_fc_block=bool(payload.get("includeFcBlock", True)),
         source_name=payload.get("sourceName"),
     )
+
+
+@app.post("/api/conversion/analyze")
+def conversion_analyze(payload: dict) -> dict:
+    awl_source = (payload.get("awlSource") or "").strip()
+    if not awl_source:
+        raise HTTPException(status_code=400, detail="awlSource e' obbligatorio.")
+
+    return analyze_conversion(
+        sequence_name=payload.get("sequenceName"),
+        awl_source=awl_source,
+        include_fc_block=bool(payload.get("includeFcBlock", True)),
+        source_name=payload.get("sourceName"),
+    )
+
+
+@app.post("/api/conversion/export")
+def conversion_export(payload: dict) -> dict:
+    awl_source = (payload.get("awlSource") or "").strip()
+    if not awl_source:
+        raise HTTPException(status_code=400, detail="awlSource e' obbligatorio.")
+
+    try:
+        return export_conversion_bundle(
+            sequence_name=payload.get("sequenceName"),
+            awl_source=awl_source,
+            include_fc_block=bool(payload.get("includeFcBlock", True)),
+            source_name=payload.get("sourceName"),
+            output_dir=payload.get("outputDir", "output/generated"),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.get("/api/tia/overview")

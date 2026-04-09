@@ -10,3 +10,9 @@ Destinazione consigliata:
 - validator e normalizzatori condivisi.
 
 Tenere qui la logica riusabile aiuta a non duplicarla tra backend, script e test.
+
+Baseline operativa attuale:
+- parser AWL incrementale con reti, step, transizioni, timer, memorie e output;
+- IR esplicito riusabile dal backend;
+- validator locali iniziali;
+- preview XML strutturali per `FB GRAPH`, `GlobalDB` e `FC LAD`.

@@ -1,23 +1,479 @@
-Specifica XML consolidata
-e pseudo-codice del serializer Python
-AWL -> GRAPH / GlobalDB / FC LAD per TIA Portal V20
+Specifica master consolidata
+per le regole di traduzione e generazione XML
+AWL -> IR -> GRAPH / GlobalDB / FC LAD per TIA Portal V20
 
-> Documento unico che raccoglie: 1) la specifica rigida di generazione XML, 2) il template generator operativo, 3) il pseudo-codice del serializer.
+> Documento unico che unisce: 1) la specifica normativa di traduzione `AWL -> IR -> blocchi TIA`, 2) la specifica rigida di generazione XML, 3) il template operativo e lo pseudo-codice del serializer.
 
 # Uso del documento
 
-Questo file è strutturato per passare direttamente dalla baseline del progetto all'implementazione. La Parte I descrive la grammatica XML consolidata; la Parte II traduce la baseline in contratti di generazione; la Parte III propone uno pseudo-codice Python per i serializer e i validator minimi.
+Questo file è il riferimento unico per il convertitore.
 
-Questo documento va usato come baseline tecnica del backend di emissione XML dentro un progetto il cui obiettivo resta la conversione `AWL -> GRAPH`.
+Le Parti I-VI definiscono le regole di traduzione del sorgente AWL, la costruzione dell'IR, il partizionamento nei blocchi TIA e le regole operative finali del convertitore.
+Le Parti VII-IX definiscono la grammatica XML consolidata, il template operativo e lo pseudo-codice del serializer.
 
-Ordine di lavoro raccomandato:
+---
 
-1. mantenere separato l'obiettivo finale `AWL -> GRAPH` dal backend di generazione XML;
-2. definire IR manuali o di test per `FB GRAPH`, `GlobalDB` e `FC LAD`;
-3. implementare validator e serializer XML sul sottoinsieme consolidato;
-4. agganciare poi il parser AWL e la logica di estrazione della macchina a stati.
+# Parte I - Principi generali della traduzione
 
-# Parte I - Specifica rigida di generazione XML
+Regola metodologica di fondo: il convertitore deve essere deterministico ma non letterale. Non deve copiare il contenitore storico dell'AWL; deve estrarre il significato della sequenza e ricostruirlo nel formato architetturalmente corretto del target TIA.
+
+## 1. Obiettivo corretto della traduzione
+
+L'obiettivo della traduzione non è produrre un XML formalmente valido che assomigli al sorgente.
+
+L'obiettivo corretto è produrre un insieme di blocchi TIA V20 coerenti, importabili e manutentivi che preservino:
+
+- comportamento funzionale;
+- struttura sequenziale;
+- leggibilità manutentiva;
+- separazione corretta delle responsabilità.
+
+## 2. Regola di non equivalenza contenitore-contenitore
+
+Una FC AWL monolitica non corrisponde a un solo blocco target.
+
+La regola corretta è:
+
+`FC AWL monolitica -> ecosistema TIA di blocchi specializzati`
+
+Questo ecosistema comprende almeno:
+
+- `FB GRAPH`;
+- `DB 11..` base;
+- `DB 12..` sequenza;
+- `DB 18.. EXT`;
+- `DB 19.. AUX`;
+- `DB HMI`;
+- `FC 02 HMI`;
+- `FC 03 Aux`;
+- `FC 04 Transitions`;
+- `FC 06 Output`;
+- eventuali blocchi addizionali di servizio coerenti col progetto.
+
+## 3. Regola di target definitivo
+
+Il target di emissione è chiuso su:
+
+- `TIA Portal V20`;
+- `GRAPH V2`;
+- datatype runtime della famiglia `..._V2`.
+
+Ogni campione legacy di altra famiglia runtime va usato solo come riferimento semantico e non come pattern finale da emettere.
+
+## 4. Regola di backbone fisso del sequenziatore
+
+La struttura iniziale del sequenziatore è fissa e non va ridefinita caso per caso.
+
+I passi strutturalmente fissi sono:
+
+- `S1`;
+- `S29`;
+- `S30`;
+- `S32`.
+
+Interpretazione operativa:
+
+- `S1` = init / rientro alla sequenza;
+- `S29` = manuale;
+- `S30` = fault;
+- `S32` = emergenza.
+
+Il parser AWL deve riconoscere la logica che porta a questi stati; il builder GRAPH deve innestarla sul backbone fisso del progetto.
+
+# Parte II - Regole di analisi del sorgente AWL
+
+## 5. Regola di segmentazione primaria
+
+La FC AWL va segmentata in famiglie logiche prima di qualunque tentativo di emissione target.
+
+Famiglie minime da riconoscere:
+
+1. allarmi e timeout di dispositivo;
+2. memorie generali e appoggi temporizzati;
+3. riconoscimento stabile di feedback e stati fisici;
+4. preset e parametri di timeout;
+5. sequenza automatica;
+6. logica manuale;
+7. fault ed emergenza;
+8. uscite macchina;
+9. HMI e popup.
+
+L'ordine sorgente può aiutare l'analisi, ma la classificazione deve essere semantica e non solo testuale.
+
+## 6. Regola di riconoscimento dei passi AWL
+
+Un passo AWL va identificato tramite i bit di stato del sequenziatore storico, tipicamente della forma `Sxx`.
+
+Un bit `Sxx` non è ancora uno step GRAPH finale, ma è un marcatore affidabile di identità logica del passo sorgente.
+
+Il convertitore deve registrare per ogni passo almeno:
+
+- id logico sorgente;
+- nome sorgente se disponibile;
+- reti che lo leggono;
+- reti che lo attivano;
+- azioni eseguite mentre il passo è attivo.
+
+## 7. Regola di riconoscimento delle transizioni AWL
+
+Va considerato pattern forte di transizione lo schema seguente:
+
+- test di un passo `Sxx`;
+- valutazione di una condizione combinatoria;
+- salto condizionato se la condizione è falsa;
+- caricamento del numero del passo destinazione;
+- scrittura del numero nella variabile di transizione o richiesta passo.
+
+Quando questo pattern è presente, il convertitore deve estrarre un edge semantico:
+
+- `source_step`;
+- `guard_condition`;
+- `target_step`.
+
+## 8. Regola di non dipendenza dall'ordine dei segmenti
+
+L'ordine dei segmenti AWL non è una rappresentazione affidabile della topologia finale della macchina a stati.
+
+La topologia va ricostruita dagli edge estratti e non dall'ordine in cui i segmenti appaiono nel listato.
+
+## 9. Regola di riconoscimento dei timer storici
+
+I timer storici dell'AWL, inclusi `Txx`, `S5T#...`, `SD`, `SE` e pattern equivalenti, non vanno lasciati nel modello sequenziale principale.
+
+Vanno estratti come entità tecniche con:
+
+- trigger di avvio;
+- preset;
+- semantica d'uso;
+- bit di uscita;
+- relazione con memorie o fault derivati.
+
+## 10. Regola di riconoscimento delle memorie tecniche e semantiche
+
+Non tutte le memorie AWL hanno lo stesso ruolo.
+
+Il convertitore deve distinguere almeno:
+
+- memoria tecnica di appoggio;
+- memoria di stato fisico;
+- memoria di consenso permanente;
+- memoria cumulativa di fault;
+- memoria di comando;
+- memoria manuale;
+- memoria di sequenza.
+
+## 11. Regola di riconoscimento di fault ed emergenza
+
+Le logiche di fault ed emergenza vanno identificate come classe autonoma.
+
+Non devono essere trattate come semplici condizioni locali di transizione.
+
+Il parser deve estrarre:
+
+- fault elementari;
+- cumulativi di fault;
+- condizioni di emergenza;
+- reset fault;
+- condizioni di rientro.
+
+## 12. Regola di riconoscimento di manuale e automatico
+
+La logica di modo operativo non è una semplice condizione aggiuntiva.
+
+Va modellata esplicitamente distinguendo:
+
+- richiesta manuale;
+- richiesta automatica;
+- conferma automatica;
+- comandi manuali di attuatore;
+- vincoli di rientro da manuale a automatico.
+
+# Parte III - Regole di costruzione dell'IR
+
+## 13. IR minimo obbligatorio
+
+Prima della compilazione verso i blocchi TIA, il convertitore deve costruire un IR esplicito contenente almeno:
+
+- `steps`;
+- `transitions`;
+- `timers`;
+- `memories`;
+- `faults`;
+- `manual_logic`;
+- `auto_logic`;
+- `outputs`;
+- `hmi_conditions`;
+- `external_refs`.
+
+## 14. Regola di separazione tra identità logica e nome finale
+
+Nell'IR ogni passo deve avere almeno due livelli distinti:
+
+- identità logica del passo sorgente;
+- nome finale del passo target.
+
+Questo è necessario perché i casi reali mostrano che il GRAPH finale può:
+
+- preservare alcuni numeri storici;
+- rinominare semanticamente alcuni step;
+- introdurre step target più leggibili del legacy.
+
+## 15. Regola di rappresentazione delle transizioni
+
+Ogni transizione nell'IR deve contenere almeno:
+
+- identificativo;
+- step sorgente;
+- step destinazione;
+- formula booleana normalizzata;
+- dipendenze da timer;
+- dipendenze da variabili esterne;
+- dipendenze da fault o interblocchi;
+- tag che ne indicano la famiglia semantica.
+
+## 16. Regola di rappresentazione delle memorie
+
+Ogni memoria nell'IR deve contenere almeno:
+
+- nome sorgente;
+- ruolo semantico;
+- area target proposta;
+- eventuale remanenza;
+- dipendenze di calcolo;
+- consumer target.
+
+## 17. Regola di rappresentazione dei timer
+
+Ogni timer nell'IR deve contenere almeno:
+
+- identificativo sorgente;
+- preset;
+- tipo target IEC proposto;
+- trigger di attivazione;
+- output derivati;
+- area target proposta nel `DB 19..`.
+
+## 18. Regola di rappresentazione delle uscite
+
+Le uscite non vanno memorizzate come semplice copia della bobina sorgente.
+
+Ogni uscita va rappresentata come formula target composta da:
+
+- passi automatici attivi;
+- comandi manuali;
+- interblocchi;
+- consensi permanenti;
+- eventuali fault o lock.
+
+## 19. Regola di rappresentazione della HMI
+
+Le condizioni HMI devono essere entità esplicite dell'IR.
+
+Per ognuna devono esistere almeno:
+
+- gruppo popup target;
+- numero o chiave popup;
+- lista condizioni normalizzate;
+- testi o label associate;
+- fonte semantica delle condizioni.
+
+# Parte IV - Regole di partizionamento nel target TIA
+
+## 20. Regola di numbering dei blocchi
+
+La convenzione fissa del progetto è:
+
+- le ultime due cifre del numero blocco derivano dalle ultime due cifre della sequenza AWL;
+- le prime due cifre dipendono dalla famiglia del blocco.
+
+Esempio: sequenza `102` -> suffisso `02` per tutti i blocchi della traduzione.
+
+## 21. Regola sui DB di progetto
+
+La distribuzione corretta dei dati è:
+
+- `11..` = DB base della sequenza;
+- `12..` = DB della sequenza;
+- `18..` = DB `EXT`;
+- `19..` = DB ausiliare di timer e contatori;
+- DB HMI = DB creato ex novo.
+
+## 22. Regola di allocazione nel `DB 11..`
+
+Nel DB base devono confluire almeno:
+
+- `Seq Status`;
+- `Transitions`;
+- `Memory`;
+- eventuali strutture semantiche di diagnostica o stato leggibile del sequenziatore.
+
+Il `DB 11..` è il contenitore leggibile dell'applicazione, non il runtime interno del GRAPH.
+
+## 23. Regola di allocazione nel `DB 12..`
+
+Il `DB 12..` rappresenta il contenitore della sequenza in sé, secondo il modello di progetto adottato.
+
+Non deve essere usato come replica del vecchio DB AWL unico se questo conteneva ruoli misti.
+
+## 24. Regola di allocazione nel `DB 18.. EXT`
+
+Nel `DB 18..` devono finire tutte le variabili che arrivano dall'esterno della sequenza, ad esempio:
+
+- comandi impianto;
+- feedback macchina esterni;
+- segnali provenienti da altri blocchi o altre sezioni impianto;
+- riferimenti fissi di progetto esposti al sequenziatore.
+
+## 25. Regola di allocazione nel `DB 19.. AUX`
+
+Nel `DB 19..` devono finire:
+
+- timer IEC;
+- contatori IEC;
+- one-shot;
+- appoggi tecnici;
+- supporti necessari alle reti della `FC 03 Aux`.
+
+## 26. Regola di allocazione HMI
+
+Nel DB HMI devono finire:
+
+- popup;
+- liste condizioni;
+- strutture visualizzate;
+- campi di supporto all'operatore;
+- eventuali testi o numerazioni di supporto HMI.
+
+# Parte V - Regole di costruzione dei backend target
+
+## 27. Regola sul backend `FC 04 Transitions`
+
+La `FC 04` deve calcolare le condizioni di avanzamento semantiche.
+
+Non deve limitarsi a copiare l'AWL.
+
+Deve:
+
+- produrre booleani nominati e leggibili;
+- raccogliere logiche comuni riusabili da GRAPH e HMI;
+- separare il calcolo della condizione dalla topologia della sequenza.
+
+## 28. Regola sul backend `FC 03 Aux`
+
+La `FC 03 Aux` deve ricostruire in LAD la parte tecnica del sorgente AWL:
+
+- timer;
+- appoggi;
+- memorie temporanee;
+- riconoscimento stabile di sensori o stati fisici;
+- comandi tecnici derivati.
+
+## 29. Regola sul backend `FC 06 Output`
+
+La `FC 06 Output` deve generare i comandi finali macchina a partire da segnali semantici già puliti.
+
+Le uscite devono nascere dalla composizione di:
+
+- step automatici attivi;
+- comandi manuali;
+- interblocchi;
+- consensi permanenti;
+- condizioni macchina normalizzate.
+
+## 30. Regola sul backend `FC 02 HMI`
+
+La `FC 02 HMI` deve trattare la HMI come consumer del modello semantico.
+
+Deve quindi usare preferenzialmente:
+
+- booleane in `Transitions`;
+- memorie semantiche in `Memory`;
+- fault ed emergency già normalizzati;
+- strutture popup del DB HMI.
+
+## 31. Regola sul GRAPH
+
+Il GRAPH non deve contenere tutta la complessità storica dell'AWL in forma grezza.
+
+Deve contenere:
+
+- backbone fisso;
+- passi automatici espliciti;
+- transizioni già normalizzate;
+- runtime interno `..._V2`;
+- topologia coerente con il sottoinsieme validato del progetto.
+
+## 32. Regola sui fault e sulle emergenze nel target
+
+Fault ed emergenza devono essere trattati su due livelli distinti:
+
+- livello dettagliato di diagnostica e allarme;
+- livello sintetico di governo della sequenza.
+
+Il livello sintetico è quello che guida:
+
+- `S30` fault;
+- `S32` emergenza;
+- reset;
+- rientro alla sequenza.
+
+## 33. Regola sui DB fissi esterni
+
+I DB esterni stabili del progetto vanno trattati come riferimenti `1:1` del modello, non come variabili da reinventare caso per caso.
+
+Sono da considerare fissi almeno:
+
+- `DB81`;
+- `DB82`;
+- `DB2020`;
+- `DB2025`.
+
+# Parte VI - Regole operative finali del convertitore
+
+## 34. Pipeline obbligatoria
+
+La pipeline corretta del convertitore è:
+
+`AWL -> segmentazione semantica -> IR -> partizionamento dati -> builder GRAPH/DB/FC -> serializer XML V2 -> validator -> import TIA`
+
+## 35. Regola di non scorciatoia
+
+Non è ammesso il percorso diretto:
+
+`AWL testo libero -> XML finale`
+
+senza passare da:
+
+- IR semantico;
+- partizionamento dati;
+- builder separati;
+- validator strutturali;
+- linter semantici.
+
+## 36. Regola di qualità della traduzione
+
+Una traduzione va considerata corretta solo se soddisfa contemporaneamente:
+
+- coerenza funzionale col sorgente;
+- coerenza architetturale col target;
+- importabilità in TIA;
+- leggibilità manutentiva;
+- compatibilità col backbone fisso del progetto.
+
+## 37. Sintesi finale
+
+Le regole consolidate di traduzione del progetto portano a questa conclusione pratica:
+
+- il parser AWL deve estrarre significato, non copiare il contenitore storico;
+- l'IR è il centro del convertitore;
+- il partizionamento dei dati è una regola hard del metodo;
+- GRAPH, DB, FC e HMI sono backend distinti ma coordinati;
+- il target finale resta esclusivamente `TIA Portal V20 / GRAPH V2`.
+
+
+---
+
+# Parte VII - Specifica rigida di generazione XML
 
 Regola metodologica di fondo: il generatore deve essere universale ma non libero. Deve emettere solo pattern, topologie e strutture che rientrano nel sottoinsieme validato.
 
@@ -287,7 +743,7 @@ Document
 </Document>
 ```
 
-# Parte II - Template generator operativo
+# Parte VIII - Template generator operativo
 
 Questa parte traduce la specifica in contratti di emissione. I placeholder sono pensati per un serializer Python che lavori su IR espliciti.
 
@@ -449,7 +905,7 @@ nessun pin inesistente
 nessun nodo orfano
 ```
 
-# Parte III - Pseudo-codice del serializer Python
+# Parte IX - Pseudo-codice del serializer Python
 
 Lo pseudo-codice seguente non è ancora il codice finale del tool, ma è pensato per essere tradotto quasi direttamente in Python. Presuppone tre IR distinti e una libreria comune di helper XML.
 
@@ -763,6 +1219,7 @@ def emit_fc_lad(fc: FCIR) -> X:
     block = append(doc, el("SW.Blocks.FC", attrs={"ID": "0"}))
 
     attr = append(block, el("AttributeList"))
+    append(attr, el("AutoNumber", "false"))
     append(attr, emit_fc_interface(fc))
     append(attr, el("MemoryLayout", "Optimized"))
     append(attr, el("Name", fc.name))
@@ -881,8 +1338,12 @@ def emit_simple_member(v: VarDecl) -> X:
 ## 9. Pipeline complessiva consigliata
 
 ```text
-Fase 1: implementazione generatori XML
- -> IR sequenza / IR dati / IR reti definiti manualmente o da fixture
+AWL
+ -> parser
+ -> estrazione macchina a stati + pattern
+ -> IR sequenza
+ -> IR dati
+ -> IR reti
  -> validator GRAPH / DB / FC
  -> emit_graph_fb()
  -> emit_global_db()
@@ -891,12 +1352,6 @@ Fase 1: implementazione generatori XML
  -> import TIA
  -> compile
  -> export regressione
-
-Fase 2: automazione conversione AWL
- -> parser
- -> estrazione macchina a stati + pattern
- -> popolamento degli IR
- -> riuso invariato dei validator e serializer
 ```
 
 ## 10. Regole finali da non violare

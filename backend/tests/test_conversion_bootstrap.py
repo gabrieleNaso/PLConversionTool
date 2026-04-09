@@ -43,3 +43,92 @@ def test_conversion_bootstrap_builds_initial_scaffold() -> None:
     assert payload["source_analysis"]["network_count"] == 1
     assert payload["source_analysis"]["set_reset_count"] == 2
     assert payload["source_analysis"]["jump_count"] == 1
+
+
+def test_conversion_analyze_builds_ir_and_artifact_previews() -> None:
+    client = TestClient(app)
+    res = client.post(
+        "/api/conversion/analyze",
+        json={
+            "sequenceName": "Mixer Line",
+            "sourceName": "mixer_line.awl",
+            "includeFcBlock": True,
+            "awlSource": "\n".join(
+                [
+                    "NETWORK 1",
+                    "      U     S1",
+                    "      U     M10.0",
+                    "      SD    T1",
+                    "      U     T1",
+                    "      S     S29",
+                    "      R     S1",
+                    "      JC    NEXT",
+                    "NETWORK 2",
+                    "      U     S29",
+                    "      =     A4.0",
+                    "      U     Manual_Mode",
+                    "      S     M20.0",
+                    "NEXT: NOP 0",
+                ]
+            ),
+        },
+    )
+    assert res.status_code == 200
+
+    payload = res.json()
+    assert payload["ir"]["sequence_name"] == "Mixer_Line"
+    assert len(payload["ir"]["steps"]) >= 2
+    assert payload["ir"]["transitions"][0]["source_step"] == "S1"
+    assert payload["ir"]["transitions"][0]["target_step"] == "S29"
+    assert payload["ir"]["timers"][0]["source_timer"] == "T1"
+    assert payload["ir"]["manual_logic_networks"] == [2]
+    assert payload["graph_topology"]["entry_step"] == "S1"
+    assert payload["graph_topology"]["step_nodes"][0]["init"] is True
+    assert payload["graph_topology"]["connections"][0]["source_ref"] == "S1"
+    assert any(
+        preview["artifact_type"] == "graph_fb" for preview in payload["artifact_previews"]
+    )
+    assert any(
+        "<Connections>" in preview["content"]
+        for preview in payload["artifact_previews"]
+        if preview["artifact_type"] == "graph_fb"
+    )
+    assert any(
+        issue["code"] == "NO_MANUAL_LOGIC" for issue in payload["validation_issues"]
+    ) is False
+
+
+def test_conversion_analyze_builds_alt_branch_for_multi_exit_step() -> None:
+    client = TestClient(app)
+    res = client.post(
+        "/api/conversion/analyze",
+        json={
+            "sequenceName": "Branchy Line",
+            "sourceName": "branchy.awl",
+            "includeFcBlock": False,
+            "awlSource": "\n".join(
+                [
+                    "NETWORK 1",
+                    "      U     S1",
+                    "      U     M10.0",
+                    "      S     S2",
+                    "NETWORK 2",
+                    "      U     S1",
+                    "      U     M11.0",
+                    "      S     S3",
+                ]
+            ),
+        },
+    )
+    assert res.status_code == 200
+
+    payload = res.json()
+    assert payload["graph_topology"]["entry_step"] == "S1"
+    assert len(payload["graph_topology"]["transition_nodes"]) == 2
+    assert payload["graph_topology"]["branch_nodes"][0]["branch_type"] == "AltBegin"
+    assert payload["graph_topology"]["connections"][0]["target_ref"] == "B_S1"
+    assert any(
+        "<Branch " in preview["content"]
+        for preview in payload["artifact_previews"]
+        if preview["artifact_type"] == "graph_fb"
+    )
