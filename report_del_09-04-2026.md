@@ -9,7 +9,7 @@ Conversione di sequenziatori PLC da AWL a GRAPH in TIA Portal V20 tramite XML.
 
 Questo documento sostituisce la versione accumulativa del report del 09-04-2026 e ne mantiene solo il contenuto tecnico consolidato.
 
-L'obiettivo di questa versione ripulita è:
+L'obiettivo di questa versione consolidata è:
 
 - eliminare duplicazioni e sezioni storiche sovrapposte;
 - rimuovere stati intermedi ormai superati;
@@ -25,10 +25,6 @@ Il documento va quindi usato come riferimento tecnico corrente del progetto alla
 L'obiettivo del progetto è definire un metodo affidabile per tradurre sequenziatori complessi sviluppati in AWL in implementazioni equivalenti GRAPH per TIA Portal V20, utilizzando XML come formato intermedio e mantenendo un flusso compatibile con import, validazione ed eventuale automazione tramite TIA Portal Openness.
 
 Le direttrici di lavoro restano due, complementari.
-
-L'obiettivo primario non cambia: convertire sequenziatori `AWL` in `GRAPH`.
-
-La sequenza di implementazione raccomandata, alla data del 09-04-2026, richiede pero' di consolidare prima il backend di generazione XML sul sottoinsieme gia' validato, cosi' da avere una base stabile quando verra' implementata l'analisi AWL.
 
 ### 2.1 Traduzione assistita
 
@@ -50,11 +46,6 @@ Sviluppo di un convertitore che esegua:
   - `SW.Blocks.FB` GRAPH;
   - `SW.Blocks.GlobalDB` companion;
   - eventuali `SW.Blocks.FC` LAD di supporto.
-
-Questa direttrice va oggi separata in due fasi tecniche:
-
-- fase di fondazione: implementazione di IR, validator e serializer XML per `GRAPH`, `GlobalDB` e `FC`;
-- fase centrale del convertitore: analisi AWL automatica e popolamento dell'IR.
 
 ### 2.3 Automazione con TIA Portal Openness
 
@@ -81,6 +72,19 @@ Il target validato del progetto è:
   - `SW.Blocks.FB` per il GRAPH;
   - `SW.Blocks.GlobalDB` per il DB companion;
   - `SW.Blocks.FC` per logiche LAD di supporto o orchestrazione.
+
+### 3.1 Chiusura definitiva del target runtime
+
+Da questo punto in avanti il target del progetto va considerato chiuso in modo definitivo su `TIA Portal V20` e `GRAPH V2`.
+
+Conseguenze operative:
+
+- tutti i nuovi generatori devono emettere solo XML coerenti con `GraphVersion = 2.0`;
+- i datatype runtime da generare devono appartenere esclusivamente alla famiglia `..._V2`;
+- eventuali XML campione di versioni diverse, inclusi casi legacy in `V6`, vanno usati solo come riferimento semantico, topologico e architetturale;
+- gli esempi legacy non devono pilotare il serializer finale se entrano in conflitto con il target `V2`.
+
+La presenza nel corpus di esempi importabili ma basati su runtime diversi non modifica quindi il target del convertitore: il convertitore deve produrre `V2`, non replicare dialetti storici differenti.
 
 ---
 
@@ -563,10 +567,6 @@ Pipeline concettuale consolidata:
 
 `AWL -> parser -> estrazione pattern e macchina a stati -> IR sequenza + IR dati + IR reti -> validator -> GRAPH compiler + GlobalDB compiler + FC compiler -> test import TIA`
 
-Pipeline di implementazione consigliata nell'immediato:
-
-`IR di test/manuale -> validator -> GRAPH compiler + GlobalDB compiler + FC compiler -> import TIA -> regressione`
-
 ## 31. Principi da considerare fissati
 
 Il tool deve essere:
@@ -588,6 +588,54 @@ Per ciascun sequenziatore AWL, gli output corretti restano:
 - `GlobalDB` companion importabile;
 - eventuali `FC` di supporto, solo se richieste dal modello o dal workflow;
 - report di validazione e differenze rispetto alla baseline.
+
+### 32.1 Convenzioni fissate di numbering e partizionamento dei blocchi
+
+Per la traduzione AWL -> GRAPH il progetto adotta ora una convenzione fissa di numbering dei blocchi.
+
+Regola generale:
+
+- le ultime due cifre del numero blocco derivano dalle ultime due cifre della sequenza AWL di origine;
+- le prime due cifre identificano la famiglia funzionale del blocco.
+
+Esempio: per una sequenza AWL `102`, tutti i blocchi della traduzione devono terminare con `02`.
+
+Questa convenzione è normativa per il convertitore, anche se alcuni campioni legacy caricati mostrano distribuzioni storiche diverse dei numeri blocco.
+
+### 32.2 Convenzioni fissate sui DB di progetto
+
+Nella baseline corrente la partizione dei DB di una sequenza tradotta va considerata fissa.
+
+- `11..` = DB base della sequenza, contenente memorie, merker applicativi e strutture dati generali del sequenziatore;
+- `12..` = DB della sequenza in sé;
+- `18..` = DB `EXT`, dedicato a tutte le variabili che arrivano dall'esterno della sequenza;
+- `19..` = DB ausiliare, dedicato a timer, contatori e strutture di appoggio non appartenenti al runtime interno del GRAPH;
+- DB HMI = DB creato ex novo dal generatore e dedicato ai popup, alle strutture di supporto HMI e alle condizioni visualizzate.
+
+Questa distribuzione deve essere rispettata dal modello IR e dai serializer, evitando accorpamenti opportunistici fra aree con ruolo diverso.
+
+### 32.3 Blocchi fissi esterni alla sequenza
+
+Per ogni traduzione AWL vanno considerati presenti e stabili i seguenti DB esterni, trattati come elementi `1:1` nel progetto:
+
+- `DB81`;
+- `DB82`;
+- `DB2020`;
+- `DB2025`.
+
+Questi blocchi non sono da reinventare caso per caso, ma da trattare come riferimenti fissi del modello di conversione quando la sequenza AWL li usa o li presuppone.
+
+### 32.4 Ossatura iniziale fissa del GRAPH
+
+La parte iniziale del GRAPH costituita dagli step `S1`, `S32`, `S30`, `S29` va considerata strutturalmente fissa per ogni sequenza AWL tradotta.
+
+Significato operativo della regola:
+
+- il generatore non deve modificare questa ossatura;
+- gli step iniziali di emergenza, fault e manuale non devono essere reinterpretati ogni volta a partire dall'AWL;
+- la logica variabile della sequenza deve innestarsi sulla struttura fissa, non sostituirla.
+
+Questa scelta riduce la variabilità topologica del GRAPH e rende il convertitore più deterministico, più leggibile e più coerente con il target manutentivo del progetto.
 
 ---
 
@@ -667,19 +715,24 @@ Alla data del 09-04-2026 la baseline consolidata del progetto è la seguente.
 
 ### 38.1 Sul GRAPH
 
-- target `GRAPH V2` confermato;
-- regole XML del backend GRAPH consolidate su struttura, topologia e runtime;
+- target `GRAPH V2` confermato come scelta definitiva del progetto;
+- esempi legacy di altre versioni runtime utilizzabili solo come riferimento semantico e architetturale, non come target di emissione;
+- backend GRAPH validato su regole strutturali, topologiche e runtime;
 - blocco `FB` da generare come elemento autosufficiente;
 - supporto a operandi locali o referenziati simbolicamente nel companion DB;
-- forte distinzione fra topologia GRAPH e logica OR nel LAD delle transition.
+- forte distinzione fra topologia GRAPH e logica OR nel LAD delle transition;
+- parte iniziale del GRAPH con `S1`, `S32`, `S30`, `S29` da considerare fissa e non modificabile dal generatore.
 
 ### 38.2 Sul `GlobalDB`
 
+- serializer stabile e ricorsivo;
 - forma XML consolidata;
-- serializer atteso di tipo ricorsivo tree-based;
 - commenti visibili in TIA;
 - supporto a member strutturati, array e tipi IEC;
-- ruolo del DB chiarito come companion applicativo.
+- ruolo del DB chiarito come companion applicativo;
+- partizione dei DB di progetto fissata in `11..` base, `12..` sequenza, `18..` EXT, `19..` ausiliario;
+- DB HMI da generare ex novo per popup e strutture HMI;
+- DB fissi `81`, `82`, `2020`, `2025` da trattare come elementi stabili del modello di conversione.
 
 ### 38.3 Sul backend FC
 
@@ -696,13 +749,15 @@ Alla data del 09-04-2026 la baseline consolidata del progetto è la seguente.
 - linter semantici;
 - selezione dei pattern validati;
 - serializer dedicati per backend;
-- regressione su casi importati davvero in TIA.
+- regressione su casi importati davvero in TIA;
+- numbering dei blocchi vincolato: ultime due cifre derivate dalla sequenza AWL, prime due cifre derivate dalla tipologia del blocco;
+- distinzione netta fra vincoli strutturali del target `V2` e soli riferimenti semantici ricavati da campioni legacy.
 
 ### 38.5 Sul layer TIA
 
 - bridge Linux/Windows operativo;
 - import/compile/export reali verificati;
-- pipeline end-to-end pronta per validare il backend XML mentre viene costruito il convertitore AWL.
+- pipeline end-to-end pronta per essere agganciata al convertitore.
 
 ---
 
@@ -710,12 +765,13 @@ Alla data del 09-04-2026 la baseline consolidata del progetto è la seguente.
 
 I prossimi passi più utili sono:
 
-1. formalizzare un IR unico di progetto per sequenza, dati e reti, anche inizialmente popolato a mano o da fixture;
-2. implementare i serializer XML di `GRAPH`, `GlobalDB` e `FC` sul sottoinsieme gia' consolidato;
-3. costruire validator e linter come parte obbligatoria della pipeline;
-4. costruire una libreria di pattern GRAPH e FC esplicitamente convalidati;
-5. avviare poi il parser e l'analisi AWL come cuore del convertitore;
-6. estendere i test reali su più tipologie di blocchi XML e collegare la generazione `AWL -> XML` alla pipeline TIA già funzionante.
+1. formalizzare un IR unico di progetto per sequenza, dati e reti, già coerente con la partizione fissa `11../12../18../19..`;
+2. costruire una libreria di pattern GRAPH e FC esplicitamente convalidati;
+3. implementare validator e linter come parte obbligatoria della pipeline;
+4. estendere i test reali su più tipologie di blocchi XML, mantenendo il target finale sempre in `V2`;
+5. collegare la generazione AWL -> XML alla pipeline TIA già funzionante;
+6. introdurre una matrice di regressione formale su golden sample importati con successo;
+7. formalizzare nel generatore l'ossatura iniziale fissa `S1/S32/S30/S29` come regola hard e non come euristica.
 
 ---
 
@@ -746,8 +802,8 @@ Questa non è una regola organizzativa, ma un vincolo tecnico del progetto.
 Alla data del 09-04-2026 il progetto ha raggiunto una baseline forte su quattro livelli:
 
 1. reverse engineering strutturale del `GRAPH`;
-2. regole di generazione consolidate del `GlobalDB` companion;
+2. generazione stabile del `GlobalDB` companion;
 3. backend `FC` guidato da pattern e non da emissione libera;
 4. pipeline reale `Linux -> bridge -> Windows -> TIA Portal Openness` verificata end-to-end.
 
-Il problema centrale del progetto non è più capire se il workflow sia praticabile, ma implementare in modo sistematico, deterministico e regressivamente sicuro i generatori XML; la conversione automatica `AWL -> GRAPH XML (+ DB/FC)` resta la fase successiva.
+Il problema centrale del progetto non è più capire se il workflow sia praticabile, ma rendere sistematica, deterministica e regressivamente sicura la conversione `AWL -> GRAPH XML (+ DB/FC)` su casi reali.
