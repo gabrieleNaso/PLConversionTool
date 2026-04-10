@@ -18,6 +18,7 @@
 - **Import FB GRAPH**: ✅/❌ (errore/nota)
 - **Import GlobalDB**: ✅/❌ (commenti visibili: ✅/❌)
 - **Import FC**: ✅/❌
+- **Auto-compile post import (via tia-bridge)**: ✅/❌ (JobId / errori)
 - **Note**:
 
 ### Regole/conoscenza consolidata oggi
@@ -33,5 +34,5 @@
 
 ### Link rapidi
 - **Indice docs**: `../INDEX.md`
-- **Report consolidato**: `../../report_del_09-04-2026.md`
-- **Specifica generatore XML**: `../../Specifica_regole_generatore_xml_tia_v20.md`
+- **Report consolidato**: `../../report_del_09-04-2026 (1).md`
+- **Specifica generatore XML**: `../../Specifica_master_traduzione_e_generazione_XML_TIA_V20_V2.md`

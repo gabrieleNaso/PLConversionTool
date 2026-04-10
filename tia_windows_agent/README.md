@@ -6,7 +6,7 @@ Servizio Windows compatibile con `.NET Framework 4.8` da eseguire nella VM dove 
 
 Questo file contiene solo le istruzioni operative per installare, avviare, fermare e testare l'agent Windows.
 
-Per lo stato complessivo del progetto e il punto tecnico raggiunto dall'integrazione con TIA, fare riferimento al [README generale](/home/administrator/PLConversionTool/README.md) e al [report consolidato](/home/administrator/PLConversionTool/report_del_09-04-2026.md).
+Per lo stato complessivo del progetto e il punto tecnico raggiunto dall'integrazione con TIA, fare riferimento al [README generale](/home/administrator/PLConversionTool/README.md) e al [report consolidato](/home/administrator/PLConversionTool/report_del_09-04-2026%20(1).md).
 
 ## Contenuto della cartella
 
@@ -366,6 +366,7 @@ Eccezioni operative principali:
 - `compile` non usa davvero il contenuto di `artifactPath`: quel campo resta un placeholder tecnico obbligatorio dal contratto.
 - `compile` non si blocca per i `warning`; si blocca solo quando TIA restituisce errori reali.
 - `export` esegue automaticamente una `compile` preliminare del `PlcSoftware`.
+- quando il job passa tramite `tia-bridge`, anche `import` accoda automaticamente una `compile` post-import.
 - Se la `compile` preliminare dell'`export` trova errori reali, l'`export` viene annullato.
 - Per `import`, se `artifactPath` e' una directory, vengono importati tutti i `*.xml` trovati nella cartella e nelle sottocartelle, in ordine alfabetico.
 - Per `export`, se `artifactPath` e' una directory, vengono esportati tutti i blocchi del gruppo selezionato e dei suoi sottogruppi.

@@ -19,6 +19,12 @@ API backend operative del primo slice:
 - `POST /api/conversion/analyze`: parsing AWL incrementale, IR, issue locali e preview del pacchetto XML completo.
 - `POST /api/conversion/export`: scrittura del bundle di analisi e delle preview XML del pacchetto completo in `output/`.
 
+Aggiornamenti operativi consolidati:
+
+- il `tia-bridge` accoda automaticamente un job `compile` subito dopo ogni job `import` (`POST /api/jobs/import`);
+- il generatore mantiene coerenza tra tag usati nel `GRAPH/FC` e member dichiarati nel `GlobalDB`, incluse transizioni sintetiche `T_AUTO_*`;
+- la diagnostica compile lato Windows agent include dettaglio esteso dei messaggi e del contesto per accelerare il debug sui blocchi TIA.
+
 Documentazione utile:
 
 - [docs/INDEX.md](/home/administrator/PLConversionTool/docs/INDEX.md)

@@ -601,6 +601,12 @@ IEC_TIMER e IEC_COUNTER vanno serializzati con Version="1.0".
 
 Il DB companion non deve replicare RT_DATA né gli statici runtime del GRAPH.
 
+Regola di coerenza cross-blocco (hard):
+
+- ogni tag usato nelle transition GRAPH o nelle reti LAD di supporto deve essere dichiarato nel `GlobalDB` companion;
+- la sorgente canonica dei tag di guardia deve essere la topologia finale delle transizioni, incluse eventuali transizioni sintetiche (`T_AUTO_*`);
+- non e' ammesso generare riferimenti LAD/GRAPH a member non presenti nel DB companion.
+
 ### Composizione canonica
 
 ```text
@@ -1353,6 +1359,11 @@ AWL
  -> compile
  -> export regressione
 ```
+
+Nota operativa di orchestrazione:
+
+- nel workflow mediato da `tia-bridge`, il job `import` deve essere seguito automaticamente da una `compile` post-import accodata dal bridge;
+- nel risultato dell'`import` il bridge puo' esporre l'identificativo del job di compile automatica (`AutoCompileJobId`) per il tracciamento end-to-end.
 
 ## 10. Regole finali da non violare
 
