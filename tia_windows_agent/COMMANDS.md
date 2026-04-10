@@ -19,6 +19,13 @@ Questo file non sostituisce [README.md](/home/administrator/PLConversionTool/tia
 - root repo Ubuntu:
   `/home/administrator/PLConversionTool`
 
+## Regola operativa fondamentale
+
+- `FB GRAPH`, `GlobalDB`, `FC LAD` e ogni eventuale blocco aggiuntivo vanno trattati come un pacchetto coerente.
+- Se cambi il serializer, il naming dei member, le transition guard, la topologia GRAPH o il contratto dati, non e' sicuro reimportare solo il `FB`.
+- In questi casi va riallineato l'intero pacchetto del caso (`FB + DB + FC`, e gli altri blocchi richiesti).
+- Un `FB` importato sopra un `GlobalDB` o una `FC` non aggiornati puo' restare importabile ma diventare incoerente in compile e, nei casi peggiori, destabilizzare l'apertura del GRAPH in TIA.
+
 ## 1. Avvio agent Windows
 
 ### Pulizia e build completa

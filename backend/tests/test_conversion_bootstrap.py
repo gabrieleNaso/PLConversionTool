@@ -125,6 +125,9 @@ def test_conversion_analyze_builds_ir_and_artifact_previews() -> None:
     assert any(
         issue["code"] == "NO_MANUAL_LOGIC" for issue in payload["validation_issues"]
     ) is False
+    assert any(
+        issue["code"] == "PACKAGE_COHERENCE_ERROR" for issue in payload["validation_issues"]
+    ) is False
 
 
 def test_conversion_analyze_builds_alt_branch_for_multi_exit_step() -> None:

@@ -378,7 +378,9 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
                 name=synthetic_name,
                 transition_no=next_transition_no,
                 source_step=step.name,
-                target_step=step.name,
+                # Keep terminal steps topologically closed without introducing
+                # self-loop incoming edges that can destabilize GRAPH editing.
+                target_step=entry_step,
                 guard_expression="FALSE",
                 network_index=0,
                 db_block_name=_global_db_block_name(ir),
@@ -549,6 +551,8 @@ def _validate_ir(ir: AwlIR, graph_topology: GraphTopology) -> list[ValidationIss
                 message="Sono presenti transizioni IR ma nessuna connessione topologica GRAPH.",
             )
         )
+    package_issues = _validate_package_coherence(ir, graph_topology)
+    issues.extend(package_issues)
     for warning in graph_topology.warnings:
         issues.append(
             ValidationIssue(
@@ -557,6 +561,57 @@ def _validate_ir(ir: AwlIR, graph_topology: GraphTopology) -> list[ValidationIss
                 message=warning,
             )
         )
+    return issues
+
+
+def _validate_package_coherence(ir: AwlIR, graph_topology: GraphTopology) -> list[ValidationIssue]:
+    issues: list[ValidationIssue] = []
+    expected_db_name = _global_db_block_name(ir)
+    transition_db_names = {item.db_block_name for item in graph_topology.transition_nodes}
+    if transition_db_names and transition_db_names != {expected_db_name}:
+        issues.append(
+            ValidationIssue(
+                level="error",
+                code="PACKAGE_COHERENCE_ERROR",
+                message=(
+                    "Le transition GRAPH non referenziano tutte lo stesso GlobalDB del pacchetto."
+                ),
+                context=", ".join(sorted(transition_db_names)),
+            )
+        )
+
+    db_members = _expected_global_db_member_names(ir, graph_topology)
+    referenced_members = {item.db_member_name for item in graph_topology.transition_nodes}
+    missing_members = sorted(referenced_members - db_members)
+    if missing_members:
+        issues.append(
+            ValidationIssue(
+                level="error",
+                code="PACKAGE_COHERENCE_ERROR",
+                message=(
+                    "Il pacchetto referenzia member di guardia non dichiarati nel GlobalDB."
+                ),
+                context=", ".join(missing_members),
+            )
+        )
+
+    stray_guard_members = sorted(
+        member_name
+        for member_name in db_members
+        if "_Guard_" in member_name and member_name not in referenced_members
+    )
+    if stray_guard_members:
+        issues.append(
+            ValidationIssue(
+                level="warning",
+                code="PACKAGE_COHERENCE_WARNING",
+                message=(
+                    "Il GlobalDB contiene guard member che non risultano referenziati dal GRAPH corrente."
+                ),
+                context=", ".join(stray_guard_members),
+            )
+        )
+
     return issues
 
 
@@ -912,6 +967,14 @@ def _build_global_db_members(ir: AwlIR, graph_topology: GraphTopology) -> str:
     if not members:
         members.append('    <Member Name="NoData" Datatype="Bool" />')
     return "\n".join(dict.fromkeys(members))
+
+
+def _expected_global_db_member_names(ir: AwlIR, graph_topology: GraphTopology) -> set[str]:
+    names = {transition.db_member_name for transition in graph_topology.transition_nodes}
+    names.update(_db_member_name(memory.name) for memory in ir.memories)
+    if not names:
+        names.add("NoData")
+    return names
 
 
 def _build_lad_temp_members(ir: AwlIR) -> str:
