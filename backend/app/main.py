@@ -13,7 +13,7 @@ from app.tia_bridge_client import TiaBridgeClient, TiaBridgeClientError
 app = FastAPI(
     title="PLConversionTool Backend",
     version="0.1.0",
-    description="API di supporto al progetto di conversione PLC AWL -> GRAPH XML.",
+    description="API per la conversione PLC AWL -> pacchetto XML GRAPH + GlobalDB + FC LAD.",
 )
 
 
@@ -51,7 +51,6 @@ def conversion_bootstrap(payload: dict) -> dict:
     return bootstrap_conversion(
         sequence_name=payload.get("sequenceName"),
         awl_source=awl_source,
-        include_fc_block=bool(payload.get("includeFcBlock", True)),
         source_name=payload.get("sourceName"),
     )
 
@@ -65,7 +64,6 @@ def conversion_analyze(payload: dict) -> dict:
     return analyze_conversion(
         sequence_name=payload.get("sequenceName"),
         awl_source=awl_source,
-        include_fc_block=bool(payload.get("includeFcBlock", True)),
         source_name=payload.get("sourceName"),
     )
 
@@ -80,7 +78,6 @@ def conversion_export(payload: dict) -> dict:
         return export_conversion_bundle(
             sequence_name=payload.get("sequenceName"),
             awl_source=awl_source,
-            include_fc_block=bool(payload.get("includeFcBlock", True)),
             source_name=payload.get("sourceName"),
             output_dir=payload.get("outputDir", "output/generated"),
         )

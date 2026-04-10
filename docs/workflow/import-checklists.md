@@ -12,7 +12,7 @@ La fonte è il report consolidato `report_del_09-04-2026.md` insieme alla specif
 - **Transition FlgNet “subset sicuro”**: struttura LAD delle transition nel sottoinsieme accettato da TIA.
 - **Simboli risolvibili**: tutto ciò che è referenziato nel `FlgNet` deve essere dichiarato (locale FB o `GlobalDB` con riferimento simbolico esplicito).
 
-### B) Checklist rapida — GlobalDB companion importabile (+ commenti visibili)
+### B) Checklist rapida — GlobalDB del pacchetto importabile (+ commenti visibili)
 - **Blocco**: `SW.Blocks.GlobalDB` con struttura Openness standard (`AttributeList`, `ObjectList` coerente).
 - **Serializer Member ricorsivo**: `Member` annidati correttamente; niente “template statici copiati”.
 - **Organizzazione**: preferire `Struct` funzionali (cmd/feedback/param/diag/mapping…).

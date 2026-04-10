@@ -3,8 +3,8 @@
 ### Naming file (artefatti XML)
 - **FB GRAPH**: `FB_<AreaOImpianto>_<Funzione>_GRAPH_<variant>.xml`
   - es.: `FB_BottlingLine_GRAPH_strict_rebased.xml`
-- **GlobalDB companion**: `DB_<AreaOImpianto>_<Funzione>_companion_<variant>.xml`
-- **FC LAD**: `FC_<AreaOImpianto>_<Funzione>_<variant>.xml`
+- **GlobalDB del pacchetto**: `DB_<AreaOImpianto>_<Funzione>_global_<variant>.xml`
+- **FC LAD del pacchetto**: `FC_<AreaOImpianto>_<Funzione>_lad_<variant>.xml`
 
 Suggerimento: usare suffissi di variante solo quando aggiungono informazione utile:
 - `strict`: serializer/validator “hard rules” attivo
@@ -25,4 +25,3 @@ Organizzare per macro-strutture funzionali, evitando DB “piatti”:
 - **Stabilità**: il naming deve essere deterministico (stesso input → stessi simboli).
 - **Allineamento**: simboli referenziati nel `FlgNet` devono esistere e avere naming identico tra FB/DB.
 - **Evitare ambiguità**: niente acronimi non condivisi; preferire naming impiantistico.
-

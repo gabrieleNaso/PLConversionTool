@@ -1,6 +1,6 @@
 # PLConversionTool
 
-Repository per la conversione di sequenziatori PLC `AWL` in artefatti `GRAPH` XML importabili in `TIA Portal V20`, con `GlobalDB` companion e `FC LAD` di supporto quando necessari.
+Repository per la conversione di sequenziatori PLC `AWL` in un pacchetto XML importabile in `TIA Portal V20`, composto sempre da `FB GRAPH`, `GlobalDB` e `FC LAD`.
 
 Baseline documentale corrente:
 
@@ -16,8 +16,8 @@ Direzione di lavoro attuale:
 API backend operative del primo slice:
 
 - `POST /api/conversion/bootstrap`: scaffold e piano iniziale.
-- `POST /api/conversion/analyze`: parsing AWL incrementale, IR, issue locali e preview artefatti.
-- `POST /api/conversion/export`: scrittura del bundle di analisi e delle preview XML in `output/`.
+- `POST /api/conversion/analyze`: parsing AWL incrementale, IR, issue locali e preview del pacchetto XML completo.
+- `POST /api/conversion/export`: scrittura del bundle di analisi e delle preview XML del pacchetto completo in `output/`.
 
 Documentazione utile:
 

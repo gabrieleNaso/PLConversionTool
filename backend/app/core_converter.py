@@ -24,13 +24,11 @@ def get_target_profile() -> dict:
 def bootstrap_conversion(
     sequence_name: str | None,
     awl_source: str,
-    include_fc_block: bool = True,
     source_name: str | None = None,
 ) -> dict:
     return build_conversion_scaffold(
         sequence_name=sequence_name,
         awl_source=awl_source,
-        include_fc_block=include_fc_block,
         source_name=source_name,
     ).to_dict()
 
@@ -38,13 +36,11 @@ def bootstrap_conversion(
 def analyze_conversion(
     sequence_name: str | None,
     awl_source: str,
-    include_fc_block: bool = True,
     source_name: str | None = None,
 ) -> dict:
     return analyze_awl_source(
         sequence_name=sequence_name,
         awl_source=awl_source,
-        include_fc_block=include_fc_block,
         source_name=source_name,
     ).to_dict()
 
@@ -52,14 +48,12 @@ def analyze_conversion(
 def export_conversion_bundle(
     sequence_name: str | None,
     awl_source: str,
-    include_fc_block: bool = True,
     source_name: str | None = None,
     output_dir: str = "output/generated",
 ) -> dict:
     analysis = analyze_awl_source(
         sequence_name=sequence_name,
         awl_source=awl_source,
-        include_fc_block=include_fc_block,
         source_name=source_name,
     ).to_dict()
 

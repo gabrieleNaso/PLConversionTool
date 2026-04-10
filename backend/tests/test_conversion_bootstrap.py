@@ -21,7 +21,6 @@ def test_conversion_bootstrap_builds_initial_scaffold() -> None:
         json={
             "sequenceName": "Bottling Line",
             "sourceName": "bottling_line.awl",
-            "includeFcBlock": True,
             "awlSource": "\n".join(
                 [
                     "NETWORK",
@@ -39,7 +38,8 @@ def test_conversion_bootstrap_builds_initial_scaffold() -> None:
     payload = res.json()
     assert payload["sequence_name"] == "Bottling_Line"
     assert payload["artifact_plan"]["graph_fb_name"] == "FB_Bottling_Line_GRAPH_auto.xml"
-    assert payload["artifact_plan"]["support_fc_name"] == "FC_Bottling_Line_support_auto.xml"
+    assert payload["artifact_plan"]["global_db_name"] == "DB_Bottling_Line_global_auto.xml"
+    assert payload["artifact_plan"]["lad_fc_name"] == "FC_Bottling_Line_lad_auto.xml"
     assert payload["source_analysis"]["network_count"] == 1
     assert payload["source_analysis"]["set_reset_count"] == 2
     assert payload["source_analysis"]["jump_count"] == 1
@@ -52,7 +52,6 @@ def test_conversion_analyze_builds_ir_and_artifact_previews() -> None:
         json={
             "sequenceName": "Mixer Line",
             "sourceName": "mixer_line.awl",
-            "includeFcBlock": True,
             "awlSource": "\n".join(
                 [
                     "NETWORK 1",
@@ -94,6 +93,36 @@ def test_conversion_analyze_builds_ir_and_artifact_previews() -> None:
         if preview["artifact_type"] == "graph_fb"
     )
     assert any(
+        '<SW.Blocks.CompileUnit ID="3" CompositionName="CompileUnits">' in preview["content"]
+        and 'Graph xmlns="http://www.siemens.com/automation/Openness/SW/NetworkSource/Graph/v5"'
+        in preview["content"]
+        and "<StepRef Number=" in preview["content"]
+        and "<TransitionRef Number=" in preview["content"]
+        and "<AlarmsSettings>" in preview["content"]
+        and 'CompositionName="Title"' in preview["content"]
+        and '<Member Name="SNO" Datatype="Int"><StartValue Informative="true">' in preview["content"]
+        and '<Component Name="Mixer_Line_Global" />' in preview["content"]
+        and '<Component Name="T1_Guard_M10_0_AND_T1" />' in preview["content"]
+        for preview in payload["artifact_previews"]
+        if preview["artifact_type"] == "graph_fb"
+    )
+    assert any(
+        "<SW.Blocks.GlobalDB ID=\"0\">" in preview["content"]
+        and "<MemoryLayout>Optimized</MemoryLayout>" in preview["content"]
+        and '<Member Name="T1_Guard_M10_0_AND_T1" Datatype="Bool">' in preview["content"]
+        for preview in payload["artifact_previews"]
+        if preview["artifact_type"] == "global_db"
+    )
+    assert any(
+        "<SW.Blocks.FC ID=\"0\">" in preview["content"]
+        and "FlgNet xmlns=\"http://www.siemens.com/automation/Openness/SW/NetworkSource/FlgNet/v5\""
+        in preview["content"]
+        and '<Component Name="Mixer_Line_Global" />' in preview["content"]
+        and '<Component Name="T1_Guard_M10_0_AND_T1" />' in preview["content"]
+        for preview in payload["artifact_previews"]
+        if preview["artifact_type"] == "lad_fc"
+    )
+    assert any(
         issue["code"] == "NO_MANUAL_LOGIC" for issue in payload["validation_issues"]
     ) is False
 
@@ -105,7 +134,6 @@ def test_conversion_analyze_builds_alt_branch_for_multi_exit_step() -> None:
         json={
             "sequenceName": "Branchy Line",
             "sourceName": "branchy.awl",
-            "includeFcBlock": False,
             "awlSource": "\n".join(
                 [
                     "NETWORK 1",
@@ -127,6 +155,9 @@ def test_conversion_analyze_builds_alt_branch_for_multi_exit_step() -> None:
     assert len(payload["graph_topology"]["transition_nodes"]) == 2
     assert payload["graph_topology"]["branch_nodes"][0]["branch_type"] == "AltBegin"
     assert payload["graph_topology"]["connections"][0]["target_ref"] == "B_S1"
+    assert any(
+        preview["artifact_type"] == "lad_fc" for preview in payload["artifact_previews"]
+    )
     assert any(
         "<Branch " in preview["content"]
         for preview in payload["artifact_previews"]

@@ -38,8 +38,8 @@ class SourceAnalysis:
 @dataclass(slots=True)
 class ArtifactPlan:
     graph_fb_name: str
-    companion_db_name: str
-    support_fc_name: str | None
+    global_db_name: str
+    lad_fc_name: str
     output_directory: str
     naming_notes: list[str]
 
@@ -64,7 +64,7 @@ class ConversionScaffold:
     source_analysis: SourceAnalysis
     artifact_plan: ArtifactPlan
     graph_static_contract: list[str]
-    companion_db_sections: list[str]
+    global_db_sections: list[str]
     orchestration_flow: list[str]
     roadmap: ConversionRoadmap
     assumptions: list[str] = field(default_factory=list)
@@ -225,6 +225,8 @@ class GraphTransitionNode:
     target_step: str
     guard_expression: str
     network_index: int
+    db_block_name: str
+    db_member_name: str
 
     def to_dict(self) -> dict:
         return asdict(self)

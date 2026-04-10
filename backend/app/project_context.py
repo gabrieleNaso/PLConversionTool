@@ -2,15 +2,15 @@ def build_project_summary() -> dict:
     return {
         "project": "PLConversionTool",
         "objective": (
-            "Convertire sequenziatori PLC AWL in blocchi GRAPH XML importabili in "
-            "TIA Portal V20, con GlobalDB companion separato e supporto FC LAD."
+            "Convertire sequenziatori PLC AWL in un pacchetto XML importabile in "
+            "TIA Portal V20 composto sempre da FB GRAPH, GlobalDB e FC LAD."
         ),
         "targets": [
             "TIA Portal V20",
             "GRAPH V2",
             "SW.Blocks.FB importabile",
-            "SW.Blocks.GlobalDB companion",
-            "SW.Blocks.FC LAD di supporto",
+            "SW.Blocks.GlobalDB del pacchetto",
+            "SW.Blocks.FC LAD del pacchetto",
         ],
         "repositoryAreas": [
             {"name": "backend/", "purpose": "API e orchestrazione del workflow."},

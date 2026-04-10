@@ -287,7 +287,7 @@ public sealed class ReflectionOpennessRuntime(
         var rootBlockGroup = GetPropertyValue(plcSoftware, "BlockGroup")
             ?? throw new InvalidOperationException("BlockGroup non trovato su PlcSoftware.");
 
-        var targetGroup = ResolveBlockGroup(rootBlockGroup, job.TargetPath);
+        var targetGroup = ResolveBlockGroup(rootBlockGroup, job.TargetPath, createMissing: true);
         var importTarget = GetPropertyValue(targetGroup, "Blocks") ?? targetGroup;
         var importFiles = ResolveImportFiles(job.ArtifactPath);
 
@@ -498,7 +498,11 @@ public sealed class ReflectionOpennessRuntime(
         return null;
     }
 
-    private static object ResolveBlockGroup(object rootBlockGroup, string? targetPath)
+    private static object ResolveBlockGroup(
+        object rootBlockGroup,
+        string? targetPath,
+        bool createMissing = false
+    )
     {
         if (string.IsNullOrWhiteSpace(targetPath))
         {
@@ -524,7 +528,13 @@ public sealed class ReflectionOpennessRuntime(
                 continue;
             }
 
-            current = FindChildGroupByName(current, part)
+            var next = FindChildGroupByName(current, part);
+            if (next is null && createMissing)
+            {
+                next = CreateChildGroup(current, part);
+            }
+
+            current = next
                 ?? throw new InvalidOperationException(
                     $"BlockGroup '{part}' non trovato nel path '{targetPath}'."
                 );
@@ -547,6 +557,86 @@ public sealed class ReflectionOpennessRuntime(
         }
 
         return null;
+    }
+
+    private static object? CreateChildGroup(object blockGroup, string name)
+    {
+        foreach (var collectionName in new[] { "Groups", "GroupComposition", "BlockGroups" })
+        {
+            var collection = GetPropertyValue(blockGroup, collectionName);
+            if (collection is null)
+            {
+                continue;
+            }
+
+            if (TryInvokeCreateGroup(collection, name))
+            {
+                return FindChildGroupByName(blockGroup, name);
+            }
+        }
+
+        return null;
+    }
+
+    private static bool TryInvokeCreateGroup(object collection, string name)
+    {
+        foreach (var method in collection.GetType().GetMethods(BindingFlags.Instance | BindingFlags.Public))
+        {
+            if (
+                !string.Equals(method.Name, "Create", StringComparison.Ordinal)
+                && !string.Equals(method.Name, "CreateFrom", StringComparison.Ordinal)
+                && !string.Equals(method.Name, "Add", StringComparison.Ordinal)
+            )
+            {
+                continue;
+            }
+
+            var parameters = method.GetParameters();
+            if (parameters.Length == 0 || parameters[0].ParameterType != typeof(string))
+            {
+                continue;
+            }
+
+            var args = new object?[parameters.Length];
+            args[0] = name;
+
+            var supported = true;
+            for (var index = 1; index < parameters.Length; index++)
+            {
+                var parameter = parameters[index];
+                if (parameter.HasDefaultValue)
+                {
+                    args[index] = parameter.DefaultValue;
+                    continue;
+                }
+
+                if (parameter.ParameterType == typeof(bool))
+                {
+                    args[index] = false;
+                    continue;
+                }
+
+                supported = false;
+                break;
+            }
+
+            if (!supported)
+            {
+                continue;
+            }
+
+            try
+            {
+                method.Invoke(collection, args);
+                return true;
+            }
+            catch
+            {
+                // Continua a provare altre overload compatibili.
+            }
+        }
+
+        return false;
     }
 
     private static object? FindBlockByName(object blockGroup, string blockName)

@@ -15,4 +15,4 @@ Baseline operativa attuale:
 - parser AWL incrementale con reti, step, transizioni, timer, memorie e output;
 - IR esplicito riusabile dal backend;
 - validator locali iniziali;
-- preview XML strutturali per `FB GRAPH`, `GlobalDB` e `FC LAD`.
+- preview XML strutturali per il pacchetto completo `FB GRAPH` + `GlobalDB` + `FC LAD`.

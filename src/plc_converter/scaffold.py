@@ -35,8 +35,8 @@ def build_target_profile() -> TargetProfile:
         recommended_db_sections=["Cmd", "Fb", "Par", "En", "Diag", "Hmi", "Map"],
         notes=[
             "Il GRAPH deve mantenere gli statici runtime interni obbligatori.",
-            "Il GlobalDB companion va generato in aggiunta, non in sostituzione degli statici GRAPH.",
-            "Il blocco FC LAD e' opzionale ma utile per orchestration o logiche di servizio.",
+            "Il GlobalDB del pacchetto va generato in aggiunta, non in sostituzione degli statici GRAPH.",
+            "La conversione include sempre almeno una FC LAD del pacchetto di orchestrazione.",
         ],
     )
 
@@ -44,7 +44,6 @@ def build_target_profile() -> TargetProfile:
 def build_conversion_scaffold(
     sequence_name: str | None,
     awl_source: str,
-    include_fc_block: bool = True,
     source_name: str | None = None,
 ) -> ConversionScaffold:
     normalized_name = _normalize_sequence_name(sequence_name or source_name or "Sequence")
@@ -53,8 +52,8 @@ def build_conversion_scaffold(
 
     artifact_plan = ArtifactPlan(
         graph_fb_name=f"FB_{normalized_name}_GRAPH_auto.xml",
-        companion_db_name=f"DB_{normalized_name}_companion_auto.xml",
-        support_fc_name=f"FC_{normalized_name}_support_auto.xml" if include_fc_block else None,
+        global_db_name=f"DB_{normalized_name}_global_auto.xml",
+        lad_fc_name=f"FC_{normalized_name}_lad_auto.xml",
         output_directory="output/",
         naming_notes=[
             "Il naming resta deterministico e allineato alle convenzioni di repository.",
@@ -67,8 +66,7 @@ def build_conversion_scaffold(
             "analisi AWL e identificazione stati impliciti",
             "costruzione del modello intermedio della macchina a stati",
             "mappatura verso steps, transitions, branches e connections GRAPH",
-            "generazione XML di FB GRAPH e GlobalDB companion",
-            "eventuale generazione FC LAD di supporto",
+            "generazione XML di FB GRAPH, GlobalDB e FC LAD del pacchetto",
             "validazione via tia-bridge e Windows agent",
         ],
         immediate_next_actions=[
@@ -86,9 +84,8 @@ def build_conversion_scaffold(
     assumptions = [
         "L'input AWL puo' contenere una logica sequenziale distribuita su set/reset, jump e timer.",
         "L'output finale deve sempre privilegiare importabilita' TIA e struttura esplicita del GRAPH.",
+        "Ogni conversione produce sempre l'intero pacchetto FB GRAPH + GlobalDB + FC LAD.",
     ]
-    if include_fc_block:
-        assumptions.append("Il workflow prevede anche un blocco FC LAD di supporto.")
 
     return ConversionScaffold(
         sequence_name=normalized_name,
@@ -100,7 +97,7 @@ def build_conversion_scaffold(
             "un member G7_TransitionPlus_V2 per ogni transition",
             "un member G7_StepPlus_V2 per ogni step",
         ],
-        companion_db_sections=target_profile.recommended_db_sections,
+        global_db_sections=target_profile.recommended_db_sections,
         orchestration_flow=[
             "backend genera o aggiorna il bundle XML",
             "tia-bridge orchestra import/compile/export",

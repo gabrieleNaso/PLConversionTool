@@ -10,7 +10,7 @@
 
 ### Output prodotti (con path)
 - **GRAPH FB XML**:
-- **GlobalDB companion XML**:
+- **GlobalDB del pacchetto XML**:
 - **FC LAD XML**:
 - **Altri artefatti**:
 

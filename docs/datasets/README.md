@@ -16,9 +16,8 @@ Tenere separati:
   - `fc_lad/` (tipici FC LAD)
 - `datasets/golden/`
   - `graph_fb/` (FB GRAPH importati con successo)
-  - `globaldb/` (GlobalDB companion importati con successo, commenti verificati)
+  - `globaldb/` (GlobalDB del pacchetto importati con successo, commenti verificati)
   - `fc_lad/` (FC LAD importati con successo)
 
 ### Regola d’oro
 Se un file serve da riferimento stabile per debug/validator, deve stare in `datasets/golden/`.
-

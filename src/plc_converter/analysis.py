@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from xml.sax.saxutils import escape
 
 from .domain import (
     ArtifactPreview,
@@ -40,13 +41,11 @@ TIMER_OPCODES = {"SD", "SE", "SP", "SS", "SF"}
 def analyze_awl_source(
     sequence_name: str | None,
     awl_source: str,
-    include_fc_block: bool = True,
     source_name: str | None = None,
 ) -> ConversionAnalysis:
     scaffold = build_conversion_scaffold(
         sequence_name=sequence_name,
         awl_source=awl_source,
-        include_fc_block=include_fc_block,
         source_name=source_name,
     )
     source_label = source_name or f"{scaffold.sequence_name}.awl"
@@ -291,6 +290,8 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
             target_step=transition.target_step,
             guard_expression=transition.guard_expression,
             network_index=transition.network_index,
+            db_block_name=_global_db_block_name(ir),
+            db_member_name=_transition_db_member_name(transition),
         )
         for index, transition in enumerate(ir.transitions)
     ]
@@ -450,113 +451,9 @@ def _validate_ir(ir: AwlIR, graph_topology: GraphTopology) -> list[ValidationIss
 
 def _build_artifact_previews(scaffold, ir: AwlIR, graph_topology: GraphTopology) -> list[ArtifactPreview]:
     profile = build_target_profile()
-    step_runtime_lines = "\n".join(
-        (
-            f'      <Member Name="{step.name}" Datatype="{profile.step_runtime_type}">'
-            f'<Attribute Name="SNO" Value="{step.step_no}" /></Member>'
-        )
-        for step in graph_topology.step_nodes
-    )
-    transition_runtime_lines = "\n".join(
-        (
-            f'      <Member Name="{transition.name}" Datatype="{profile.transition_runtime_type}">'
-            f'<Attribute Name="TNO" Value="{transition.transition_no}" /></Member>'
-        )
-        for transition in graph_topology.transition_nodes
-    )
-    steps_xml = "\n".join(
-        (
-            f'      <Step Name="{step.name}" SNO="{step.step_no}" '
-            f'Init="{str(step.init).lower()}" SourceStep="{step.source_step}" />'
-        )
-        for step in graph_topology.step_nodes
-    )
-    transitions_xml = "\n".join(
-        (
-            f'      <Transition Name="{transition.name}" TNO="{transition.transition_no}" '
-            f'Source="{transition.source_step}" Target="{transition.target_step}" '
-            f'Guard="{transition.guard_expression}" Network="{transition.network_index}" />'
-        )
-        for transition in graph_topology.transition_nodes
-    )
-    branches_xml = "\n".join(
-        (
-            f'      <Branch Name="{branch.name}" BranchType="{branch.branch_type}" '
-            f'OwnerStep="{branch.owner_step}" />'
-        )
-        for branch in graph_topology.branch_nodes
-    )
-    connections_xml = "\n".join(
-        (
-            f'      <Connection SourceRef="{connection.source_ref}" '
-            f'TargetRef="{connection.target_ref}" LinkType="{connection.link_type}" />'
-        )
-        for connection in graph_topology.connections
-    )
-    db_members = "\n".join(
-        f'      <Member Name="{memory.name}" Comment="{memory.role}" />' for memory in ir.memories
-    )
-    fc_comments = "\n".join(
-        f"// {output.name} <- {output.action} (network {output.network_index})" for output in ir.outputs
-    )
-
-    graph_xml = (
-        '<?xml version="1.0" encoding="utf-8"?>\n'
-        f'<Document>\n'
-        f'  <Engineering version="{profile.tia_portal_version}" />\n'
-        f'  <SW.Blocks.FB Name="{ir.sequence_name}">\n'
-        f'    <AttributeList>\n'
-        f'      <ProgrammingLanguage>GRAPH</ProgrammingLanguage>\n'
-        f'      <GraphVersion>2.0</GraphVersion>\n'
-        f'    </AttributeList>\n'
-        f'    <Interface>\n'
-        f'      <Section Name="Static">\n'
-        f'      <Member Name="RT_DATA" Datatype="{profile.graph_runtime_type}" />\n'
-        f"{transition_runtime_lines}\n"
-        f"{step_runtime_lines}\n"
-        f'      </Section>\n'
-        f'    </Interface>\n'
-        f'    <Sequence>\n'
-        f"{steps_xml}\n"
-        f"{transitions_xml}\n"
-        f'      <Branches>\n'
-        f"{branches_xml}\n"
-        f'      </Branches>\n'
-        f'      <Connections>\n'
-        f"{connections_xml}\n"
-        f'      </Connections>\n'
-        f'    </Sequence>\n'
-        f'  </SW.Blocks.FB>\n'
-        f'</Document>\n'
-    )
-    db_xml = (
-        '<?xml version="1.0" encoding="utf-8"?>\n'
-        f'<Document>\n'
-        f'  <SW.Blocks.GlobalDB Name="{ir.sequence_name}_Companion">\n'
-        f'    <Sections>\n'
-        f'      <Section Name="Map" />\n'
-        f'      <Section Name="Diag" />\n'
-        f'      <Section Name="Cmd" />\n'
-        f'    </Sections>\n'
-        f'    <Members>\n'
-        f"{db_members}\n"
-        f'    </Members>\n'
-        f'  </SW.Blocks.GlobalDB>\n'
-        f'</Document>\n'
-    )
-    fc_xml = (
-        '<?xml version="1.0" encoding="utf-8"?>\n'
-        f'<Document>\n'
-        f'  <SW.Blocks.FC Name="{ir.sequence_name}_Support">\n'
-        f'    <AttributeList>\n'
-        f'      <ProgrammingLanguage>LAD</ProgrammingLanguage>\n'
-        f'    </AttributeList>\n'
-        f'    <Source><![CDATA[\n'
-        f"{fc_comments}\n"
-        f'    ]]></Source>\n'
-        f'  </SW.Blocks.FC>\n'
-        f'</Document>\n'
-    )
+    graph_xml = _build_graph_fb_xml(profile, ir, graph_topology)
+    db_xml = _build_global_db_xml(ir)
+    fc_xml = _build_lad_fc_xml(ir)
 
     previews = [
         ArtifactPreview(
@@ -565,20 +462,564 @@ def _build_artifact_previews(scaffold, ir: AwlIR, graph_topology: GraphTopology)
             content=graph_xml,
         ),
         ArtifactPreview(
-            artifact_type="companion_db",
-            file_name=scaffold.artifact_plan.companion_db_name,
+            artifact_type="global_db",
+            file_name=scaffold.artifact_plan.global_db_name,
             content=db_xml,
         ),
     ]
-    if scaffold.artifact_plan.support_fc_name:
-        previews.append(
-            ArtifactPreview(
-                artifact_type="support_fc",
-                file_name=scaffold.artifact_plan.support_fc_name,
-                content=fc_xml,
+    previews.append(
+        ArtifactPreview(
+            artifact_type="lad_fc",
+            file_name=scaffold.artifact_plan.lad_fc_name,
+            content=fc_xml,
+        )
+    )
+    return previews
+
+
+def _build_graph_fb_xml(profile, ir: AwlIR, graph_topology: GraphTopology) -> str:
+    static_members = ["    <Member Name=\"RT_DATA\" Datatype=\"G7_RTDataPlus_V2\" />"]
+    static_members.extend(
+        (
+            f'    <Member Name="{escape(transition.name)}" Datatype="{profile.transition_runtime_type}">\n'
+            '      <AttributeList>\n'
+            '        <BooleanAttribute Name="ExternalAccessible" SystemDefined="true">false</BooleanAttribute>\n'
+            '      </AttributeList>\n'
+            '      <Comment Informative="true">\n'
+            f'        <MultiLanguageText Lang="en-US">Transition structure</MultiLanguageText>\n'
+            '      </Comment>\n'
+            '      <Sections>\n'
+            '        <Section Name="None">\n'
+            f'          <Member Name="TNO" Datatype="Int"><StartValue Informative="true">{transition.transition_no}</StartValue></Member>\n'
+            '        </Section>\n'
+            '      </Sections>\n'
+            '    </Member>'
+        )
+        for transition in graph_topology.transition_nodes
+    )
+    static_members.extend(
+        (
+            f'    <Member Name="{escape(step.name)}" Datatype="{profile.step_runtime_type}">\n'
+            '      <AttributeList>\n'
+            '        <BooleanAttribute Name="ExternalAccessible" SystemDefined="true">false</BooleanAttribute>\n'
+            '      </AttributeList>\n'
+            '      <Comment Informative="true">\n'
+            '        <MultiLanguageText Lang="en-US">Step structure</MultiLanguageText>\n'
+            '      </Comment>\n'
+            '      <Sections>\n'
+            '        <Section Name="None">\n'
+            f'          <Member Name="SNO" Datatype="Int"><StartValue Informative="true">{step.step_no}</StartValue></Member>\n'
+            '          <Member Name="T_MAX" Datatype="Time"><StartValue Informative="true">T#10S</StartValue></Member>\n'
+            '          <Member Name="T_WARN" Datatype="Time"><StartValue Informative="true">T#7S</StartValue></Member>\n'
+            '          <Member Name="H_SV_FLT" Datatype="Byte"><StartValue Informative="true">16#04</StartValue></Member>\n'
+            '        </Section>\n'
+            '      </Sections>\n'
+            '    </Member>'
+        )
+        for step in graph_topology.step_nodes
+    )
+    temp_members = "\n".join(
+        f'    <Member Name="ET_{escape(timer.source_timer)}" Datatype="Time" />' for timer in ir.timers
+    )
+    if not temp_members:
+        temp_members = "    <Member Name=\"SEQ_TEMP\" Datatype=\"Bool\" />"
+
+    steps_xml = "\n".join(_render_graph_step(step) for step in graph_topology.step_nodes)
+    transitions_xml = "\n".join(
+        _render_graph_transition(transition) for transition in graph_topology.transition_nodes
+    )
+    branches_xml = "\n".join(_render_graph_branch(branch) for branch in graph_topology.branch_nodes)
+    connections_xml = "\n".join(
+        _render_graph_connection(connection, graph_topology) for connection in graph_topology.connections
+    )
+    branches_block = "    <Branches />\n"
+    if branches_xml:
+        branches_block = f"    <Branches>\n{branches_xml}\n    </Branches>\n"
+
+    return (
+        '<?xml version="1.0" encoding="utf-8"?>\n'
+        '<Document>\n'
+        f'  <Engineering version="{profile.tia_portal_version}" />\n'
+        '  <SW.Blocks.FB ID="0">\n'
+        '    <AttributeList>\n'
+        '      <GraphVersion>2.0</GraphVersion>\n'
+        '      <Interface><Sections xmlns="http://www.siemens.com/automation/Openness/SW/Interface/v5">\n'
+        '  <Section Name="Base">\n'
+        '    <Sections Datatype="GRAPH_BASE" Version="1.0">\n'
+        '      <Section Name="Input" />\n'
+        '      <Section Name="Output" />\n'
+        '      <Section Name="InOut" />\n'
+        '      <Section Name="Static" />\n'
+        '      <Section Name="Temp" />\n'
+        '    </Sections>\n'
+        '  </Section>\n'
+        '  <Section Name="Input" />\n'
+        '  <Section Name="Output" />\n'
+        '  <Section Name="InOut" />\n'
+        '  <Section Name="Static">\n'
+        f"{_join_lines(static_members)}\n"
+        '  </Section>\n'
+        '  <Section Name="Temp">\n'
+        f"{temp_members}\n"
+        '  </Section>\n'
+        '  <Section Name="Constant" />\n'
+        '</Sections></Interface>\n'
+        f'      <Name>{escape(ir.sequence_name)}</Name>\n'
+        '      <Namespace />\n'
+        '      <Number>1</Number>\n'
+        '      <ProgrammingLanguage>GRAPH</ProgrammingLanguage>\n'
+        '      <SetENOAutomatically>false</SetENOAutomatically>\n'
+        '    </AttributeList>\n'
+        '    <ObjectList>\n'
+        '      <MultilingualText ID="1" CompositionName="Comment">\n'
+        '        <ObjectList>\n'
+        '          <MultilingualTextItem ID="2" CompositionName="Items">\n'
+        '            <AttributeList>\n'
+        '              <Culture>en-US</Culture>\n'
+        '              <Text />\n'
+        '            </AttributeList>\n'
+        '          </MultilingualTextItem>\n'
+        '        </ObjectList>\n'
+        '      </MultilingualText>\n'
+        '      <SW.Blocks.CompileUnit ID="3" CompositionName="CompileUnits">\n'
+        '        <AttributeList>\n'
+        '          <NetworkSource><Graph xmlns="http://www.siemens.com/automation/Openness/SW/NetworkSource/Graph/v5">\n'
+        '  <PreOperations>\n'
+        '    <PermanentOperation ProgrammingLanguage="LAD" />\n'
+        '  </PreOperations>\n'
+        '  <Sequence>\n'
+        '    <Title />\n'
+        '    <Comment>\n'
+        '      <MultiLanguageText Lang="en-US" />\n'
+        '    </Comment>\n'
+        '    <Steps>\n'
+        f"{steps_xml}\n"
+        '    </Steps>\n'
+        '    <Transitions>\n'
+        f"{transitions_xml}\n"
+        '    </Transitions>\n'
+        f"{branches_block}"
+        '    <Connections>\n'
+        f"{connections_xml}\n"
+        '    </Connections>\n'
+        '  </Sequence>\n'
+        '  <PostOperations>\n'
+        '    <PermanentOperation ProgrammingLanguage="LAD" />\n'
+        '  </PostOperations>\n'
+        '  <AlarmsSettings>\n'
+        '    <AlarmSupervisionCategories>\n'
+        '      <AlarmSupervisionCategory Id="1" DisplayClass="0" />\n'
+        '      <AlarmSupervisionCategory Id="2" DisplayClass="0" />\n'
+        '      <AlarmSupervisionCategory Id="3" DisplayClass="0" />\n'
+        '      <AlarmSupervisionCategory Id="4" DisplayClass="0" />\n'
+        '      <AlarmSupervisionCategory Id="5" DisplayClass="0" />\n'
+        '      <AlarmSupervisionCategory Id="6" DisplayClass="0" />\n'
+        '      <AlarmSupervisionCategory Id="7" DisplayClass="0" />\n'
+        '      <AlarmSupervisionCategory Id="8" DisplayClass="0" />\n'
+        '    </AlarmSupervisionCategories>\n'
+        '    <AlarmInterlockCategory Id="1" />\n'
+        '    <AlarmSubcategory1Interlock Id="0" />\n'
+        '    <AlarmSubcategory2Interlock Id="0" />\n'
+        '    <AlarmCategorySupervision Id="1" />\n'
+        '    <AlarmSubcategory1Supervision Id="0" />\n'
+        '    <AlarmSubcategory2Supervision Id="0" />\n'
+        '    <AlarmWarningCategory Id="2" />\n'
+        '    <AlarmSubcategory1Warning Id="0" />\n'
+        '    <AlarmSubcategory2Warning Id="0" />\n'
+        '  </AlarmsSettings>\n'
+        '</Graph></NetworkSource>\n'
+          '          <ProgrammingLanguage>GRAPH</ProgrammingLanguage>\n'
+        '        </AttributeList>\n'
+        '        <ObjectList>\n'
+        '          <MultilingualText ID="4" CompositionName="Comment">\n'
+        '            <ObjectList>\n'
+        '              <MultilingualTextItem ID="5" CompositionName="Items">\n'
+        '                <AttributeList>\n'
+        '                  <Culture>en-US</Culture>\n'
+        '                  <Text />\n'
+        '                </AttributeList>\n'
+        '              </MultilingualTextItem>\n'
+        '            </ObjectList>\n'
+        '          </MultilingualText>\n'
+        '          <MultilingualText ID="6" CompositionName="Title">\n'
+        '            <ObjectList>\n'
+        '              <MultilingualTextItem ID="7" CompositionName="Items">\n'
+        '                <AttributeList>\n'
+        '                  <Culture>en-US</Culture>\n'
+        f'                  <Text>{escape(ir.sequence_name)}</Text>\n'
+        '                </AttributeList>\n'
+        '              </MultilingualTextItem>\n'
+        '            </ObjectList>\n'
+        '          </MultilingualText>\n'
+        '        </ObjectList>\n'
+      '      </SW.Blocks.CompileUnit>\n'
+        '      <MultilingualText ID="8" CompositionName="Title">\n'
+        '        <ObjectList>\n'
+        '          <MultilingualTextItem ID="9" CompositionName="Items">\n'
+        '            <AttributeList>\n'
+        '              <Culture>en-US</Culture>\n'
+        f'              <Text>{escape(ir.sequence_name)}</Text>\n'
+        '            </AttributeList>\n'
+        '          </MultilingualTextItem>\n'
+        '        </ObjectList>\n'
+        '      </MultilingualText>\n'
+        '    </ObjectList>\n'
+        '  </SW.Blocks.FB>\n'
+        '</Document>\n'
+    )
+
+
+def _build_global_db_xml(ir: AwlIR) -> str:
+    members = _build_global_db_members(ir)
+    return (
+        '<?xml version="1.0" encoding="utf-8"?>\n'
+        '<Document>\n'
+        '  <Engineering version="V20" />\n'
+        '  <SW.Blocks.GlobalDB ID="0">\n'
+        '    <AttributeList>\n'
+        '      <Interface><Sections xmlns="http://www.siemens.com/automation/Openness/SW/Interface/v5">\n'
+        '  <Section Name="Static">\n'
+        f"{members}\n"
+        '  </Section>\n'
+        '</Sections></Interface>\n'
+        '      <MemoryLayout>Optimized</MemoryLayout>\n'
+        '      <MemoryReserve>100</MemoryReserve>\n'
+        f'      <Name>{escape(ir.sequence_name)}_Global</Name>\n'
+        '      <Namespace />\n'
+        '      <Number>1</Number>\n'
+        '      <ProgrammingLanguage>DB</ProgrammingLanguage>\n'
+        '    </AttributeList>\n'
+        '    <ObjectList>\n'
+        '      <MultilingualText ID="1" CompositionName="Comment">\n'
+        '        <ObjectList>\n'
+        '          <MultilingualTextItem ID="2" CompositionName="Items">\n'
+        '            <AttributeList>\n'
+        '              <Culture>en-US</Culture>\n'
+        '              <Text />\n'
+        '            </AttributeList>\n'
+        '          </MultilingualTextItem>\n'
+        '        </ObjectList>\n'
+        '      </MultilingualText>\n'
+        '      <MultilingualText ID="3" CompositionName="Title">\n'
+        '        <ObjectList>\n'
+        '          <MultilingualTextItem ID="4" CompositionName="Items">\n'
+        '            <AttributeList>\n'
+        '              <Culture>en-US</Culture>\n'
+        f'              <Text>{escape(ir.sequence_name)} Global</Text>\n'
+        '            </AttributeList>\n'
+        '          </MultilingualTextItem>\n'
+        '        </ObjectList>\n'
+        '      </MultilingualText>\n'
+        '    </ObjectList>\n'
+        '  </SW.Blocks.GlobalDB>\n'
+        '</Document>\n'
+    )
+
+
+def _build_lad_fc_xml(ir: AwlIR) -> str:
+    temp_members = _build_lad_temp_members(ir)
+    compile_units = _build_lad_compile_units(ir)
+    return (
+        '<?xml version="1.0" encoding="utf-8"?>\n'
+        '<Document>\n'
+        '  <Engineering version="V20" />\n'
+        '  <SW.Blocks.FC ID="0">\n'
+        '    <AttributeList>\n'
+        '      <Interface><Sections xmlns="http://www.siemens.com/automation/Openness/SW/Interface/v5">\n'
+        '  <Section Name="Input" />\n'
+        '  <Section Name="Output" />\n'
+        '  <Section Name="InOut" />\n'
+        '  <Section Name="Temp">\n'
+        f"{temp_members}\n"
+        '  </Section>\n'
+        '  <Section Name="Constant" />\n'
+        '  <Section Name="Return">\n'
+        '    <Member Name="Ret_Val" Datatype="Void" />\n'
+        '  </Section>\n'
+        '</Sections></Interface>\n'
+        '      <MemoryLayout>Optimized</MemoryLayout>\n'
+        f'      <Name>{escape(ir.sequence_name)}_LAD</Name>\n'
+        '      <Namespace />\n'
+        '      <Number>2</Number>\n'
+        '      <ProgrammingLanguage>LAD</ProgrammingLanguage>\n'
+        '      <SetENOAutomatically>false</SetENOAutomatically>\n'
+        '    </AttributeList>\n'
+        '    <ObjectList>\n'
+        '      <MultilingualText ID="1" CompositionName="Comment">\n'
+        '        <ObjectList>\n'
+        '          <MultilingualTextItem ID="2" CompositionName="Items">\n'
+        '            <AttributeList>\n'
+        '              <Culture>en-US</Culture>\n'
+        '              <Text />\n'
+        '            </AttributeList>\n'
+        '          </MultilingualTextItem>\n'
+        '        </ObjectList>\n'
+        '      </MultilingualText>\n'
+        f"{compile_units}\n"
+        '    </ObjectList>\n'
+        '  </SW.Blocks.FC>\n'
+        '</Document>\n'
+    )
+
+
+def _build_global_db_members(ir: AwlIR) -> str:
+    members: list[str] = []
+
+    for transition in ir.transitions:
+        guard_member = _transition_db_member_name(transition)
+        members.append(
+            (
+                f'    <Member Name="{escape(guard_member)}" Datatype="Bool">\n'
+                '      <Comment Informative="true">\n'
+                f'        <MultiLanguageText Lang="en-US">Transition guard for {escape(transition.transition_id)}</MultiLanguageText>\n'
+                '      </Comment>\n'
+                '    </Member>'
             )
         )
-    return previews
+
+    for memory in ir.memories:
+        members.append(
+            (
+                f'    <Member Name="{escape(_db_member_name(memory.name))}" Datatype="Bool">\n'
+                '      <Comment Informative="true">\n'
+                f'        <MultiLanguageText Lang="en-US">{escape(memory.role)}</MultiLanguageText>\n'
+                '      </Comment>\n'
+                '    </Member>'
+            )
+        )
+
+    if not members:
+        members.append('    <Member Name="NoData" Datatype="Bool" />')
+    return "\n".join(dict.fromkeys(members))
+
+
+def _build_lad_temp_members(ir: AwlIR) -> str:
+    members: list[str] = []
+    for output in ir.outputs:
+        members.append(f'    <Member Name="{escape(_db_member_name(output.name))}" Datatype="Bool" />')
+    for memory in ir.memories:
+        members.append(f'    <Member Name="{escape(_db_member_name(memory.name))}" Datatype="Bool" />')
+    if not members:
+        members.append('    <Member Name="PACKET_READY" Datatype="Bool" />')
+    return "\n".join(dict.fromkeys(members))
+
+
+def _build_lad_compile_units(ir: AwlIR) -> str:
+    units: list[str] = []
+    base_id = 3
+    guard_targets = ir.transitions or [
+        TransitionCandidate(
+            transition_id="T1",
+            source_step="S1",
+            target_step="S2",
+            network_index=0,
+            guard_expression="PACKET_READY",
+        )
+    ]
+    for index, transition in enumerate(guard_targets):
+        unit_id = format(base_id + (index * 5), "X")
+        comment_id = format(base_id + (index * 5) + 1, "X")
+        comment_item_id = format(base_id + (index * 5) + 2, "X")
+        title_id = format(base_id + (index * 5) + 3, "X")
+        title_item_id = format(base_id + (index * 5) + 4, "X")
+        source_symbol_name = escape(_normalize_symbol_name(transition.guard_expression, transition.transition_id))
+        target_db_name = escape(_global_db_block_name(ir))
+        target_member_name = escape(_transition_db_member_name(transition))
+        units.append(
+            '      <SW.Blocks.CompileUnit ID="'
+            + unit_id
+            + '" CompositionName="CompileUnits">\n'
+            '        <AttributeList>\n'
+            '          <NetworkSource><FlgNet xmlns="http://www.siemens.com/automation/Openness/SW/NetworkSource/FlgNet/v5">\n'
+            '  <Parts>\n'
+            '    <Access Scope="GlobalVariable" UId="21">\n'
+            '      <Symbol>\n'
+            f'        <Component Name="{source_symbol_name}" />\n'
+            '      </Symbol>\n'
+            '    </Access>\n'
+            '    <Part Name="Contact" UId="22" />\n'
+            '    <Access Scope="GlobalVariable" UId="23">\n'
+            '      <Symbol>\n'
+            f'        <Component Name="{target_db_name}" />\n'
+            f'        <Component Name="{target_member_name}" />\n'
+            '      </Symbol>\n'
+            '    </Access>\n'
+            '    <Part Name="Coil" UId="24" />\n'
+            '  </Parts>\n'
+            '  <Wires>\n'
+            '    <Wire UId="25">\n'
+            '      <Powerrail />\n'
+            '      <NameCon UId="22" Name="in" />\n'
+            '    </Wire>\n'
+            '    <Wire UId="26">\n'
+            '      <IdentCon UId="21" />\n'
+            '      <NameCon UId="22" Name="operand" />\n'
+            '    </Wire>\n'
+            '    <Wire UId="27">\n'
+            '      <NameCon UId="22" Name="out" />\n'
+            '      <NameCon UId="24" Name="in" />\n'
+            '    </Wire>\n'
+            '    <Wire UId="28">\n'
+            '      <IdentCon UId="23" />\n'
+            '      <NameCon UId="24" Name="operand" />\n'
+            '    </Wire>\n'
+            '  </Wires>\n'
+            '</FlgNet></NetworkSource>\n'
+            '          <ProgrammingLanguage>LAD</ProgrammingLanguage>\n'
+            '        </AttributeList>\n'
+            '        <ObjectList>\n'
+            f'          <MultilingualText ID="{comment_id}" CompositionName="Comment">\n'
+            '            <ObjectList>\n'
+            f'              <MultilingualTextItem ID="{comment_item_id}" CompositionName="Items">\n'
+            '                <AttributeList>\n'
+            '                  <Culture>en-US</Culture>\n'
+            f'                  <Text>Network {transition.network_index}</Text>\n'
+            '                </AttributeList>\n'
+            '              </MultilingualTextItem>\n'
+            '            </ObjectList>\n'
+            '          </MultilingualText>\n'
+            f'          <MultilingualText ID="{title_id}" CompositionName="Title">\n'
+            '            <ObjectList>\n'
+            f'              <MultilingualTextItem ID="{title_item_id}" CompositionName="Items">\n'
+            '                <AttributeList>\n'
+            '                  <Culture>en-US</Culture>\n'
+            f'                  <Text>{escape(target_member_name)}</Text>\n'
+            '                </AttributeList>\n'
+            '              </MultilingualTextItem>\n'
+            '            </ObjectList>\n'
+            '          </MultilingualText>\n'
+            '        </ObjectList>\n'
+            '      </SW.Blocks.CompileUnit>'
+        )
+    return "\n".join(units)
+
+
+def _render_graph_step(step: GraphStepNode) -> str:
+    return (
+        f'      <Step Number="{step.step_no}" Init="{str(step.init).lower()}" '
+        f'Name="{escape(step.name)}" MaximumStepTime="T#10S" WarningTime="T#7S">\n'
+        '        <Actions>\n'
+        '          <Action />\n'
+        '        </Actions>\n'
+        '        <Supervisions>\n'
+        '          <Supervision ProgrammingLanguage="LAD">\n'
+        f"{_render_empty_graph_net('SvCoil')}\n"
+        '          </Supervision>\n'
+        '        </Supervisions>\n'
+        '        <Interlocks>\n'
+        '          <Interlock ProgrammingLanguage="LAD">\n'
+        f"{_render_empty_graph_net('IlCoil')}\n"
+        '          </Interlock>\n'
+        '        </Interlocks>\n'
+        '      </Step>'
+    )
+
+
+def _render_graph_transition(transition: GraphTransitionNode) -> str:
+    return (
+        f'      <Transition IsMissing="false" Name="{escape(transition.name)}" '
+        f'Number="{transition.transition_no}" ProgrammingLanguage="LAD">\n'
+        '        <FlgNet>\n'
+        '          <Parts>\n'
+        '            <Access Scope="GlobalVariable" UId="21">\n'
+        '              <Symbol>\n'
+        f'                <Component Name="{escape(transition.db_block_name)}" />\n'
+        f'                <Component Name="{escape(transition.db_member_name)}" />\n'
+        '              </Symbol>\n'
+        '            </Access>\n'
+        '            <Part Name="Contact" UId="22" />\n'
+        '            <Part Name="TrCoil" UId="23" />\n'
+        '          </Parts>\n'
+        '          <Wires>\n'
+        '            <Wire UId="24">\n'
+        '              <Powerrail />\n'
+        '              <NameCon UId="22" Name="in" />\n'
+        '            </Wire>\n'
+        '            <Wire UId="25">\n'
+        '              <IdentCon UId="21" />\n'
+        '              <NameCon UId="22" Name="operand" />\n'
+        '            </Wire>\n'
+        '            <Wire UId="26">\n'
+        '              <NameCon UId="22" Name="out" />\n'
+        '              <NameCon UId="23" Name="in" />\n'
+        '            </Wire>\n'
+        '          </Wires>\n'
+        '        </FlgNet>\n'
+        '      </Transition>'
+    )
+
+
+def _render_graph_branch(branch: GraphBranchNode) -> str:
+    return f'      <Branch Number="1" Name="{escape(branch.name)}" Type="{escape(branch.branch_type)}" />'
+
+
+def _render_graph_connection(connection: GraphConnection, graph_topology: GraphTopology) -> str:
+    return (
+        '      <Connection>\n'
+        '        <NodeFrom>\n'
+        f'{_render_graph_node_ref(connection.source_ref, graph_topology)}\n'
+        '        </NodeFrom>\n'
+        '        <NodeTo>\n'
+        f'{_render_graph_node_ref(connection.target_ref, graph_topology)}\n'
+        '        </NodeTo>\n'
+        f'        <LinkType>{escape(connection.link_type)}</LinkType>\n'
+        '      </Connection>'
+    )
+
+
+def _render_graph_node_ref(ref: str, graph_topology: GraphTopology) -> str:
+    step = next((item for item in graph_topology.step_nodes if item.name == ref), None)
+    if step is not None:
+        return f'          <StepRef Number="{step.step_no}" />'
+    transition = next((item for item in graph_topology.transition_nodes if item.name == ref), None)
+    if transition is not None:
+        return f'          <TransitionRef Number="{transition.transition_no}" />'
+    branch = next((item for item in graph_topology.branch_nodes if item.name == ref), None)
+    if branch is not None:
+        return f'          <BranchRef Name="{escape(branch.name)}" />'
+    return '          <EndConnection />'
+
+
+def _render_empty_graph_net(coil_name: str) -> str:
+    return (
+        '            <FlgNet>\n'
+        '              <Parts>\n'
+        f'                <Part Name="{coil_name}" UId="21" />\n'
+        '              </Parts>\n'
+        '              <Wires>\n'
+        '                <Wire UId="22">\n'
+        '                  <Powerrail />\n'
+        '                  <NameCon UId="21" Name="in" />\n'
+        '                </Wire>\n'
+        '              </Wires>\n'
+        '            </FlgNet>'
+    )
+
+
+def _join_lines(lines: list[str]) -> str:
+    return "\n".join(lines)
+
+
+def _normalize_symbol_name(guard_expression: str, fallback: str) -> str:
+    cleaned = re.sub(r"[^A-Za-z0-9]+", "_", guard_expression).strip("_")
+    return cleaned or fallback
+
+
+def _db_member_name(raw_name: str) -> str:
+    return raw_name.replace(".", "_")
+
+
+def _global_db_block_name(ir: AwlIR) -> str:
+    return f"{ir.sequence_name}_Global"
+
+
+def _transition_db_member_name(transition: TransitionCandidate) -> str:
+    return _transition_db_member_name_from_values(transition.transition_id, transition.guard_expression)
+
+
+def _transition_db_member_name_from_values(transition_name: str, guard_expression: str) -> str:
+    normalized = _normalize_symbol_name(guard_expression, transition_name)
+    return f"{transition_name}_Guard_{normalized}"
 
 
 def _step_sort_key(name: str) -> tuple[int, str]:
