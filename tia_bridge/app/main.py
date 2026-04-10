@@ -147,9 +147,36 @@ async def queue_job(operation: str, request: JobRequest) -> dict:
                 response["artifactPath"] = export_context.local_path
             if "ArtifactPath" in response:
                 response["ArtifactPath"] = export_context.local_path
+        if operation == "import":
+            compile_request = staged_request.model_copy(
+                update={
+                    "operation": "compile",
+                    "notes": _build_auto_compile_note(staged_request.notes),
+                }
+            )
+            compile_response = await client.queue_job("compile", compile_request)
+            compile_job_id = compile_response.get("jobId") or compile_response.get("JobId")
+            if compile_job_id:
+                response["AutoCompileJobId"] = compile_job_id
+                detail = response.get("Detail") or response.get("detail") or ""
+                if detail:
+                    detail = f"{detail} Auto-compile accodata (JobId={compile_job_id})."
+                else:
+                    detail = f"Auto-compile accodata (JobId={compile_job_id})."
+                if "Detail" in response:
+                    response["Detail"] = detail
+                else:
+                    response["detail"] = detail
         return response
     except (HTTPException, WindowsAgentError) as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
+def _build_auto_compile_note(import_notes: str | None) -> str:
+    base = (import_notes or "").strip()
+    if not base:
+        return "auto-compile after import"
+    return f"{base} | auto-compile after import"
 
 
 @app.get("/api/jobs")
