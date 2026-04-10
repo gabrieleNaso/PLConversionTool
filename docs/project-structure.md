@@ -1,6 +1,13 @@
 # Struttura operativa della repository
 
-Questa repository serve a portare il progetto da analisi manuale e reverse engineering XML a tool deterministico per la conversione `AWL -> GRAPH`.
+Questa repository serve a portare il progetto da analisi manuale e reverse engineering XML a tool deterministico per la conversione `AWL -> pacchetto TIA coerente`.
+
+Per "pacchetto coerente" si intende almeno:
+- `FB GRAPH`
+- `GlobalDB`
+- `FC LAD`
+
+e, quando il caso reale lo richiede, anche blocchi aggiuntivi che devono restare coerenti con gli stessi naming, simboli e contratti runtime.
 
 ## Vista per responsabilita'
 
@@ -35,6 +42,7 @@ Questa repository serve a portare il progetto da analisi manuale e reverse engin
 - Le logiche condivise del convertitore dovrebbero convergere in `src/`, evitando di spargerle tra UI, script e backend.
 - Le integrazioni verso TIA/Openness non vanno mescolate nel backend di generazione: devono restare isolate nel servizio `tia_bridge/`.
 - Gli esperimenti temporanei vanno in `tmp/`, non in root.
+- Nessun blocco del pacchetto va considerato "autonomo" ai fini del risultato finale: l'obiettivo operativo resta la coerenza compilabile dell'insieme dei blocchi generati.
 
 ## Organizzazione dataset
 

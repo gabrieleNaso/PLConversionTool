@@ -204,6 +204,7 @@ Invoke-RestMethod `
 ### Import in un gruppo specifico
 
 Importa nel gruppo `Program blocks/Group_1`.
+Se `Group_1` non esiste ancora sotto `Program blocks`, l'agent prova a crearlo automaticamente durante l'import.
 
 ```powershell
 $body = @{
@@ -340,6 +341,8 @@ curl -X POST http://192.167.1.20:8010/api/jobs/import \
 
 ### Import remoto di una cartella Linux verso `Group_1`
 
+Se `Group_1` non esiste ancora sotto `Program blocks`, l'agent prova a crearlo automaticamente durante l'import.
+
 ```bash
 curl -X POST http://192.167.1.20:8010/api/jobs/import \
   -H 'Content-Type: application/json' \
@@ -408,7 +411,134 @@ curl http://192.167.1.20:8010/api/jobs
 ls -R /home/administrator/PLConversionTool/output/remote_exports/Group_1
 ```
 
-## 10. Lettura job dal bridge Linux
+## 10. Workflow completo da Ubuntu/Linux
+
+Questa sezione raccoglie i comandi operativi principali da usare direttamente dalla VM Ubuntu.
+
+### Import remoto di un FB generato dal tool
+
+```bash
+curl -X POST http://192.167.1.20:8010/api/jobs/import \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "artifactPath": "output/generated/import-trial-linked/FB_Import_Trial_Linked_GRAPH_auto.xml",
+    "projectPath": "C:\\Users\\Admin\\Desktop\\prova_connessione_openness\\prova_connessione_openness.ap20",
+    "targetPath": "Program blocks/generati da tool",
+    "targetName": null,
+    "saveProject": true,
+    "notes": "ubuntu import generated graph"
+  }'
+```
+
+### Import remoto di un pacchetto completo generato dal tool
+
+Importa tutti gli XML presenti in una cartella Linux.
+
+```bash
+curl -X POST http://192.167.1.20:8010/api/jobs/import \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "artifactPath": "output/generated/complex-trial-fix",
+    "projectPath": "C:\\Users\\Admin\\Desktop\\prova_connessione_openness\\prova_connessione_openness.ap20",
+    "targetPath": "Program blocks/generati da tool/complex-trial-fix",
+    "targetName": null,
+    "saveProject": true,
+    "notes": "ubuntu import full generated package"
+  }'
+```
+
+### Compile remota da Ubuntu via tia-bridge
+
+Per `compile`, `artifactPath` resta un placeholder tecnico obbligatorio.
+
+```bash
+curl -X POST http://192.167.1.20:8010/api/jobs/compile \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "artifactPath": "output/generated/compile-request.json",
+    "projectPath": "C:\\Users\\Admin\\Desktop\\prova_connessione_openness\\prova_connessione_openness.ap20",
+    "targetPath": "Program blocks/generati da tool",
+    "targetName": null,
+    "saveProject": true,
+    "notes": "ubuntu compile generated folder"
+  }'
+```
+
+### Export remoto di un blocco verso Ubuntu
+
+```bash
+curl -X POST http://192.167.1.20:8010/api/jobs/export \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "artifactPath": "output/remote_exports/Complex_Trial_Fix_GRAPH.xml",
+    "projectPath": "C:\\Users\\Admin\\Desktop\\prova_connessione_openness\\prova_connessione_openness.ap20",
+    "targetPath": "Program blocks/generati da tool/complex-trial-fix",
+    "targetName": "Complex_Trial_Fix",
+    "saveProject": false,
+    "notes": "ubuntu export generated graph"
+  }'
+```
+
+### Export remoto di un gruppo verso Ubuntu
+
+```bash
+curl -X POST http://192.167.1.20:8010/api/jobs/export \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "artifactPath": "output/remote_exports/complex-trial-fix",
+    "projectPath": "C:\\Users\\Admin\\Desktop\\prova_connessione_openness\\prova_connessione_openness.ap20",
+    "targetPath": "Program blocks/generati da tool/complex-trial-fix",
+    "targetName": null,
+    "saveProject": false,
+    "notes": "ubuntu export generated folder"
+  }'
+```
+
+### Polling rapido di un job da Ubuntu
+
+Sostituisci `JOB_ID` con l'id reale restituito dal bridge.
+
+```bash
+curl http://192.167.1.20:8010/api/jobs/JOB_ID
+```
+
+### Polling continuo fino a chiusura
+
+```bash
+for i in $(seq 1 10); do
+  date
+  curl -fsS http://192.167.1.20:8010/api/jobs/JOB_ID
+  echo
+  sleep 15
+done
+```
+
+### Verifica file esportati su Ubuntu
+
+```bash
+ls -l /home/administrator/PLConversionTool/output/remote_exports
+find /home/administrator/PLConversionTool/output/remote_exports -maxdepth 3 -type f | sort
+```
+
+### Chiamata diretta dalla VM Ubuntu all'agent Windows
+
+Utile per debug quando vuoi bypassare temporaneamente il `tia-bridge`.
+
+```bash
+curl -X POST http://192.167.1.41:8050/api/jobs/compile \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "operation": "compile",
+    "artifactPath": "C:\\Users\\Admin\\Desktop\\PLConverionTool\\tmp\\compile-request.json",
+    "projectPath": "C:\\Users\\Admin\\Desktop\\prova_connessione_openness\\prova_connessione_openness.ap20",
+    "targetPath": "Program blocks/generati da tool",
+    "targetName": null,
+    "saveProject": true,
+    "notes": "ubuntu direct compile to windows agent"
+  }'
+```
+
+## 11. Lettura job dal bridge Linux
 
 ### Tutti i job
 
@@ -422,7 +552,7 @@ curl http://192.167.1.20:8010/api/jobs
 curl http://192.167.1.20:8010/api/jobs/JOB_ID
 ```
 
-## 11. Regole pratiche da ricordare
+## 12. Regole pratiche da ricordare
 
 - `targetPath = null` significa root dei `Program blocks`
 - `targetName = null` + `artifactPath` directory in `export` significa export multiplo del gruppo

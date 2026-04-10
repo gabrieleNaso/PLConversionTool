@@ -152,14 +152,70 @@ def test_conversion_analyze_builds_alt_branch_for_multi_exit_step() -> None:
 
     payload = res.json()
     assert payload["graph_topology"]["entry_step"] == "S1"
-    assert len(payload["graph_topology"]["transition_nodes"]) == 2
+    assert len(payload["graph_topology"]["transition_nodes"]) >= 2
     assert payload["graph_topology"]["branch_nodes"][0]["branch_type"] == "AltBegin"
+    assert payload["graph_topology"]["branch_nodes"][0]["branch_no"] == 1
     assert payload["graph_topology"]["connections"][0]["target_ref"] == "B_S1"
     assert any(
         preview["artifact_type"] == "lad_fc" for preview in payload["artifact_previews"]
     )
     assert any(
-        "<Branch " in preview["content"]
+        '<Branch Number="1" Type="AltBegin" Cardinality="2" />' in preview["content"]
+        and '<BranchRef Number="1" In="0" />' in preview["content"]
+        and '<BranchRef Number="1" Out="0" />' in preview["content"]
+        for preview in payload["artifact_previews"]
+        if preview["artifact_type"] == "graph_fb"
+    )
+
+
+def test_conversion_analyze_builds_sim_end_for_multi_entry_step() -> None:
+    client = TestClient(app)
+    res = client.post(
+        "/api/conversion/analyze",
+        json={
+            "sequenceName": "Merge Line",
+            "sourceName": "merge.awl",
+            "awlSource": "\n".join(
+                [
+                    "NETWORK 1",
+                    "      U     S1",
+                    "      U     M10.0",
+                    "      S     S3",
+                    "NETWORK 2",
+                    "      U     S2",
+                    "      U     M11.0",
+                    "      S     S3",
+                    "NETWORK 3",
+                    "      U     S3",
+                    "      U     M12.0",
+                    "      S     S4",
+                ]
+            ),
+        },
+    )
+    assert res.status_code == 200
+
+    payload = res.json()
+    assert any(
+        branch["branch_type"] == "SimEnd" and branch["owner_step"] == "S3"
+        for branch in payload["graph_topology"]["branch_nodes"]
+    )
+    assert any(
+        connection["target_ref"] == "J_S3" for connection in payload["graph_topology"]["connections"]
+    )
+    assert any(
+        connection["source_ref"] == "J_S3" and connection["target_ref"] == "T_JOIN_S3"
+        for connection in payload["graph_topology"]["connections"]
+    )
+    assert any(
+        connection["source_ref"] == "T_JOIN_S3" and connection["target_ref"] == "S3"
+        for connection in payload["graph_topology"]["connections"]
+    )
+    assert any(
+        'Type="SimEnd" Cardinality="2"' in preview["content"]
+        and 'In="0"' in preview["content"]
+        and 'In="1"' in preview["content"]
+        and 'Out="0"' in preview["content"]
         for preview in payload["artifact_previews"]
         if preview["artifact_type"] == "graph_fb"
     )

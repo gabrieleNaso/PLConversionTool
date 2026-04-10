@@ -2,6 +2,13 @@
 
 Repository per la conversione di sequenziatori PLC `AWL` in un pacchetto XML importabile in `TIA Portal V20`, composto sempre da `FB GRAPH`, `GlobalDB` e `FC LAD`.
 
+Regola architetturale fondamentale:
+
+- `FB GRAPH`, `GlobalDB` e `FC LAD` non vanno trattati come XML indipendenti, ma come un unico pacchetto coerente.
+- Ogni riferimento simbolico emesso da un blocco deve essere soddisfatto dagli altri blocchi del pacchetto.
+- Naming, tag di transizione, member DB, logiche LAD e topologia GRAPH devono restare allineati tra loro per tutta la pipeline `analyze -> export -> import -> compile`.
+- Se il caso reale richiede piu' di tre blocchi, la stessa regola si estende a tutti i blocchi aggiuntivi del pacchetto.
+
 Baseline documentale corrente:
 
 - [report_del_09-04-2026 (1).md](/home/administrator/PLConversionTool/report_del_09-04-2026%20(1).md): stato consolidato del progetto, scelte architetturali e priorita' operative.
@@ -23,6 +30,7 @@ Aggiornamenti operativi consolidati:
 
 - il `tia-bridge` accoda automaticamente un job `compile` subito dopo ogni job `import` (`POST /api/jobs/import`);
 - il generatore mantiene coerenza tra tag usati nel `GRAPH/FC` e member dichiarati nel `GlobalDB`, incluse transizioni sintetiche `T_AUTO_*`;
+- la coerenza del pacchetto e' un requisito hard: non e' ammesso considerare `FB`, `DB`, `FC` o blocchi aggiuntivi come artefatti isolati se poi in compile si referenziano fra loro;
 - la diagnostica compile lato Windows agent include dettaglio esteso dei messaggi e del contesto per accelerare il debug sui blocchi TIA.
 
 Documentazione utile:

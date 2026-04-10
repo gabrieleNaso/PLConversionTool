@@ -372,7 +372,8 @@ Eccezioni operative principali:
 - Per `export`, se `artifactPath` e' una directory, vengono esportati tutti i blocchi del gruppo selezionato e dei suoi sottogruppi.
 - Per `export`, se `artifactPath` e' un file, devi indicare il blocco con `targetName` oppure usare un nome file coerente con il blocco da esportare.
 - Per `export`, se `artifactPath` e' una directory ma `targetName` e' valorizzato, viene esportato un solo blocco dentro quella directory.
-- Se `targetPath` punta a un gruppo inesistente, il job va in errore.
+- Per `import`, se `targetPath` punta a un gruppo inesistente sotto `Program blocks`, l'agent prova a crearlo automaticamente prima dell'import.
+- Per `compile` ed `export`, se `targetPath` punta a un gruppo inesistente, il job va in errore.
 - Se `targetName` punta a un blocco inesistente, l'`export` va in errore.
 - Se `artifactPath` di `import` non esiste come file o directory, il job va in errore.
 - Se `artifactPath` di `export` e' una cartella, l'agent la crea se manca.

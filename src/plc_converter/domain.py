@@ -235,9 +235,11 @@ class GraphTransitionNode:
 @dataclass(slots=True)
 class GraphBranchNode:
     name: str
+    branch_no: int
     branch_type: str
     owner_step: str
-    transition_targets: list[str] = field(default_factory=list)
+    incoming_refs: list[str] = field(default_factory=list)
+    outgoing_refs: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return asdict(self)

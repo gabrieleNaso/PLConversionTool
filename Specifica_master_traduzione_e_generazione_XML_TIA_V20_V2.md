@@ -28,6 +28,13 @@ L'obiettivo corretto è produrre un insieme di blocchi TIA V20 coerenti, importa
 - leggibilità manutentiva;
 - separazione corretta delle responsabilità.
 
+Regola hard aggiuntiva:
+
+- i blocchi generati non vanno considerati unità indipendenti;
+- `FB GRAPH`, `GlobalDB`, `FC LAD` e ogni eventuale blocco aggiuntivo costituiscono un unico pacchetto coerente;
+- la validità reale del risultato non è "XML singolarmente importabile", ma "insieme di blocchi coerente e compilabile";
+- ogni simbolo, member, tag di transizione, nome blocco, contratto dati o assunzione runtime emessa in un blocco deve essere soddisfatta dagli altri blocchi del pacchetto che la consumano.
+
 ## 2. Regola di non equivalenza contenitore-contenitore
 
 Una FC AWL monolitica non corrisponde a un solo blocco target.
@@ -49,6 +56,10 @@ Questo ecosistema comprende almeno:
 - `FC 04 Transitions`;
 - `FC 06 Output`;
 - eventuali blocchi addizionali di servizio coerenti col progetto.
+
+Regola operativa conseguente:
+
+- se un caso reale richiede piu' di tre blocchi, la coerenza cross-blocco non si ferma a `FB GRAPH + GlobalDB + FC LAD`, ma si estende a tutto l'ecosistema generato.
 
 ## 3. Regola di target definitivo
 
@@ -606,6 +617,12 @@ Regola di coerenza cross-blocco (hard):
 - ogni tag usato nelle transition GRAPH o nelle reti LAD di supporto deve essere dichiarato nel `GlobalDB` companion;
 - la sorgente canonica dei tag di guardia deve essere la topologia finale delle transizioni, incluse eventuali transizioni sintetiche (`T_AUTO_*`);
 - non e' ammesso generare riferimenti LAD/GRAPH a member non presenti nel DB companion.
+
+Estensione obbligatoria della regola:
+
+- la coerenza cross-blocco non riguarda solo `GRAPH <-> GlobalDB`;
+- vale anche per `GRAPH <-> FC`, `FC <-> GlobalDB` e, piu' in generale, per ogni coppia di blocchi del pacchetto che si referenziano fra loro;
+- non e' ammesso che un blocco del pacchetto compili soltanto assumendo naming o member che gli altri blocchi non emettono realmente.
 
 ### Composizione canonica
 

@@ -5,6 +5,11 @@ def build_project_summary() -> dict:
             "Convertire sequenziatori PLC AWL in un pacchetto XML importabile in "
             "TIA Portal V20 composto sempre da FB GRAPH, GlobalDB e FC LAD."
         ),
+        "architecturalRule": (
+            "I blocchi del pacchetto devono restare coerenti tra loro: riferimenti, "
+            "member DB, naming, logiche LAD e assunzioni GRAPH non possono divergere "
+            "fra FB, GlobalDB, FC LAD o eventuali blocchi aggiuntivi."
+        ),
         "targets": [
             "TIA Portal V20",
             "GRAPH V2",

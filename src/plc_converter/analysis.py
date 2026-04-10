@@ -271,18 +271,6 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
     if entry_step is None:
         entry_step = ordered_steps[0].name
 
-    step_nodes = [
-        GraphStepNode(
-            name=step.name,
-            step_no=index + 1,
-            init=step.name == entry_step,
-            source_step=step.name,
-            action_networks=step.action_networks,
-        )
-        for index, step in enumerate(ordered_steps)
-    ]
-    step_no_by_name = {step.name: step.step_no for step in step_nodes}
-
     transition_nodes = [
         GraphTransitionNode(
             name=transition.transition_id,
@@ -297,33 +285,104 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
         for index, transition in enumerate(ir.transitions)
     ]
 
-    # GRAPH often rejects terminal steps without a following element.
-    # Add a deterministic fallback transition to the entry step for steps
-    # that would otherwise remain without outgoing transitions.
+    synthetic_merge_steps: list[StepCandidate] = []
+    synthetic_merge_step_names: set[str] = set()
+
+    transitions_by_original_target: dict[str, list[GraphTransitionNode]] = {}
+    for transition in transition_nodes:
+        transitions_by_original_target.setdefault(transition.target_step, []).append(transition)
+
+    branch_nodes: list[GraphBranchNode] = []
+    next_branch_no = 1
+    next_transition_no = len(transition_nodes) + 1
+    for target_step, items in transitions_by_original_target.items():
+        if len(items) <= 1:
+            continue
+        if target_step == entry_step:
+            continue
+
+        branch_name = f"J_{target_step}"
+        incoming_step_names: list[str] = []
+        for index, transition in enumerate(items, start=1):
+            synthetic_step_name = f"JM_{target_step}_{index}"
+            incoming_step_names.append(synthetic_step_name)
+            synthetic_merge_step_names.add(synthetic_step_name)
+            synthetic_merge_steps.append(
+                StepCandidate(
+                    name=synthetic_step_name,
+                    source_networks=[transition.network_index] if transition.network_index else [],
+                    activation_networks=[transition.network_index] if transition.network_index else [],
+                    action_networks=[],
+                )
+            )
+            transition.target_step = synthetic_step_name
+
+        join_transition_name = f"T_JOIN_{target_step}"
+        transition_nodes.append(
+            GraphTransitionNode(
+                name=join_transition_name,
+                transition_no=next_transition_no,
+                source_step=branch_name,
+                target_step=target_step,
+                guard_expression="TRUE",
+                network_index=0,
+                db_block_name=_global_db_block_name(ir),
+                db_member_name=_transition_db_member_name_from_values(join_transition_name, "TRUE"),
+            )
+        )
+        next_transition_no += 1
+        branch_nodes.append(
+            GraphBranchNode(
+                name=branch_name,
+                branch_no=next_branch_no,
+                branch_type="SimEnd",
+                owner_step=target_step,
+                incoming_refs=incoming_step_names,
+                outgoing_refs=[join_transition_name],
+            )
+        )
+        next_branch_no += 1
+
+    all_steps = list(ordered_steps)
+    all_steps.extend(sorted(synthetic_merge_steps, key=lambda item: _graph_step_sort_key(item.name)))
+    step_nodes = [
+        GraphStepNode(
+            name=step.name,
+            step_no=index + 1,
+            init=step.name == entry_step,
+            source_step=step.name,
+            action_networks=step.action_networks,
+        )
+        for index, step in enumerate(all_steps)
+    ]
+    step_no_by_name = {step.name: step.step_no for step in step_nodes}
+
+    # GRAPH rejects terminal steps without a following element.
+    # Add a deterministic hold transition so terminal steps remain valid
+    # without changing the nominal process flow.
     outgoing_from_ir: dict[str, int] = {}
     for transition in transition_nodes:
         outgoing_from_ir[transition.source_step] = outgoing_from_ir.get(transition.source_step, 0) + 1
 
-    next_transition_no = len(transition_nodes) + 1
     for step in ordered_steps:
         if outgoing_from_ir.get(step.name, 0) > 0:
             continue
-        if step.name != "S29":
-            continue
         if step.name == entry_step and len(ordered_steps) == 1:
             continue
+        if step.name in synthetic_merge_step_names:
+            continue
 
-        synthetic_name = f"T_AUTO_{step.name}"
+        synthetic_name = f"T_HOLD_{step.name}"
         transition_nodes.append(
             GraphTransitionNode(
                 name=synthetic_name,
                 transition_no=next_transition_no,
                 source_step=step.name,
-                target_step=entry_step,
-                guard_expression="TRUE",
+                target_step=step.name,
+                guard_expression="FALSE",
                 network_index=0,
                 db_block_name=_global_db_block_name(ir),
-                db_member_name=_transition_db_member_name_from_values(synthetic_name, "TRUE"),
+                db_member_name=_transition_db_member_name_from_values(synthetic_name, "FALSE"),
             )
         )
         next_transition_no += 1
@@ -332,25 +391,30 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
     for transition in transition_nodes:
         transitions_by_source.setdefault(transition.source_step, []).append(transition)
 
-    branch_nodes: list[GraphBranchNode] = []
-    branch_by_owner: dict[str, GraphBranchNode] = {}
+    branch_by_source_step: dict[str, GraphBranchNode] = {}
     for source_step, items in transitions_by_source.items():
         if len(items) <= 1:
             continue
         branch = GraphBranchNode(
             name=f"B_{source_step}",
+            branch_no=next_branch_no,
             branch_type="AltBegin",
             owner_step=source_step,
-            transition_targets=[item.name for item in items],
+            incoming_refs=[source_step],
+            outgoing_refs=[item.name for item in items],
         )
+        next_branch_no += 1
         branch_nodes.append(branch)
-        branch_by_owner[source_step] = branch
+        branch_by_source_step[source_step] = branch
+    branch_by_target_step = {
+        branch.owner_step: branch for branch in branch_nodes if branch.branch_type == "SimEnd"
+    }
 
     connections: list[GraphConnection] = []
     for transition in transition_nodes:
         source_ref = transition.source_step
-        if transition.source_step in branch_by_owner:
-            branch = branch_by_owner[transition.source_step]
+        if transition.source_step in branch_by_source_step:
+            branch = branch_by_source_step[transition.source_step]
             if not any(
                 connection.source_ref == branch.owner_step and connection.target_ref == branch.name
                 for connection in connections
@@ -383,6 +447,16 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
             )
         )
 
+    for branch in branch_by_target_step.values():
+        for incoming_step_name in branch.incoming_refs:
+            connections.append(
+                GraphConnection(
+                    source_ref=incoming_step_name,
+                    target_ref=branch.name,
+                    link_type="Direct",
+                )
+            )
+
     warnings: list[str] = []
     outgoing_counts: dict[str, int] = {step.name: 0 for step in ordered_steps}
     incoming_counts: dict[str, int] = {step.name: 0 for step in ordered_steps}
@@ -391,13 +465,13 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
         incoming_counts[transition.target_step] = incoming_counts.get(transition.target_step, 0) + 1
 
     for step_name, count in outgoing_counts.items():
-        if count > 1 and step_name not in branch_by_owner:
+        if count > 1 and step_name not in branch_by_source_step:
             warnings.append(
                 f"Il passo {step_name} ha {count} uscite: servira' introdurre branch target dedicati."
             )
 
     for step_name, count in incoming_counts.items():
-        if step_name != entry_step and count > 1:
+        if step_name != entry_step and count > 1 and step_name not in branch_by_target_step:
             warnings.append(
                 f"Il passo {step_name} riceve {count} ingressi: potrebbe servire un join o link Jump."
             )
@@ -1000,24 +1074,36 @@ def _render_graph_transition(transition: GraphTransitionNode) -> str:
 
 
 def _render_graph_branch(branch: GraphBranchNode) -> str:
-    return f'      <Branch Number="1" Name="{escape(branch.name)}" Type="{escape(branch.branch_type)}" />'
+    if branch.branch_type == "SimEnd":
+        cardinality = len(branch.incoming_refs)
+    else:
+        cardinality = len(branch.outgoing_refs)
+    return (
+        f'      <Branch Number="{branch.branch_no}" Type="{escape(branch.branch_type)}" '
+        f'Cardinality="{cardinality}" />'
+    )
 
 
 def _render_graph_connection(connection: GraphConnection, graph_topology: GraphTopology) -> str:
     return (
         '      <Connection>\n'
         '        <NodeFrom>\n'
-        f'{_render_graph_node_ref(connection.source_ref, graph_topology)}\n'
+        f'{_render_graph_node_ref(connection.source_ref, graph_topology, peer_ref=connection.target_ref, direction="from")}\n'
         '        </NodeFrom>\n'
         '        <NodeTo>\n'
-        f'{_render_graph_node_ref(connection.target_ref, graph_topology)}\n'
+        f'{_render_graph_node_ref(connection.target_ref, graph_topology, peer_ref=connection.source_ref, direction="to")}\n'
         '        </NodeTo>\n'
         f'        <LinkType>{escape(connection.link_type)}</LinkType>\n'
         '      </Connection>'
     )
 
 
-def _render_graph_node_ref(ref: str, graph_topology: GraphTopology) -> str:
+def _render_graph_node_ref(
+    ref: str,
+    graph_topology: GraphTopology,
+    peer_ref: str | None = None,
+    direction: str | None = None,
+) -> str:
     step = next((item for item in graph_topology.step_nodes if item.name == ref), None)
     if step is not None:
         return f'          <StepRef Number="{step.step_no}" />'
@@ -1026,7 +1112,21 @@ def _render_graph_node_ref(ref: str, graph_topology: GraphTopology) -> str:
         return f'          <TransitionRef Number="{transition.transition_no}" />'
     branch = next((item for item in graph_topology.branch_nodes if item.name == ref), None)
     if branch is not None:
-        return f'          <BranchRef Name="{escape(branch.name)}" />'
+        if direction == "to":
+            if peer_ref is not None:
+                try:
+                    in_index = branch.incoming_refs.index(peer_ref)
+                except ValueError:
+                    in_index = 0
+                return f'          <BranchRef Number="{branch.branch_no}" In="{in_index}" />'
+            return f'          <BranchRef Number="{branch.branch_no}" In="0" />'
+        if direction == "from" and peer_ref is not None:
+            try:
+                out_index = branch.outgoing_refs.index(peer_ref)
+            except ValueError:
+                out_index = 0
+            return f'          <BranchRef Number="{branch.branch_no}" Out="{out_index}" />'
+        return f'          <BranchRef Number="{branch.branch_no}" In="0" />'
     return '          <EndConnection />'
 
 
@@ -1077,6 +1177,18 @@ def _step_sort_key(name: str) -> tuple[int, str]:
     if match:
         return int(match.group(1)), name
     return 10**9, name
+
+
+def _graph_step_sort_key(name: str) -> tuple[int, int, str]:
+    merge_match = re.match(r"JM_(S\d+)_(\d+)$", name)
+    if merge_match:
+        target_step = merge_match.group(1)
+        index = int(merge_match.group(2))
+        target_no, _ = _step_sort_key(target_step)
+        return target_no, 0, f"{target_step}_{index}"
+
+    step_no, raw_name = _step_sort_key(name)
+    return step_no, 1, raw_name
 
 
 def _collect_matches(network: AwlNetwork, pattern: re.Pattern[str]) -> set[str]:
