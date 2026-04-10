@@ -130,6 +130,12 @@ public static class Program
             return;
         }
 
+        if (method == "GET" && path == "/api/openness/compile-introspection")
+        {
+            WriteJson(context, 200, agentService.GetLastCompileIntrospection());
+            return;
+        }
+
         if (method == "GET" && path == "/api/jobs")
         {
             WriteJson(context, 200, jobStore.List());

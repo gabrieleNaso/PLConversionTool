@@ -11,6 +11,8 @@ public sealed class ReflectionOpennessRuntime(
 ) : IReflectionOpennessRuntime
 {
     private sealed record ExportBlockEntry(object Block, string RelativeGroupPath);
+    private static readonly object CompileIntrospectionSync = new();
+    private static CompileIntrospectionResponse? lastCompileIntrospection;
 
     public OpennessDiagnosticsResponse GetDiagnostics()
     {
@@ -66,6 +68,23 @@ public sealed class ReflectionOpennessRuntime(
             LaunchUi: config.LaunchUi,
             Notes: notes
         );
+    }
+
+    public CompileIntrospectionResponse GetLastCompileIntrospection()
+    {
+        lock (CompileIntrospectionSync)
+        {
+            return lastCompileIntrospection ?? new CompileIntrospectionResponse(
+                Status: "empty",
+                CapturedAtUtc: null,
+                JobId: null,
+                Candidate: null,
+                Summary: null,
+                ResultProperties: Array.Empty<string>(),
+                FirstMessageProperties: Array.Empty<string>(),
+                Notes: "Nessuna introspezione compile registrata finora."
+            );
+        }
     }
 
     public async Task<OpennessExecutionResult> ExecuteAsync(
@@ -246,13 +265,24 @@ public sealed class ReflectionOpennessRuntime(
 
             var result = compileMethod.Invoke(compilable, Array.Empty<object?>());
             var summary = DescribeCompilationResult(result, out var compileSucceeded);
+            CaptureCompileIntrospection(job, candidate, result, summary);
             await Task.CompletedTask;
 
             if (!compileSucceeded)
             {
+                var alternativeDiagnostics = CollectAlternativeCompileDiagnostics(
+                    result,
+                    candidate,
+                    project,
+                    plcSoftware
+                );
+                var alternativeDetails = string.IsNullOrWhiteSpace(alternativeDiagnostics)
+                    ? string.Empty
+                    : $" AlternativeDiagnostics=[{alternativeDiagnostics}].";
+
                 return new OpennessExecutionResult(
                     "blocked",
-                    $"Compile eseguita ma TIA ha restituito un esito non valido su '{DescribeObject(candidate)}'. {summary}"
+                    $"Compile eseguita ma TIA ha restituito un esito non valido su '{DescribeObject(candidate)}'. {summary}{alternativeDetails}"
                 );
             }
 
@@ -1294,22 +1324,43 @@ public sealed class ReflectionOpennessRuntime(
 
         var state = GetPropertyValue(result, "State")?.ToString();
         var messages = GetPropertyValue(result, "Messages");
-        var messageList = EnumerateObjects(messages).ToList();
+        var topLevelMessages = EnumerateObjects(messages).ToList();
+        var messageList = FlattenCompilationMessages(topLevelMessages).ToList();
         var messageCount = messageList.Count;
         var sampleMessages = new List<string>();
+        var detailedMessages = new List<string>();
         var hasErrorMessage = false;
+        var errorCount = 0;
+        var warningCount = 0;
 
-        foreach (var message in messageList.Take(5))
+        foreach (var message in messageList.Take(50))
         {
             var description = DescribeCompilationMessage(message);
+            var detailed = DescribeCompilationMessageDetailed(message);
+
             if (!string.IsNullOrWhiteSpace(description))
             {
-                sampleMessages.Add(description);
+                if (sampleMessages.Count < 5)
+                {
+                    sampleMessages.Add(description);
+                }
             }
 
-            if (MessageLooksLikeError(message) || DescriptionIndicatesError(description))
+            if (!string.IsNullOrWhiteSpace(detailed))
+            {
+                detailedMessages.Add(detailed);
+            }
+
+            var isError = MessageLooksLikeError(message) || DescriptionIndicatesError(description);
+            var isWarning = MessageLooksLikeWarning(message) || DescriptionIndicatesWarning(description);
+            if (isError)
             {
                 hasErrorMessage = true;
+                errorCount++;
+            }
+            else if (isWarning)
+            {
+                warningCount++;
             }
         }
 
@@ -1319,7 +1370,159 @@ public sealed class ReflectionOpennessRuntime(
             ? $" SampleMessages=[{string.Join(" | ", sampleMessages)}]."
             : string.Empty;
 
-        return $"State={state ?? "n/a"}, Messages={messageCount}.{details}";
+        var counters = $" ClassifiedErrors={errorCount}, ClassifiedWarnings={warningCount}.";
+        var fullDetails = detailedMessages.Count > 0
+            ? $" DetailedMessages=[{string.Join(" || ", detailedMessages)}]."
+            : string.Empty;
+
+        return $"State={state ?? "n/a"}, Messages={messageCount}.{counters}{details}{fullDetails}";
+    }
+
+    private static void CaptureCompileIntrospection(
+        TiaJob job,
+        object candidate,
+        object? compileResult,
+        string summary
+    )
+    {
+        var firstMessage = compileResult is null
+            ? null
+            : EnumerateObjects(GetPropertyValue(compileResult, "Messages")).FirstOrDefault();
+        var resultProperties = DescribeObjectProperties(compileResult, 40);
+        var firstMessageProperties = DescribeObjectProperties(firstMessage, 40);
+
+        var snapshot = new CompileIntrospectionResponse(
+            Status: "captured",
+            CapturedAtUtc: DateTimeOffset.UtcNow.ToString("O"),
+            JobId: job.JobId,
+            Candidate: DescribeObject(candidate),
+            Summary: summary,
+            ResultProperties: resultProperties,
+            FirstMessageProperties: firstMessageProperties,
+            Notes: firstMessage is null
+                ? "Nessun messaggio disponibile nella collezione Messages."
+                : "Snapshot del primo messaggio di compile."
+        );
+
+        lock (CompileIntrospectionSync)
+        {
+            lastCompileIntrospection = snapshot;
+        }
+    }
+
+    private static IReadOnlyList<string> DescribeObjectProperties(object? target, int maxProperties)
+    {
+        if (target is null)
+        {
+            return Array.Empty<string>();
+        }
+
+        var entries = new List<string>();
+        var properties = target.GetType()
+            .GetProperties(BindingFlags.Instance | BindingFlags.Public)
+            .Where(property => property.CanRead && property.GetIndexParameters().Length == 0)
+            .OrderBy(property => property.Name)
+            .Take(maxProperties);
+
+        foreach (var property in properties)
+        {
+            object? value;
+            try
+            {
+                value = property.GetValue(target);
+            }
+            catch (Exception ex)
+            {
+                entries.Add($"{property.Name}:{property.PropertyType.Name}=<error:{ex.GetType().Name}>");
+                continue;
+            }
+
+            var serialized = SerializeDebugValue(value, 200);
+            entries.Add($"{property.Name}:{property.PropertyType.Name}={serialized}");
+        }
+
+        return entries;
+    }
+
+    private static IEnumerable<object> FlattenCompilationMessages(IEnumerable<object> messages)
+    {
+        var queue = new Queue<object>(messages);
+        var visited = new List<object>();
+
+        while (queue.Count > 0)
+        {
+            var current = queue.Dequeue();
+            if (visited.Any(item => ReferenceEquals(item, current)))
+            {
+                continue;
+            }
+
+            visited.Add(current);
+            yield return current;
+
+            foreach (var nested in TryGetNestedCompilationMessages(current))
+            {
+                if (!visited.Any(item => ReferenceEquals(item, nested)))
+                {
+                    queue.Enqueue(nested);
+                }
+            }
+        }
+    }
+
+    private static IEnumerable<object> TryGetNestedCompilationMessages(object message)
+    {
+        var properties = message.GetType()
+            .GetProperties(BindingFlags.Instance | BindingFlags.Public)
+            .Where(property =>
+                property.CanRead
+                && property.GetIndexParameters().Length == 0
+                && IsPotentialMessageContainerProperty(property)
+            );
+
+        foreach (var property in properties)
+        {
+            object? value;
+            try
+            {
+                value = property.GetValue(message);
+            }
+            catch
+            {
+                continue;
+            }
+
+            foreach (var nested in EnumerateObjects(value))
+            {
+                if (nested is string)
+                {
+                    continue;
+                }
+
+                yield return nested;
+            }
+        }
+    }
+
+    private static bool IsPotentialMessageContainerProperty(PropertyInfo property)
+    {
+        if (property.PropertyType == typeof(string))
+        {
+            return false;
+        }
+
+        if (typeof(IEnumerable).IsAssignableFrom(property.PropertyType))
+        {
+            return true;
+        }
+
+        var normalized = property.Name.Trim().ToLowerInvariant();
+        return normalized.Contains("message")
+            || normalized.Contains("inner")
+            || normalized.Contains("child")
+            || normalized.Contains("detail")
+            || normalized.Contains("result")
+            || normalized.Contains("diagnostic");
     }
 
     private static string DescribeCompilationMessage(object message)
@@ -1337,12 +1540,188 @@ public sealed class ReflectionOpennessRuntime(
         return parts.Length == 0 ? message.ToString() ?? string.Empty : string.Join(" - ", parts);
     }
 
+    private static string DescribeCompilationMessageDetailed(object message)
+    {
+        var baseMessage = DescribeCompilationMessage(message);
+        var associatedObject = GetPropertyValue(message, "AssociatedObject");
+        var sourceObject = GetPropertyValue(message, "SourceObject");
+        var objectName = associatedObject is not null
+            ? DescribeObject(associatedObject)
+            : sourceObject is not null
+                ? DescribeObject(sourceObject)
+                : null;
+        var identifier = GetPropertyValue(message, "Identifier")?.ToString();
+        var number = GetPropertyValue(message, "Number")?.ToString();
+        var objectPath = GetPropertyValue(message, "Path")?.ToString();
+
+        var contextParts = new[] { objectName, identifier, number, objectPath }
+            .Where(part => !string.IsNullOrWhiteSpace(part))
+            .Distinct()
+            .ToArray();
+
+        if (contextParts.Length == 0)
+        {
+            var debugSnapshot = BuildMessageDebugSnapshot(message);
+            return string.IsNullOrWhiteSpace(debugSnapshot)
+                ? baseMessage
+                : $"{baseMessage} [Debug: {debugSnapshot}]";
+        }
+
+        var context = string.Join(" | ", contextParts);
+        var debug = BuildMessageDebugSnapshot(message);
+        return string.IsNullOrWhiteSpace(debug)
+            ? $"{baseMessage} [Context: {context}]"
+            : $"{baseMessage} [Context: {context}] [Debug: {debug}]";
+    }
+
+    private static string CollectAlternativeCompileDiagnostics(
+        object? compileResult,
+        object compileTarget,
+        object project,
+        object? plcSoftware
+    )
+    {
+        var probes = new List<(string Name, object? Target)>
+        {
+            ("CompileResult", compileResult),
+            ("CompileTarget", compileTarget),
+            ("Project", project),
+            ("PlcSoftware", plcSoftware)
+        };
+
+        var interestingPropertyNames = new[]
+        {
+            "Messages", "Diagnostics", "DiagnosticMessages", "CompilerMessages",
+            "Errors", "Warnings", "Entries", "Results", "InnerResults", "Items"
+        };
+
+        var snippets = new List<string>();
+        foreach (var (name, target) in probes)
+        {
+            if (target is null)
+            {
+                continue;
+            }
+
+            foreach (var propertyName in interestingPropertyNames)
+            {
+                var value = GetPropertyValue(target, propertyName);
+                if (value is null)
+                {
+                    continue;
+                }
+
+                var serialized = SerializeDebugValue(value, 240);
+                if (!string.IsNullOrWhiteSpace(serialized))
+                {
+                    snippets.Add($"{name}.{propertyName}={serialized}");
+                }
+            }
+
+            var methods = DescribePublicMethods(target, "GetDiagnostics");
+            if (!string.Equals(methods, "nessuno", StringComparison.OrdinalIgnoreCase))
+            {
+                snippets.Add($"{name}.GetDiagnosticsMethods={methods}");
+            }
+        }
+
+        return snippets.Count == 0 ? string.Empty : string.Join(" | ", snippets.Distinct());
+    }
+
+    private static string BuildMessageDebugSnapshot(object message)
+    {
+        const int maxProperties = 25;
+        const int maxValueLength = 240;
+        var fields = new List<string>();
+
+        var properties = message.GetType()
+            .GetProperties(BindingFlags.Instance | BindingFlags.Public)
+            .Where(property => property.CanRead && property.GetIndexParameters().Length == 0)
+            .OrderBy(property => property.Name)
+            .Take(maxProperties);
+
+        foreach (var property in properties)
+        {
+            object? value;
+            try
+            {
+                value = property.GetValue(message);
+            }
+            catch
+            {
+                continue;
+            }
+
+            var serialized = SerializeDebugValue(value, maxValueLength);
+            if (!string.IsNullOrWhiteSpace(serialized))
+            {
+                fields.Add($"{property.Name}={serialized}");
+            }
+        }
+
+        return fields.Count == 0 ? string.Empty : string.Join("; ", fields);
+    }
+
+    private static string SerializeDebugValue(object? value, int maxValueLength)
+    {
+        if (value is null)
+        {
+            return "null";
+        }
+
+        if (value is string text)
+        {
+            return Truncate(text, maxValueLength);
+        }
+
+        if (value is IEnumerable enumerable && value is not string)
+        {
+            var samples = new List<string>();
+            foreach (var item in enumerable)
+            {
+                if (item is null)
+                {
+                    continue;
+                }
+
+                var label = item is string itemText ? itemText : item.ToString() ?? item.GetType().Name;
+                samples.Add(Truncate(label, 80));
+                if (samples.Count >= 3)
+                {
+                    break;
+                }
+            }
+
+            return samples.Count == 0 ? "[]" : $"[{string.Join(", ", samples)}]";
+        }
+
+        return Truncate(value.ToString() ?? value.GetType().Name, maxValueLength);
+    }
+
+    private static string Truncate(string value, int maxLength)
+    {
+        if (string.IsNullOrEmpty(value) || value.Length <= maxLength)
+        {
+            return value;
+        }
+
+        return value.Substring(0, maxLength) + "...";
+    }
+
     private static bool MessageLooksLikeError(object message)
     {
         var severity = GetPropertyValue(message, "Severity")?.ToString();
         var category = GetPropertyValue(message, "Category")?.ToString();
 
         return StateIndicatesError(severity) || StateIndicatesError(category);
+    }
+
+    private static bool MessageLooksLikeWarning(object message)
+    {
+        var severity = GetPropertyValue(message, "Severity")?.ToString();
+        var category = GetPropertyValue(message, "Category")?.ToString();
+
+        return StateIndicatesWarning(severity) || StateIndicatesWarning(category);
     }
 
     private static bool StateIndicatesError(string? value)
@@ -1357,6 +1736,17 @@ public sealed class ReflectionOpennessRuntime(
             || normalized.Contains("failed")
             || normalized.Contains("fault")
             || normalized.Contains("invalid");
+    }
+
+    private static bool StateIndicatesWarning(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        var normalized = value.Trim().ToLowerInvariant();
+        return normalized.Contains("warn");
     }
 
     private static bool DescriptionIndicatesError(string? value)
@@ -1376,6 +1766,18 @@ public sealed class ReflectionOpennessRuntime(
             || normalized.Contains("failed")
             || normalized.Contains("fault")
             || normalized.Contains("invalid");
+    }
+
+    private static bool DescriptionIndicatesWarning(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        var normalized = value.Trim().ToLowerInvariant();
+        return normalized.Contains("warning")
+            || normalized.Contains("warn");
     }
 
     private static string DescribeObject(object target)

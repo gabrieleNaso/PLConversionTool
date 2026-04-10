@@ -46,6 +46,11 @@ public sealed class TiaAgentService(
         return runtime.GetDiagnostics();
     }
 
+    public CompileIntrospectionResponse GetLastCompileIntrospection()
+    {
+        return runtime.GetLastCompileIntrospection();
+    }
+
     private async Task ProcessJobAsync(string jobId, CancellationToken cancellationToken)
     {
         await jobLock.WaitAsync(CancellationToken.None);
