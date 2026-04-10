@@ -1,4 +1,4 @@
-# Report aggiornato del 09-04-2026
+# Report aggiornato del 10-04-2026
 
 ## Progetto
 Conversione di sequenziatori PLC da AWL a GRAPH in TIA Portal V20 tramite XML.
@@ -7,7 +7,7 @@ Conversione di sequenziatori PLC da AWL a GRAPH in TIA Portal V20 tramite XML.
 
 ## 1. Scopo del documento
 
-Questo documento sostituisce la versione accumulativa del report del 09-04-2026 e ne mantiene solo il contenuto tecnico consolidato.
+Questo documento sostituisce la versione accumulativa del report del 10-04-2026 e ne mantiene solo il contenuto tecnico consolidato.
 
 L'obiettivo di questa versione consolidata è:
 
@@ -16,7 +16,7 @@ L'obiettivo di questa versione consolidata è:
 - mantenere una baseline unica, leggibile e riusabile;
 - integrare in un unico testo sia la parte di reverse engineering XML sia la parte operativa su TIA Portal Openness.
 
-Il documento va quindi usato come riferimento tecnico corrente del progetto alla data del 09-04-2026.
+Il documento va quindi usato come riferimento tecnico corrente del progetto alla data del 10-04-2026.
 
 ---
 
@@ -637,6 +637,7 @@ Significato operativo della regola:
 
 Questa scelta riduce la variabilità topologica del GRAPH e rende il convertitore più deterministico, più leggibile e più coerente con il target manutentivo del progetto.
 
+
 ### 32.5 Regola architetturale sul formato reale della traduzione
 
 La traduzione di una FC AWL di sequenza non va interpretata come generazione del solo GRAPH.
@@ -870,11 +871,11 @@ I prossimi step non sono più “far parlare il sistema con TIA”, ma:
 
 ---
 
-# PARTE F - BASELINE FINALE DEL PROGETTO AL 09-04-2026
+# PARTE F - BASELINE FINALE DEL PROGETTO AL 10-04-2026
 
 ## 38. Baseline consolidata
 
-Alla data del 09-04-2026 la baseline consolidata del progetto è la seguente.
+Alla data del 10-04-2026 la baseline consolidata del progetto è la seguente.
 
 ### 38.1 Sul GRAPH
 
@@ -917,7 +918,10 @@ Alla data del 09-04-2026 la baseline consolidata del progetto è la seguente.
 - distinzione netta fra vincoli strutturali del target `V2` e soli riferimenti semantici ricavati da campioni legacy;
 - scomposizione obbligatoria dell'AWL in famiglie logiche prima della traduzione;
 - ricostruzione della macchina a stati a partire dagli edge estratti e non dal solo ordine dei segmenti;
-- separazione obbligatoria fra modello semantico, builder GRAPH e backend HMI/Output.
+- separazione obbligatoria fra modello semantico, builder GRAPH e backend HMI/Output;
+- distinzione hard tra passi di sequenza e stati fisici/consensi (`UP`, `DOWN`, `STC` e simili), da allocare come memorie o transizioni semantiche e non come step GRAPH;
+- generazione delle uscite come compilazione combinatoria di step automatici, manuale, interblocchi e consensi, non come copia diretta delle bobine AWL;
+- riconoscimento del backbone automatico ricorrente `1 -> 2 -> 3 -> 4 -> 7` come pattern forte di sequenza sorgente, pur lasciando al builder la policy finale di naming e rinumerazione GRAPH.
 
 ### 38.5 Sul layer TIA
 
@@ -930,7 +934,7 @@ Alla data del 09-04-2026 la baseline consolidata del progetto è la seguente.
 - nel `tia-bridge`, ogni `import` accoda automaticamente una `compile` post-import;
 - la risposta del job `import` espone anche `AutoCompileJobId` per tracciare l'esecuzione concatenata;
 - il generatore allinea in modo deterministico `GRAPH`, `GlobalDB` e `FC` sulle stesse transizioni, includendo i member `T_AUTO_*` nel `GlobalDB` quando usati dalle reti LAD/GRAPH;
-- la diagnostica compile lato `tia_windows_agent` e' stata estesa con messaggi dettagliati, contesto e classificazione errori/warning.
+- la diagnostica compile lato `tia_windows_agent` è stata estesa con messaggi dettagliati, contesto e classificazione errori/warning.
 
 ---
 
@@ -973,7 +977,7 @@ Questa non è una regola organizzativa, ma un vincolo tecnico del progetto.
 
 ## 42. Sintesi finale
 
-Alla data del 09-04-2026 il progetto ha raggiunto una baseline forte su quattro livelli:
+Alla data del 10-04-2026 il progetto ha raggiunto una baseline forte su quattro livelli:
 
 1. reverse engineering strutturale del `GRAPH`;
 2. generazione stabile del `GlobalDB` companion;
@@ -984,74 +988,100 @@ Il problema centrale del progetto non è più capire se il workflow sia praticab
 
 ---
 
-# PARTE G - REGOLE DI TRADUZIONE CONSOLIDATE EMERSE DAL CASO FC102
+# PARTE G - INTEGRAZIONI CONSOLIDATE DAL NUOVO AWL ROMANIA (FC102)
 
-## 43. Valore metodologico del caso FC102
+## 43. Valore metodologico del nuovo sorgente AWL
 
-L'analisi della FC102 AWL rispetto alla sua controparte TIA ha chiarito che una sequenza AWL reale non coincide con la sola logica dei passi automatici.
+Il file `AWL Romania` conferma in modo più leggibile la struttura reale della FC102 perché espone segmenti numerati, titoli funzionali e commenti che separano chiaramente:
 
-Nello stesso blocco convivono infatti:
+- logiche di servizio;
+- filtri e timer di dispositivo;
+- stati fisici stabilizzati;
+- edge della sequenza automatica;
+- ramo manuale;
+- ramo emergenza/fault;
+- formule finali di uscita.
 
-- logiche di allarme e timeout;
-- appoggi temporizzati;
-- memorie di processo;
-- riconoscimento di stati fisici;
-- passi automatici;
-- logiche manuali;
-- emergenza e fault;
-- gestione uscite.
+Di conseguenza il parsing della sequenza può essere considerato più robusto se basato su segmentazione semantica dei segmenti del sorgente, invece che su semplice scansione lineare del listato.
 
-Questa osservazione va considerata una regola di metodo del progetto.
+## 44. Regola sul backbone automatico ricorrente della FC102
 
-## 44. Regola di confronto AWL -> TIA
+Nel caso FC102 il nuovo AWL rende leggibile una catena automatica ricorrente della forma:
 
-Il confronto corretto tra sorgente AWL e target TIA non è:
+`S01 -> S02 -> S03 -> S04 -> S07 -> S10 -> S14 -> S18 -> S22 -> S26 -> S03`
 
-`FC AWL monolitica -> solo GRAPH`
+con rami separati verso:
 
-ma:
+- `S29` per il manuale;
+- `S32` per l'emergenza.
 
-`FC AWL monolitica -> GRAPH + DB base + DB EXT + DB AUX + DB HMI + FC HMI + FC Aux + FC Transitions + FC Output`
+Questa osservazione consolida una regola di progetto:
 
-Il reverse engineering del caso FC102 conferma che il target TIA distribuisce responsabilità che in AWL erano concentrate nello stesso blocco.
+> i passi iniziali `1, 2, 3, 4, 7` vanno trattati come pattern forte della sequenza sorgente AWL, presente in modo ricorrente e riconoscibile, anche se il naming finale del GRAPH può essere normalizzato dal builder.
 
-## 45. Regola di estrazione del modello semantico
+## 45. Regola di distinzione tra passi di sequenza e stati fisici
 
-Prima della generazione XML, il convertitore deve produrre un modello semantico intermedio esplicito che distingua almeno:
+Il nuovo AWL chiarisce che segnali come `UP`, `DOWN` e `STC` non sono passi della macchina a stati.
 
-- `steps`;
-- `edges` / transizioni;
-- `memory_bits`;
-- `timers`;
-- `faults`;
-- `emergency_logic`;
-- `manual_commands`;
-- `auto_commands`;
-- `output_formulas`;
-- `hmi_conditions`.
+Essi rappresentano invece:
 
-Questo IR è il vero punto di separazione tra parser AWL e serializer TIA.
+- feedback fisici filtrati nel tempo;
+- consensi di avvio o di processo;
+- memorie semantiche di stato macchina.
 
-## 46. Regola sulla precisione del mapping
+Regola consolidata:
 
-Lo stato corrente del progetto permette di considerare ad alta affidabilità le seguenti aree:
+> i feedback fisici stabilizzati non devono essere convertiti in step GRAPH; devono essere mappati nel modello target come memorie semantiche o condizioni di transizione, tipicamente nelle aree `Memory` e `Transitions` del `DB 11..`.
 
-- riconoscimento della macro-struttura di una FC AWL di sequenza;
-- estrazione dei passi e delle condizioni di avanzamento;
-- separazione dei timer e delle memorie tecniche dal nucleo sequenziale;
-- riconoscimento della logica manuale, fault ed emergenza;
-- costruzione del backbone fisso del GRAPH;
-- separazione di HMI e Output come backend dedicati.
+## 46. Regola sulla doppia famiglia dei timeout
 
-Restano invece da fissare con ulteriore standardizzazione:
+Il caso FC102 distingue chiaramente due famiglie diverse di temporizzazioni:
 
-- la politica definitiva di naming dei passi GRAPH;
-- la ripartizione esatta di alcuni campi storici del DB AWL unico quando il legacy mescola runtime, memorie e appoggi nello stesso contenitore.
+1. timeout di dispositivo o di movimento, che generano fault o diagnostica;
+2. preset temporali di sequenza, che modificano il comportamento del passo attivo.
 
-## 47. Conseguenza progettuale finale
+Regola consolidata:
 
-Il generatore deterministico può quindi essere progettato già ora secondo questa regola pratica:
+> i timer di fault e i preset di sequenza non vanno fusi nello stesso ruolo semantico. I primi devono alimentare diagnostica, fault e rami di sicurezza; i secondi devono essere portati nel modello della sequenza e nei backend ausiliari secondo il ruolo effettivo.
 
-`AWL -> parser strutturale -> IR semantico -> partizionamento dati -> builder GRAPH/DB/FC -> serializer XML V2 -> validator -> import TIA`
+## 47. Regola sulle uscite macchina come compilazione semantica
 
-La parte ancora non completamente fissa non è il metodo generale, ma la politica finale di naming e di rifinitura del modello target.
+Il nuovo AWL conferma che le uscite finali non derivano da una singola bobina sorgente, ma da formule miste che combinano:
+
+- step automatici attivi;
+- comandi manuali;
+- consensi di modo operativo;
+- interblocchi;
+- segnali fisici di stato;
+- eventuali lock o fault.
+
+Regola consolidata:
+
+> il backend `FC 06 Output` deve essere un compilatore combinatorio di uscite, non un semplice serializer di bobine AWL.
+
+## 48. Regola sui fault, l'emergenza e il rientro alla sequenza
+
+Il nuovo AWL chiarisce che i fault elementari e i bit allarme fissi vengono prima cumulati semanticamente e solo dopo influenzano la sequenza tramite variabili come `EM`.
+
+Da tale cumulativo derivano:
+
+- salto o mantenimento in `S32`;
+- gestione del fault/backbone di sicurezza;
+- regole di rientro verso `S01` da `S29` e `S32` quando le condizioni tornano valide.
+
+Regola consolidata:
+
+> il convertitore deve distinguere i dettagli diagnostici dai loro effetti sequenziali. I DB fissi di allarme restano il livello di dettaglio; la sequenza GRAPH deve consumare cumulativi semantici di `Fault` ed `Emergency` agganciati al backbone fisso `S29/S30/S32`.
+
+## 49. Regola sulla policy di naming e sul passo finale del ciclo
+
+Il confronto tra AWL FC102 e controparte TIA mostra che la topologia logica può essere mantenuta anche quando il target GRAPH introduce:
+
+- nomi semanticamente più leggibili dei passi;
+- rinumerazioni non perfettamente identiche al legacy;
+- uno step di chiusura o fine ciclo prima del rientro al passo iniziale.
+
+Regola consolidata:
+
+> l'identità logica del passo va estratta in modo deterministico dal sorgente AWL; il naming finale del GRAPH è invece una policy del builder. Il builder può introdurre step target di chiusura o normalizzazione, purché preservi il comportamento funzionale della sequenza.
+

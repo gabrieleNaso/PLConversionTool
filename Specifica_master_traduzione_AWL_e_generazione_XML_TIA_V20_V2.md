@@ -59,7 +59,7 @@ Questo ecosistema comprende almeno:
 
 Regola operativa conseguente:
 
-- se un caso reale richiede piu' di tre blocchi, la coerenza cross-blocco non si ferma a `FB GRAPH + GlobalDB + FC LAD`, ma si estende a tutto l'ecosistema generato.
+- se un caso reale richiede più di tre blocchi, la coerenza cross-blocco non si ferma a `FB GRAPH + GlobalDB + FC LAD`, ma si estende a tutto l'ecosistema generato.
 
 ## 3. Regola di target definitivo
 
@@ -616,13 +616,13 @@ Regola di coerenza cross-blocco (hard):
 
 - ogni tag usato nelle transition GRAPH o nelle reti LAD di supporto deve essere dichiarato nel `GlobalDB` companion;
 - la sorgente canonica dei tag di guardia deve essere la topologia finale delle transizioni, incluse eventuali transizioni sintetiche (`T_AUTO_*`);
-- non e' ammesso generare riferimenti LAD/GRAPH a member non presenti nel DB companion.
+- non è ammesso generare riferimenti LAD/GRAPH a member non presenti nel DB companion.
 
 Estensione obbligatoria della regola:
 
 - la coerenza cross-blocco non riguarda solo `GRAPH <-> GlobalDB`;
-- vale anche per `GRAPH <-> FC`, `FC <-> GlobalDB` e, piu' in generale, per ogni coppia di blocchi del pacchetto che si referenziano fra loro;
-- non e' ammesso che un blocco del pacchetto compili soltanto assumendo naming o member che gli altri blocchi non emettono realmente.
+- vale anche per `GRAPH <-> FC`, `FC <-> GlobalDB` e, più in generale, per ogni coppia di blocchi del pacchetto che si referenziano fra loro;
+- non è ammesso che un blocco del pacchetto compili soltanto assumendo naming o member che gli altri blocchi non emettono realmente.
 
 ### Composizione canonica
 
@@ -1380,7 +1380,7 @@ AWL
 Nota operativa di orchestrazione:
 
 - nel workflow mediato da `tia-bridge`, il job `import` deve essere seguito automaticamente da una `compile` post-import accodata dal bridge;
-- nel risultato dell'`import` il bridge puo' esporre l'identificativo del job di compile automatica (`AutoCompileJobId`) per il tracciamento end-to-end.
+- nel risultato dell'`import` il bridge può esporre l'identificativo del job di compile automatica (`AutoCompileJobId`) per il tracciamento end-to-end.
 
 ## 10. Regole finali da non violare
 
@@ -1393,3 +1393,72 @@ Il backend GRAPH deve restare pattern-driven e validator-driven.
 Il backend GlobalDB deve restare un serializer ricorsivo generale con grammatica fissa.
 
 Il backend FC deve emettere solo pattern LAD già convalidati e combinazioni autorizzate.
+
+# Appendice A - Integrazioni consolidate dal caso `AWL Romania / FC102`
+
+## A.1 Regola sul backbone automatico ricorrente
+
+Nel caso FC102 il parsing dell'AWL rende leggibile una catena automatica ricorrente della forma:
+
+`S01 -> S02 -> S03 -> S04 -> S07 -> S10 -> S14 -> S18 -> S22 -> S26 -> S03`
+
+con rami separati verso `S29` e `S32`.
+
+Questa catena va trattata come pattern forte del sorgente. In particolare, i passi `1, 2, 3, 4, 7` sono da considerare parte ricorrente dell'ossatura automatica del caso d'uso.
+
+## A.2 Regola di distinzione tra step e stato fisico
+
+Segnali come `UP`, `DOWN`, `STC` e feedback equivalenti non sono step GRAPH finali.
+
+Essi vanno classificati come:
+
+- feedback fisici filtrati;
+- memorie semantiche di stato;
+- consensi di transizione o di start ciclo.
+
+Il convertitore non deve quindi creare step GRAPH a partire da questi segnali, ma allocarli come memorie o condizioni nel modello target.
+
+## A.3 Regola sui timeout di dispositivo e sui preset di sequenza
+
+Il convertitore deve distinguere due famiglie di temporizzazioni:
+
+1. timeout di dispositivo/movimento che generano diagnostica o fault;
+2. preset temporali della sequenza che modificano il comportamento del passo.
+
+Le due famiglie non devono essere fuse né serializzate nello stesso ruolo semantico.
+
+## A.4 Regola sulle uscite come formule target
+
+La formula di una uscita target deve essere costruita come combinazione di:
+
+- step automatici attivi;
+- comandi manuali;
+- interblocchi;
+- consensi permanenti;
+- lock o fault;
+- eventuali stati fisici già elaborati.
+
+Il backend `FC 06 Output` è quindi un compilatore semantico di formule, non un trascrittore diretto di bobine sorgenti.
+
+## A.5 Regola sui fault e sull'emergenza
+
+I dettagli dei fault e dei bit allarme devono rimanere nel livello diagnostico sorgente o nei DB fissi di progetto.
+
+La sequenza target deve consumare invece cumulativi semantici, ad esempio `Fault` ed `Emergency`, agganciati al backbone fisso `S29/S30/S32`.
+
+## A.6 Regola sul rientro da manuale ed emergenza
+
+La logica di rientro da `S29` e `S32` verso `S01` va trattata come regola strutturale del convertitore.
+
+Non è una semplice transizione locale, ma parte del backbone fisso di sequenza.
+
+## A.7 Regola sulla policy di naming del GRAPH
+
+L'identità logica del passo sorgente AWL va estratta in modo deterministico.
+
+Il naming finale dei passi GRAPH resta invece una policy del builder, che può:
+
+- mantenere il numero storico;
+- assegnare un nome semantico più leggibile;
+- introdurre step di chiusura o fine ciclo, purché il comportamento funzionale resti equivalente.
+
