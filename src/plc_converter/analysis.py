@@ -518,9 +518,17 @@ def _build_graph_fb_xml(profile, ir: AwlIR, graph_topology: GraphTopology) -> st
         )
         for step in graph_topology.step_nodes
     )
-    temp_members = "\n".join(
-        f'    <Member Name="ET_{escape(timer.source_timer)}" Datatype="Time" />' for timer in ir.timers
-    )
+    seen_temp_timers: set[str] = set()
+    temp_member_lines: list[str] = []
+    for timer in ir.timers:
+        temp_name = f"ET_{timer.source_timer}"
+        if temp_name in seen_temp_timers:
+            continue
+        seen_temp_timers.add(temp_name)
+        temp_member_lines.append(
+            f'    <Member Name="{escape(temp_name)}" Datatype="Time" />'
+        )
+    temp_members = "\n".join(dict.fromkeys(temp_member_lines))
     if not temp_members:
         temp_members = "    <Member Name=\"SEQ_TEMP\" Datatype=\"Bool\" />"
 
