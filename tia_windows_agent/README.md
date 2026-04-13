@@ -373,6 +373,7 @@ Eccezioni operative principali:
 - Per `export`, se `artifactPath` e' un file, devi indicare il blocco con `targetName` oppure usare un nome file coerente con il blocco da esportare.
 - Per `export`, se `artifactPath` e' una directory ma `targetName` e' valorizzato, viene esportato un solo blocco dentro quella directory.
 - Per `import`, se `targetPath` punta a un gruppo inesistente sotto `Program blocks`, l'agent prova a crearlo automaticamente prima dell'import.
+- Se ometti il prefisso `Program blocks/`, TIA crea un gruppo con nome letterale (es. `generati da tool/xxx`).
 - Per `compile` ed `export`, se `targetPath` punta a un gruppo inesistente, il job va in errore.
 - Se `targetName` punta a un blocco inesistente, l'`export` va in errore.
 - Se `artifactPath` di `import` non esiste come file o directory, il job va in errore.
@@ -383,6 +384,7 @@ Convenzioni consigliate:
 
 - usa `targetPath = $null` quando vuoi lavorare direttamente nel root `Program blocks`;
 - usa `targetPath = "Program blocks/Group_1"` quando vuoi limitare import/export a un gruppo preciso;
+- per creare una sottocartella ordinata (es. `generati da tool/<nome>`), passa sempre un path completo come `"Program blocks/generati da tool/<nome>"`;
 - usa `saveProject = $true` per `import`;
 - usa `saveProject = $true` per `compile` quando vuoi mantenere lo stato compilato;
 - usa `saveProject = $false` per `export` se non hai bisogno di salvare altre modifiche.
@@ -412,6 +414,7 @@ Invoke-RestMethod `
 Nota:
 per importare nel gruppo root dei blocchi, usa preferibilmente `targetPath = $null`. Se vuoi un sottogruppo specifico, passa un path come `"Program blocks/Sottogruppo1"`.
 Se `artifactPath` punta a una directory, l'agent importa tutti i file `*.xml` trovati nella cartella e nelle sottocartelle, in ordine alfabetico.
+Se vuoi una cartella dentro `generati da tool`, usa sempre `"Program blocks/generati da tool/<nome>"` come `targetPath`.
 
 ### Compile
 

@@ -43,6 +43,9 @@ Campi aggiuntivi:
 - `targetName`: nome del blocco da esportare
 - `saveProject`: se `true`, prova a salvare il progetto dopo l'operazione
 
+Nota operativa: `targetPath` va inteso come percorso che parte da `Program blocks/`.
+Per creare una sottocartella ordinata usa ad esempio `Program blocks/generati da tool/<nome>`.
+
 ## Note
 
 - l'agent processa i job in modo seriale, scelta prudente per il runtime TIA;

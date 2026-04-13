@@ -440,6 +440,9 @@ curl -X POST http://192.167.1.20:8010/api/jobs/import \
 ### Import remoto di un pacchetto completo generato dal tool
 
 Importa tutti gli XML presenti in una cartella Linux.
+Nota: il `targetPath` parte sempre da `Program blocks/`. Se vuoi creare una sottocartella
+ordinata sotto `generati da tool`, usa un path completo tipo
+`Program blocks/generati da tool/<nome>`.
 
 ```bash
 curl -X POST http://192.167.1.20:8010/api/jobs/import \
@@ -562,6 +565,7 @@ curl http://192.167.1.20:8010/api/jobs/JOB_ID
 ## 12. Regole pratiche da ricordare
 
 - `targetPath = null` significa root dei `Program blocks`
+- quando vuoi creare sottocartelle dedicate, usa sempre `Program blocks/<cartella>` come prefisso
 - `targetName = null` + `artifactPath` directory in `export` significa export multiplo del gruppo
 - `targetName` valorizzato + `artifactPath` directory in `export` significa export di un solo blocco dentro quella directory
 - `saveProject = true` e' consigliato per `import`

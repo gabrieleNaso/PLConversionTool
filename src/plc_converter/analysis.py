@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import hashlib
 from xml.sax.saxutils import escape
 
 from .domain import (
@@ -284,67 +285,16 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
         )
         for index, transition in enumerate(ir.transitions)
     ]
-
-    synthetic_merge_steps: list[StepCandidate] = []
-    synthetic_merge_step_names: set[str] = set()
-
-    transitions_by_original_target: dict[str, list[GraphTransitionNode]] = {}
-    for transition in transition_nodes:
-        transitions_by_original_target.setdefault(transition.target_step, []).append(transition)
+    next_synthetic_network = (
+        max((transition.network_index for transition in transition_nodes if transition.network_index), default=0)
+        + 1
+    )
 
     branch_nodes: list[GraphBranchNode] = []
     next_branch_no = 1
     next_transition_no = len(transition_nodes) + 1
-    for target_step, items in transitions_by_original_target.items():
-        if len(items) <= 1:
-            continue
-        if target_step == entry_step:
-            continue
-
-        branch_name = f"J_{target_step}"
-        incoming_step_names: list[str] = []
-        for index, transition in enumerate(items, start=1):
-            synthetic_step_name = f"JM_{target_step}_{index}"
-            incoming_step_names.append(synthetic_step_name)
-            synthetic_merge_step_names.add(synthetic_step_name)
-            synthetic_merge_steps.append(
-                StepCandidate(
-                    name=synthetic_step_name,
-                    source_networks=[transition.network_index] if transition.network_index else [],
-                    activation_networks=[transition.network_index] if transition.network_index else [],
-                    action_networks=[],
-                )
-            )
-            transition.target_step = synthetic_step_name
-
-        join_transition_name = f"T_JOIN_{target_step}"
-        transition_nodes.append(
-            GraphTransitionNode(
-                name=join_transition_name,
-                transition_no=next_transition_no,
-                source_step=branch_name,
-                target_step=target_step,
-                guard_expression="TRUE",
-                network_index=0,
-                db_block_name=_global_db_block_name(ir),
-                db_member_name=_transition_db_member_name_from_values(join_transition_name, "TRUE"),
-            )
-        )
-        next_transition_no += 1
-        branch_nodes.append(
-            GraphBranchNode(
-                name=branch_name,
-                branch_no=next_branch_no,
-                branch_type="SimEnd",
-                owner_step=target_step,
-                incoming_refs=incoming_step_names,
-                outgoing_refs=[join_transition_name],
-            )
-        )
-        next_branch_no += 1
 
     all_steps = list(ordered_steps)
-    all_steps.extend(sorted(synthetic_merge_steps, key=lambda item: _graph_step_sort_key(item.name)))
     step_nodes = [
         GraphStepNode(
             name=step.name,
@@ -369,9 +319,6 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
             continue
         if step.name == entry_step and len(ordered_steps) == 1:
             continue
-        if step.name in synthetic_merge_step_names:
-            continue
-
         synthetic_name = f"T_HOLD_{step.name}"
         transition_nodes.append(
             GraphTransitionNode(
@@ -382,12 +329,13 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
                 # self-loop incoming edges that can destabilize GRAPH editing.
                 target_step=entry_step,
                 guard_expression="FALSE",
-                network_index=0,
+                network_index=next_synthetic_network,
                 db_block_name=_global_db_block_name(ir),
                 db_member_name=_transition_db_member_name_from_values(synthetic_name, "FALSE"),
             )
         )
         next_transition_no += 1
+        next_synthetic_network += 1
 
     transitions_by_source: dict[str, list[GraphTransitionNode]] = {}
     for transition in transition_nodes:
@@ -408,11 +356,8 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
         next_branch_no += 1
         branch_nodes.append(branch)
         branch_by_source_step[source_step] = branch
-    branch_by_target_step = {
-        branch.owner_step: branch for branch in branch_nodes if branch.branch_type == "SimEnd"
-    }
-
     connections: list[GraphConnection] = []
+    direct_incoming_counts: dict[str, int] = {step.name: 0 for step in ordered_steps}
     for transition in transition_nodes:
         source_ref = transition.source_step
         if transition.source_step in branch_by_source_step:
@@ -436,28 +381,26 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
                 link_type="Direct",
             )
         )
+        target_link_type = "Direct"
+        if transition.target_step != entry_step:
+            if direct_incoming_counts.get(transition.target_step, 0) > 0:
+                target_link_type = "Jump"
+        if (
+            step_no_by_name.get(transition.target_step, 10**9)
+            <= step_no_by_name.get(transition.source_step, -1)
+        ):
+            target_link_type = "Jump"
+        if target_link_type == "Direct":
+            direct_incoming_counts[transition.target_step] = (
+                direct_incoming_counts.get(transition.target_step, 0) + 1
+            )
         connections.append(
             GraphConnection(
                 source_ref=transition.name,
                 target_ref=transition.target_step,
-                link_type=(
-                    "Jump"
-                    if step_no_by_name.get(transition.target_step, 10**9)
-                    <= step_no_by_name.get(transition.source_step, -1)
-                    else "Direct"
-                ),
+                link_type=target_link_type,
             )
         )
-
-    for branch in branch_by_target_step.values():
-        for incoming_step_name in branch.incoming_refs:
-            connections.append(
-                GraphConnection(
-                    source_ref=incoming_step_name,
-                    target_ref=branch.name,
-                    link_type="Direct",
-                )
-            )
 
     warnings: list[str] = []
     outgoing_counts: dict[str, int] = {step.name: 0 for step in ordered_steps}
@@ -473,9 +416,9 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
             )
 
     for step_name, count in incoming_counts.items():
-        if step_name != entry_step and count > 1 and step_name not in branch_by_target_step:
+        if step_name != entry_step and count > 1:
             warnings.append(
-                f"Il passo {step_name} riceve {count} ingressi: potrebbe servire un join o link Jump."
+                f"Il passo {step_name} riceve {count} ingressi: applicati Jump per evitare doppi Direct."
             )
 
     terminal_steps = [step.name for step in ordered_steps if outgoing_counts.get(step.name, 0) == 0]
@@ -615,6 +558,14 @@ def _validate_package_coherence(ir: AwlIR, graph_topology: GraphTopology) -> lis
     return issues
 
 
+def _stable_block_number(seed: str, base: int, span: int) -> int:
+    if span <= 0:
+        return base
+    digest = hashlib.sha1(seed.encode("utf-8")).hexdigest()
+    value = int(digest[:8], 16)
+    return base + (value % span)
+
+
 def _build_artifact_previews(scaffold, ir: AwlIR, graph_topology: GraphTopology) -> list[ArtifactPreview]:
     profile = build_target_profile()
     graph_xml = _build_graph_fb_xml(profile, ir, graph_topology)
@@ -644,6 +595,7 @@ def _build_artifact_previews(scaffold, ir: AwlIR, graph_topology: GraphTopology)
 
 
 def _build_graph_fb_xml(profile, ir: AwlIR, graph_topology: GraphTopology) -> str:
+    fb_number = _stable_block_number(f"{ir.sequence_name}_FB", base=100, span=100)
     static_members = ["    <Member Name=\"RT_DATA\" Datatype=\"G7_RTDataPlus_V2\" />"]
     static_members.extend(
         (
@@ -742,7 +694,7 @@ def _build_graph_fb_xml(profile, ir: AwlIR, graph_topology: GraphTopology) -> st
         '</Sections></Interface>\n'
         f'      <Name>{escape(ir.sequence_name)}</Name>\n'
         '      <Namespace />\n'
-        '      <Number>1</Number>\n'
+        f'      <Number>{fb_number}</Number>\n'
         '      <ProgrammingLanguage>GRAPH</ProgrammingLanguage>\n'
         '      <SetENOAutomatically>false</SetENOAutomatically>\n'
         '    </AttributeList>\n'
@@ -846,6 +798,7 @@ def _build_graph_fb_xml(profile, ir: AwlIR, graph_topology: GraphTopology) -> st
 
 
 def _build_global_db_xml(ir: AwlIR, graph_topology: GraphTopology) -> str:
+    db_number = _stable_block_number(f"{ir.sequence_name}_DB", base=200, span=100)
     members = _build_global_db_members(ir, graph_topology)
     return (
         '<?xml version="1.0" encoding="utf-8"?>\n'
@@ -862,7 +815,7 @@ def _build_global_db_xml(ir: AwlIR, graph_topology: GraphTopology) -> str:
         '      <MemoryReserve>100</MemoryReserve>\n'
         f'      <Name>{escape(ir.sequence_name)}_Global</Name>\n'
         '      <Namespace />\n'
-        '      <Number>1</Number>\n'
+        f'      <Number>{db_number}</Number>\n'
         '      <ProgrammingLanguage>DB</ProgrammingLanguage>\n'
         '    </AttributeList>\n'
         '    <ObjectList>\n'
@@ -893,6 +846,7 @@ def _build_global_db_xml(ir: AwlIR, graph_topology: GraphTopology) -> str:
 
 
 def _build_lad_fc_xml(ir: AwlIR, graph_topology: GraphTopology) -> str:
+    fc_number = _stable_block_number(f"{ir.sequence_name}_FC", base=300, span=100)
     temp_members = _build_lad_temp_members(ir)
     compile_units = _build_lad_compile_units(ir, graph_topology)
     return (
@@ -916,7 +870,7 @@ def _build_lad_fc_xml(ir: AwlIR, graph_topology: GraphTopology) -> str:
         '      <MemoryLayout>Optimized</MemoryLayout>\n'
         f'      <Name>{escape(ir.sequence_name)}_LAD</Name>\n'
         '      <Namespace />\n'
-        '      <Number>2</Number>\n'
+        f'      <Number>{fc_number}</Number>\n'
         '      <ProgrammingLanguage>LAD</ProgrammingLanguage>\n'
         '      <SetENOAutomatically>false</SetENOAutomatically>\n'
         '    </AttributeList>\n'

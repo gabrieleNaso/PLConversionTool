@@ -171,7 +171,7 @@ def test_conversion_analyze_builds_alt_branch_for_multi_exit_step() -> None:
     )
 
 
-def test_conversion_analyze_builds_sim_end_for_multi_entry_step() -> None:
+def test_conversion_analyze_uses_jump_for_multi_entry_step() -> None:
     client = TestClient(app)
     res = client.post(
         "/api/conversion/analyze",
@@ -199,26 +199,24 @@ def test_conversion_analyze_builds_sim_end_for_multi_entry_step() -> None:
     assert res.status_code == 200
 
     payload = res.json()
-    assert any(
+    assert not any(
         branch["branch_type"] == "SimEnd" and branch["owner_step"] == "S3"
         for branch in payload["graph_topology"]["branch_nodes"]
     )
     assert any(
-        connection["target_ref"] == "J_S3" for connection in payload["graph_topology"]["connections"]
-    )
-    assert any(
-        connection["source_ref"] == "J_S3" and connection["target_ref"] == "T_JOIN_S3"
+        connection["source_ref"] in {"T1", "T2"}
+        and connection["target_ref"] == "S3"
+        and connection["link_type"] == "Jump"
         for connection in payload["graph_topology"]["connections"]
     )
     assert any(
-        connection["source_ref"] == "T_JOIN_S3" and connection["target_ref"] == "S3"
+        connection["source_ref"] in {"T1", "T2"}
+        and connection["target_ref"] == "S3"
+        and connection["link_type"] == "Direct"
         for connection in payload["graph_topology"]["connections"]
     )
-    assert any(
-        'Type="SimEnd" Cardinality="2"' in preview["content"]
-        and 'In="0"' in preview["content"]
-        and 'In="1"' in preview["content"]
-        and 'Out="0"' in preview["content"]
+    assert not any(
+        'Type="SimEnd"' in preview["content"]
         for preview in payload["artifact_previews"]
         if preview["artifact_type"] == "graph_fb"
     )

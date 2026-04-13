@@ -259,6 +259,7 @@ Riferimenti osservati:
 - le alternative si modellano con `AltBegin`;
 - i paralleli si modellano con `SimBegin` e `SimEnd`;
 - i rami di allarme devono chiudersi correttamente.
+- per gli import, `targetPath` parte sempre da `Program blocks/`; per sottocartelle usare `Program blocks/generati da tool/<nome>`.
 
 ## 9. Transition LAD: sottoinsieme sicuro
 
@@ -1084,4 +1085,3 @@ Il confronto tra AWL FC102 e controparte TIA mostra che la topologia logica può
 Regola consolidata:
 
 > l'identità logica del passo va estratta in modo deterministico dal sorgente AWL; il naming finale del GRAPH è invece una policy del builder. Il builder può introdurre step target di chiusura o normalizzazione, purché preservi il comportamento funzionale della sequenza.
-

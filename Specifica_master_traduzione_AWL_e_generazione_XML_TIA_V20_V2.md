@@ -1044,6 +1044,13 @@ def validate_graph_topology(g: GraphIR) -> None:
     pass
 ```
 
+Nota pratica: se uno step non iniziale riceve piu' ingressi, il primo puo' restare
+`Direct` mentre gli ingressi aggiuntivi vanno trasformati in link `Jump` per evitare
+la violazione "doppi ingressi Direct" e ridurre i rischi di crash in TIA.
+Nota operativa import/export: il `targetPath` dei job TIA parte sempre da
+`Program blocks/`. Per creare sottocartelle ordinare usare ad esempio
+`Program blocks/generati da tool/<nome>`.
+
 ## 4. Serializer GRAPH
 
 ```text
@@ -1461,4 +1468,3 @@ Il naming finale dei passi GRAPH resta invece una policy del builder, che può:
 - mantenere il numero storico;
 - assegnare un nome semantico più leggibile;
 - introdurre step di chiusura o fine ciclo, purché il comportamento funzionale resti equivalente.
-
