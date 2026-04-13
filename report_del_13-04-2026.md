@@ -262,6 +262,11 @@ Riferimenti osservati:
 - per gli import, `targetPath` parte sempre da `Program blocks/`; per sottocartelle usare `Program blocks/generati da tool/<nome>`.
 - la numerazione step in GRAPH deve rispettare il suffisso dello step (`S29` -> numero 29).
 
+### 8.6 Stato di stabilita' generatore
+
+- Generatore considerato affidabile per import/export su bundle complessi (es. `mega-trial-ultra-v1`).
+- Blocchi FB/DB/FC apribili in TIA senza crash nelle prove correnti.
+
 ## 9. Transition LAD: sottoinsieme sicuro
 
 La parte più fragile del progetto si è dimostrata la generazione del LAD nelle transition.
