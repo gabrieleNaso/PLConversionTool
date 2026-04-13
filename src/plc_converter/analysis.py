@@ -295,18 +295,28 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
     next_transition_no = len(transition_nodes) + 1
 
     all_steps = list(ordered_steps)
+    reserved_step_numbers = {29, 30, 32}
+    reserved_step_names = {f"S{num}" for num in reserved_step_numbers}
     used_step_numbers: set[int] = set()
     step_nodes: list[GraphStepNode] = []
-    for index, step in enumerate(all_steps):
-        step_no, _ = _step_sort_key(step.name)
-        if step_no >= 10**9:
-            step_no = index + 1
+    next_sequential = 1
+
+    for step in all_steps:
+        if step.name in reserved_step_names:
+            step_no = int(step.name[1:])
+        else:
+            while next_sequential in used_step_numbers or next_sequential in reserved_step_numbers:
+                next_sequential += 1
+            step_no = next_sequential
+            next_sequential += 1
+
         if step_no in used_step_numbers:
             candidate = 1
-            while candidate in used_step_numbers:
+            while candidate in used_step_numbers or candidate in reserved_step_numbers:
                 candidate += 1
             step_no = candidate
         used_step_numbers.add(step_no)
+
         step_nodes.append(
             GraphStepNode(
                 name=step.name,
@@ -393,11 +403,13 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
             )
         )
         target_link_type = "Direct"
-        if transition.target_step != entry_step:
-            if direct_incoming_counts.get(transition.target_step, 0) > 0:
-                target_link_type = "Jump"
+        has_direct_incoming = direct_incoming_counts.get(transition.target_step, 0) > 0
+        if transition.target_step != entry_step and has_direct_incoming:
+            target_link_type = "Jump"
         if (
-            step_no_by_name.get(transition.target_step, 10**9)
+            target_link_type == "Direct"
+            and has_direct_incoming
+            and step_no_by_name.get(transition.target_step, 10**9)
             <= step_no_by_name.get(transition.source_step, -1)
         ):
             target_link_type = "Jump"
@@ -976,6 +988,10 @@ def _build_lad_compile_units(ir: AwlIR, graph_topology: GraphTopology) -> str:
         title_item_id = format(base_id + (index * 5) + 4, "X")
         target_db_name = escape(_global_db_block_name(ir))
         target_member_name = escape(transition.db_member_name)
+        aux_member = transition.db_member_name
+        if ir.memories:
+            aux_member = _db_member_name(ir.memories[0].name)
+        aux_member_name = escape(aux_member)
         units.append(
             '      <SW.Blocks.CompileUnit ID="'
             + unit_id
@@ -993,27 +1009,42 @@ def _build_lad_compile_units(ir: AwlIR, graph_topology: GraphTopology) -> str:
             '    <Access Scope="GlobalVariable" UId="23">\n'
             '      <Symbol>\n'
             f'        <Component Name="{target_db_name}" />\n'
+            f'        <Component Name="{aux_member_name}" />\n'
+            '      </Symbol>\n'
+            '    </Access>\n'
+            '    <Part Name="Contact" UId="24" />\n'
+            '    <Access Scope="GlobalVariable" UId="25">\n'
+            '      <Symbol>\n'
+            f'        <Component Name="{target_db_name}" />\n'
             f'        <Component Name="{target_member_name}" />\n'
             '      </Symbol>\n'
             '    </Access>\n'
-            '    <Part Name="Coil" UId="24" />\n'
+            '    <Part Name="Coil" UId="26" />\n'
             '  </Parts>\n'
             '  <Wires>\n'
-            '    <Wire UId="25">\n'
+            '    <Wire UId="31">\n'
             '      <Powerrail />\n'
             '      <NameCon UId="22" Name="in" />\n'
             '    </Wire>\n'
-            '    <Wire UId="26">\n'
+            '    <Wire UId="32">\n'
             '      <IdentCon UId="21" />\n'
             '      <NameCon UId="22" Name="operand" />\n'
             '    </Wire>\n'
-            '    <Wire UId="27">\n'
+            '    <Wire UId="33">\n'
             '      <NameCon UId="22" Name="out" />\n'
             '      <NameCon UId="24" Name="in" />\n'
             '    </Wire>\n'
-            '    <Wire UId="28">\n'
+            '    <Wire UId="34">\n'
             '      <IdentCon UId="23" />\n'
             '      <NameCon UId="24" Name="operand" />\n'
+            '    </Wire>\n'
+            '    <Wire UId="35">\n'
+            '      <NameCon UId="24" Name="out" />\n'
+            '      <NameCon UId="26" Name="in" />\n'
+            '    </Wire>\n'
+            '    <Wire UId="36">\n'
+            '      <IdentCon UId="25" />\n'
+            '      <NameCon UId="26" Name="operand" />\n'
             '    </Wire>\n'
             '  </Wires>\n'
             '</FlgNet></NetworkSource>\n'

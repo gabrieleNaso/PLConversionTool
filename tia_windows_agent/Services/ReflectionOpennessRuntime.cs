@@ -539,12 +539,23 @@ public sealed class ReflectionOpennessRuntime(
             return rootBlockGroup;
         }
 
+        var normalizedTargetPath = NormalizeTargetPath(targetPath);
+        if (string.IsNullOrWhiteSpace(normalizedTargetPath))
+        {
+            return rootBlockGroup;
+        }
+
         var current = rootBlockGroup;
-        var parts = targetPath
+        var parts = normalizedTargetPath
             .Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries)
             .Select(part => part.Trim())
             .Where(part => part.Length > 0)
             .ToArray();
+
+        if (parts.Length > 0 && !IsRootBlockGroupName(rootBlockGroup, parts[0]))
+        {
+            parts = new[] { "Program blocks" }.Concat(parts).ToArray();
+        }
 
         if (parts.Length == 1 && IsRootBlockGroupName(rootBlockGroup, parts[0]))
         {
@@ -571,6 +582,16 @@ public sealed class ReflectionOpennessRuntime(
         }
 
         return current;
+    }
+
+    private static string NormalizeTargetPath(string targetPath)
+    {
+        var normalized = targetPath.Replace('\\', '/').Trim();
+        var parts = normalized
+            .Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(part => part.Trim())
+            .Where(part => part.Length > 0);
+        return string.Join("/", parts);
     }
 
     private static object? FindChildGroupByName(object blockGroup, string name)
