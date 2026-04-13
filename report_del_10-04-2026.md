@@ -260,6 +260,7 @@ Riferimenti osservati:
 - i paralleli si modellano con `SimBegin` e `SimEnd`;
 - i rami di allarme devono chiudersi correttamente.
 - per gli import, `targetPath` parte sempre da `Program blocks/`; per sottocartelle usare `Program blocks/generati da tool/<nome>`.
+- la numerazione step in GRAPH deve rispettare il suffisso dello step (`S29` -> numero 29).
 
 ## 9. Transition LAD: sottoinsieme sicuro
 

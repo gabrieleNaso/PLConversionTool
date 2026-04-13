@@ -295,16 +295,27 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
     next_transition_no = len(transition_nodes) + 1
 
     all_steps = list(ordered_steps)
-    step_nodes = [
-        GraphStepNode(
-            name=step.name,
-            step_no=index + 1,
-            init=step.name == entry_step,
-            source_step=step.name,
-            action_networks=step.action_networks,
+    used_step_numbers: set[int] = set()
+    step_nodes: list[GraphStepNode] = []
+    for index, step in enumerate(all_steps):
+        step_no, _ = _step_sort_key(step.name)
+        if step_no >= 10**9:
+            step_no = index + 1
+        if step_no in used_step_numbers:
+            candidate = 1
+            while candidate in used_step_numbers:
+                candidate += 1
+            step_no = candidate
+        used_step_numbers.add(step_no)
+        step_nodes.append(
+            GraphStepNode(
+                name=step.name,
+                step_no=step_no,
+                init=step.name == entry_step,
+                source_step=step.name,
+                action_networks=step.action_networks,
+            )
         )
-        for index, step in enumerate(all_steps)
-    ]
     step_no_by_name = {step.name: step.step_no for step in step_nodes}
 
     # GRAPH rejects terminal steps without a following element.

@@ -1050,6 +1050,8 @@ la violazione "doppi ingressi Direct" e ridurre i rischi di crash in TIA.
 Nota operativa import/export: il `targetPath` dei job TIA parte sempre da
 `Program blocks/`. Per creare sottocartelle ordinare usare ad esempio
 `Program blocks/generati da tool/<nome>`.
+Nota sui numeri step: per step con nome `Sxx`, la numerazione GRAPH deve usare
+lo stesso valore `xx` (es. `S29` -> `Step Number="29"`), non un indice sequenziale.
 
 ## 4. Serializer GRAPH
 
