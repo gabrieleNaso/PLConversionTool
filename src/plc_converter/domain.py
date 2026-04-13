@@ -227,6 +227,7 @@ class GraphTransitionNode:
     network_index: int
     db_block_name: str
     db_member_name: str
+    guard_operands: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return asdict(self)

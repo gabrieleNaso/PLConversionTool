@@ -227,6 +227,9 @@ def _build_ir(sequence_name: str, source_name: str, networks: list[AwlNetwork]) 
 
         external_refs.update(_collect_matches(network, EXTERNAL_RE))
 
+    for reserved_step in ("S29", "S30", "S32"):
+        step_map.setdefault(reserved_step, StepCandidate(name=reserved_step))
+
     assumptions = [
         "Il parser usa euristiche incrementali sui pattern AWL piu' frequenti.",
         "Le transizioni vengono dedotte da step letti nello stesso network e step attivati tramite S/=.",
@@ -271,6 +274,10 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
             break
     if entry_step is None:
         entry_step = ordered_steps[0].name
+    for step in ordered_steps:
+        if step.name.lower() == "s1":
+            entry_step = step.name
+            break
 
     transition_nodes = [
         GraphTransitionNode(
@@ -279,6 +286,7 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
             source_step=transition.source_step,
             target_step=transition.target_step,
             guard_expression=transition.guard_expression,
+            guard_operands=transition.guard_operands,
             network_index=transition.network_index,
             db_block_name=_global_db_block_name(ir),
             db_member_name=_transition_db_member_name(transition),
@@ -350,6 +358,7 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
                 # self-loop incoming edges that can destabilize GRAPH editing.
                 target_step=entry_step,
                 guard_expression="FALSE",
+                guard_operands=[],
                 network_index=next_synthetic_network,
                 db_block_name=_global_db_block_name(ir),
                 db_member_name=_transition_db_member_name_from_values(synthetic_name, "FALSE"),
@@ -357,6 +366,51 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
         )
         next_transition_no += 1
         next_synthetic_network += 1
+
+    reserved_chain = ["S29", "S30", "S32"]
+    present_reserved = [name for name in reserved_chain if name in step_no_by_name]
+    if present_reserved:
+        existing_incoming = {transition.target_step for transition in transition_nodes}
+        first_reserved = present_reserved[0]
+        if first_reserved not in existing_incoming and first_reserved != entry_step:
+            transition_name = f"T_CHAIN_{entry_step}_TO_{first_reserved}"
+            transition_nodes.append(
+                GraphTransitionNode(
+                    name=transition_name,
+                    transition_no=next_transition_no,
+                    source_step=entry_step,
+                    target_step=first_reserved,
+                    guard_expression="FALSE",
+                    guard_operands=[],
+                    network_index=next_synthetic_network,
+                    db_block_name=_global_db_block_name(ir),
+                    db_member_name=_transition_db_member_name_from_values(transition_name, "FALSE"),
+                )
+            )
+            next_transition_no += 1
+            next_synthetic_network += 1
+            existing_incoming.add(first_reserved)
+
+        for prev_step, next_step in zip(present_reserved, present_reserved[1:]):
+            if next_step in existing_incoming:
+                continue
+            transition_name = f"T_CHAIN_{prev_step}_TO_{next_step}"
+            transition_nodes.append(
+                GraphTransitionNode(
+                    name=transition_name,
+                    transition_no=next_transition_no,
+                    source_step=prev_step,
+                    target_step=next_step,
+                    guard_expression="FALSE",
+                    guard_operands=[],
+                    network_index=next_synthetic_network,
+                    db_block_name=_global_db_block_name(ir),
+                    db_member_name=_transition_db_member_name_from_values(transition_name, "FALSE"),
+                )
+            )
+            next_transition_no += 1
+            next_synthetic_network += 1
+            existing_incoming.add(next_step)
 
     transitions_by_source: dict[str, list[GraphTransitionNode]] = {}
     for transition in transition_nodes:
@@ -1078,9 +1132,10 @@ def _build_lad_compile_units(ir: AwlIR, graph_topology: GraphTopology) -> str:
 
 
 def _render_graph_step(step: GraphStepNode) -> str:
+    step_name = str(step.step_no)
     return (
         f'      <Step Number="{step.step_no}" Init="{str(step.init).lower()}" '
-        f'Name="{escape(step.name)}" MaximumStepTime="T#10S" WarningTime="T#7S">\n'
+        f'Name="{escape(step_name)}" MaximumStepTime="T#10S" WarningTime="T#7S">\n'
         '        <Actions>\n'
         '          <Action />\n'
         '        </Actions>\n'
@@ -1099,33 +1154,75 @@ def _render_graph_step(step: GraphStepNode) -> str:
 
 
 def _render_graph_transition(transition: GraphTransitionNode) -> str:
+    operands = [item for item in transition.guard_operands if item]
+    if not operands:
+        operands = [transition.db_member_name]
+    parts_lines = []
+    wires_lines = []
+    base_uid = 21
+    for index, operand in enumerate(operands):
+        access_uid = base_uid + index * 2
+        contact_uid = access_uid + 1
+        parts_lines.extend(
+            [
+                f'            <Access Scope="GlobalVariable" UId="{access_uid}">\n',
+                '              <Symbol>\n',
+            ]
+        )
+        for component in operand.split("."):
+            parts_lines.append(f'                <Component Name="{escape(component)}" />\n')
+        parts_lines.extend(
+            [
+                '              </Symbol>\n',
+                '            </Access>\n',
+                f'            <Part Name="Contact" UId="{contact_uid}" />\n',
+            ]
+        )
+
+    trcoil_uid = base_uid + len(operands) * 2
+    parts_lines.append(f'            <Part Name="TrCoil" UId="{trcoil_uid}" />\n')
+
+    wire_uid = trcoil_uid + 1
+    first_contact_uid = base_uid + 1
+    wires_lines.append(f'            <Wire UId="{wire_uid}">\n')
+    wires_lines.append('              <Powerrail />\n')
+    wires_lines.append(f'              <NameCon UId="{first_contact_uid}" Name="in" />\n')
+    wires_lines.append('            </Wire>\n')
+    wire_uid += 1
+
+    for index in range(len(operands)):
+        access_uid = base_uid + index * 2
+        contact_uid = access_uid + 1
+        wires_lines.append(f'            <Wire UId="{wire_uid}">\n')
+        wires_lines.append(f'              <IdentCon UId="{access_uid}" />\n')
+        wires_lines.append(f'              <NameCon UId="{contact_uid}" Name="operand" />\n')
+        wires_lines.append('            </Wire>\n')
+        wire_uid += 1
+
+    for index in range(len(operands) - 1):
+        contact_uid = base_uid + index * 2 + 1
+        next_contact_uid = contact_uid + 2
+        wires_lines.append(f'            <Wire UId="{wire_uid}">\n')
+        wires_lines.append(f'              <NameCon UId="{contact_uid}" Name="out" />\n')
+        wires_lines.append(f'              <NameCon UId="{next_contact_uid}" Name="in" />\n')
+        wires_lines.append('            </Wire>\n')
+        wire_uid += 1
+
+    last_contact_uid = base_uid + (len(operands) - 1) * 2 + 1
+    wires_lines.append(f'            <Wire UId="{wire_uid}">\n')
+    wires_lines.append(f'              <NameCon UId="{last_contact_uid}" Name="out" />\n')
+    wires_lines.append(f'              <NameCon UId="{trcoil_uid}" Name="in" />\n')
+    wires_lines.append('            </Wire>\n')
+
     return (
         f'      <Transition IsMissing="false" Name="{escape(transition.name)}" '
         f'Number="{transition.transition_no}" ProgrammingLanguage="LAD">\n'
         '        <FlgNet>\n'
         '          <Parts>\n'
-        '            <Access Scope="GlobalVariable" UId="21">\n'
-        '              <Symbol>\n'
-        f'                <Component Name="{escape(transition.db_block_name)}" />\n'
-        f'                <Component Name="{escape(transition.db_member_name)}" />\n'
-        '              </Symbol>\n'
-        '            </Access>\n'
-        '            <Part Name="Contact" UId="22" />\n'
-        '            <Part Name="TrCoil" UId="23" />\n'
+        f'{"".join(parts_lines)}'
         '          </Parts>\n'
         '          <Wires>\n'
-        '            <Wire UId="24">\n'
-        '              <Powerrail />\n'
-        '              <NameCon UId="22" Name="in" />\n'
-        '            </Wire>\n'
-        '            <Wire UId="25">\n'
-        '              <IdentCon UId="21" />\n'
-        '              <NameCon UId="22" Name="operand" />\n'
-        '            </Wire>\n'
-        '            <Wire UId="26">\n'
-        '              <NameCon UId="22" Name="out" />\n'
-        '              <NameCon UId="23" Name="in" />\n'
-        '            </Wire>\n'
+        f'{"".join(wires_lines)}'
         '          </Wires>\n'
         '        </FlgNet>\n'
         '      </Transition>'
