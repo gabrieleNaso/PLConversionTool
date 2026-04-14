@@ -355,44 +355,142 @@ Nel DB HMI devono finire:
 - campi di supporto all'operatore;
 - eventuali testi o numerazioni di supporto HMI.
 
-## 26-bis. Regola hard di naming con suffisso e ownership delle variabili
+## 26-bis. Regola hard di assegnazione, naming e serializzazione delle variabili globali
 
-La sola allocazione per famiglia non basta.
+Questa regola non definisce una policy generica di naming.
 
-Ogni variabile globale o applicativa emessa dal convertitore deve avere contemporaneamente:
+Definisce invece come il convertitore deve decidere, scrivere e validare il nome finale e il path finale di ogni variabile globale del pacchetto XML.
 
-- DB di appartenenza corretto;
-- path simbolico completo coerente con quel DB;
-- naming coerente con la famiglia dati;
-- eventuale prefisso o suffisso obbligatorio del modello di progetto o del DB fisso di destinazione.
+La sola allocazione per famiglia non basta: una variabile globale e' corretta solo quando il convertitore ha determinato in modo univoco:
 
-Regola hard:
+- il DB owner reale;
+- il ramo strutturale interno al DB;
+- il nome finale del member foglia;
+- la forma completa del path simbolico usato dai consumer;
+- la coerenza del riferimento in tutti i blocchi che la leggono o la scrivono.
 
-- non è ammesso emettere variabili globali senza ownership semantica o senza collocazione stabile nel DB corretto;
-- non è ammesso generare riferimenti in `GRAPH`, `FC` o `HMI` verso nomi generici, placeholder o member non allineati al DB che dovrebbe contenerli;
-- una variabile è considerata valida solo se il suo nome finale e il suo path finale coincidono con il contratto dati del blocco che la espone.
+### 26-bis.1 Record minimo obbligatorio nell'IR
 
-Conseguenze operative per famiglia:
+Prima della serializzazione XML, per ogni variabile globale l'IR deve contenere almeno:
 
-- nel `DB 11..` i nomi devono essere emessi sotto le strutture canoniche del modello, ad esempio `Transitions.*`, `Memory.*`, `Seq Status.*`;
-- nel `DB 18.. EXT` i riferimenti esterni devono mantenere naming coerente con la sorgente impianto o col contratto del blocco esterno;
-- nel `DB 19.. AUX` timer, contatori, one-shot e appoggi devono restare nella famiglia `AUX` con naming coerente al loro ruolo tecnico;
-- nel DB HMI popup, condizioni e campi operatore devono restare sotto le strutture HMI canoniche;
-- nei DB fissi esterni del progetto il convertitore deve rispettare anche la convenzione di naming propria del DB target, inclusi eventuali prefissi o suffissi storici obbligatori.
+- `semantic_role`;
+- `owner_db_kind`;
+- `owner_db_name`;
+- `target_branch_path`;
+- `leaf_member_name`;
+- `naming_policy`;
+- `consumers`;
+- `source_ref`.
 
-Esempi da considerare vincolanti come forma del target:
+Non e' ammesso arrivare al serializer XML con il solo nome semantico libero della variabile.
 
-- comandi e preset nel DB tipo OPIN -> naming della famiglia `Pxxx`;
-- uscite e stati comandati nel DB tipo OPOUT -> naming della famiglia `Lxxx`;
-- transizioni semantiche del sequenziatore -> path tipo `Transitions.<nome>`;
-- memorie semantiche del sequenziatore -> path tipo `Memory.<nome>`;
-- riferimenti HMI -> path tipo `Conditions.<gruppo>.*` oppure `HMI.*` secondo la struttura del DB HMI.
+### 26-bis.2 Procedura obbligatoria di risoluzione
 
-Validator obbligatorio:
+Per ogni variabile globale il convertitore deve eseguire sempre i passi seguenti, nell'ordine indicato.
 
-- per ogni simbolo globale emesso il convertitore deve verificare che esista una ed una sola destinazione valida nel DB corretto;
-- se il naming richiesto dal DB target non è determinabile con certezza, il generatore non deve inventare un nome neutro: deve segnalare il punto come non risolto oppure richiedere mapping esplicito;
-- la generazione di nomi provvisori del tipo `var_*`, `temp_*`, `memory_*` o equivalenti è ammessa solo per locali tecnici interni non esposti come contratto globale del pacchetto.
+1. classificare la variabile per ruolo semantico (`transition`, `memory`, `seq_status`, `ext_command`, `output_state`, `hmi_condition`, `aux_timer`, `aux_support`, `io_signal` o altra classe prevista dal modello);
+2. scegliere il DB target in funzione della classe semantica e non del solo nome storico AWL;
+3. scegliere il ramo interno al DB target;
+4. applicare la convenzione di naming obbligatoria di quel DB o di quel ramo;
+5. costruire il path simbolico completo che verra' serializzato negli `Access/Symbol/Component` dei blocchi consumer;
+6. verificare che ogni consumer del pacchetto referenzi esattamente quel path e non una variante semplificata.
+
+Se uno di questi sei passi non e' risolto, la variabile non e' emettibile nel pacchetto finale.
+
+### 26-bis.3 Mapping vincolante DB -> naming -> path
+
+Il mapping seguente va considerato normativo.
+
+- Variabili semantiche di avanzamento del sequenziatore -> DB base `11..`, ramo `Transitions`, leaf name semantico leggibile. Forma target: `<DB11>.Transitions.<nome>`.
+- Memorie semantiche, consensi cumulativi, stati fisici stabilizzati -> DB base `11..`, ramo `Memory`, leaf name semantico leggibile. Forma target: `<DB11>.Memory.<nome>`.
+- Stato leggibile della sequenza e storico -> DB base `11..`, ramo `Seq Status`. Forma target: `<DB11>.Seq Status.<campo>`.
+- Variabili esterne di comando/preset gia' appartenenti a DB fissi di comando tipo OPIN -> DB fisso esterno, leaf name obbligatorio della famiglia `Pnnn`. Non e' ammesso sostituire `P013` con un nome semantico libero come `Cmd_Up`.
+- Variabili esterne di uscita o stato comandato gia' appartenenti a DB fissi tipo OPOUT -> DB fisso esterno, leaf name obbligatorio della famiglia `Lnnn`. Non e' ammesso sostituire `L045` con un nome semantico libero come `ShakerCmd`.
+- Condizioni HMI elementari -> DB HMI, ramo `Conditions.<gruppo>.Conditions.nX`. Non e' ammesso saltare il ramo intermedio `Conditions` del gruppo.
+- Strutture HMI operative -> DB HMI, ramo `HMI.*` secondo la struttura del blocco HMI generato.
+- Timer, one-shot e supporti tecnici -> DB `19.. AUX`, rami coerenti con il modello ausiliario, ad esempio `AUX.TIMER[...]`, `AUX.OS[...]`, `AUX_MEMORY.*`.
+- Segnali I/O fisici modellati in DB dedicato -> DB I-O, rami `DI.*` o `DO.*`.
+
+### 26-bis.4 Come deve essere scritto il riferimento XML
+
+Quando un blocco consumer usa una variabile globale, il riferimento non deve essere serializzato come nome piatto.
+
+Deve essere scritto come catena completa di `Component Name`, nell'ordine reale del path simbolico.
+
+Forma corretta di principio:
+
+```text
+<Access Scope="GlobalVariable">
+  <Symbol>
+    <Component Name="<DB owner>" />
+    <Component Name="<ramo 1>" />
+    <Component Name="<ramo 2>" />
+    <Component Name="<leaf>" />
+  </Symbol>
+</Access>
+```
+
+Questo vale per `GRAPH`, `FC 02`, `FC 03`, `FC 04`, `FC 06` e per ogni altro blocco consumer del pacchetto.
+
+### 26-bis.5 Esempi vincolanti ricavati dagli XML campione
+
+Gli XML osservati nel progetto fissano le seguenti forme target, che il convertitore deve riprodurre.
+
+Esempio 1: una transizione semantica nel DB base viene referenziata come path completo del tipo:
+
+```text
+T1-A ARUNC -> Transitions -> Bypass ilock
+```
+
+Esempio 2: una memoria semantica nel DB base viene referenziata come path completo del tipo:
+
+```text
+T1-A ARUNC -> Memory -> Permanent Condition
+```
+
+Esempio 3: una condizione HMI non usa un nome libero, ma un path strutturato del tipo:
+
+```text
+T1-A ARUNC HMI -> Conditions -> MOV_UP -> Conditions -> n1
+```
+
+Esempio 4: nel DB di comando esterno il member foglia deve restare nella famiglia `Pnnn`, come nei casi `P001`, `P013`.
+
+Esempio 5: nel DB di uscita esterno il member foglia deve restare nella famiglia `Lnnn`, come nei casi `L001`, `L045`.
+
+Esempio 6: nel DB ausiliario i supporti tecnici non sono member sciolti, ma restano sotto rami strutturali come `AUX.TIMER`, `AUX.OS`, `AUX_MEMORY`.
+
+### 26-bis.6 Regole di emissione per il generatore
+
+Il generatore deve applicare le regole seguenti.
+
+- Se il target e' il DB base `11..`, il leaf name puo' essere semantico leggibile, ma il ramo deve essere obbligatoriamente uno fra `Transitions`, `Memory`, `Seq Status`.
+- Se il target e' un DB fisso esterno che usa codifica storica, il leaf name non deve essere rigenerato semanticamente: deve essere quello canonico del DB target (`Pnnn`, `Lnnn` o altra famiglia fissata dal blocco reale).
+- Se il target e' HMI, il convertitore deve emettere il path HMI completo, incluso il gruppo e l'indice `nX` delle condizioni elementari quando il modello HMI lo richiede.
+- Se il target e' AUX, il convertitore deve emettere supporti tecnici soltanto dentro le strutture ausiliarie previste e non come member globali sciolti.
+- Se il nome canonico del DB fisso non e' ricostruibile in modo deterministico a partire dall'AWL e dal mapping disponibile, il convertitore deve marcare il punto come `mapping_required` e non deve inventare un nome libero.
+
+### 26-bis.7 Errori da considerare bloccanti
+
+Devono essere considerati errori bloccanti di generazione almeno i seguenti casi:
+
+- variabile globale senza `owner_db_name` determinato;
+- variabile globale con DB corretto ma ramo interno errato;
+- variabile globale con ramo corretto ma leaf name non conforme alla convenzione del DB target;
+- `Access/Symbol` che omette uno o piu' componenti del path reale;
+- uso in una FC o nel GRAPH di placeholder come `var_*`, `temp_*`, `memory_*` o equivalenti come nome globale finale;
+- emissione di nomi semantici liberi dentro DB fissi che richiedono codifica storica;
+- presenza di due candidate destinazioni diverse per lo stesso simbolo globale senza disambiguazione deterministica.
+
+### 26-bis.8 Validator obbligatorio
+
+Prima dell'emissione finale il convertitore deve eseguire un validator dedicato sul naming globale.
+
+Il validator deve verificare, per ogni simbolo globale usato dal pacchetto, il triplo vincolo seguente:
+
+`DB corretto + path corretto + naming corretto`
+
+La variabile e' valida solo se il triplo vincolo e' soddisfatto e se tutti i consumer del pacchetto usano esattamente lo stesso path.
 
 # Parte V - Regole di costruzione dei backend target
 
