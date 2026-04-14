@@ -43,11 +43,15 @@ class TiaBridgeClient:
             "saveProject": bool(payload.get("saveProject", False)),
             "notes": payload.get("notes"),
         }
-        return await self._request("POST", f"/api/jobs/{operation}", json=normalized_payload)
+        return await self._request(
+            "POST", f"/api/jobs/{operation}", json=normalized_payload
+        )
 
     async def _request(self, method: str, path: str, **kwargs) -> dict | list:
         try:
-            async with httpx.AsyncClient(base_url=self.base_url, timeout=self.timeout) as client:
+            async with httpx.AsyncClient(
+                base_url=self.base_url, timeout=self.timeout
+            ) as client:
                 response = await client.request(method, path, **kwargs)
                 response.raise_for_status()
                 return response.json()

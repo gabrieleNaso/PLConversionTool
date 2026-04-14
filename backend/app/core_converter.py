@@ -62,10 +62,16 @@ def export_conversion_bundle(
     if relative_output.is_absolute():
         relative_output = Path(*relative_output.parts[1:])
     if relative_output.parts and relative_output.parts[0] == "output":
-        relative_output = Path(*relative_output.parts[1:]) if len(relative_output.parts) > 1 else Path()
+        relative_output = (
+            Path(*relative_output.parts[1:])
+            if len(relative_output.parts) > 1
+            else Path()
+        )
     destination = (output_root / relative_output).resolve()
     if output_root not in destination.parents and destination != output_root:
-        raise ValueError("outputDir deve rimanere dentro la cartella output/ del progetto.")
+        raise ValueError(
+            "outputDir deve rimanere dentro la cartella output/ del progetto."
+        )
     destination.mkdir(parents=True, exist_ok=True)
 
     written_files: list[str] = []

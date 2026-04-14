@@ -37,9 +37,17 @@ def test_conversion_bootstrap_builds_initial_scaffold() -> None:
 
     payload = res.json()
     assert payload["sequence_name"] == "Bottling_Line"
-    assert payload["artifact_plan"]["graph_fb_name"] == "FB_Bottling_Line_GRAPH_auto.xml"
-    assert payload["artifact_plan"]["global_db_name"] == "DB_Bottling_Line_global_auto.xml"
-    assert payload["artifact_plan"]["lad_fc_name"] == "FC_Bottling_Line_lad_auto.xml"
+    assert (
+        payload["artifact_plan"]["graph_fb_name"] == "FB_Bottling_Line_GRAPH_auto.xml"
+    )
+    assert (
+        payload["artifact_plan"]["global_db_name"]
+        == "DB12_Bottling_Line_seq_global_auto.xml"
+    )
+    assert (
+        payload["artifact_plan"]["lad_fc_name"]
+        == "FC04_Bottling_Line_transitions_lad_auto.xml"
+    )
     assert payload["source_analysis"]["network_count"] == 1
     assert payload["source_analysis"]["set_reset_count"] == 2
     assert payload["source_analysis"]["jump_count"] == 1
@@ -91,7 +99,8 @@ def test_conversion_analyze_builds_ir_and_artifact_previews() -> None:
     assert payload["graph_topology"]["step_nodes"][0]["init"] is True
     assert payload["graph_topology"]["connections"][0]["source_ref"] == "S1"
     assert any(
-        preview["artifact_type"] == "graph_fb" for preview in payload["artifact_previews"]
+        preview["artifact_type"] == "graph_fb"
+        for preview in payload["artifact_previews"]
     )
     assert any(
         "<Connections>" in preview["content"]
@@ -99,59 +108,69 @@ def test_conversion_analyze_builds_ir_and_artifact_previews() -> None:
         if preview["artifact_type"] == "graph_fb"
     )
     assert any(
-        '<SW.Blocks.CompileUnit ID="3" CompositionName="CompileUnits">' in preview["content"]
+        '<SW.Blocks.CompileUnit ID="3" CompositionName="CompileUnits">'
+        in preview["content"]
         and 'Graph xmlns="http://www.siemens.com/automation/Openness/SW/NetworkSource/Graph/v5"'
         in preview["content"]
         and "<StepRef Number=" in preview["content"]
         and "<TransitionRef Number=" in preview["content"]
         and "<AlarmsSettings>" in preview["content"]
         and 'CompositionName="Title"' in preview["content"]
-        and '<Member Name="SNO" Datatype="Int"><StartValue Informative="true">' in preview["content"]
-        and '<Component Name="Mixer_Line_Global" />' in preview["content"]
+        and '<Member Name="SNO" Datatype="Int"><StartValue Informative="true">'
+        in preview["content"]
+        and '<Component Name="DB12_Mixer_Line_SEQ_Global" />' in preview["content"]
         and '<Component Name="T1_Guard_M10_0_AND_T1" />' in preview["content"]
         for preview in payload["artifact_previews"]
         if preview["artifact_type"] == "graph_fb"
     )
     assert any(
-        "<SW.Blocks.GlobalDB ID=\"0\">" in preview["content"]
+        '<SW.Blocks.GlobalDB ID="0">' in preview["content"]
         and "<MemoryLayout>Optimized</MemoryLayout>" in preview["content"]
-        and '<Member Name="T1_Guard_M10_0_AND_T1" Datatype="Bool">' in preview["content"]
+        and '<Member Name="T1_Guard_M10_0_AND_T1" Datatype="Bool">'
+        in preview["content"]
         for preview in payload["artifact_previews"]
         if preview["artifact_type"] == "global_db"
     )
     assert any(
-        "<SW.Blocks.FC ID=\"0\">" in preview["content"]
-        and "FlgNet xmlns=\"http://www.siemens.com/automation/Openness/SW/NetworkSource/FlgNet/v5\""
+        '<SW.Blocks.FC ID="0">' in preview["content"]
+        and 'FlgNet xmlns="http://www.siemens.com/automation/Openness/SW/NetworkSource/FlgNet/v5"'
         in preview["content"]
-        and '<Component Name="Mixer_Line_Global" />' in preview["content"]
+        and '<Component Name="DB12_Mixer_Line_SEQ_Global" />' in preview["content"]
         and '<Component Name="T1_Guard_M10_0_AND_T1" />' in preview["content"]
         for preview in payload["artifact_previews"]
         if preview["artifact_type"] == "lad_fc"
     )
-    assert any(
-        issue["code"] == "NO_MANUAL_LOGIC" for issue in payload["validation_issues"]
-    ) is False
-    assert any(
-        issue["code"] == "PACKAGE_COHERENCE_ERROR" for issue in payload["validation_issues"]
-    ) is False
+    assert (
+        any(
+            issue["code"] == "NO_MANUAL_LOGIC" for issue in payload["validation_issues"]
+        )
+        is False
+    )
+    assert (
+        any(
+            issue["code"] == "PACKAGE_COHERENCE_ERROR"
+            for issue in payload["validation_issues"]
+        )
+        is False
+    )
     assert any(
         preview["artifact_type"] == "support_global_db_io"
-        and "<SW.Blocks.GlobalDB ID=\"0\">" in preview["content"]
+        and '<SW.Blocks.GlobalDB ID="0">' in preview["content"]
         for preview in payload["artifact_previews"]
     )
     assert any(
         preview["artifact_type"] == "support_lad_fc_io"
-        and "<SW.Blocks.FC ID=\"0\">" in preview["content"]
+        and '<SW.Blocks.FC ID="0">' in preview["content"]
         for preview in payload["artifact_previews"]
     )
     assert any(
         preview["artifact_type"] == "support_global_db_diag"
-        and "<SW.Blocks.GlobalDB ID=\"0\">" in preview["content"]
+        and '<SW.Blocks.GlobalDB ID="0">' in preview["content"]
         for preview in payload["artifact_previews"]
     )
     assert any(
         preview["artifact_type"] == "support_lad_fc_diag"
-        and "<SW.Blocks.FC ID=\"0\">" in preview["content"]
+        and '<SW.Blocks.FC ID="0">' in preview["content"]
         for preview in payload["artifact_previews"]
     )
     assert any(
@@ -161,7 +180,7 @@ def test_conversion_analyze_builds_ir_and_artifact_previews() -> None:
     )
     assert any(
         preview["artifact_type"] == "support_lad_fc_mode"
-        and "<SW.Blocks.FC ID=\"0\">" in preview["content"]
+        and '<SW.Blocks.FC ID="0">' in preview["content"]
         and '<Component Name="Mixer_Line_MODE_Global" />' in preview["content"]
         for preview in payload["artifact_previews"]
     )

@@ -16,6 +16,7 @@ from .domain import (
     GraphStepNode,
     GraphTopology,
     GraphTransitionNode,
+    MemberIR,
     MemoryCandidate,
     OutputCandidate,
     StepCandidate,
@@ -46,6 +47,43 @@ SUPPORT_BLOCK_SCHEMA = {
     "aux": {"token": "AUX", "file_token": "aux"},
     "transitions": {"token": "TRANSITIONS", "file_token": "transitions"},
     "output": {"token": "OUTPUT", "file_token": "output"},
+}
+
+DB_FAMILY_PREFIX = {
+    "base": "DB11",
+    "sequence": "DB12",
+    "ext": "DB18",
+    "aux": "DB19",
+    "hmi": "DB_HMI",
+}
+
+FC_FAMILY_PREFIX = {
+    "hmi": "FC02",
+    "aux": "FC03",
+    "transitions": "FC04",
+    "output": "FC06",
+}
+
+DB_FAMILY_NUMBER_BASE = {
+    "base": 1100,
+    "sequence": 1200,
+    "ext": 1800,
+    "aux": 1900,
+    "hmi": 1700,
+}
+
+FC_FAMILY_NUMBER_BASE = {
+    "hmi": 200,
+    "aux": 300,
+    "transitions": 400,
+    "output": 600,
+}
+
+SUPPORT_FAMILY_OVERRIDES = {
+    "hmi": {"db_family": "hmi", "fc_family": "hmi"},
+    "aux": {"db_family": "aux", "fc_family": "aux"},
+    "transitions": {"db_family": "sequence", "fc_family": "transitions"},
+    "output": {"db_family": "sequence", "fc_family": "output"},
 }
 
 
@@ -218,6 +256,7 @@ def _build_ir(sequence_name: str, source_name: str, networks: list[AwlNetwork]) 
         condition_operands = _collect_condition_operands(network)
         jump_labels = [instr.args[0] for instr in network.instructions if instr.opcode in JUMP_OPCODES and instr.args]
         step_targets = _collect_step_targets(network)
+        pattern_transitions = _collect_transition_patterns(network)
 
         for step_name in step_refs:
             step_map.setdefault(step_name, StepCandidate(name=step_name)).source_networks.append(network.index)
@@ -232,8 +271,8 @@ def _build_ir(sequence_name: str, source_name: str, networks: list[AwlNetwork]) 
                     network.index
                 )
 
-        for target in step_targets:
-            for source_step in step_refs:
+        if pattern_transitions:
+            for source_step, target, guard_ops, pattern_jump_labels in pattern_transitions:
                 if target == source_step:
                     continue
                 transitions.append(
@@ -242,11 +281,27 @@ def _build_ir(sequence_name: str, source_name: str, networks: list[AwlNetwork]) 
                         source_step=source_step,
                         target_step=target,
                         network_index=network.index,
-                        guard_expression=" AND ".join(condition_operands) if condition_operands else "TRUE",
-                        guard_operands=condition_operands,
-                        jump_labels=jump_labels,
+                        guard_expression=" AND ".join(guard_ops) if guard_ops else "TRUE",
+                        guard_operands=guard_ops,
+                        jump_labels=pattern_jump_labels,
                     )
                 )
+        else:
+            for target in step_targets:
+                for source_step in step_refs:
+                    if target == source_step:
+                        continue
+                    transitions.append(
+                        TransitionCandidate(
+                            transition_id=f"T{len(transitions) + 1}",
+                            source_step=source_step,
+                            target_step=target,
+                            network_index=network.index,
+                            guard_expression=" AND ".join(condition_operands) if condition_operands else "TRUE",
+                            guard_operands=condition_operands,
+                            jump_labels=jump_labels,
+                        )
+                    )
 
         for timer_name, timer_kind, preset in _collect_timers(network):
             timers.append(
@@ -290,7 +345,7 @@ def _build_ir(sequence_name: str, source_name: str, networks: list[AwlNetwork]) 
     if not transitions:
         transitions = _build_network_pattern_transitions(step_map, networks)
 
-    for reserved_step in ("S29", "S30", "S32"):
+    for reserved_step in ("S1", "S29", "S30", "S32"):
         step_map.setdefault(reserved_step, StepCandidate(name=reserved_step))
 
     assumptions = [
@@ -442,7 +497,7 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
     next_transition_no = len(transition_nodes) + 1
 
     all_steps = list(ordered_steps)
-    reserved_step_numbers = {29, 30, 32}
+    reserved_step_numbers = {1, 29, 30, 32}
     reserved_step_names = {f"S{num}" for num in reserved_step_numbers}
     used_step_numbers: set[int] = set()
     step_nodes: list[GraphStepNode] = []
@@ -888,7 +943,14 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
 
     io_members = _collect_io_support_members(ir)
     if io_members:
-        io_db_name, io_fc_name, io_db_file, io_fc_file = _support_block_names(ir.sequence_name, "io")
+        (
+            io_db_name,
+            io_fc_name,
+            io_db_file,
+            io_fc_file,
+            io_db_base,
+            io_fc_base,
+        ) = _support_block_names(ir.sequence_name, "io")
         previews.append(
             ArtifactPreview(
                 artifact_type="support_global_db_io",
@@ -898,6 +960,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     title=f"{ir.sequence_name} IO Global",
                     members=io_members,
                     number_seed=f"{ir.sequence_name}_IO_DB",
+                    number_base=io_db_base,
                 ),
             )
         )
@@ -911,15 +974,21 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     db_name=io_db_name,
                     members=[name for name, _ in io_members],
                     number_seed=f"{ir.sequence_name}_IO_FC",
+                    number_base=io_fc_base,
                 ),
             )
         )
 
     diag_members = _collect_diag_support_members(ir)
     if diag_members:
-        diag_db_name, diag_fc_name, diag_db_file, diag_fc_file = _support_block_names(
-            ir.sequence_name, "diag"
-        )
+        (
+            diag_db_name,
+            diag_fc_name,
+            diag_db_file,
+            diag_fc_file,
+            diag_db_base,
+            diag_fc_base,
+        ) = _support_block_names(ir.sequence_name, "diag")
         previews.append(
             ArtifactPreview(
                 artifact_type="support_global_db_diag",
@@ -929,6 +998,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     title=f"{ir.sequence_name} Diag Global",
                     members=diag_members,
                     number_seed=f"{ir.sequence_name}_DIAG_DB",
+                    number_base=diag_db_base,
                 ),
             )
         )
@@ -942,15 +1012,21 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     db_name=diag_db_name,
                     members=[name for name, _ in diag_members],
                     number_seed=f"{ir.sequence_name}_DIAG_FC",
+                    number_base=diag_fc_base,
                 ),
             )
         )
 
     mode_members = _collect_mode_support_members(ir)
     if mode_members:
-        mode_db_name, mode_fc_name, mode_db_file, mode_fc_file = _support_block_names(
-            ir.sequence_name, "mode"
-        )
+        (
+            mode_db_name,
+            mode_fc_name,
+            mode_db_file,
+            mode_fc_file,
+            mode_db_base,
+            mode_fc_base,
+        ) = _support_block_names(ir.sequence_name, "mode")
         previews.append(
             ArtifactPreview(
                 artifact_type="support_global_db_mode",
@@ -960,6 +1036,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     title=f"{ir.sequence_name} Mode Global",
                     members=mode_members,
                     number_seed=f"{ir.sequence_name}_MODE_DB",
+                    number_base=mode_db_base,
                 ),
             )
         )
@@ -973,6 +1050,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     db_name=mode_db_name,
                     members=[name for name, _ in mode_members],
                     number_seed=f"{ir.sequence_name}_MODE_FC",
+                    number_base=mode_fc_base,
                 ),
             )
         )
@@ -980,9 +1058,14 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
     network_specs = _collect_network_support_specs(ir)
     for network_no, network_title, members in network_specs:
         suffix = _network_support_suffix(network_no, network_title)
-        network_db_name, network_fc_name, network_db_file, network_fc_file = _support_block_names(
-            ir.sequence_name, "network", suffix=suffix
-        )
+        (
+            network_db_name,
+            network_fc_name,
+            network_db_file,
+            network_fc_file,
+            network_db_base,
+            network_fc_base,
+        ) = _support_block_names(ir.sequence_name, "network", suffix=suffix)
         previews.append(
             ArtifactPreview(
                 artifact_type="support_global_db_network",
@@ -992,6 +1075,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     title=f"{ir.sequence_name} Network {network_no} Global",
                     members=members,
                     number_seed=f"{ir.sequence_name}_{suffix}_DB",
+                    number_base=network_db_base,
                 ),
             )
         )
@@ -1005,15 +1089,21 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     db_name=network_db_name,
                     members=[name for name, _ in members],
                     number_seed=f"{ir.sequence_name}_{suffix}_FC",
+                    number_base=network_fc_base,
                 ),
             )
         )
 
     transitions_members = _collect_transitions_support_members(ir, network_specs)
     if transitions_members:
-        tr_db_name, tr_fc_name, tr_db_file, tr_fc_file = _support_block_names(
-            ir.sequence_name, "transitions"
-        )
+        (
+            tr_db_name,
+            tr_fc_name,
+            tr_db_file,
+            tr_fc_file,
+            tr_db_base,
+            tr_fc_base,
+        ) = _support_block_names(ir.sequence_name, "transitions")
         previews.append(
             ArtifactPreview(
                 artifact_type="support_global_db_transitions",
@@ -1023,6 +1113,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     title=f"{ir.sequence_name} Transitions Global",
                     members=transitions_members,
                     number_seed=f"{ir.sequence_name}_TRANSITIONS_DB",
+                    number_base=tr_db_base,
                 ),
             )
         )
@@ -1036,15 +1127,21 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     db_name=tr_db_name,
                     members=[name for name, _ in transitions_members],
                     number_seed=f"{ir.sequence_name}_TRANSITIONS_FC",
+                    number_base=tr_fc_base,
                 ),
             )
         )
 
     output_members = _collect_output_family_members(ir)
     if output_members:
-        out_db_name, out_fc_name, out_db_file, out_fc_file = _support_block_names(
-            ir.sequence_name, "output"
-        )
+        (
+            out_db_name,
+            out_fc_name,
+            out_db_file,
+            out_fc_file,
+            out_db_base,
+            out_fc_base,
+        ) = _support_block_names(ir.sequence_name, "output")
         previews.append(
             ArtifactPreview(
                 artifact_type="support_global_db_output",
@@ -1054,6 +1151,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     title=f"{ir.sequence_name} Output Global",
                     members=output_members,
                     number_seed=f"{ir.sequence_name}_OUTPUT_DB",
+                    number_base=out_db_base,
                 ),
             )
         )
@@ -1067,15 +1165,21 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     db_name=out_db_name,
                     members=[name for name, _ in output_members],
                     number_seed=f"{ir.sequence_name}_OUTPUT_FC",
+                    number_base=out_fc_base,
                 ),
             )
         )
 
     hmi_members = _collect_hmi_support_members(ir)
     if hmi_members:
-        hmi_db_name, hmi_fc_name, hmi_db_file, hmi_fc_file = _support_block_names(
-            ir.sequence_name, "hmi"
-        )
+        (
+            hmi_db_name,
+            hmi_fc_name,
+            hmi_db_file,
+            hmi_fc_file,
+            hmi_db_base,
+            hmi_fc_base,
+        ) = _support_block_names(ir.sequence_name, "hmi")
         previews.append(
             ArtifactPreview(
                 artifact_type="support_global_db_hmi",
@@ -1085,6 +1189,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     title=f"{ir.sequence_name} HMI Global",
                     members=hmi_members,
                     number_seed=f"{ir.sequence_name}_HMI_DB",
+                    number_base=hmi_db_base,
                 ),
             )
         )
@@ -1098,15 +1203,21 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     db_name=hmi_db_name,
                     members=[name for name, _ in hmi_members],
                     number_seed=f"{ir.sequence_name}_HMI_FC",
+                    number_base=hmi_fc_base,
                 ),
             )
         )
 
     aux_members = _collect_aux_support_members(ir)
     if aux_members:
-        aux_db_name, aux_fc_name, aux_db_file, aux_fc_file = _support_block_names(
-            ir.sequence_name, "aux"
-        )
+        (
+            aux_db_name,
+            aux_fc_name,
+            aux_db_file,
+            aux_fc_file,
+            aux_db_base,
+            aux_fc_base,
+        ) = _support_block_names(ir.sequence_name, "aux")
         previews.append(
             ArtifactPreview(
                 artifact_type="support_global_db_aux",
@@ -1116,6 +1227,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     title=f"{ir.sequence_name} Aux Global",
                     members=aux_members,
                     number_seed=f"{ir.sequence_name}_AUX_DB",
+                    number_base=aux_db_base,
                 ),
             )
         )
@@ -1129,6 +1241,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     db_name=aux_db_name,
                     members=[name for name, _ in aux_members],
                     number_seed=f"{ir.sequence_name}_AUX_FC",
+                    number_base=aux_fc_base,
                 ),
             )
         )
@@ -1138,10 +1251,12 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
 
 def _build_graph_fb_xml(profile, ir: AwlIR, graph_topology: GraphTopology) -> str:
     fb_number = _stable_block_number(f"{ir.sequence_name}_FB", base=100, span=100)
-    static_members = ["    <Member Name=\"RT_DATA\" Datatype=\"G7_RTDataPlus_V2\" />"]
+    static_members = [
+        '    <Member Name="RT_DATA" Datatype="G7_RTDataPlus_V2" Version="1.0" />'
+    ]
     static_members.extend(
         (
-            f'    <Member Name="{escape(transition.name)}" Datatype="{profile.transition_runtime_type}">\n'
+            f'    <Member Name="{escape(transition.name)}" Datatype="{profile.transition_runtime_type}" Version="1.0">\n'
             '      <AttributeList>\n'
             '        <BooleanAttribute Name="ExternalAccessible" SystemDefined="true">false</BooleanAttribute>\n'
             '      </AttributeList>\n'
@@ -1159,7 +1274,7 @@ def _build_graph_fb_xml(profile, ir: AwlIR, graph_topology: GraphTopology) -> st
     )
     static_members.extend(
         (
-            f'    <Member Name="{escape(step.name)}" Datatype="{profile.step_runtime_type}">\n'
+            f'    <Member Name="{escape(step.name)}" Datatype="{profile.step_runtime_type}" Version="1.0">\n'
             '      <AttributeList>\n'
             '        <BooleanAttribute Name="ExternalAccessible" SystemDefined="true">false</BooleanAttribute>\n'
             '      </AttributeList>\n'
@@ -1190,7 +1305,7 @@ def _build_graph_fb_xml(profile, ir: AwlIR, graph_topology: GraphTopology) -> st
         )
     temp_members = "\n".join(dict.fromkeys(temp_member_lines))
     if not temp_members:
-        temp_members = "    <Member Name=\"SEQ_TEMP\" Datatype=\"Bool\" />"
+        temp_members = ""
 
     steps_xml = "\n".join(_render_graph_step(step) for step in graph_topology.step_nodes)
     transitions_xml = "\n".join(
@@ -1218,7 +1333,6 @@ def _build_graph_fb_xml(profile, ir: AwlIR, graph_topology: GraphTopology) -> st
         '      <Section Name="Output" />\n'
         '      <Section Name="InOut" />\n'
         '      <Section Name="Static" />\n'
-        '      <Section Name="Temp" />\n'
         '    </Sections>\n'
         '  </Section>\n'
         '  <Section Name="Input">\n'
@@ -1340,8 +1454,12 @@ def _build_graph_fb_xml(profile, ir: AwlIR, graph_topology: GraphTopology) -> st
 
 
 def _build_global_db_xml(ir: AwlIR, graph_topology: GraphTopology) -> str:
-    db_number = _stable_block_number(f"{ir.sequence_name}_DB", base=200, span=100)
-    members = _build_global_db_members(ir, graph_topology)
+    db_number = _stable_block_number(
+        f"{ir.sequence_name}_DB_SEQ", base=DB_FAMILY_NUMBER_BASE["sequence"], span=100
+    )
+    members = _build_global_db_member_irs(ir, graph_topology)
+    members_xml = _render_member_irs(members)
+    block_name = _global_db_block_name(ir)
     return (
         '<?xml version="1.0" encoding="utf-8"?>\n'
         '<Document>\n'
@@ -1350,12 +1468,12 @@ def _build_global_db_xml(ir: AwlIR, graph_topology: GraphTopology) -> str:
         '    <AttributeList>\n'
         '      <Interface><Sections xmlns="http://www.siemens.com/automation/Openness/SW/Interface/v5">\n'
         '  <Section Name="Static">\n'
-        f"{members}\n"
+        f"{members_xml}\n"
         '  </Section>\n'
         '</Sections></Interface>\n'
         '      <MemoryLayout>Optimized</MemoryLayout>\n'
         '      <MemoryReserve>100</MemoryReserve>\n'
-        f'      <Name>{escape(ir.sequence_name)}_Global</Name>\n'
+        f'      <Name>{escape(block_name)}</Name>\n'
         '      <Namespace />\n'
         f'      <Number>{db_number}</Number>\n'
         '      <ProgrammingLanguage>DB</ProgrammingLanguage>\n'
@@ -1376,7 +1494,7 @@ def _build_global_db_xml(ir: AwlIR, graph_topology: GraphTopology) -> str:
         '          <MultilingualTextItem ID="4" CompositionName="Items">\n'
         '            <AttributeList>\n'
         '              <Culture>en-US</Culture>\n'
-        f'              <Text>{escape(ir.sequence_name)} Global</Text>\n'
+        f'              <Text>{escape(block_name)}</Text>\n'
         '            </AttributeList>\n'
         '          </MultilingualTextItem>\n'
         '        </ObjectList>\n'
@@ -1392,21 +1510,17 @@ def _build_support_global_db_xml(
     title: str,
     members: list[tuple[str, str]],
     number_seed: str,
+    number_base: int = 400,
+    number_span: int = 200,
 ) -> str:
-    db_number = _stable_block_number(number_seed, base=400, span=200)
-    rendered_members = [
-        (
-            f'    <Member Name="{escape(member_name)}" Datatype="Bool">\n'
-            '      <Comment Informative="true">\n'
-            f'        <MultiLanguageText Lang="en-US">{escape(member_comment)}</MultiLanguageText>\n'
-            '      </Comment>\n'
-            '    </Member>'
-        )
+    db_number = _stable_block_number(number_seed, base=number_base, span=number_span)
+    member_irs = [
+        MemberIR(name=member_name, datatype="Bool", comment=member_comment)
         for member_name, member_comment in members
     ]
-    if not rendered_members:
-        rendered_members = ['    <Member Name="NoData" Datatype="Bool" />']
-    members_xml = "\n".join(dict.fromkeys(rendered_members))
+    if not member_irs:
+        member_irs = [MemberIR(name="NoData", datatype="Bool")]
+    members_xml = _render_member_irs(member_irs)
     return (
         '<?xml version="1.0" encoding="utf-8"?>\n'
         '<Document>\n'
@@ -1453,9 +1567,14 @@ def _build_support_global_db_xml(
 
 
 def _build_lad_fc_xml(ir: AwlIR, graph_topology: GraphTopology) -> str:
-    fc_number = _stable_block_number(f"{ir.sequence_name}_FC", base=300, span=100)
+    fc_number = _stable_block_number(
+        f"{ir.sequence_name}_FC_TRANSITIONS",
+        base=FC_FAMILY_NUMBER_BASE["transitions"],
+        span=100,
+    )
     temp_members = _build_lad_temp_members(ir)
     compile_units = _build_lad_compile_units(ir, graph_topology)
+    block_name = _lad_fc_block_name(ir)
     return (
         '<?xml version="1.0" encoding="utf-8"?>\n'
         '<Document>\n'
@@ -1475,7 +1594,7 @@ def _build_lad_fc_xml(ir: AwlIR, graph_topology: GraphTopology) -> str:
         '  </Section>\n'
         '</Sections></Interface>\n'
         '      <MemoryLayout>Optimized</MemoryLayout>\n'
-        f'      <Name>{escape(ir.sequence_name)}_LAD</Name>\n'
+        f'      <Name>{escape(block_name)}</Name>\n'
         '      <Namespace />\n'
         f'      <Number>{fc_number}</Number>\n'
         '      <ProgrammingLanguage>LAD</ProgrammingLanguage>\n'
@@ -1505,8 +1624,10 @@ def _build_support_lad_fc_xml(
     db_name: str,
     members: list[str],
     number_seed: str,
+    number_base: int = 600,
+    number_span: int = 200,
 ) -> str:
-    fc_number = _stable_block_number(number_seed, base=600, span=200)
+    fc_number = _stable_block_number(number_seed, base=number_base, span=number_span)
     temp_members = "\n".join(
         f'    <Member Name="{escape(member)}" Datatype="Bool" />'
         for member in dict.fromkeys(members)
@@ -1567,40 +1688,100 @@ def _build_support_lad_fc_xml(
     )
 
 
-def _build_global_db_members(ir: AwlIR, graph_topology: GraphTopology) -> str:
-    members: list[str] = []
+def _render_member_irs(members: list[MemberIR], indent: str = "    ") -> str:
+    rendered = [_emit_member_ir(member, indent) for member in members]
+    return "\n".join(rendered) if rendered else f'{indent}<Member Name="NoData" Datatype="Bool" />'
+
+
+def _emit_member_ir(member: MemberIR, indent: str) -> str:
+    attrs: list[str] = []
+    if member.version:
+        attrs.append(f'Version="{escape(member.version)}"')
+    if member.remanence:
+        attrs.append(f'Remanence="{escape(member.remanence)}"')
+    attr_blob = (" " + " ".join(attrs)) if attrs else ""
+    lines = [f'{indent}<Member Name="{escape(member.name)}" Datatype="{escape(member.datatype)}"{attr_blob}>']
+    inner_indent = indent + "  "
+
+    if member.attributes:
+        lines.append(f"{inner_indent}<AttributeList>")
+        for name, value in member.attributes:
+            lines.append(
+                f'{inner_indent}  <BooleanAttribute Name="{escape(name)}" SystemDefined="true">{escape(value)}</BooleanAttribute>'
+            )
+        lines.append(f"{inner_indent}</AttributeList>")
+
+    if member.comment:
+        lines.append(f'{inner_indent}<Comment Informative="true">')
+        lines.append(
+            f'{inner_indent}  <MultiLanguageText Lang="en-US">{escape(member.comment)}</MultiLanguageText>'
+        )
+        lines.append(f"{inner_indent}</Comment>")
+
+    if member.start_value:
+        lines.append(f"{inner_indent}<StartValue>{escape(member.start_value)}</StartValue>")
+
+    for child in member.children:
+        lines.append(_emit_member_ir(child, inner_indent))
+
+    lines.append(f"{indent}</Member>")
+    return "\n".join(lines)
+
+
+def _dedupe_member_irs(members: list[MemberIR]) -> list[MemberIR]:
+    seen: set[tuple[str, str, str | None]] = set()
+    unique: list[MemberIR] = []
+    for member in members:
+        key = (member.name, member.datatype, member.version)
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(member)
+    return unique
+
+
+def _build_global_db_member_irs(ir: AwlIR, graph_topology: GraphTopology) -> list[MemberIR]:
+    members: list[MemberIR] = []
 
     for transition in graph_topology.transition_nodes:
         guard_member = transition.db_member_name
         members.append(
-            (
-                f'    <Member Name="{escape(guard_member)}" Datatype="Bool">\n'
-                '      <Comment Informative="true">\n'
-                f'        <MultiLanguageText Lang="en-US">Transition guard for {escape(transition.name)}</MultiLanguageText>\n'
-                '      </Comment>\n'
-                '    </Member>'
+            MemberIR(
+                name=guard_member,
+                datatype="Bool",
+                comment=f"Transition guard for {transition.name}",
             )
         )
 
     for memory in ir.memories:
         members.append(
-            (
-                f'    <Member Name="{escape(_db_member_name(memory.name))}" Datatype="Bool">\n'
-                '      <Comment Informative="true">\n'
-                f'        <MultiLanguageText Lang="en-US">{escape(memory.role)}</MultiLanguageText>\n'
-                '      </Comment>\n'
-                '    </Member>'
+            MemberIR(
+                name=_db_member_name(memory.name),
+                datatype="Bool",
+                comment=memory.role,
+            )
+        )
+
+    for timer in ir.timers:
+        members.append(
+            MemberIR(
+                name=_db_member_name(timer.source_timer),
+                datatype="IEC_TIMER",
+                version="1.0",
+                comment=f"Timer {timer.source_timer} ({timer.kind})",
+                start_value=timer.preset,
             )
         )
 
     if not members:
-        members.append('    <Member Name="NoData" Datatype="Bool" />')
-    return "\n".join(dict.fromkeys(members))
+        members.append(MemberIR(name="NoData", datatype="Bool"))
+    return _dedupe_member_irs(members)
 
 
 def _expected_global_db_member_names(ir: AwlIR, graph_topology: GraphTopology) -> set[str]:
     names = {transition.db_member_name for transition in graph_topology.transition_nodes}
     names.update(_db_member_name(memory.name) for memory in ir.memories)
+    names.update(_db_member_name(timer.source_timer) for timer in ir.timers)
     if not names:
         names.add("NoData")
     return names
@@ -1644,62 +1825,18 @@ def _build_lad_compile_units(ir: AwlIR, graph_topology: GraphTopology) -> str:
         if ir.memories:
             aux_member = _db_member_name(ir.memories[0].name)
         aux_member_name = escape(aux_member)
+        flgnet_xml = _build_lad_pattern(
+            pattern="guard_chain",
+            db_name=target_db_name,
+            member_name=target_member_name,
+            aux_member=aux_member_name,
+        )
         units.append(
             '      <SW.Blocks.CompileUnit ID="'
             + unit_id
             + '" CompositionName="CompileUnits">\n'
             '        <AttributeList>\n'
-            '          <NetworkSource><FlgNet xmlns="http://www.siemens.com/automation/Openness/SW/NetworkSource/FlgNet/v5">\n'
-            '  <Parts>\n'
-            '    <Access Scope="GlobalVariable" UId="21">\n'
-            '      <Symbol>\n'
-            f'        <Component Name="{target_db_name}" />\n'
-            f'        <Component Name="{target_member_name}" />\n'
-            '      </Symbol>\n'
-            '    </Access>\n'
-            '    <Part Name="Contact" UId="22" />\n'
-            '    <Access Scope="GlobalVariable" UId="23">\n'
-            '      <Symbol>\n'
-            f'        <Component Name="{target_db_name}" />\n'
-            f'        <Component Name="{aux_member_name}" />\n'
-            '      </Symbol>\n'
-            '    </Access>\n'
-            '    <Part Name="Contact" UId="24" />\n'
-            '    <Access Scope="GlobalVariable" UId="25">\n'
-            '      <Symbol>\n'
-            f'        <Component Name="{target_db_name}" />\n'
-            f'        <Component Name="{target_member_name}" />\n'
-            '      </Symbol>\n'
-            '    </Access>\n'
-            '    <Part Name="Coil" UId="26" />\n'
-            '  </Parts>\n'
-            '  <Wires>\n'
-            '    <Wire UId="31">\n'
-            '      <Powerrail />\n'
-            '      <NameCon UId="22" Name="in" />\n'
-            '    </Wire>\n'
-            '    <Wire UId="32">\n'
-            '      <IdentCon UId="21" />\n'
-            '      <NameCon UId="22" Name="operand" />\n'
-            '    </Wire>\n'
-            '    <Wire UId="33">\n'
-            '      <NameCon UId="22" Name="out" />\n'
-            '      <NameCon UId="24" Name="in" />\n'
-            '    </Wire>\n'
-            '    <Wire UId="34">\n'
-            '      <IdentCon UId="23" />\n'
-            '      <NameCon UId="24" Name="operand" />\n'
-            '    </Wire>\n'
-            '    <Wire UId="35">\n'
-            '      <NameCon UId="24" Name="out" />\n'
-            '      <NameCon UId="26" Name="in" />\n'
-            '    </Wire>\n'
-            '    <Wire UId="36">\n'
-            '      <IdentCon UId="25" />\n'
-            '      <NameCon UId="26" Name="operand" />\n'
-            '    </Wire>\n'
-            '  </Wires>\n'
-            '</FlgNet></NetworkSource>\n'
+            f"{flgnet_xml}\n"
             '          <ProgrammingLanguage>LAD</ProgrammingLanguage>\n'
             '        </AttributeList>\n'
             '        <ObjectList>\n'
@@ -1739,37 +1876,19 @@ def _build_support_lad_compile_units(db_name: str, members: list[str]) -> str:
         unit_id = format(base_id + (index * 3), "X")
         comment_id = format(base_id + (index * 3) + 1, "X")
         comment_item_id = format(base_id + (index * 3) + 2, "X")
+        flgnet_xml = _build_lad_pattern(
+            pattern="single_contact_coil",
+            db_name=escape(db_name),
+            member_name=escape(member_name),
+            aux_member=None,
+        )
         units.append(
             '      <SW.Blocks.CompileUnit ID="'
             + unit_id
             + '" CompositionName="CompileUnits">\n'
             '        <AttributeList>\n'
-            '          <NetworkSource><FlgNet xmlns="http://www.siemens.com/automation/Openness/SW/NetworkSource/FlgNet/v5">\n'
-            '  <Parts>\n'
-            '    <Access Scope="GlobalVariable" UId="21">\n'
-            '      <Symbol>\n'
-            f'        <Component Name="{escape(db_name)}" />\n'
-            f'        <Component Name="{escape(member_name)}" />\n'
-            '      </Symbol>\n'
-            '    </Access>\n'
-            '    <Part Name="Contact" UId="22" />\n'
-            '    <Part Name="Coil" UId="23" />\n'
-            '  </Parts>\n'
-            '  <Wires>\n'
-            '    <Wire UId="31">\n'
-            '      <Powerrail />\n'
-            '      <NameCon UId="22" Name="in" />\n'
-            '    </Wire>\n'
-            '    <Wire UId="32">\n'
-            '      <IdentCon UId="21" />\n'
-            '      <NameCon UId="22" Name="operand" />\n'
-            '    </Wire>\n'
-            '    <Wire UId="33">\n'
-            '      <NameCon UId="22" Name="out" />\n'
-            '      <NameCon UId="23" Name="in" />\n'
-            '    </Wire>\n'
-            '  </Wires>\n'
-            '</FlgNet></NetworkSource>\n'
+            f"{flgnet_xml}\n"
+            '          <ProgrammingLanguage>LAD</ProgrammingLanguage>\n'
             '        </AttributeList>\n'
             '        <ObjectList>\n'
             '          <MultilingualText ID="'
@@ -1790,6 +1909,105 @@ def _build_support_lad_compile_units(db_name: str, members: list[str]) -> str:
             '      </SW.Blocks.CompileUnit>'
         )
     return "\n".join(units)
+
+
+_LAD_PATTERN_LIBRARY = {"guard_chain", "single_contact_coil"}
+
+
+def _build_lad_pattern(
+    pattern: str,
+    db_name: str,
+    member_name: str,
+    aux_member: str | None,
+) -> str:
+    if pattern not in _LAD_PATTERN_LIBRARY:
+        raise ValueError(f"Unsupported LAD pattern: {pattern}")
+
+    if pattern == "guard_chain":
+        if not aux_member:
+            raise ValueError("guard_chain requires aux_member")
+        return (
+            '          <NetworkSource><FlgNet xmlns="http://www.siemens.com/automation/Openness/SW/NetworkSource/FlgNet/v5">\n'
+            '  <Parts>\n'
+            '    <Access Scope="GlobalVariable" UId="21">\n'
+            '      <Symbol>\n'
+            f'        <Component Name="{db_name}" />\n'
+            f'        <Component Name="{member_name}" />\n'
+            '      </Symbol>\n'
+            '    </Access>\n'
+            '    <Part Name="Contact" UId="22" />\n'
+            '    <Access Scope="GlobalVariable" UId="23">\n'
+            '      <Symbol>\n'
+            f'        <Component Name="{db_name}" />\n'
+            f'        <Component Name="{aux_member}" />\n'
+            '      </Symbol>\n'
+            '    </Access>\n'
+            '    <Part Name="Contact" UId="24" />\n'
+            '    <Access Scope="GlobalVariable" UId="25">\n'
+            '      <Symbol>\n'
+            f'        <Component Name="{db_name}" />\n'
+            f'        <Component Name="{member_name}" />\n'
+            '      </Symbol>\n'
+            '    </Access>\n'
+            '    <Part Name="Coil" UId="26" />\n'
+            '  </Parts>\n'
+            '  <Wires>\n'
+            '    <Wire UId="31">\n'
+            '      <Powerrail />\n'
+            '      <NameCon UId="22" Name="in" />\n'
+            '    </Wire>\n'
+            '    <Wire UId="32">\n'
+            '      <IdentCon UId="21" />\n'
+            '      <NameCon UId="22" Name="operand" />\n'
+            '    </Wire>\n'
+            '    <Wire UId="33">\n'
+            '      <NameCon UId="22" Name="out" />\n'
+            '      <NameCon UId="24" Name="in" />\n'
+            '    </Wire>\n'
+            '    <Wire UId="34">\n'
+            '      <IdentCon UId="23" />\n'
+            '      <NameCon UId="24" Name="operand" />\n'
+            '    </Wire>\n'
+            '    <Wire UId="35">\n'
+            '      <NameCon UId="24" Name="out" />\n'
+            '      <NameCon UId="26" Name="in" />\n'
+            '    </Wire>\n'
+            '    <Wire UId="36">\n'
+            '      <IdentCon UId="25" />\n'
+            '      <NameCon UId="26" Name="operand" />\n'
+            '    </Wire>\n'
+            '  </Wires>\n'
+            '</FlgNet></NetworkSource>'
+        )
+
+    return (
+        '          <NetworkSource><FlgNet xmlns="http://www.siemens.com/automation/Openness/SW/NetworkSource/FlgNet/v5">\n'
+        '  <Parts>\n'
+        '    <Access Scope="GlobalVariable" UId="21">\n'
+        '      <Symbol>\n'
+        f'        <Component Name="{db_name}" />\n'
+        f'        <Component Name="{member_name}" />\n'
+        '      </Symbol>\n'
+        '    </Access>\n'
+        '    <Part Name="Contact" UId="22" />\n'
+        '    <Part Name="Coil" UId="23" />\n'
+        '  </Parts>\n'
+        '  <Wires>\n'
+        '    <Wire UId="31">\n'
+        '      <Powerrail />\n'
+        '      <NameCon UId="22" Name="in" />\n'
+        '    </Wire>\n'
+        '    <Wire UId="32">\n'
+        '      <IdentCon UId="21" />\n'
+        '      <NameCon UId="22" Name="operand" />\n'
+        '    </Wire>\n'
+        '    <Wire UId="33">\n'
+        '      <NameCon UId="22" Name="out" />\n'
+        '      <NameCon UId="23" Name="in" />\n'
+        '    </Wire>\n'
+        '  </Wires>\n'
+        '</FlgNet></NetworkSource>'
+    )
 
 
 def _collect_io_support_members(ir: AwlIR) -> list[tuple[str, str]]:
@@ -1914,7 +2132,7 @@ def _support_block_names(
     sequence_name: str,
     category: str,
     suffix: str | None = None,
-) -> tuple[str, str, str, str]:
+) -> tuple[str, str, str, str, int, int]:
     schema = SUPPORT_BLOCK_SCHEMA.get(category)
     if schema is None:
         token = _normalize_symbol_name(category, category.upper())
@@ -1923,6 +2141,14 @@ def _support_block_names(
         token = schema["token"]
         file_token = schema["file_token"]
 
+    family_override = SUPPORT_FAMILY_OVERRIDES.get(category, {})
+    db_family = family_override.get("db_family")
+    fc_family = family_override.get("fc_family")
+    db_prefix = DB_FAMILY_PREFIX.get(db_family) if db_family else None
+    fc_prefix = FC_FAMILY_PREFIX.get(fc_family) if fc_family else None
+    db_number_base = DB_FAMILY_NUMBER_BASE.get(db_family, 400)
+    fc_number_base = FC_FAMILY_NUMBER_BASE.get(fc_family, 600)
+
     if suffix:
         block_token = _normalize_symbol_name(suffix, suffix)
         file_suffix = block_token.lower()
@@ -1930,11 +2156,21 @@ def _support_block_names(
         block_token = token
         file_suffix = file_token
 
-    db_name = f"{sequence_name}_{block_token}_Global"
-    fc_name = f"{sequence_name}_{block_token}_LAD"
-    db_file = f"DB_{sequence_name}_{file_suffix}_global_auto.xml"
-    fc_file = f"FC_{sequence_name}_{file_suffix}_lad_auto.xml"
-    return db_name, fc_name, db_file, fc_file
+    if db_prefix:
+        db_name = f"{db_prefix}_{sequence_name}_{block_token}_Global"
+        db_file = f"{db_prefix}_{sequence_name}_{file_suffix}_global_auto.xml"
+    else:
+        db_name = f"{sequence_name}_{block_token}_Global"
+        db_file = f"DB_{sequence_name}_{file_suffix}_global_auto.xml"
+
+    if fc_prefix:
+        fc_name = f"{fc_prefix}_{sequence_name}_{block_token}_LAD"
+        fc_file = f"{fc_prefix}_{sequence_name}_{file_suffix}_lad_auto.xml"
+    else:
+        fc_name = f"{sequence_name}_{block_token}_LAD"
+        fc_file = f"FC_{sequence_name}_{file_suffix}_lad_auto.xml"
+
+    return db_name, fc_name, db_file, fc_file, db_number_base, fc_number_base
 
 
 def _classify_operand_family(operand: str) -> str:
@@ -2107,7 +2343,11 @@ def _db_member_name(raw_name: str) -> str:
 
 
 def _global_db_block_name(ir: AwlIR) -> str:
-    return f"{ir.sequence_name}_Global"
+    return f"{DB_FAMILY_PREFIX['sequence']}_{ir.sequence_name}_SEQ_Global"
+
+
+def _lad_fc_block_name(ir: AwlIR) -> str:
+    return f"{FC_FAMILY_PREFIX['transitions']}_{ir.sequence_name}_TRANSITIONS_LAD"
 
 
 def _transition_db_member_name(transition: TransitionCandidate) -> str:
@@ -2175,6 +2415,44 @@ def _collect_step_targets(network: AwlNetwork) -> list[str]:
         if STEP_RE.fullmatch(candidate):
             targets.append(candidate)
     return _dedupe_list(targets)
+
+
+def _collect_transition_patterns(network: AwlNetwork) -> list[tuple[str, str, list[str], list[str]]]:
+    transitions: list[tuple[str, str, list[str], list[str]]] = []
+    current_step: str | None = None
+    condition_operands: list[str] = []
+    jump_guard: list[str] | None = None
+    jump_labels: list[str] = []
+
+    for instr in network.instructions:
+        if instr.opcode in CONDITION_OPCODES and instr.args:
+            operand = _select_instruction_operand(instr.args)
+            if not operand:
+                continue
+            if STEP_RE.fullmatch(operand):
+                current_step = operand
+                condition_operands = []
+                jump_guard = None
+                jump_labels = []
+                continue
+            condition_operands.append(operand)
+
+        if instr.opcode in JUMP_OPCODES and instr.args:
+            label = _normalize_operand_token(instr.args[0])
+            jump_guard = list(condition_operands)
+            jump_labels = [label] if label else []
+
+        if instr.opcode in {"S", "="} and instr.args:
+            target = _select_instruction_operand(instr.args)
+            if not target or not STEP_RE.fullmatch(target):
+                continue
+            if not current_step:
+                continue
+            guard_operands = jump_guard if jump_guard is not None else condition_operands
+            guard_operands = _dedupe_list(guard_operands)
+            transitions.append((current_step, target, guard_operands, jump_labels))
+
+    return transitions
 
 
 def _collect_timers(network: AwlNetwork) -> list[tuple[str, str, str | None]]:

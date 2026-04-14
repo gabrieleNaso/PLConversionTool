@@ -11,8 +11,8 @@ Regola architetturale fondamentale:
 
 Baseline documentale corrente:
 
-- [report_del_14-04-2026.md](/home/administrator/PLConversionTool/report_del_14-04-2026.md): stato consolidato del progetto, scelte architetturali e priorita' operative.
-- [Specifica_master_traduzione_AWL_e_generazione_XML_TIA_V20_V2_14_04.md](/home/administrator/PLConversionTool/Specifica_master_traduzione_AWL_e_generazione_XML_TIA_V20_V2_14_04.md): specifica master consolidata AWL -> IR -> GRAPH / GlobalDB / FC LAD.
+- [docs/reference/report-2026-04-14.md](/home/administrator/PLConversionTool/docs/reference/report-2026-04-14.md): stato consolidato del progetto, scelte architetturali e priorita' operative.
+- [docs/reference/spec-awl-xml-tia-v20-2026-04-14.md](/home/administrator/PLConversionTool/docs/reference/spec-awl-xml-tia-v20-2026-04-14.md): specifica master consolidata AWL -> IR -> GRAPH / GlobalDB / FC LAD.
 
 Direzione di lavoro attuale:
 
@@ -35,6 +35,7 @@ Aggiornamenti operativi consolidati:
 
 Documentazione utile:
 
-- [docs/INDEX.md](/home/administrator/PLConversionTool/docs/INDEX.md)
-- [docs/project-structure.md](/home/administrator/PLConversionTool/docs/project-structure.md)
-- [docs/workflow/import-checklists.md](/home/administrator/PLConversionTool/docs/workflow/import-checklists.md)
+- [docs/README.md](/home/administrator/PLConversionTool/docs/README.md)
+- [docs/operations.md](/home/administrator/PLConversionTool/docs/operations.md)
+- [docs/tia-integration.md](/home/administrator/PLConversionTool/docs/tia-integration.md)
+- [docs/workflow-checklists.md](/home/administrator/PLConversionTool/docs/workflow-checklists.md)

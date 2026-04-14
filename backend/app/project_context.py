@@ -19,7 +19,10 @@ def build_project_summary() -> dict:
         ],
         "repositoryAreas": [
             {"name": "backend/", "purpose": "API e orchestrazione del workflow."},
-            {"name": "frontend/", "purpose": "Interfaccia di supporto per il progetto."},
+            {
+                "name": "frontend/",
+                "purpose": "Interfaccia di supporto per il progetto.",
+            },
             {
                 "name": "tia_bridge/",
                 "purpose": "Boundary service verso il Windows agent e TIA Portal Openness.",

@@ -1,28 +1,17 @@
-# How to use (PLConversionTool)
+# Operazioni e comandi (PLConversionTool)
 
-Questo file raccoglie **setup + comandi base** per:
-
-- generare XML da AWL **senza AI**
-- importare in TIA via `tia-bridge` / `tia-windows-agent`
-- ottenere compile automatica post-import
-
----
+Questo documento sostituisce `HOW_TO_USE.md` e `docs/AI_HANDOFF_GENERATOR.md`.
+Raccoglie setup, comandi base, workflow end-to-end e debug rapido.
 
 ## Prerequisiti
-
 - Linux con `docker` e `docker compose`
-- Repo clonata in una path tipo: `/home/administrator/PLConversionTool`
-- VM Windows con:
-  - TIA Portal **V20**
-  - Openness abilitato
-  - `tia_windows_agent` attivo e raggiungibile dal container `tia-bridge`
-
----
+- Repo clonata (esempio: `/home/administrator/PLConversionTool`)
+- VM Windows con TIA Portal V20 + Openness
+- Agent Windows (`tia_windows_agent/`) in esecuzione e raggiungibile dal `tia-bridge`
 
 ## Setup rapido (dev)
 
 ### 1) Avvia lo stack
-
 Da root repo:
 
 ```bash
@@ -30,7 +19,6 @@ make up
 ```
 
 Servizi:
-
 - backend: `http://127.0.0.1:8000`
 - tia-bridge: `http://127.0.0.1:8010`
 
@@ -42,11 +30,9 @@ curl -sS http://127.0.0.1:8010/health
 curl -sS http://127.0.0.1:8000/api/tia/overview
 ```
 
-### 2) Configura il bridge verso Windows agent
-
+### 2) Configura il bridge verso l'agent Windows
 La configurazione sta nelle variabili ambiente del compose (`compose.dev.yml` / `.env` / `.env.example`).
-
-In pratica deve essere valorizzato l’URL dell’agent Windows, ad esempio:
+Valorizza l'URL dell'agent Windows, ad esempio:
 
 ```text
 TIA_WINDOWS_AGENT_URL=http://192.167.1.41:8050
@@ -58,14 +44,10 @@ Controllo rapido dallo status:
 curl -sS http://127.0.0.1:8010/api/status
 ```
 
----
-
-## Generare XML senza AI (da file in input/)
+## Generare XML senza AI (da file in `input/`)
 
 ### 1) Metti i sorgenti AWL
-
 Metti i file in `input/` con estensione:
-
 - `.awl`
 - `.txt`
 - `.md` (viene usato il primo blocco fenced che contiene `NETWORK`)
@@ -76,7 +58,16 @@ Metti i file in `input/` con estensione:
 make generate-input
 ```
 
-### Genera da un solo file in `input/`
+Output:
+- un bundle per file in `output/generated/<nome>/`
+- file baseline sempre presenti:
+  - `FB_<Name>_GRAPH_auto.xml`
+  - `DB_<Name>_global_auto.xml`
+  - `FC_<Name>_lad_auto.xml`
+  - `<Name>_analysis.json`
+- in base al contenuto AWL possono comparire anche altri `DB_*` e `FC_*` di supporto
+
+### Genera da un solo file
 
 ```bash
 make generate-input INPUT_FILE="AWL romania.md"
@@ -87,18 +78,6 @@ make generate-input INPUT_FILE="AWL romania.md"
 ```bash
 make generate-input INPUT_PREFIX="romania_"
 ```
-
-Output:
-
-- un bundle per file in `output/generated/<nome>/`
-- file baseline sempre presenti:
-  - `FB_<Name>_GRAPH_auto.xml`
-  - `DB_<Name>_global_auto.xml`
-  - `FC_<Name>_lad_auto.xml`
-  - `<Name>_analysis.json`
-- in base al contenuto AWL possono essere aggiunti anche altri `DB_*` e `FC_*` di supporto (es. I/O, diagnostica, gestione mode manuale/auto, partizionamento per network)
-
----
 
 ## Import in TIA (via bridge) + compile automatica
 
@@ -120,14 +99,12 @@ make import-generated \
 ```
 
 Alternative:
-
 - `IMPORT_BUNDLE`: match esatto del nome cartella in `output/generated/`
 - `IMPORT_PREFIX`: importa solo cartelle che iniziano con quel prefisso
 
-Note:
-
-- per ogni import, il `tia-bridge` **accoda automaticamente una compile** post-import
-- se un blocco con lo stesso nome esiste già in TIA, l’import verrà rifiutato (name collision)
+Note operative:
+- per ogni import, il `tia-bridge` accoda automaticamente una compile
+- se un blocco con lo stesso nome esiste gia' in TIA, l'import viene rifiutato (name collision)
 
 ### One command: genera + importa
 
@@ -136,8 +113,6 @@ make generate-and-import \
   PROJECT_PATH="C:\\Users\\Admin\\Desktop\\prova_connessione_openness\\prova_connessione_openness.ap20" \
   TARGET_PATH="Program blocks/generati da tool"
 ```
-
----
 
 ## API (equivalenti ai comandi make)
 
@@ -154,7 +129,7 @@ curl -sS -X POST "http://127.0.0.1:8000/api/conversion/export" \
   }'
 ```
 
-### Import via API backend (che inoltra al bridge)
+### Import via API backend (inoltro al bridge)
 
 ```bash
 curl -sS -X POST "http://127.0.0.1:8000/api/tia/jobs/import" \
@@ -169,8 +144,7 @@ curl -sS -X POST "http://127.0.0.1:8000/api/tia/jobs/import" \
   }'
 ```
 
-La risposta dell’import include:
-
+La risposta dell'import include:
 - `JobId` (import)
 - `AutoCompileJobId` (compile accodata automaticamente)
 
@@ -180,7 +154,44 @@ La risposta dell’import include:
 curl -sS "http://127.0.0.1:8000/api/tia/jobs/<JOB_ID>"
 ```
 
----
+## Regole operative essenziali (da non violare)
+- **Numerazione step**: `Sxx` deve diventare `Step Number="xx"` (es. `S29` -> 29).
+- **Ingressi multipli** su uno step non iniziale:
+  - il primo ingresso puo' essere `Direct`;
+  - gli ingressi extra devono essere `Jump`.
+- **targetPath**: deve partire da `Program blocks/`.
+  - Se ometti il prefisso, TIA crea un gruppo con nome letterale (es. `generati da tool/xxx`).
+
+## Problemi comuni (e cosa fare)
+
+### Import bloccato: "block name already exists"
+- rinominare la sequenza (generare un bundle con nome nuovo)
+- oppure cancellare/rinominare il blocco gia' presente in TIA
+
+### Compile post-import in `blocked` con molti errori
+La compile post-import usa lo **stesso targetPath/targetName** dell'import.
+Se il target e' ampio (es. `Program blocks/generati da tool`), puo' includere errori di blocchi gia' presenti.
+
+Strategie:
+- usa un `targetPath` piu' specifico per bundle (es. `Program blocks/generati da tool/<nome_bundle>`)
+- se serve isolamento massimo, imposta anche `targetName` sul blocco specifico da compilare
+- pulisci i blocchi legacy nel progetto prima di compilare globalmente
+
+### Backend o bridge non raggiungibili
+- avvia: `make up`
+- verifica: `curl http://127.0.0.1:8000/health` e `curl http://127.0.0.1:8010/health`
+
+### Windows agent non raggiungibile
+Verifica in `http://127.0.0.1:8010/api/status` che `remoteAgentStatus` sia popolato e che l'URL sia corretto.
+
+## Debug rapido (errore -> causa -> fix)
+- Errore import: `A connection between "T6" and "Branch 1" cannot be created`
+  - Causa: connessione `Transition -> Branch` non accettata.
+  - Fix: usa `Jump` sugli ingressi multipli (no join con `SimEnd`).
+
+- Crash TIA aprendo FB GRAPH:
+  - Causa tipica: topologia invalida (doppi ingressi `Direct`).
+  - Fix: converti gli ingressi extra in `Jump`.
 
 ## Comandi base utili
 
@@ -209,49 +220,3 @@ make shell-tia
 ```bash
 make clean
 ```
-
----
-
-## Problemi comuni (e cosa fare)
-
-### Import bloccato: “block name already exists”
-
-Significa collisione di nome nel progetto TIA.
-
-Soluzioni:
-
-- rinominare la sequenza (generare un bundle con nome nuovo)
-- oppure cancellare/rinominare il blocco già presente in TIA
-
-### Compile post-import va in `blocked` con molti errori
-
-La compile automatica post-import e' accodata dal `tia-bridge` sullo **stesso targetPath/targetName** dell'import.
-Se il target e' ampio (es. `Program blocks/generati da tool`), il risultato puo' comunque includere errori di blocchi gia' presenti in quel gruppo.
-
-Strategie:
-
-- usa un `targetPath` piu' specifico per bundle (es. `Program blocks/generati da tool/<nome_bundle>`)
-- se serve isolamento massimo, imposta anche `targetName` sul blocco specifico da compilare
-- pulisci i blocchi legacy nel progetto prima di compilare globalmente
-
-### Backend o bridge non raggiungibili
-
-- avvia: `make up`
-- verifica: `curl http://127.0.0.1:8000/health` e `curl http://127.0.0.1:8010/health`
-
-### Windows agent non raggiungibile
-
-Verifica in `http://127.0.0.1:8010/api/status` che `remoteAgentStatus` sia popolato e che l’URL sia corretto.
-
----
-
-## Nota sulla coerenza del pacchetto
-
-Il generatore produce un pacchetto coerente:
-
-- le transition GRAPH referenziano i member guard nel `GlobalDB` del pacchetto
-- la FC LAD referenzia lo stesso `GlobalDB`
-- le transizioni sintetiche (es. `T_HOLD_*`, `T_CHAIN_*`) sono dichiarate nel DB quando usate
-
-Questo evita errori tipici del tipo “Tag … not defined”.
-

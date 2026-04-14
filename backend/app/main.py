@@ -140,7 +140,9 @@ async def tia_job(job_id: str) -> dict:
 @app.post("/api/tia/jobs/{operation}", status_code=202)
 async def queue_tia_job(operation: str, payload: dict) -> dict:
     if operation not in {"import", "compile", "export"}:
-        raise HTTPException(status_code=404, detail=f"Operazione non supportata: {operation}")
+        raise HTTPException(
+            status_code=404, detail=f"Operazione non supportata: {operation}"
+        )
 
     if not payload.get("artifactPath"):
         raise HTTPException(status_code=400, detail="artifactPath e' obbligatorio.")

@@ -206,6 +206,21 @@ class ArtifactPreview:
 
 
 @dataclass(slots=True)
+class MemberIR:
+    name: str
+    datatype: str
+    version: str | None = None
+    remanence: str | None = None
+    attributes: list[tuple[str, str]] = field(default_factory=list)
+    comment: str | None = None
+    start_value: str | None = None
+    children: list["MemberIR"] = field(default_factory=list)
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+@dataclass(slots=True)
 class GraphStepNode:
     name: str
     step_no: int
