@@ -11,6 +11,7 @@ skinparam ranksep 45
 ' PLConversionTool - full architecture view (readable layout)
 
 package "PLConversionTool" {
+  [Codex\n(assistant)] as Codex
   [Frontend\nNext.js UI] as Frontend
   [Backend\nFastAPI API\n(Python container)] as Backend
   [Core Converter\nPython lib (src/plc_converter)] as Core
@@ -52,6 +53,8 @@ package "PLConversionTool" {
 }
 
 ' Primary flow
+Codex --> Input : writes AWL/spec\n(optional path)
+Codex --> Backend : prepares awlSource\n(optional path)
 Frontend --> Backend : REST\n(conversion, status, jobs)
 Backend --> BackendRoutes : route handlers
 BackendRoutes --> Core : in-process calls\n(awlSource string)

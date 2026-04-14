@@ -9,6 +9,14 @@ Questa guida spiega end-to-end come un sorgente AWL diventa un pacchetto XML imp
 - Nei file `.md` viene usato il primo blocco fenced che contiene `NETWORK`.
 - Il backend legge i file AWL e li passa al core converter come stringa (`awlSource`).
 
+### Variante: input via Codex (quando scrivi a me il GRAPH da fare in XML)
+Quando descrivi a Codex il GRAPH/il comportamento da generare:
+1. Codex traduce la tua richiesta in un input strutturato per il tool
+   (tipicamente AWL o parametri compatibili col core converter).
+2. Codex salva il sorgente in `data/input/` oppure prepara un payload
+   `awlSource` per le API backend.
+3. Il flusso poi e' identico: analisi -> IR -> XML bundle in `data/output/`.
+
 ## 2) Analisi e IR (Python)
 
 ### Punto di ingresso
