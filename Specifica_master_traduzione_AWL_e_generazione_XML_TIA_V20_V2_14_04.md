@@ -32,6 +32,7 @@ Regola hard aggiuntiva:
 
 - i blocchi generati non vanno considerati unità indipendenti;
 - `FB GRAPH`, `GlobalDB`, `FC LAD` e ogni eventuale blocco aggiuntivo costituiscono un unico pacchetto coerente;
+- la cardinalità del pacchetto è asimmetrica: per ogni sequenza AWL il generatore deve emettere esattamente `1 x FB GRAPH`, mentre i `GlobalDB` e le `FC LAD` devono essere trattati come insiemi a cardinalità variabile;
 - la validità reale del risultato non è "XML singolarmente importabile", ma "insieme di blocchi coerente e compilabile";
 - ogni simbolo, member, tag di transizione, nome blocco, contratto dati o assunzione runtime emessa in un blocco deve essere soddisfatta dagli altri blocchi del pacchetto che la consumano.
 
@@ -39,13 +40,35 @@ Regola hard aggiuntiva:
 
 Una FC AWL monolitica non corrisponde a un solo blocco target.
 
-La regola corretta è:
+La cardinalità corretta da usare in generazione è la seguente:
 
-`FC AWL monolitica -> ecosistema TIA di blocchi specializzati`
+`1 sequenza AWL -> 1 x FB GRAPH + N x GlobalDB + M x FC LAD`
 
-Questo ecosistema comprende almeno:
+### 2.1 Regola hard di cardinalità
 
-- `FB GRAPH`;
+Il generatore deve applicare le seguenti regole senza eccezioni:
+
+- da una singola sequenza AWL deve nascere una sola topologia sequenziale target;
+- questa topologia deve essere emessa in un solo blocco `SW.Blocks.FB` GRAPH;
+- non è ammesso spezzare la stessa sequenza AWL in due o più GRAPH distinti;
+- i dati applicativi, le strutture HMI, gli ausiliari, gli I-O, i parametri e le altre aree non runtime devono essere partizionati in uno o più `SW.Blocks.GlobalDB`;
+- le reti LAD di supporto devono essere partizionate in una o più `SW.Blocks.FC`, separate per famiglia funzionale quando il caso reale lo richiede.
+
+### 2.2 Procedura obbligatoria di compilazione
+
+Per ogni sequenza AWL il convertitore deve procedere in questo ordine:
+
+1. identificare nell'IR una sola macchina a stati della sequenza;
+2. compilare tale macchina a stati in `1 x FB GRAPH`;
+3. estrarre dall'IR tutti i dati non runtime GRAPH e partizionarli nei `GlobalDB` richiesti dal modello;
+4. estrarre dall'IR tutte le reti combinatorie e di supporto non appartenenti al GRAPH e partizionarle nelle `FC LAD` richieste dal modello;
+5. validare che nessun riferimento del GRAPH, dei DB e delle FC punti a member o blocchi non emessi nel pacchetto finale.
+
+### 2.3 Famiglie minime da supportare
+
+Il generatore deve poter emettere almeno le seguenti famiglie architetturali:
+
+- `1 x FB GRAPH` della sequenza;
 - `DB 11..` base;
 - `DB 12..` sequenza;
 - `DB 18.. EXT`;
@@ -57,9 +80,15 @@ Questo ecosistema comprende almeno:
 - `FC 06 Output`;
 - eventuali blocchi addizionali di servizio coerenti col progetto.
 
-Regola operativa conseguente:
+### 2.4 Esempio verificativo sui file XML di riferimento
 
-- se un caso reale richiede più di tre blocchi, la coerenza cross-blocco non si ferma a `FB GRAPH + GlobalDB + FC LAD`, ma si estende a tutto l'ecosistema generato.
+Nel pacchetto `T1-A ARUNC` il comportamento atteso del generatore è confermato dalla struttura osservata:
+
+- un solo blocco sequenziale `05 T1-A ARUNC Sequence`;
+- più FC di supporto: `02 T1-A ARUNC HMI`, `03 T1-A ARUNC Aux`, `04 T1-A ARUNC Transitions`, `06 T1-A ARUNC Output`, `07 T1-A ARUNC LEV2`;
+- più DB applicativi e di integrazione: `T1-A ARUNC`, `T1-A ARUNC HMI`, `T1-A ARUNC I-O`, `T1-A ARUNC AUX`, `T1-A ARUNC PARAMETERS`, `T1-A ARUNC LEV2`, oltre a DB esterni come `DB81-OPIN` e `DB82-OPOUT`.
+
+Questo esempio va usato come verifica di cardinalità del pacchetto, non come eccezione.
 
 ## 3. Regola di target definitivo
 
@@ -731,7 +760,7 @@ Document
 
 ## 2. SW.Blocks.GlobalDB
 
-Obiettivo: generare il DB companion applicativo, non il runtime interno del GRAPH.
+Obiettivo: generare uno o più `SW.Blocks.GlobalDB` applicativi del pacchetto, senza replicare il runtime interno del GRAPH.
 
 Il root obbligatorio è Document -> Engineering version="V20" -> SW.Blocks.GlobalDB ID="0".
 
@@ -747,13 +776,13 @@ I commenti visibili in TIA devono essere emessi in forma semplice Comment + Mult
 
 IEC_TIMER e IEC_COUNTER vanno serializzati con Version="1.0".
 
-Il DB companion non deve replicare RT_DATA né gli statici runtime del GRAPH.
+Nessun `GlobalDB` del pacchetto deve replicare RT_DATA né gli statici runtime del GRAPH.
 
 Regola di coerenza cross-blocco (hard):
 
-- ogni tag usato nelle transition GRAPH o nelle reti LAD di supporto deve essere dichiarato nel `GlobalDB` companion;
+- ogni tag usato nelle transition GRAPH o nelle reti LAD di supporto deve essere dichiarato in uno dei `GlobalDB` emessi nel pacchetto;
 - la sorgente canonica dei tag di guardia deve essere la topologia finale delle transizioni, incluse eventuali transizioni sintetiche (`T_AUTO_*`);
-- non è ammesso generare riferimenti LAD/GRAPH a member non presenti nel DB companion.
+- non è ammesso generare riferimenti LAD/GRAPH a member non presenti nei `GlobalDB` effettivamente emessi.
 
 Estensione obbligatoria della regola:
 

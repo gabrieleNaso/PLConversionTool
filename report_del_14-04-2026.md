@@ -43,9 +43,9 @@ Sviluppo di un convertitore che esegua:
 - estrazione formale della macchina a stati implicita;
 - costruzione di un IR esplicito;
 - compilazione verso:
-  - `SW.Blocks.FB` GRAPH;
-  - `SW.Blocks.GlobalDB` companion;
-  - eventuali `SW.Blocks.FC` LAD di supporto.
+  - `1 x SW.Blocks.FB` GRAPH per la sequenza;
+  - `N x SW.Blocks.GlobalDB` applicativi e di supporto quando richiesti dal caso reale;
+  - `M x SW.Blocks.FC` LAD di supporto.
 
 ### 2.3 Automazione con TIA Portal Openness
 
@@ -70,7 +70,7 @@ Il target validato del progetto è:
 - XML importabili in stile Openness/TIA;
 - blocchi principali:
   - `SW.Blocks.FB` per il GRAPH;
-  - `SW.Blocks.GlobalDB` per il DB companion;
+  - `SW.Blocks.GlobalDB` per i DB applicativi e di supporto della sequenza;
   - `SW.Blocks.FC` per logiche LAD di supporto o orchestrazione.
 
 ### 3.1 Chiusura definitiva del target runtime
@@ -96,8 +96,8 @@ Occorre trasformare una logica AWL implicita, dispersa in bit di stato, set/rese
 
 Gli output corretti del progetto sono:
 
-1. un `FB GRAPH` strutturalmente valido e importabile;
-2. un `GlobalDB` companion leggibile e manutentivo;
+1. un solo `FB GRAPH` strutturalmente valido e importabile per ciascuna sequenza AWL;
+2. uno o più `GlobalDB` leggibili e manutentivi, ciascuno con responsabilità coerente;
 3. quando serve, una o più `FC LAD` importabili e coerenti con i pattern TIA realmente osservati.
 
 ---
@@ -120,7 +120,7 @@ Dentro la sezione `Static` del GRAPH devono comparire almeno:
 
 #### B. Dati applicativi esterni del sequenziatore
 
-Sono i dati che hanno senso in un `GlobalDB` companion, ad esempio:
+Sono i dati che hanno senso in uno o più `GlobalDB` applicativi e di supporto, ad esempio:
 
 - comandi macchina;
 - feedback;
@@ -135,9 +135,23 @@ Sono i dati che hanno senso in un `GlobalDB` companion, ad esempio:
 
 La regola corretta è:
 
-> il GRAPH mantiene i suoi statici runtime interni obbligatori e, in aggiunta, il progetto può generare un `GlobalDB` companion separato.
+> il GRAPH mantiene i suoi statici runtime interni obbligatori e, in aggiunta, il progetto genera i blocchi dati e le FC di supporto necessari al caso reale.
 
 Il DB esterno non sostituisce il runtime interno del GRAPH.
+
+### 5.3 Chiarimento sulla cardinalità dei blocchi target
+
+Questo punto va letto come chiarimento architetturale del progetto.
+
+Nel materiale del progetto la formula abbreviata `GRAPH + GlobalDB + FC` serve solo a nominare le famiglie di backend coinvolte nella traduzione. Non descrive una cardinalità fissa del tipo `1 + 1 + 1`.
+
+Il modello corretto, osservato sia nell'analisi AWL sia negli XML di riferimento, è il seguente: una sequenza AWL corrisponde a un solo GRAPH che rappresenta l'intera macchina a stati della sequenza, mentre i dati applicativi e le logiche di supporto vengono distribuiti su più DB e su più FC, separati per responsabilità.
+
+In pratica, il GRAPH resta l'artefatto unico che formalizza la topologia sequenziale; i DB possono articolarsi in contenitori distinti come base, sequenza, HMI, AUX, I-O, parameters, EXT o altri DB coerenti col tipico; allo stesso modo le FC possono articolarsi in famiglie diverse come HMI, Aux, Transitions, Output, handshake, manuale o altri servizi additivi.
+
+L'esempio reale del pacchetto XML `T1-A ARUNC` rende il punto molto chiaro: si osserva un solo blocco sequenziale `05 T1-A ARUNC Sequence`, ma più FC di supporto (`02 T1-A ARUNC HMI`, `03 T1-A ARUNC Aux`, `04 T1-A ARUNC Transitions`, `06 T1-A ARUNC Output`, `07 T1-A ARUNC LEV2`) e più DB (`T1-A ARUNC`, `T1-A ARUNC HMI`, `T1-A ARUNC I-O`, `T1-A ARUNC AUX`, `T1-A ARUNC PARAMETERS`, `T1-A ARUNC LEV2`, oltre ai DB esterni `DB81-OPIN` e `DB82-OPOUT`).
+
+La conseguenza architetturale è che l'IR deve descrivere una sola topologia GRAPH per sequenza AWL, mentre i backend DB e FC devono restare variabili nella cardinalità e aderire alla partizione reale del caso tradotto.
 
 ---
 
@@ -309,7 +323,7 @@ La baseline corrente del backend GRAPH è:
 
 1. `GRAPH V2` è il target corretto;
 2. il blocco deve essere un `FB` autosufficiente;
-3. il companion DB è utile ma non sostituisce la completezza del GRAPH;
+3. i DB applicativi e di supporto sono utili ma non sostituiscono la completezza del GRAPH;
 4. le transition temporizzate richiedono `Temp` locale reale con `ET_Tx`;
 5. gli operandi usati nel LAD devono essere risolvibili esplicitamente;
 6. parallelismi, join e rami allarme richiedono topologia concreta e non solo equivalenza logica astratta.
@@ -318,9 +332,9 @@ La baseline corrente del backend GRAPH è:
 
 # PARTE B - BASELINE CONSOLIDATA DEL BACKEND GLOBALDB
 
-## 12. Ruolo del `GlobalDB` companion
+## 12. Ruolo dei `GlobalDB` applicativi e di supporto
 
-Il `GlobalDB` companion serve a ospitare dati applicativi del sequenziatore e dati utili a integrazione, diagnostica e manutenzione.
+Nel target reale della traduzione i dati del sequenziatore non confluiscono necessariamente in un solo DB. La famiglia `GlobalDB` serve a ospitare dati applicativi, strutture di integrazione, diagnostica e manutenzione distribuite nei contenitori necessari al caso reale.
 
 Ruoli tipici:
 
@@ -391,7 +405,7 @@ Particolare attenzione è necessaria su:
 - `Struct`;
 - tipi IEC.
 
-## 17. Modello canonico consigliato del companion DB
+## 17. Modello canonico consigliato dei DB applicativi
 
 Il DB non deve replicare il runtime interno del GRAPH.
 
@@ -426,7 +440,7 @@ La baseline corrente del backend DB è:
 2. namespace locale corretto su `Sections`;
 3. commenti visibili in TIA con forma semplice e stabile;
 4. supporto a `IEC_TIMER` e `IEC_COUNTER` con `Version="1.0"`;
-5. ruolo del DB come companion dati, non come sostituto del runtime GRAPH.
+5. ruolo dei DB come contenitori dati applicativi e ausiliari, non come sostituti del runtime GRAPH.
 
 ---
 
@@ -485,7 +499,7 @@ Pin reali da considerare:
 - timer: `IN`, `PT`, `Q`, `ET`;
 - contatore: `CU`, `R`, `PV`, `Q`, `CV`.
 
-Le istanze IEC possono stare in DB companion quando necessario.
+Le istanze IEC possono stare nei DB applicativi o ausiliari del pacchetto quando necessario.
 
 ## 25. Regole consolidate sulle variabili globali
 
@@ -592,8 +606,8 @@ Per ciascun sequenziatore AWL, gli output corretti restano:
 
 - specifica di conversione leggibile;
 - `FB GRAPH` importabile;
-- `GlobalDB` companion importabile;
-- eventuali `FC` di supporto, solo se richieste dal modello o dal workflow;
+- uno o più `GlobalDB` importabili, ciascuno con ruolo coerente;
+- una o più `FC` di supporto, quando richieste dal modello o dal workflow;
 - report di validazione e differenze rispetto alla baseline.
 
 ### 32.1 Convenzioni fissate di numbering e partizionamento dei blocchi
@@ -927,7 +941,7 @@ Alla data del 10-04-2026 la baseline consolidata del progetto è la seguente.
 - esempi legacy di altre versioni runtime utilizzabili solo come riferimento semantico e architetturale, non come target di emissione;
 - backend GRAPH validato su regole strutturali, topologiche e runtime;
 - blocco `FB` da generare come elemento autosufficiente;
-- supporto a operandi locali o referenziati simbolicamente nel companion DB;
+- supporto a operandi locali o referenziati simbolicamente nei DB applicativi del pacchetto;
 - forte distinzione fra topologia GRAPH e logica OR nel LAD delle transition;
 - parte iniziale del GRAPH con `S1`, `S32`, `S30`, `S29` da considerare fissa e non modificabile dal generatore.
 
@@ -937,7 +951,7 @@ Alla data del 10-04-2026 la baseline consolidata del progetto è la seguente.
 - forma XML consolidata;
 - commenti visibili in TIA;
 - supporto a member strutturati, array e tipi IEC;
-- ruolo del DB chiarito come companion applicativo;
+- ruolo dei DB chiarito come contenitori applicativi e di supporto del pacchetto;
 - partizione dei DB di progetto fissata in `11..` base, `12..` sequenza, `18..` EXT, `19..` ausiliario;
 - DB HMI da generare ex novo per popup e strutture HMI;
 - DB fissi `81`, `82`, `2020`, `2025` da trattare come elementi stabili del modello di conversione.
@@ -1024,7 +1038,7 @@ Questa non è una regola organizzativa, ma un vincolo tecnico del progetto.
 Alla data del 10-04-2026 il progetto ha raggiunto una baseline forte su quattro livelli:
 
 1. reverse engineering strutturale del `GRAPH`;
-2. generazione stabile del `GlobalDB` companion;
+2. generazione stabile dei `GlobalDB` applicativi e di supporto;
 3. backend `FC` guidato da pattern e non da emissione libera;
 4. pipeline reale `Linux -> bridge -> Windows -> TIA Portal Openness` verificata end-to-end.
 
