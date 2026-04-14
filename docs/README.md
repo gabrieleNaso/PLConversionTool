@@ -8,6 +8,7 @@ Per storico e specifiche consolidate: `docs/reference/`.
 - `guide/tia-integration.md`: bridge + agent Windows + VM setup
 - `guide/workflow-checklists.md`: checklist import/compile
 - `guide/conventions.md`: naming e gestione dataset
+- `flow/README.md`: flusso end-to-end (AWL -> Codex -> Python -> XML -> TIA)
 - `templates/daily-report-template.md`: template report
 - `reference/report-2026-04-14.md`: report consolidato
 - `reference/spec-awl-xml-tia-v20-2026-04-14.md`: specifica master

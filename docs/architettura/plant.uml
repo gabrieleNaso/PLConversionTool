@@ -1,0 +1,93 @@
+@startuml
+skinparam componentStyle rectangle
+skinparam wrapWidth 220
+skinparam maxMessageSize 140
+skinparam defaultTextAlignment left
+skinparam shadowing false
+
+' PLConversionTool - full architecture view
+
+package "PLConversionTool" {
+  [Frontend\nNext.js UI] as Frontend
+  [Backend\nFastAPI API\n(Python container)] as Backend
+  [Core Converter\nPython lib (src/plc_converter)] as Core
+  [TIA Bridge\nFastAPI boundary service\n(Python container)] as Bridge
+  [Windows Agent\n.NET Framework 4.8\n(Windows VM)] as Agent
+
+  folder "Data" as Data {
+    [data/input\nAWL sources] as Input
+    [data/output\ngenerated XML bundles] as Output
+    [data/datasets\ncorpus / typicals / golden] as Datasets
+    [data/tmp\nstaging (on-demand)] as Tmp
+  }
+
+  folder "Backend internals" as BackendInternals {
+    [API routes\n/api/conversion/*\n/api/tia/*] as BackendRoutes
+    [Serializer\nXML writers] as XmlWriter
+  }
+
+  folder "Core converter internals" as CoreInternals {
+    [AWL Parser] as AwlParser
+    [IR Model] as IrModel
+    [Graph/DB/FC Builders] as Builders
+    [Validators] as Validators
+  }
+
+  folder "TIA Bridge internals" as BridgeInternals {
+    [Artifact Stager\n(output/tmp)] as Stager
+    [Windows Agent Client] as WinClient
+  }
+
+  folder "Windows Agent internals" as AgentInternals {
+    [HTTP API\n/health /api/jobs/*] as AgentApi
+    [Job Queue\nserial execution] as JobQueue
+    [Openness Runtime\nSiemens.Engineering.dll] as Openness
+  }
+
+  database "TIA Portal V20\n(Windows VM)" as TIA
+}
+
+Frontend --> Backend : REST (conversion, status, jobs)
+Backend --> BackendRoutes : route handlers
+BackendRoutes --> Core : in-process calls\n(awlSource string)
+Core --> AwlParser
+AwlParser --> IrModel
+IrModel --> Builders
+Builders --> Validators
+Core --> XmlWriter
+
+Backend --> Bridge : REST /api/tia/*
+Bridge --> WinClient : HTTP requests
+WinClient --> AgentApi
+AgentApi --> JobQueue
+JobQueue --> Openness
+Openness --> TIA
+
+Backend --> Output : write XML bundles\nand analysis.json
+Backend --> Input : read AWL sources\n(.awl/.txt/.md)
+Backend --> Datasets : read reference samples
+Bridge --> Output : read/write artifacts
+Bridge --> Tmp : staging files
+Stager --> Output
+Stager --> Tmp
+
+note left of Backend
+Input -> awlSource (string) -> IR -> XML bundle
+end note
+
+note left of Bridge
+Uses data/output for import/export
+Uses data/tmp for staging
+end note
+
+note right of Bridge
+Runs in Linux container.
+Shares data/output and data/tmp with Backend.
+end note
+
+note right of Agent
+Runs on Windows VM
+near TIA Portal installation.
+end note
+
+@enduml
