@@ -1154,65 +1154,33 @@ def _render_graph_step(step: GraphStepNode) -> str:
 
 
 def _render_graph_transition(transition: GraphTransitionNode) -> str:
-    operands = [item for item in transition.guard_operands if item]
-    if not operands:
-        operands = [transition.db_member_name]
-    parts_lines = []
-    wires_lines = []
-    base_uid = 21
-    for index, operand in enumerate(operands):
-        access_uid = base_uid + index * 2
-        contact_uid = access_uid + 1
-        parts_lines.extend(
-            [
-                f'            <Access Scope="GlobalVariable" UId="{access_uid}">\n',
-                '              <Symbol>\n',
-            ]
-        )
-        for component in operand.split("."):
-            parts_lines.append(f'                <Component Name="{escape(component)}" />\n')
-        parts_lines.extend(
-            [
-                '              </Symbol>\n',
-                '            </Access>\n',
-                f'            <Part Name="Contact" UId="{contact_uid}" />\n',
-            ]
-        )
-
-    trcoil_uid = base_uid + len(operands) * 2
-    parts_lines.append(f'            <Part Name="TrCoil" UId="{trcoil_uid}" />\n')
-
-    wire_uid = trcoil_uid + 1
-    first_contact_uid = base_uid + 1
-    wires_lines.append(f'            <Wire UId="{wire_uid}">\n')
-    wires_lines.append('              <Powerrail />\n')
-    wires_lines.append(f'              <NameCon UId="{first_contact_uid}" Name="in" />\n')
-    wires_lines.append('            </Wire>\n')
-    wire_uid += 1
-
-    for index in range(len(operands)):
-        access_uid = base_uid + index * 2
-        contact_uid = access_uid + 1
-        wires_lines.append(f'            <Wire UId="{wire_uid}">\n')
-        wires_lines.append(f'              <IdentCon UId="{access_uid}" />\n')
-        wires_lines.append(f'              <NameCon UId="{contact_uid}" Name="operand" />\n')
-        wires_lines.append('            </Wire>\n')
-        wire_uid += 1
-
-    for index in range(len(operands) - 1):
-        contact_uid = base_uid + index * 2 + 1
-        next_contact_uid = contact_uid + 2
-        wires_lines.append(f'            <Wire UId="{wire_uid}">\n')
-        wires_lines.append(f'              <NameCon UId="{contact_uid}" Name="out" />\n')
-        wires_lines.append(f'              <NameCon UId="{next_contact_uid}" Name="in" />\n')
-        wires_lines.append('            </Wire>\n')
-        wire_uid += 1
-
-    last_contact_uid = base_uid + (len(operands) - 1) * 2 + 1
-    wires_lines.append(f'            <Wire UId="{wire_uid}">\n')
-    wires_lines.append(f'              <NameCon UId="{last_contact_uid}" Name="out" />\n')
-    wires_lines.append(f'              <NameCon UId="{trcoil_uid}" Name="in" />\n')
-    wires_lines.append('            </Wire>\n')
+    access_uid = 21
+    contact_uid = 22
+    trcoil_uid = 23
+    parts_lines = [
+        f'            <Access Scope="GlobalVariable" UId="{access_uid}">\n',
+        '              <Symbol>\n',
+        f'                <Component Name="{escape(transition.db_block_name)}" />\n',
+        f'                <Component Name="{escape(transition.db_member_name)}" />\n',
+        '              </Symbol>\n',
+        '            </Access>\n',
+        f'            <Part Name="Contact" UId="{contact_uid}" />\n',
+        f'            <Part Name="TrCoil" UId="{trcoil_uid}" />\n',
+    ]
+    wires_lines = [
+        '            <Wire UId="24">\n',
+        '              <Powerrail />\n',
+        f'              <NameCon UId="{contact_uid}" Name="in" />\n',
+        '            </Wire>\n',
+        '            <Wire UId="25">\n',
+        f'              <IdentCon UId="{access_uid}" />\n',
+        f'              <NameCon UId="{contact_uid}" Name="operand" />\n',
+        '            </Wire>\n',
+        '            <Wire UId="26">\n',
+        f'              <NameCon UId="{contact_uid}" Name="out" />\n',
+        f'              <NameCon UId="{trcoil_uid}" Name="in" />\n',
+        '            </Wire>\n',
+    ]
 
     return (
         f'      <Transition IsMissing="false" Name="{escape(transition.name)}" '

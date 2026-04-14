@@ -16,7 +16,7 @@ Baseline operativa attuale:
 - IR esplicito riusabile dal backend;
 - validator locali iniziali;
 - preview XML strutturali per il pacchetto completo `FB GRAPH` + `GlobalDB` + `FC LAD`;
-- coerenza cross-blocco sui tag transizione: ogni tag usato in `GRAPH/FC` e' dichiarato nel `GlobalDB` companion, incluse transizioni sintetiche `T_AUTO_*`.
+- coerenza cross-blocco sui tag transizione: ogni tag usato in `GRAPH/FC` e' dichiarato nel `GlobalDB` companion, incluse transizioni sintetiche (es. `T_HOLD_*`, `T_CHAIN_*`).
 
 Regola di sviluppo da mantenere sempre:
 - il core non deve generare blocchi validi solo presi singolarmente;

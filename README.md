@@ -11,8 +11,8 @@ Regola architetturale fondamentale:
 
 Baseline documentale corrente:
 
-- [report_del_09-04-2026 (1).md](/home/administrator/PLConversionTool/report_del_09-04-2026%20(1).md): stato consolidato del progetto, scelte architetturali e priorita' operative.
-- [Specifica_master_traduzione_e_generazione_XML_TIA_V20_V2.md](/home/administrator/PLConversionTool/Specifica_master_traduzione_e_generazione_XML_TIA_V20_V2.md): specifica consolidata AWL -> IR -> GRAPH / GlobalDB / FC LAD.
+- [report_del_14-04-2026.md](/home/administrator/PLConversionTool/report_del_14-04-2026.md): stato consolidato del progetto, scelte architetturali e priorita' operative.
+- [Specifica_master_traduzione_AWL_e_generazione_XML_TIA_V20_V2_14_04.md](/home/administrator/PLConversionTool/Specifica_master_traduzione_AWL_e_generazione_XML_TIA_V20_V2_14_04.md): specifica master consolidata AWL -> IR -> GRAPH / GlobalDB / FC LAD.
 
 Direzione di lavoro attuale:
 
@@ -29,7 +29,7 @@ API backend operative del primo slice:
 Aggiornamenti operativi consolidati:
 
 - il `tia-bridge` accoda automaticamente un job `compile` subito dopo ogni job `import` (`POST /api/jobs/import`);
-- il generatore mantiene coerenza tra tag usati nel `GRAPH/FC` e member dichiarati nel `GlobalDB`, incluse transizioni sintetiche `T_AUTO_*`;
+- il generatore mantiene coerenza tra tag usati nel `GRAPH/FC` e member dichiarati nel `GlobalDB`, incluse transizioni sintetiche (es. `T_HOLD_*`, `T_CHAIN_*`);
 - la coerenza del pacchetto e' un requisito hard: non e' ammesso considerare `FB`, `DB`, `FC` o blocchi aggiuntivi come artefatti isolati se poi in compile si referenziano fra loro;
 - la diagnostica compile lato Windows agent include dettaglio esteso dei messaggi e del contesto per accelerare il debug sui blocchi TIA.
 

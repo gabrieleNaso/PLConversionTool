@@ -1,7 +1,8 @@
 ## Indice documentazione (PLConversionTool)
 
 ### Contesto e stato progetto
-- **Report consolidato 09-04-2026**: `../report_del_09-04-2026 (1).md`
+- **Report consolidato**: `../report_del_14-04-2026.md`
+- **Specifica master**: `../Specifica_master_traduzione_AWL_e_generazione_XML_TIA_V20_V2_14_04.md`
 - **Struttura operativa repository**: `project-structure.md`
 
 ### Report giornalieri

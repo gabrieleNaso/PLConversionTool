@@ -991,7 +991,7 @@ Alla data del 10-04-2026 la baseline consolidata del progetto è la seguente.
 
 - nel `tia-bridge`, ogni `import` accoda automaticamente una `compile` post-import;
 - la risposta del job `import` espone anche `AutoCompileJobId` per tracciare l'esecuzione concatenata;
-- il generatore allinea in modo deterministico `GRAPH`, `GlobalDB` e `FC` sulle stesse transizioni, includendo i member `T_AUTO_*` nel `GlobalDB` quando usati dalle reti LAD/GRAPH;
+- il generatore allinea in modo deterministico `GRAPH`, `GlobalDB` e `FC` sulle stesse transizioni, includendo anche i member delle transizioni sintetiche (es. `T_HOLD_*`, `T_CHAIN_*`) nei `GlobalDB` quando usati dalle reti LAD/GRAPH;
 - la diagnostica compile lato `tia_windows_agent` è stata estesa con messaggi dettagliati, contesto e classificazione errori/warning.
 
 ---

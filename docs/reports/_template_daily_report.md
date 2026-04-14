@@ -34,5 +34,5 @@
 
 ### Link rapidi
 - **Indice docs**: `../INDEX.md`
-- **Report consolidato**: `../../report_del_09-04-2026 (1).md`
-- **Specifica generatore XML**: `../../Specifica_master_traduzione_e_generazione_XML_TIA_V20_V2.md`
+- **Report consolidato**: `../../report_del_14-04-2026.md`
+- **Specifica generatore XML**: `../../Specifica_master_traduzione_AWL_e_generazione_XML_TIA_V20_V2_14_04.md`

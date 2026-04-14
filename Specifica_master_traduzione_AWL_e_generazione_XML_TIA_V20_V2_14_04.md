@@ -781,7 +781,7 @@ Nessun `GlobalDB` del pacchetto deve replicare RT_DATA né gli statici runtime d
 Regola di coerenza cross-blocco (hard):
 
 - ogni tag usato nelle transition GRAPH o nelle reti LAD di supporto deve essere dichiarato in uno dei `GlobalDB` emessi nel pacchetto;
-- la sorgente canonica dei tag di guardia deve essere la topologia finale delle transizioni, incluse eventuali transizioni sintetiche (`T_AUTO_*`);
+- la sorgente canonica dei tag di guardia deve essere la topologia finale delle transizioni, incluse eventuali transizioni sintetiche (es. `T_HOLD_*`, `T_CHAIN_*`);
 - non è ammesso generare riferimenti LAD/GRAPH a member non presenti nei `GlobalDB` effettivamente emessi.
 
 Estensione obbligatoria della regola:

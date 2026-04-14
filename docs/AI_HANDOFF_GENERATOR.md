@@ -111,8 +111,8 @@ curl -fsS http://127.0.0.1:8000/api/tia/jobs/JOB_ID
 
 ## 6. File di documentazione da aggiornare quando cambi regole
 
-- `Specifica_master_traduzione_AWL_e_generazione_XML_TIA_V20_V2.md`
-- `report_del_10-04-2026.md`
+- `Specifica_master_traduzione_AWL_e_generazione_XML_TIA_V20_V2_14_04.md`
+- `report_del_14-04-2026.md`
 - `tia_windows_agent/README.md`
 - `tia_windows_agent/COMMANDS.md`
 - `docs/tia-windows-agent-api.md`
