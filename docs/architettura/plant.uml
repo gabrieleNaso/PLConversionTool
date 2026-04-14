@@ -28,7 +28,8 @@ package "PLConversionTool" {
 
   folder "Core converter internals" as CoreInternals {
     [AWL Parser] as AwlParser
-    [IR Model] as IrModel
+    [IR Model\n(sequencer graph)] as IrModel
+    [IR Builder\n(normalize + validate)] as IrBuilder
     [Graph/DB/FC Builders] as Builders
     [Validators] as Validators
   }
@@ -51,7 +52,8 @@ Frontend --> Backend : REST (conversion, status, jobs)
 Backend --> BackendRoutes : route handlers
 BackendRoutes --> Core : in-process calls\n(awlSource string)
 Core --> AwlParser
-AwlParser --> IrModel
+AwlParser --> IrBuilder
+IrBuilder --> IrModel
 IrModel --> Builders
 Builders --> Validators
 Core --> XmlWriter
@@ -72,7 +74,13 @@ Stager --> Output
 Stager --> Tmp
 
 note left of Backend
-Input -> awlSource (string) -> IR -> XML bundle
+Input -> awlSource (string) -> IR (structured model) -> XML bundle
+end note
+
+note right of IrModel
+IR = modello dati del sequenziatore:
+step, transizioni, guard, timer,
+simboli e mapping cross‑blocco.
 end note
 
 note left of Bridge

@@ -30,6 +30,25 @@ Questa guida spiega end-to-end come un sorgente AWL diventa un pacchetto XML imp
   - simboli e riferimenti che devono esistere nel `GlobalDB`.
 - L'IR risultante e' usato per generare GRAPH, DB e FC in modo coerente.
 
+### Cos'e' l'IR (in pratica)
+L'IR e' la rappresentazione strutturata e normalizzata del sequenziatore,
+non e' piu' testo AWL ma un modello dati con:
+- sequenza di step e transizioni con guard e condizioni;
+- mapping esplicito tra simboli/logiche e i blocchi di destinazione;
+- metadati per costruire `FB GRAPH`, `GlobalDB`, `FC LAD`;
+- vincoli di coerenza (nomi, riferimenti, contratti cross‑blocco).
+
+In breve: l'IR e' il "contratto interno" del pacchetto XML che il generatore
+deve produrre. Serve a garantire che FB/DB/FC restino sempre coerenti.
+
+### Come viene creato l'IR (passi operativi)
+1. Lettura file AWL e split per `NETWORK`.
+2. Parsing di istruzioni e simboli.
+3. Normalizzazione dei nomi e dei riferimenti.
+4. Costruzione di nodi IR (step, transition, timer, memory, output).
+5. Validazioni locali (coerenza minimale).
+6. Emissione di una struttura IR riusabile dal generator.
+
 ## 3) Generazione XML
 
 ### Output del generator
