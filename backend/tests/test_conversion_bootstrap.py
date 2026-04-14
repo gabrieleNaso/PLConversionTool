@@ -159,6 +159,16 @@ def test_conversion_analyze_builds_ir_and_artifact_previews() -> None:
         and '<Component Name="Mixer_Line_Mode_Global" />' in preview["content"]
         for preview in payload["artifact_previews"]
     )
+    assert any(
+        preview["artifact_type"] == "support_global_db_network"
+        and "Network 1 Global" in preview["content"]
+        for preview in payload["artifact_previews"]
+    )
+    assert any(
+        preview["artifact_type"] == "support_lad_fc_network"
+        and "_N1_LAD" in preview["content"]
+        for preview in payload["artifact_previews"]
+    )
 
 
 def test_conversion_analyze_builds_alt_branch_for_multi_exit_step() -> None:

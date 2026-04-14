@@ -762,6 +762,36 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
             )
         )
 
+    network_specs = _collect_network_support_specs(ir)
+    for network_no, network_title, members in network_specs:
+        suffix = f"N{network_no}"
+        network_db_name = f"{ir.sequence_name}_{suffix}_Global"
+        previews.append(
+            ArtifactPreview(
+                artifact_type="support_global_db_network",
+                file_name=f"DB_{ir.sequence_name}_{suffix.lower()}_global_auto.xml",
+                content=_build_support_global_db_xml(
+                    block_name=network_db_name,
+                    title=f"{ir.sequence_name} Network {network_no} Global",
+                    members=members,
+                    number_seed=f"{ir.sequence_name}_{suffix}_DB",
+                ),
+            )
+        )
+        previews.append(
+            ArtifactPreview(
+                artifact_type="support_lad_fc_network",
+                file_name=f"FC_{ir.sequence_name}_{suffix.lower()}_lad_auto.xml",
+                content=_build_support_lad_fc_xml(
+                    fc_name=f"{ir.sequence_name}_{suffix}_LAD",
+                    title=f"{ir.sequence_name} Network {network_no} LAD ({network_title})",
+                    db_name=network_db_name,
+                    members=[name for name, _ in members],
+                    number_seed=f"{ir.sequence_name}_{suffix}_FC",
+                ),
+            )
+        )
+
     return previews
 
 
@@ -1460,6 +1490,26 @@ def _collect_mode_support_members(ir: AwlIR) -> list[tuple[str, str]]:
     if ir.manual_logic_networks and ir.auto_logic_networks:
         members.append(("MODE_INTERLOCK_OK", "Manual/Auto arbitration coherence"))
     return members
+
+
+def _collect_network_support_specs(ir: AwlIR) -> list[tuple[int, str, list[tuple[str, str]]]]:
+    specs: list[tuple[int, str, list[tuple[str, str]]]] = []
+    for network in ir.networks:
+        network_members: list[tuple[str, str]] = []
+        for operand in _collect_condition_operands(network):
+            member = _support_member_name(operand, "COND")
+            network_members.append((member, f"Condition operand {operand}"))
+        for output_name, action in _collect_output_targets(network):
+            member = _support_member_name(output_name, "OUT")
+            network_members.append((member, f"Output action {action} {output_name}"))
+        for memory_name, action in _collect_memory_targets(network):
+            member = _support_member_name(memory_name, "MEM")
+            network_members.append((member, f"Memory action {action} {memory_name}"))
+        unique_members = list(dict.fromkeys(network_members))
+        if not unique_members:
+            continue
+        specs.append((network.index, network.title or f"NETWORK {network.index}", unique_members))
+    return specs
 
 
 def _support_member_name(raw_symbol: str, prefix: str) -> str:

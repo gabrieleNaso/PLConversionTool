@@ -84,7 +84,7 @@ Output:
   - `DB_<Name>_global_auto.xml`
   - `FC_<Name>_lad_auto.xml`
   - `<Name>_analysis.json`
-- in base al contenuto AWL possono essere aggiunti anche altri `DB_*` e `FC_*` di supporto (es. I/O, diagnostica, gestione mode manuale/auto)
+- in base al contenuto AWL possono essere aggiunti anche altri `DB_*` e `FC_*` di supporto (es. I/O, diagnostica, gestione mode manuale/auto, partizionamento per network)
 
 ---
 
