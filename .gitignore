@@ -23,6 +23,5 @@ frontend/node_modules
 .idea/
 .DS_Store
 data/output/*
-!data/output/README.md
+!data/output/output.md
 data/tmp/*
-!data/tmp/README.md

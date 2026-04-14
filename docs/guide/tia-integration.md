@@ -69,7 +69,7 @@ Script pronti:
 - `install-firewall-rule.ps1`
 - `start-agent.cmd`
 
-Per i dettagli operativi di installazione e avvio, vedi `tia_windows_agent/README.md`.
+Per i dettagli operativi di installazione e avvio, vedi `tia_windows_agent/agent.md`.
 
 ### Checklist minima lato Windows
 - TIA Portal installato (versione target: V20)

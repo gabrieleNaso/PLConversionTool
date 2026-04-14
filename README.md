@@ -35,7 +35,7 @@ Aggiornamenti operativi consolidati:
 
 Documentazione utile:
 
-- [docs/README.md](/home/administrator/PLConversionTool/docs/README.md)
+- [docs/index.md](/home/administrator/PLConversionTool/docs/index.md)
 - [docs/guide/operations.md](/home/administrator/PLConversionTool/docs/guide/operations.md)
 - [docs/guide/tia-integration.md](/home/administrator/PLConversionTool/docs/guide/tia-integration.md)
 - [docs/guide/workflow-checklists.md](/home/administrator/PLConversionTool/docs/guide/workflow-checklists.md)

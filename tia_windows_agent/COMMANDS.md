@@ -2,7 +2,7 @@
 
 Raccolta operativa dei comandi usati per lavorare con l'agent Windows e con il `tia-bridge`.
 
-Questo file non sostituisce [README.md](/home/administrator/PLConversionTool/tia_windows_agent/README.md): serve come reference rapida, pronta da copiare e incollare.
+Questo file non sostituisce [agent.md](/home/administrator/PLConversionTool/tia_windows_agent/agent.md): serve come reference rapida, pronta da copiare e incollare.
 
 ## Convenzioni usate qui
 
