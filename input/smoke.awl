@@ -1,0 +1,7 @@
+NETWORK 1
+      U     S1
+      U     M10.0
+      S     S29
+NETWORK 2
+      U     S29
+      =     A4.0

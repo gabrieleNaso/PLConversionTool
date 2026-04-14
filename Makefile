@@ -1,4 +1,4 @@
-.PHONY: help doctor build pull up logs shell-backend shell-frontend shell-tia run-backend run-tia test-backend lint-backend fmt-backend clean down
+.PHONY: help doctor build pull up logs shell-backend shell-frontend shell-tia run-backend run-tia test-backend lint-backend fmt-backend generate-input import-generated generate-and-import clean down
 
 PROJECT_NAME := plconversiontool
 COMPOSE := docker compose -p $(PROJECT_NAME) -f compose.dev.yml
@@ -19,6 +19,9 @@ help:
 	"  test-backend   - run backend tests" \
 	"  fmt-backend    - format backend (ruff)" \
 	"  lint-backend   - lint backend (ruff)" \
+	"  generate-input - generate XML from input/*.awl|*.txt|*.md" \
+	"  import-generated - import output/generated bundles into TIA" \
+	"  generate-and-import - generate-input + import-generated" \
 	"  clean   - remove tmp/ and output/*" \
 	"  down    - stop compose services"
 
@@ -62,6 +65,14 @@ fmt-backend:
 
 lint-backend:
 	@$(COMPOSE) run --rm backend bash -lc "ruff check ."
+
+generate-input:
+	@python3 scripts/generate_from_input.py --input-dir input --output-root output/generated --name-prefix Auto
+
+import-generated:
+	@python3 scripts/import_generated_to_tia.py --output-root output/generated --project-path "$(PROJECT_PATH)" --target-path "$(TARGET_PATH)"
+
+generate-and-import: generate-input import-generated
 
 clean:
 	@rm -rf ./tmp/*

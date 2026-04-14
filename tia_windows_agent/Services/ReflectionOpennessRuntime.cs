@@ -240,11 +240,48 @@ public sealed class ReflectionOpennessRuntime(
 
         var plcSoftware = TryFindFirstPlcSoftware(project);
         var candidates = new List<object>();
-        if (plcSoftware is not null)
+        var hasExplicitTarget = !string.IsNullOrWhiteSpace(job.TargetPath)
+            || !string.IsNullOrWhiteSpace(job.TargetName);
+
+        if (plcSoftware is not null && hasExplicitTarget)
         {
-            candidates.Add(plcSoftware);
+            var rootBlockGroup = GetPropertyValue(plcSoftware, "BlockGroup");
+            if (rootBlockGroup is null)
+            {
+                return new OpennessExecutionResult(
+                    "blocked",
+                    "Compile target-specific richiesta ma BlockGroup non trovato su PlcSoftware."
+                );
+            }
+
+            var compileGroup = ResolveBlockGroup(rootBlockGroup, job.TargetPath);
+            if (!string.IsNullOrWhiteSpace(job.TargetName))
+            {
+                var targetBlock = FindBlockByName(compileGroup, job.TargetName!)
+                    ?? FindBlockByName(rootBlockGroup, job.TargetName!);
+                if (targetBlock is null)
+                {
+                    return new OpennessExecutionResult(
+                        "blocked",
+                        $"Compile target-specific richiesta ma blocco '{job.TargetName}' non trovato nel path '{job.TargetPath ?? "Program blocks"}'."
+                    );
+                }
+                candidates.Add(targetBlock);
+            }
+            else
+            {
+                candidates.Add(compileGroup);
+            }
         }
-        candidates.Add(project);
+
+        if (candidates.Count == 0)
+        {
+            if (plcSoftware is not null)
+            {
+                candidates.Add(plcSoftware);
+            }
+            candidates.Add(project);
+        }
 
         foreach (var candidate in candidates)
         {
@@ -299,7 +336,9 @@ public sealed class ReflectionOpennessRuntime(
 
         return new OpennessExecutionResult(
             "blocked",
-            "Nessun servizio ICompilable trovato su project o PlcSoftware."
+            hasExplicitTarget
+                ? $"Nessun servizio ICompilable trovato sul target richiesto (path='{job.TargetPath ?? "Program blocks"}', name='{job.TargetName ?? "<group>"}')."
+                : "Nessun servizio ICompilable trovato su project o PlcSoftware."
         );
     }
 
