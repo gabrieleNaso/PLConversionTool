@@ -98,6 +98,20 @@ make import-generated \
   TARGET_PATH="Program blocks/generati da tool"
 ```
 
+### Import di una sola cartella bundle (consigliato)
+
+```bash
+make import-generated \
+  PROJECT_PATH="C:\\Users\\Admin\\Desktop\\prova_connessione_openness\\prova_connessione_openness.ap20" \
+  TARGET_PATH="Program blocks/generati da tool/mio_test" \
+  IMPORT_BUNDLE="check_awl_romania"
+```
+
+Alternative:
+
+- `IMPORT_BUNDLE`: match esatto del nome cartella in `output/generated/`
+- `IMPORT_PREFIX`: importa solo cartelle che iniziano con quel prefisso
+
 Note:
 
 - per ogni import, il `tia-bridge` **accoda automaticamente una compile** post-import

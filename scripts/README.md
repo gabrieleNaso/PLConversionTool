@@ -41,6 +41,12 @@ Esempio:
 make import-generated PROJECT_PATH="C:\\Users\\Admin\\Desktop\\prova_connessione_openness\\prova_connessione_openness.ap20" TARGET_PATH="Program blocks/generati da tool"
 ```
 
+Import di una sola cartella:
+
+```bash
+make import-generated PROJECT_PATH="C:\\Users\\Admin\\Desktop\\prova_connessione_openness\\prova_connessione_openness.ap20" TARGET_PATH="Program blocks/generati da tool/mio_test" IMPORT_BUNDLE="check_awl_romania"
+```
+
 Oppure in un colpo solo:
 
 ```bash
@@ -51,4 +57,4 @@ Note:
 
 - l'import viene fatto per ogni sottocartella in `output/generated/`;
 - dopo ogni import, il `tia-bridge` accoda automaticamente la `compile` usando lo stesso `targetPath/targetName` dell'import (compile scoped sul target importato);
-- se vuoi limitare a un sottoinsieme, usa `--prefix` nello script `scripts/import_generated_to_tia.py`.
+- se vuoi limitare a un sottoinsieme, usa `IMPORT_PREFIX` (prefisso) o `IMPORT_BUNDLE` (nome esatto cartella).

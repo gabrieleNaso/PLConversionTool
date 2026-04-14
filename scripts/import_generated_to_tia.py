@@ -28,10 +28,12 @@ def _http_json(method: str, url: str, payload: dict | None = None, timeout: floa
         raise RuntimeError(f"HTTP {exc.code} {exc.reason}: {body}") from exc
 
 
-def _list_bundle_dirs(output_root: Path, prefix: str | None) -> list[Path]:
+def _list_bundle_dirs(output_root: Path, prefix: str | None, bundle: str | None) -> list[Path]:
     if not output_root.exists():
         return []
     candidates = [p for p in output_root.iterdir() if p.is_dir()]
+    if bundle:
+        candidates = [p for p in candidates if p.name.lower() == bundle.lower()]
     if prefix:
         candidates = [p for p in candidates if p.name.lower().startswith(prefix.lower())]
     return sorted(candidates, key=lambda p: p.name.lower())
@@ -66,6 +68,11 @@ def main() -> int:
         help='TIA target path (default: "Program blocks/generati da tool").',
     )
     parser.add_argument("--prefix", default=os.getenv("TIA_IMPORT_PREFIX"))
+    parser.add_argument(
+        "--bundle",
+        default=os.getenv("TIA_IMPORT_BUNDLE"),
+        help="Import only the bundle directory with this exact name.",
+    )
     parser.add_argument("--save-project", action="store_true", default=True)
     parser.add_argument("--no-save-project", action="store_false", dest="save_project")
     parser.add_argument("--wait", action="store_true", help="Wait for import completion (and show status).")
@@ -81,7 +88,7 @@ def main() -> int:
         raise SystemExit("Missing --project-path (or env TIA_PROJECT_PATH).")
 
     output_root = (PROJECT_ROOT / args.output_root).resolve()
-    bundle_dirs = _list_bundle_dirs(output_root, args.prefix)
+    bundle_dirs = _list_bundle_dirs(output_root, args.prefix, args.bundle)
     if not bundle_dirs:
         print(f"No bundles found in {output_root}")
         return 0

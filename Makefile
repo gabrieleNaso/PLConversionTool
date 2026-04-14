@@ -20,7 +20,7 @@ help:
 	"  fmt-backend    - format backend (ruff)" \
 	"  lint-backend   - lint backend (ruff)" \
 	"  generate-input - generate XML from input/*.awl|*.txt|*.md" \
-	"  import-generated - import output/generated bundles into TIA" \
+	"  import-generated - import bundles into TIA (use IMPORT_BUNDLE/IMPORT_PREFIX)" \
 	"  generate-and-import - generate-input + import-generated" \
 	"  clean   - remove tmp/ and output/*" \
 	"  down    - stop compose services"
@@ -70,7 +70,7 @@ generate-input:
 	@python3 scripts/generate_from_input.py --input-dir input --output-root output/generated --name-prefix Auto
 
 import-generated:
-	@python3 scripts/import_generated_to_tia.py --output-root output/generated --project-path "$(PROJECT_PATH)" --target-path "$(TARGET_PATH)"
+	@python3 scripts/import_generated_to_tia.py --output-root output/generated --project-path "$(PROJECT_PATH)" --target-path "$(TARGET_PATH)" --prefix "$(IMPORT_PREFIX)" --bundle "$(IMPORT_BUNDLE)"
 
 generate-and-import: generate-input import-generated
 
