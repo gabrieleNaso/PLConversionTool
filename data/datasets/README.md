@@ -1,7 +1,7 @@
 # Datasets
 
 Questa cartella contiene i campioni usati per studio, confronto e regressione.
-Regole e naming: `../../docs/conventions.md`.
+Regole e naming: `../../docs/guide/conventions.md`.
 
 ## Struttura
 

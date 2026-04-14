@@ -21,7 +21,7 @@ Regola trasversale:
 - **Blocco**: `SW.Blocks.GlobalDB` con struttura Openness standard (`AttributeList`, `ObjectList` coerente).
 - **Serializer Member ricorsivo**: `Member` annidati correttamente; niente template statici copiati.
 - **Organizzazione**: preferire `Struct` funzionali (cmd/feedback/param/diag/mapping...).
-- **Naming coerente**: naming deterministico, stabile, leggibile (vedi `docs/conventions.md`).
+- **Naming coerente**: naming deterministico, stabile, leggibile (vedi `conventions.md`).
 - **Commenti visibili in TIA**: verificare forma/posizionamento commenti come nel caso validato del DB di prova.
 - **Contratto cross-blocco**: il DB deve dichiarare tutti i member richiesti dal `GRAPH`, dalla `FC LAD` e da eventuali blocchi aggiuntivi del pacchetto, senza drift di naming.
 

@@ -75,6 +75,7 @@ import-generated:
 generate-and-import: generate-input import-generated
 
 clean:
+	@mkdir -p ./data/tmp
 	@rm -rf ./data/tmp/*
 	@rm -rf ./data/output/*
 	@echo "Pulito: data/tmp/* e data/output/*"

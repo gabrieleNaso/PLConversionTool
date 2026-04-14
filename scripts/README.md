@@ -1,7 +1,7 @@
 # Scripts
 
 Questa cartella contiene script di progetto ripetibili.
-Per il workflow operativo completo vedi `../docs/operations.md`.
+Per il workflow operativo completo vedi `../docs/guide/operations.md`.
 
 Script principali:
 - `generate_from_input.py`

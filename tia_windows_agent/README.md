@@ -29,7 +29,7 @@ Script pronti:
 
 Documentazione utile:
 
-- [docs/tia-integration.md](/home/administrator/PLConversionTool/docs/tia-integration.md)
+- [docs/guide/tia-integration.md](/home/administrator/PLConversionTool/docs/guide/tia-integration.md)
 - [COMMANDS.md](/home/administrator/PLConversionTool/tia_windows_agent/COMMANDS.md)
 
 ## Prerequisiti nella VM Windows
