@@ -1,11 +1,14 @@
 @startuml
+left to right direction
 skinparam componentStyle rectangle
-skinparam wrapWidth 220
-skinparam maxMessageSize 140
+skinparam wrapWidth 200
+skinparam maxMessageSize 120
 skinparam defaultTextAlignment left
 skinparam shadowing false
+skinparam nodesep 35
+skinparam ranksep 45
 
-' PLConversionTool - full architecture view
+' PLConversionTool - full architecture view (readable layout)
 
 package "PLConversionTool" {
   [Frontend\nNext.js UI] as Frontend
@@ -14,7 +17,7 @@ package "PLConversionTool" {
   [TIA Bridge\nFastAPI boundary service\n(Python container)] as Bridge
   [Windows Agent\n.NET Framework 4.8\n(Windows VM)] as Agent
 
-  folder "Data" as Data {
+  folder "Data (workspace)" as Data {
     [data/input\nAWL sources] as Input
     [data/output\ngenerated XML bundles] as Output
     [data/datasets\ncorpus / typicals / golden] as Datasets
@@ -28,8 +31,8 @@ package "PLConversionTool" {
 
   folder "Core converter internals" as CoreInternals {
     [AWL Parser] as AwlParser
-    [IR Model\n(sequencer graph)] as IrModel
     [IR Builder\n(normalize + validate)] as IrBuilder
+    [IR Model\n(sequencer graph)] as IrModel
     [Graph/DB/FC Builders] as Builders
     [Validators] as Validators
   }
@@ -48,7 +51,8 @@ package "PLConversionTool" {
   database "TIA Portal V20\n(Windows VM)" as TIA
 }
 
-Frontend --> Backend : REST (conversion, status, jobs)
+' Primary flow
+Frontend --> Backend : REST\n(conversion, status, jobs)
 Backend --> BackendRoutes : route handlers
 BackendRoutes --> Core : in-process calls\n(awlSource string)
 Core --> AwlParser
@@ -58,6 +62,7 @@ IrModel --> Builders
 Builders --> Validators
 Core --> XmlWriter
 
+' TIA path
 Backend --> Bridge : REST /api/tia/*
 Bridge --> WinClient : HTTP requests
 WinClient --> AgentApi
@@ -65,8 +70,9 @@ AgentApi --> JobQueue
 JobQueue --> Openness
 Openness --> TIA
 
-Backend --> Output : write XML bundles\nand analysis.json
+' Data access
 Backend --> Input : read AWL sources\n(.awl/.txt/.md)
+Backend --> Output : write XML bundles\nand analysis.json
 Backend --> Datasets : read reference samples
 Bridge --> Output : read/write artifacts
 Bridge --> Tmp : staging files
@@ -80,7 +86,7 @@ end note
 note right of IrModel
 IR = modello dati del sequenziatore:
 step, transizioni, guard, timer,
-simboli e mapping cross‑blocco.
+simboli e mapping cross-blocco.
 end note
 
 note left of Bridge
@@ -97,5 +103,13 @@ note right of Agent
 Runs on Windows VM
 near TIA Portal installation.
 end note
+
+' Layout helpers to reduce crossings
+Frontend -[hidden]-> Input
+Backend -[hidden]-> Data
+Core -[hidden]-> BackendInternals
+Bridge -[hidden]-> Core
+Agent -[hidden]-> Bridge
+TIA -[hidden]-> Agent
 
 @enduml
