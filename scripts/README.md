@@ -21,6 +21,18 @@ Per semplificare il flusso senza chiamate API manuali:
 make generate-input
 ```
 
+Generazione di un solo file:
+
+```bash
+make generate-input INPUT_FILE="AWL romania.md"
+```
+
+Generazione per prefisso:
+
+```bash
+make generate-input INPUT_PREFIX="romania_"
+```
+
 Output:
 
 - per ogni file valido viene creato un bundle in `output/generated/<nome_sequenza>/`;
@@ -30,6 +42,7 @@ Note:
 
 - nei file `.md` viene usato il primo blocco fenced che contiene `NETWORK`; se assente, viene usato il testo completo;
 - i file senza `NETWORK` vengono saltati.
+- per limitare le sorgenti usa `INPUT_FILE` (nome esatto) o `INPUT_PREFIX` (prefisso).
 
 ## Import automatico in TIA (batch)
 

@@ -71,15 +71,17 @@ def _load_awl_text(path: Path) -> str:
     return raw
 
 
-def _collect_sources(input_dir: Path) -> list[Path]:
-    return sorted(
-        [
-            item
-            for item in input_dir.iterdir()
-            if item.is_file() and item.suffix.lower() in SUPPORTED_EXTENSIONS
-        ],
-        key=lambda item: item.name.lower(),
-    )
+def _collect_sources(input_dir: Path, source: str | None, prefix: str | None) -> list[Path]:
+    candidates = [
+        item
+        for item in input_dir.iterdir()
+        if item.is_file() and item.suffix.lower() in SUPPORTED_EXTENSIONS
+    ]
+    if source:
+        candidates = [item for item in candidates if item.name.lower() == source.lower()]
+    if prefix:
+        candidates = [item for item in candidates if item.name.lower().startswith(prefix.lower())]
+    return sorted(candidates, key=lambda item: item.name.lower())
 
 
 def main() -> int:
@@ -101,6 +103,16 @@ def main() -> int:
         default="Auto",
         help="Sequence name prefix used for generated bundles (default: Auto).",
     )
+    parser.add_argument(
+        "--source",
+        default=None,
+        help="Generate only this exact source filename from input dir.",
+    )
+    parser.add_argument(
+        "--prefix",
+        default=None,
+        help="Generate only sources whose filename starts with this prefix.",
+    )
     args = parser.parse_args()
 
     input_dir = (PROJECT_ROOT / args.input_dir).resolve()
@@ -108,7 +120,7 @@ def main() -> int:
     output_root.mkdir(parents=True, exist_ok=True)
     input_dir.mkdir(parents=True, exist_ok=True)
 
-    sources = _collect_sources(input_dir)
+    sources = _collect_sources(input_dir, args.source, args.prefix)
     if not sources:
         print(f"No source files found in: {input_dir}")
         print("Add .awl, .txt, or .md files and run again.")

@@ -76,6 +76,18 @@ Metti i file in `input/` con estensione:
 make generate-input
 ```
 
+### Genera da un solo file in `input/`
+
+```bash
+make generate-input INPUT_FILE="AWL romania.md"
+```
+
+### Genera solo file con prefisso
+
+```bash
+make generate-input INPUT_PREFIX="romania_"
+```
+
 Output:
 
 - un bundle per file in `output/generated/<nome>/`

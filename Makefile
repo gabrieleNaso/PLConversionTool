@@ -19,7 +19,7 @@ help:
 	"  test-backend   - run backend tests" \
 	"  fmt-backend    - format backend (ruff)" \
 	"  lint-backend   - lint backend (ruff)" \
-	"  generate-input - generate XML from input/*.awl|*.txt|*.md" \
+	"  generate-input - generate XML (use INPUT_FILE/INPUT_PREFIX filters)" \
 	"  import-generated - import bundles into TIA (use IMPORT_BUNDLE/IMPORT_PREFIX)" \
 	"  generate-and-import - generate-input + import-generated" \
 	"  clean   - remove tmp/ and output/*" \
@@ -67,7 +67,7 @@ lint-backend:
 	@$(COMPOSE) run --rm backend bash -lc "ruff check ."
 
 generate-input:
-	@python3 scripts/generate_from_input.py --input-dir input --output-root output/generated --name-prefix Auto
+	@python3 scripts/generate_from_input.py --input-dir input --output-root output/generated --name-prefix Auto --source "$(INPUT_FILE)" --prefix "$(INPUT_PREFIX)"
 
 import-generated:
 	@python3 scripts/import_generated_to_tia.py --output-root output/generated --project-path "$(PROJECT_PATH)" --target-path "$(TARGET_PATH)" --prefix "$(IMPORT_PREFIX)" --bundle "$(IMPORT_BUNDLE)"
