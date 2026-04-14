@@ -49,7 +49,7 @@ def export_conversion_bundle(
     sequence_name: str | None,
     awl_source: str,
     source_name: str | None = None,
-    output_dir: str = "output/generated",
+    output_dir: str = "data/output/generated",
 ) -> dict:
     analysis = analyze_awl_source(
         sequence_name=sequence_name,
@@ -70,7 +70,7 @@ def export_conversion_bundle(
     destination = (output_root / relative_output).resolve()
     if output_root not in destination.parents and destination != output_root:
         raise ValueError(
-            "outputDir deve rimanere dentro la cartella output/ del progetto."
+            "outputDir deve rimanere dentro la cartella data/output/ del progetto."
         )
     destination.mkdir(parents=True, exist_ok=True)
 

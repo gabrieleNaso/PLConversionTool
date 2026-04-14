@@ -27,26 +27,28 @@ Per storico e specifiche consolidate: `docs/reference/`.
   Script operativi e utility. Quando un comando diventa stabile, va qui o in `Makefile`.
 - `docker/`
   Definizioni container di sviluppo.
-- `datasets/`
+- `data/input/`
+  Sorgenti AWL da convertire in batch.
+- `data/datasets/`
   Materiale di riferimento XML (golden, corpus, typicals).
-- `output/`
+- `data/output/`
   Output generati dal tool o da pipeline di trasformazione.
-- `tmp/`
+- `data/tmp/`
   Artefatti temporanei e staging.
 - `docs/`
   Documentazione tecnica, workflow e regole operative.
 
 ## Regole pratiche
-- I file XML di riferimento non vanno salvati in `output/`.
-- I file generati dal tool non vanno salvati in `datasets/typicals/`.
-- Un file validato con import riuscito e usato come riferimento stabile va promosso in `datasets/golden/`.
+- I file XML di riferimento non vanno salvati in `data/output/`.
+- I file generati dal tool non vanno salvati in `data/datasets/typicals/`.
+- Un file validato con import riuscito e usato come riferimento stabile va promosso in `data/datasets/golden/`.
 - Le logiche condivise del convertitore dovrebbero convergere in `src/`, evitando di spargerle tra UI, script e backend.
 - Le integrazioni verso TIA/Openness non vanno mescolate nel backend di generazione: devono restare isolate in `tia_bridge/`.
-- Gli esperimenti temporanei vanno in `tmp/`, non in root.
+- Gli esperimenti temporanei vanno in `data/tmp/`, non in root.
 - `FB GRAPH`, `GlobalDB`, `FC LAD` e blocchi aggiuntivi vanno trattati come pacchetto coerente (non come XML indipendenti).
 
 ## Direzione consigliata (prossimi step)
 1. Consolidare in `src/` il modello dati intermedio del sequenziatore.
 2. Tenere in `backend/` solo API, orchestrazione e test di servizio.
-3. Usare `datasets/golden/` come baseline per validator e regression test.
-4. Salvare ogni XML generato in `output/` con naming coerente e report associato.
+3. Usare `data/datasets/golden/` come baseline per validator e regression test.
+4. Salvare ogni XML generato in `data/output/` con naming coerente e report associato.

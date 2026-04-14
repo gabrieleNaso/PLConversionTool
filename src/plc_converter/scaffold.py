@@ -54,7 +54,7 @@ def build_conversion_scaffold(
         graph_fb_name=f"FB_{normalized_name}_GRAPH_auto.xml",
         global_db_name=f"DB12_{normalized_name}_seq_global_auto.xml",
         lad_fc_name=f"FC04_{normalized_name}_transitions_lad_auto.xml",
-        output_directory="output/",
+        output_directory="data/output/",
         naming_notes=[
             "Il naming resta deterministico e allineato alle convenzioni di repository.",
             "Usare suffissi semanticamente utili solo quando distinguono una variante reale.",

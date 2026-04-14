@@ -307,7 +307,7 @@ Quando lavori tramite `tia-bridge`, il flusso remoto e' questo:
 Stato operativo verificato:
 
 - questo workflow remoto e' stato testato con successo;
-- un file XML presente in `output/` sulla VM Ubuntu viene caricato nella `TempDirectory` Windows;
+- un file XML presente in `data/output/` sulla VM Ubuntu viene caricato nella `TempDirectory` Windows;
 - il job remoto passa poi all'import reale in `TIA Portal`;
 - non serve piu' copiare manualmente il file XML sulla VM Windows per l'import.
 
@@ -330,9 +330,9 @@ Stato operativo verificato:
 
 Per il test remoto piu' semplice, usa file in:
 
-- `/workspace/output`
-- `/workspace/tmp`
-- oppure path relative come `output/Type_28.xml` e `tmp/mia_cartella_xml`
+- `/workspace/data/output`
+- `/workspace/data/tmp`
+- oppure path relative come `data/output/Type_28.xml` e `data/tmp/mia_cartella_xml`
 
 Questi path sono gia' visibili al container `tia-bridge` nel `compose.dev.yml`.
 
@@ -576,13 +576,13 @@ Invoke-RestMethod `
 
 ### Import remoto passando per Ubuntu e `tia-bridge`
 
-Se il file XML e' sulla VM Ubuntu in `output/Type_28.xml`, puoi usare il bridge Linux cosi':
+Se il file XML e' sulla VM Ubuntu in `data/output/Type_28.xml`, puoi usare il bridge Linux cosi':
 
 ```bash
 curl -X POST http://192.167.1.20:8010/api/jobs/import \
   -H 'Content-Type: application/json' \
   -d '{
-    "artifactPath": "output/Type_28.xml",
+    "artifactPath": "data/output/Type_28.xml",
     "projectPath": "C:\\Users\\Admin\\Desktop\\prova_connessione_openness\\prova_connessione_openness.ap20",
     "targetPath": null,
     "targetName": null,
@@ -597,7 +597,7 @@ Se invece vuoi importare una cartella Linux con piu' XML:
 curl -X POST http://192.167.1.20:8010/api/jobs/import \
   -H 'Content-Type: application/json' \
   -d '{
-    "artifactPath": "output/mia_cartella_xml",
+    "artifactPath": "data/output/mia_cartella_xml",
     "projectPath": "C:\\Users\\Admin\\Desktop\\prova_connessione_openness\\prova_connessione_openness.ap20",
     "targetPath": "Program blocks/Group_1",
     "targetName": null,
@@ -610,7 +610,7 @@ Eccezioni pratiche del workflow remoto:
 
 - il `tia-bridge` trasferisce automaticamente solo i file di `import`;
 - perche' il bridge veda il file, il path deve essere accessibile dentro il container;
-- il modo piu' semplice e' usare `output/...` o `tmp/...` del repository;
+- il modo piu' semplice e' usare `data/output/...` o `data/tmp/...` del repository;
 - dopo il trasferimento, il job gira sul path Windows temporaneo creato dall'agent.
 - se il job remoto mostra ancora un `artifactPath` Linux nel dettaglio finale, il `tia-bridge` non sta usando la versione aggiornata.
 - se il job remoto va in `completed`, in TIA conviene comunque fare refresh o riaprire il progetto per vedere subito il blocco importato.
@@ -718,7 +718,7 @@ Dalla VM Ubuntu:
 curl -X POST http://192.167.1.20:8010/api/jobs/export \
   -H 'Content-Type: application/json' \
   -d '{
-    "artifactPath": "output/remote_exports/Graph_StressTest_Impianto_v3.xml",
+    "artifactPath": "data/output/remote_exports/Graph_StressTest_Impianto_v3.xml",
     "projectPath": "C:\\Users\\Admin\\Desktop\\prova_connessione_openness\\prova_connessione_openness.ap20",
     "targetPath": null,
     "targetName": "Graph_StressTest_Impianto_v3",
@@ -736,7 +736,7 @@ curl http://192.167.1.20:8010/api/jobs
 E controlla il file sulla VM Ubuntu:
 
 ```bash
-ls -l /home/administrator/PLConversionTool/output/remote_exports/Graph_StressTest_Impianto_v3.xml
+ls -l /home/administrator/PLConversionTool/data/output/remote_exports/Graph_StressTest_Impianto_v3.xml
 ```
 
 ### Lettura rapida dell'ultimo job

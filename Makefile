@@ -22,7 +22,7 @@ help:
 	"  generate-input - generate XML (use INPUT_FILE/INPUT_PREFIX filters)" \
 	"  import-generated - import bundles into TIA (use IMPORT_BUNDLE/IMPORT_PREFIX)" \
 	"  generate-and-import - generate-input + import-generated" \
-	"  clean   - remove tmp/ and output/*" \
+	"  clean   - remove data/tmp/ and data/output/*" \
 	"  down    - stop compose services"
 
 doctor:
@@ -67,17 +67,17 @@ lint-backend:
 	@$(COMPOSE) run --rm backend bash -lc "ruff check ."
 
 generate-input:
-	@python3 scripts/generate_from_input.py --input-dir input --output-root output/generated --name-prefix Auto --source "$(INPUT_FILE)" --prefix "$(INPUT_PREFIX)"
+	@python3 scripts/generate_from_input.py --input-dir data/input --output-root data/output/generated --name-prefix Auto --source "$(INPUT_FILE)" --prefix "$(INPUT_PREFIX)"
 
 import-generated:
-	@python3 scripts/import_generated_to_tia.py --output-root output/generated --project-path "$(PROJECT_PATH)" --target-path "$(TARGET_PATH)" --prefix "$(IMPORT_PREFIX)" --bundle "$(IMPORT_BUNDLE)"
+	@python3 scripts/import_generated_to_tia.py --output-root data/output/generated --project-path "$(PROJECT_PATH)" --target-path "$(TARGET_PATH)" --prefix "$(IMPORT_PREFIX)" --bundle "$(IMPORT_BUNDLE)"
 
 generate-and-import: generate-input import-generated
 
 clean:
-	@rm -rf ./tmp/*
-	@rm -rf ./output/*
-	@echo "Pulito: tmp/* e output/*"
+	@rm -rf ./data/tmp/*
+	@rm -rf ./data/output/*
+	@echo "Pulito: data/tmp/* e data/output/*"
 
 down:
 	@$(COMPOSE) down --remove-orphans

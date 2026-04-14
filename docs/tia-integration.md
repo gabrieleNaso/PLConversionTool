@@ -1,10 +1,5 @@
 # Integrazione TIA (bridge + agent Windows)
 
-Questo documento unifica:
-- `docs/tia-bridge-service.md`
-- `docs/tia-windows-agent-api.md`
-- `docs/tia-windows-vm-setup.md`
-
 ## TIA Bridge Service (`tia_bridge/`)
 
 Il servizio `tia_bridge/` e' il boundary layer dedicato all'orchestrazione verso `TIA Portal Openness`.
@@ -20,7 +15,7 @@ Questa separazione evita di mescolare nel backend applicativo dettagli runtime e
 Nel setup dev il container `tia-bridge`:
 - e' sulla stessa rete Compose di `backend` e `frontend`
 - espone una API minima di health/status
-- monta `output/` e `tmp/` come aree condivise di scambio artefatti
+- monta `data/output/` e `data/tmp/` come aree condivise di scambio artefatti
 - prepara il punto di integrazione verso una VM Windows che ospita TIA Portal
 - dopo ogni job `import` accoda automaticamente un job `compile` usando lo stesso `targetPath/targetName`
 

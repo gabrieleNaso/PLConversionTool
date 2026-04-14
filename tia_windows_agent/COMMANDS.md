@@ -159,7 +159,7 @@ Utile prima di un import remoto da Ubuntu.
 
 ```bash
 cd /home/administrator/PLConversionTool
-docker compose -f compose.dev.yml exec tia-bridge ls -l /workspace/output/Graph_StressTest_Impianto_v3.xml
+docker compose -f compose.dev.yml exec tia-bridge ls -l /workspace/data/output/Graph_StressTest_Impianto_v3.xml
 ```
 
 ## 5. Import locale direttamente da Windows
@@ -337,7 +337,7 @@ Il file parte dalla VM Ubuntu, il `tia-bridge` lo copia su Windows e poi l'agent
 curl -X POST http://192.167.1.20:8010/api/jobs/import \
   -H 'Content-Type: application/json' \
   -d '{
-    "artifactPath": "output/Graph_StressTest_Impianto_v3.xml",
+    "artifactPath": "data/output/Graph_StressTest_Impianto_v3.xml",
     "projectPath": "C:\\Users\\Admin\\Desktop\\prova_connessione_openness\\prova_connessione_openness.ap20",
     "targetPath": null,
     "targetName": null,
@@ -354,7 +354,7 @@ Se `Group_1` non esiste ancora sotto `Program blocks`, l'agent prova a crearlo a
 curl -X POST http://192.167.1.20:8010/api/jobs/import \
   -H 'Content-Type: application/json' \
   -d '{
-    "artifactPath": "output/mia_cartella_xml",
+    "artifactPath": "data/output/mia_cartella_xml",
     "projectPath": "C:\\Users\\Admin\\Desktop\\prova_connessione_openness\\prova_connessione_openness.ap20",
     "targetPath": "Program blocks/Group_1",
     "targetName": null,
@@ -373,7 +373,7 @@ Il blocco viene esportato su Windows in una path temporanea e poi sincronizzato 
 curl -X POST http://192.167.1.20:8010/api/jobs/export \
   -H 'Content-Type: application/json' \
   -d '{
-    "artifactPath": "output/remote_exports/Graph_StressTest_Impianto_v3.xml",
+    "artifactPath": "data/output/remote_exports/Graph_StressTest_Impianto_v3.xml",
     "projectPath": "C:\\Users\\Admin\\Desktop\\prova_connessione_openness\\prova_connessione_openness.ap20",
     "targetPath": null,
     "targetName": "Graph_StressTest_Impianto_v3",
@@ -391,18 +391,18 @@ curl http://192.167.1.20:8010/api/jobs
 Infine verifica il file sulla VM Ubuntu:
 
 ```bash
-ls -l /home/administrator/PLConversionTool/output/remote_exports/Graph_StressTest_Impianto_v3.xml
+ls -l /home/administrator/PLConversionTool/data/output/remote_exports/Graph_StressTest_Impianto_v3.xml
 ```
 
 ### Export remoto di un gruppo intero verso Ubuntu
 
-Esporta tutti i blocchi del gruppo `Group_1` nella directory Linux `output/remote_exports/Group_1`.
+Esporta tutti i blocchi del gruppo `Group_1` nella directory Linux `data/output/remote_exports/Group_1`.
 
 ```bash
 curl -X POST http://192.167.1.20:8010/api/jobs/export \
   -H 'Content-Type: application/json' \
   -d '{
-    "artifactPath": "output/remote_exports/Group_1",
+    "artifactPath": "data/output/remote_exports/Group_1",
     "projectPath": "C:\\Users\\Admin\\Desktop\\prova_connessione_openness\\prova_connessione_openness.ap20",
     "targetPath": "Program blocks/Group_1",
     "targetName": null,
@@ -415,7 +415,7 @@ Poi:
 
 ```bash
 curl http://192.167.1.20:8010/api/jobs
-ls -R /home/administrator/PLConversionTool/output/remote_exports/Group_1
+ls -R /home/administrator/PLConversionTool/data/output/remote_exports/Group_1
 ```
 
 ## 10. Workflow completo da Ubuntu/Linux
@@ -428,7 +428,7 @@ Questa sezione raccoglie i comandi operativi principali da usare direttamente da
 curl -X POST http://192.167.1.20:8010/api/jobs/import \
   -H 'Content-Type: application/json' \
   -d '{
-    "artifactPath": "output/generated/import-trial-linked/FB_Import_Trial_Linked_GRAPH_auto.xml",
+    "artifactPath": "data/output/generated/import-trial-linked/FB_Import_Trial_Linked_GRAPH_auto.xml",
     "projectPath": "C:\\Users\\Admin\\Desktop\\prova_connessione_openness\\prova_connessione_openness.ap20",
     "targetPath": "Program blocks/generati da tool",
     "targetName": null,
@@ -448,7 +448,7 @@ ordinata sotto `generati da tool`, usa un path completo tipo
 curl -X POST http://192.167.1.20:8010/api/jobs/import \
   -H 'Content-Type: application/json' \
   -d '{
-    "artifactPath": "output/generated/complex-trial-fix",
+    "artifactPath": "data/output/generated/complex-trial-fix",
     "projectPath": "C:\\Users\\Admin\\Desktop\\prova_connessione_openness\\prova_connessione_openness.ap20",
     "targetPath": "Program blocks/generati da tool/complex-trial-fix",
     "targetName": null,
@@ -465,7 +465,7 @@ Per `compile`, `artifactPath` resta un placeholder tecnico obbligatorio.
 curl -X POST http://192.167.1.20:8010/api/jobs/compile \
   -H 'Content-Type: application/json' \
   -d '{
-    "artifactPath": "output/generated/compile-request.json",
+    "artifactPath": "data/output/generated/compile-request.json",
     "projectPath": "C:\\Users\\Admin\\Desktop\\prova_connessione_openness\\prova_connessione_openness.ap20",
     "targetPath": "Program blocks/generati da tool",
     "targetName": null,
@@ -480,7 +480,7 @@ curl -X POST http://192.167.1.20:8010/api/jobs/compile \
 curl -X POST http://192.167.1.20:8010/api/jobs/export \
   -H 'Content-Type: application/json' \
   -d '{
-    "artifactPath": "output/remote_exports/Complex_Trial_Fix_GRAPH.xml",
+    "artifactPath": "data/output/remote_exports/Complex_Trial_Fix_GRAPH.xml",
     "projectPath": "C:\\Users\\Admin\\Desktop\\prova_connessione_openness\\prova_connessione_openness.ap20",
     "targetPath": "Program blocks/generati da tool/complex-trial-fix",
     "targetName": "Complex_Trial_Fix",
@@ -495,7 +495,7 @@ curl -X POST http://192.167.1.20:8010/api/jobs/export \
 curl -X POST http://192.167.1.20:8010/api/jobs/export \
   -H 'Content-Type: application/json' \
   -d '{
-    "artifactPath": "output/remote_exports/complex-trial-fix",
+    "artifactPath": "data/output/remote_exports/complex-trial-fix",
     "projectPath": "C:\\Users\\Admin\\Desktop\\prova_connessione_openness\\prova_connessione_openness.ap20",
     "targetPath": "Program blocks/generati da tool/complex-trial-fix",
     "targetName": null,
@@ -526,8 +526,8 @@ done
 ### Verifica file esportati su Ubuntu
 
 ```bash
-ls -l /home/administrator/PLConversionTool/output/remote_exports
-find /home/administrator/PLConversionTool/output/remote_exports -maxdepth 3 -type f | sort
+ls -l /home/administrator/PLConversionTool/data/output/remote_exports
+find /home/administrator/PLConversionTool/data/output/remote_exports -maxdepth 3 -type f | sort
 ```
 
 ### Chiamata diretta dalla VM Ubuntu all'agent Windows

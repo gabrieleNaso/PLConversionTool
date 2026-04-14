@@ -44,10 +44,10 @@ Controllo rapido dallo status:
 curl -sS http://127.0.0.1:8010/api/status
 ```
 
-## Generare XML senza AI (da file in `input/`)
+## Generare XML senza AI (da file in `data/input/`)
 
 ### 1) Metti i sorgenti AWL
-Metti i file in `input/` con estensione:
+Metti i file in `data/input/` con estensione:
 - `.awl`
 - `.txt`
 - `.md` (viene usato il primo blocco fenced che contiene `NETWORK`)
@@ -59,7 +59,7 @@ make generate-input
 ```
 
 Output:
-- un bundle per file in `output/generated/<nome>/`
+- un bundle per file in `data/output/generated/<nome>/`
 - file baseline sempre presenti:
   - `FB_<Name>_GRAPH_auto.xml`
   - `DB_<Name>_global_auto.xml`
@@ -81,7 +81,7 @@ make generate-input INPUT_PREFIX="romania_"
 
 ## Import in TIA (via bridge) + compile automatica
 
-### Import batch di tutto `output/generated/`
+### Import batch di tutto `data/output/generated/`
 
 ```bash
 make import-generated \
@@ -99,7 +99,7 @@ make import-generated \
 ```
 
 Alternative:
-- `IMPORT_BUNDLE`: match esatto del nome cartella in `output/generated/`
+- `IMPORT_BUNDLE`: match esatto del nome cartella in `data/output/generated/`
 - `IMPORT_PREFIX`: importa solo cartelle che iniziano con quel prefisso
 
 Note operative:
@@ -125,7 +125,7 @@ curl -sS -X POST "http://127.0.0.1:8000/api/conversion/export" \
     "sequenceName":"MySeq_001",
     "sourceName":"myseq_001.awl",
     "awlSource":"NETWORK 1\n      U     S1\n      U     M10.0\n      S     S29\n",
-    "outputDir":"output/generated/myseq_001"
+    "outputDir":"data/output/generated/myseq_001"
   }'
 ```
 
@@ -135,7 +135,7 @@ curl -sS -X POST "http://127.0.0.1:8000/api/conversion/export" \
 curl -sS -X POST "http://127.0.0.1:8000/api/tia/jobs/import" \
   -H "Content-Type: application/json" \
   -d '{
-    "artifactPath":"output/generated/myseq_001",
+    "artifactPath":"data/output/generated/myseq_001",
     "projectPath":"C:\\Users\\Admin\\Desktop\\prova_connessione_openness\\prova_connessione_openness.ap20",
     "targetPath":"Program blocks/generati da tool",
     "targetName":null,
@@ -215,7 +215,7 @@ make shell-backend
 make shell-tia
 ```
 
-### Clean output/tmp (attenzione: cancella)
+### Clean data/output e data/tmp (attenzione: cancella)
 
 ```bash
 make clean

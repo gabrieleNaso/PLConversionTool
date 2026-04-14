@@ -53,10 +53,10 @@ def _poll_job(base_url: str, job_id: str, timeout_s: int) -> dict:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Import generated bundles in output/generated into a TIA project via backend API."
+        description="Import generated bundles in data/output/generated into a TIA project via backend API."
     )
     parser.add_argument("--backend-url", default=os.getenv("BACKEND_URL", "http://127.0.0.1:8000"))
-    parser.add_argument("--output-root", default="output/generated")
+    parser.add_argument("--output-root", default="data/output/generated")
     parser.add_argument(
         "--project-path",
         default=os.getenv("TIA_PROJECT_PATH", ""),
@@ -119,4 +119,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

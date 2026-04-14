@@ -22,8 +22,8 @@ def get_windows_agent_url() -> str | None:
 def get_runtime_paths() -> dict[str, str]:
     return {
         "workspace": os.getenv("TIA_PROJECT_ROOT", "/workspace").strip() or "/workspace",
-        "output": os.getenv("TIA_OUTPUT_DIR", "/workspace/output").strip() or "/workspace/output",
-        "tmp": os.getenv("TIA_TMP_DIR", "/workspace/tmp").strip() or "/workspace/tmp",
+        "output": os.getenv("TIA_OUTPUT_DIR", "/workspace/data/output").strip() or "/workspace/data/output",
+        "tmp": os.getenv("TIA_TMP_DIR", "/workspace/data/tmp").strip() or "/workspace/data/tmp",
     }
 
 

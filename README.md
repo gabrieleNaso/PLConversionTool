@@ -24,7 +24,7 @@ API backend operative del primo slice:
 
 - `POST /api/conversion/bootstrap`: scaffold e piano iniziale.
 - `POST /api/conversion/analyze`: parsing AWL incrementale, IR, issue locali e preview del pacchetto XML completo.
-- `POST /api/conversion/export`: scrittura del bundle di analisi e delle preview XML del pacchetto completo in `output/`.
+- `POST /api/conversion/export`: scrittura del bundle di analisi e delle preview XML del pacchetto completo in `data/output/`.
 
 Aggiornamenti operativi consolidati:
 

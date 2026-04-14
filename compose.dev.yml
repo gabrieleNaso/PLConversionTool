@@ -18,8 +18,8 @@ services:
       TIA_BRIDGE_PORT: ${TIA_BRIDGE_PORT:-8010}
       TIA_BRIDGE_MODE: ${TIA_BRIDGE_MODE:-real}
       TIA_PROJECT_ROOT: /workspace
-      TIA_OUTPUT_DIR: /workspace/output
-      TIA_TMP_DIR: /workspace/tmp
+      TIA_OUTPUT_DIR: /workspace/data/output
+      TIA_TMP_DIR: /workspace/data/tmp
       TIA_VMWARE_NETWORK_MODE: ${TIA_VMWARE_NETWORK_MODE:-bridged}
       TIA_WINDOWS_TRANSPORT: ${TIA_WINDOWS_TRANSPORT:-http}
       TIA_WINDOWS_HOST: ${TIA_WINDOWS_HOST:-192.167.1.41}
@@ -30,8 +30,8 @@ services:
       - "${TIA_BRIDGE_PORT:-8010}:8010"
     volumes:
       - ./:/workspace:delegated
-      - ./output:/workspace/output
-      - ./tmp:/workspace/tmp
+      - ./data/output:/workspace/data/output
+      - ./data/tmp:/workspace/data/tmp
       - ./.docker/cache:/home/${USERNAME:-dev}/.cache
       - ${HOME}/.gitconfig:/home/${USERNAME:-dev}/.gitconfig:ro
       - ${HOME}/.ssh:/home/${USERNAME:-dev}/.ssh:ro
@@ -77,8 +77,8 @@ services:
       - "${BACKEND_PORT:-8000}:8000"
     volumes:
       - ./:/workspace:delegated
-      - ./output:/workspace/output
-      - ./tmp:/workspace/tmp
+      - ./data/output:/workspace/data/output
+      - ./data/tmp:/workspace/data/tmp
       - ./.docker/cache:/home/${USERNAME:-dev}/.cache
       - ${HOME}/.gitconfig:/home/${USERNAME:-dev}/.gitconfig:ro
       - ${HOME}/.ssh:/home/${USERNAME:-dev}/.ssh:ro

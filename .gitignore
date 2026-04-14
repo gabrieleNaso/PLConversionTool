@@ -22,7 +22,7 @@ frontend/node_modules
 .vscode/
 .idea/
 .DS_Store
-output/*
-!output/README.md
-tmp/*
-!tmp/README.md
+data/output/*
+!data/output/README.md
+data/tmp/*
+!data/tmp/README.md
