@@ -1,4 +1,4 @@
-Specifica master consolidata
+Specifica master consolidata del 14-04-2026
 per le regole di traduzione e generazione XML
 AWL -> IR -> GRAPH / GlobalDB / FC LAD per TIA Portal V20
 
@@ -354,6 +354,45 @@ Nel DB HMI devono finire:
 - strutture visualizzate;
 - campi di supporto all'operatore;
 - eventuali testi o numerazioni di supporto HMI.
+
+## 26-bis. Regola hard di naming con suffisso e ownership delle variabili
+
+La sola allocazione per famiglia non basta.
+
+Ogni variabile globale o applicativa emessa dal convertitore deve avere contemporaneamente:
+
+- DB di appartenenza corretto;
+- path simbolico completo coerente con quel DB;
+- naming coerente con la famiglia dati;
+- eventuale prefisso o suffisso obbligatorio del modello di progetto o del DB fisso di destinazione.
+
+Regola hard:
+
+- non è ammesso emettere variabili globali senza ownership semantica o senza collocazione stabile nel DB corretto;
+- non è ammesso generare riferimenti in `GRAPH`, `FC` o `HMI` verso nomi generici, placeholder o member non allineati al DB che dovrebbe contenerli;
+- una variabile è considerata valida solo se il suo nome finale e il suo path finale coincidono con il contratto dati del blocco che la espone.
+
+Conseguenze operative per famiglia:
+
+- nel `DB 11..` i nomi devono essere emessi sotto le strutture canoniche del modello, ad esempio `Transitions.*`, `Memory.*`, `Seq Status.*`;
+- nel `DB 18.. EXT` i riferimenti esterni devono mantenere naming coerente con la sorgente impianto o col contratto del blocco esterno;
+- nel `DB 19.. AUX` timer, contatori, one-shot e appoggi devono restare nella famiglia `AUX` con naming coerente al loro ruolo tecnico;
+- nel DB HMI popup, condizioni e campi operatore devono restare sotto le strutture HMI canoniche;
+- nei DB fissi esterni del progetto il convertitore deve rispettare anche la convenzione di naming propria del DB target, inclusi eventuali prefissi o suffissi storici obbligatori.
+
+Esempi da considerare vincolanti come forma del target:
+
+- comandi e preset nel DB tipo OPIN -> naming della famiglia `Pxxx`;
+- uscite e stati comandati nel DB tipo OPOUT -> naming della famiglia `Lxxx`;
+- transizioni semantiche del sequenziatore -> path tipo `Transitions.<nome>`;
+- memorie semantiche del sequenziatore -> path tipo `Memory.<nome>`;
+- riferimenti HMI -> path tipo `Conditions.<gruppo>.*` oppure `HMI.*` secondo la struttura del DB HMI.
+
+Validator obbligatorio:
+
+- per ogni simbolo globale emesso il convertitore deve verificare che esista una ed una sola destinazione valida nel DB corretto;
+- se il naming richiesto dal DB target non è determinabile con certezza, il generatore non deve inventare un nome neutro: deve segnalare il punto come non risolto oppure richiedere mapping esplicito;
+- la generazione di nomi provvisori del tipo `var_*`, `temp_*`, `memory_*` o equivalenti è ammessa solo per locali tecnici interni non esposti come contratto globale del pacchetto.
 
 # Parte V - Regole di costruzione dei backend target
 

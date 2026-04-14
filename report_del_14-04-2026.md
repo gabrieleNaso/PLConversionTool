@@ -1,4 +1,4 @@
-# Report aggiornato del 13-04-2026
+# Report aggiornato del 14-04-2026
 
 ## Progetto
 Conversione di sequenziatori PLC da AWL a GRAPH in TIA Portal V20 tramite XML.
@@ -731,6 +731,39 @@ Conseguenze:
 - la HMI usa la stessa base semantica per popup e diagnostica;
 - si evita di replicare più volte la stessa logica complessa in blocchi diversi.
 
+### 32.9A Regola hard sul naming con suffisso e ownership dei DB
+
+La sola suddivisione dei dati per famiglie non è sufficiente.
+
+Il confronto con i tipici reali mostra che molte variabili devono essere non solo allocate nel DB corretto, ma anche nominate secondo la convenzione richiesta dal DB stesso; in caso contrario il blocco viene importato ma i riferimenti simbolici restano scollegati oppure incoerenti.
+
+Regola hard:
+
+- ogni variabile globale emessa dal tool deve avere un owner DB deterministico;
+- ogni riferimento usato in `GRAPH`, `FC 02`, `FC 03`, `FC 04`, `FC 06` e HMI deve puntare al path reale del member nel DB che la contiene;
+- se il DB di destinazione impone una convenzione di naming con prefisso o suffisso, il generatore deve rispettarla integralmente e non può sostituirla con nomi generici.
+
+Conseguenze pratiche da considerare fissate:
+
+- nel DB tipo OPIN i comandi e i preset devono restare nella famiglia `Pxxx`;
+- nel DB tipo OPOUT uscite, lampade e stati comandati devono restare nella famiglia `Lxxx`;
+- nel DB base `11..` le variabili del sequenziatore devono restare nei rami `Transitions`, `Memory`, `Seq Status`;
+- nel `DB 19.. AUX` i supporti tecnici devono restare nella famiglia ausiliaria e non migrare con naming libero in altri DB;
+- nel DB HMI popup e condizioni devono mantenere il path HMI coerente al gruppo di appartenenza.
+
+Non è quindi ammesso che il generatore produca variabili globali con nomi neutri o incompleti quando il target richiede naming specifico.
+
+Esempi da considerare errore di generazione:
+
+- usare un nome semantico libero dove il DB fisso richiede `P013`, `L045` o equivalente;
+- referenziare da una FC un booleano globale senza il path del DB corretto;
+- creare member globali provvisori che non corrispondono a nessuna convenzione reale del progetto.
+
+Regola di validazione:
+
+- il builder deve verificare per ogni simbolo globale il triplo vincolo `DB corretto + path corretto + naming corretto`;
+- se uno dei tre elementi manca, la variabile va marcata come non risolta e non considerata valida per l'emissione finale.
+
 ### 32.10 Regola di normalizzazione delle memorie e dei timer
 
 I timer AWL `Txx`, i preset `S5T`, i bit di appoggio pulsati e le memorie tecniche non devono restare nel DB sequenza monolitico.
@@ -806,6 +839,10 @@ I casi legacy mostrano che il target TIA può:
 Conseguenza progettuale:
 
 - il convertitore deve separare `identità logica del passo` da `nome finale del passo`;
+
+Corollario operativo sul naming delle variabili:
+
+> la stessa libertà non vale per le variabili globali del pacchetto. Per queste il builder non può inventare naming libero: deve rispettare DB owner, path e convenzione richiesta dal blocco o DB target.
 - la politica di naming finale del GRAPH deve essere una regola esplicita del builder e non una conseguenza accidentale del parser AWL.
 
 ---
