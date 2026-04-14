@@ -1,0 +1,2282 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Document>
+  <Engineering version="V20" />
+  <SW.Blocks.GlobalDB ID="0">
+    <AttributeList>
+      <AutoNumber>false</AutoNumber>
+      <Interface><Sections xmlns="http://www.siemens.com/automation/Openness/SW/Interface/v5">
+  <Section Name="Static">
+    <Member Name="P001" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P001-T1A - Selectie Mod Operare Manual</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P002" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P002-T1A - Selectie Mod Operare Automat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P003" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P003-T1A - Ciclu Automat - Cmd. Start</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P004" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P004-Invertere Auxiliare - Reset</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P005" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P005-T1A - Control Pupitru Cabina</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P006" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P006-T1A - Blocare Incarcare</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P007" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P007-T1A - CaleRole - Cmd. Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P008" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P008-T1A - CaleRole - Cmd. Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P009" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P009-T1A - Opritor - Cmd. Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P010" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P010-T1A - Opritor - Cmd. Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P011" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P011-T1A - Lant (transport) - Cmd. Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P012" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P012-T1A - Lant (transport) - Cmd. Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P013" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P013-T1A - Aruncator - Cmd. Sus</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P014" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P014-T1A - Aruncator - Cmd. Jos</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P015" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P015-T1A - Control Pupitru Local</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P016" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P016-T1C - Control Pupitru Cabina</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P017" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P017-T1C - Selectie Mod Operare Manual</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P018" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P018-T1C - Selectie Mod Operare Automat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P019" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P019-T1C - Ciclu Automat - Cmd. Start</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P020" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P020-T1C - CaleRole - Cmd. Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P021" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P021-T1C - CaleRole - Cmd. Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P022" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P022-T1C - Opritor - Cmd. Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P023" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P023-T1C - Opritor - Cmd. Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P024" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P024-T1C - Lant (transport) - Cmd. Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P025" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P025-T1C - Lant (transport) - Cmd. Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P026" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P026-T1C - Aruncator - Cmd. Sus</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P027" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P027-T1C - Aruncator - Cmd. Jos</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P028" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P028-T1C - Blocare Incarcare</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P029" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P029-T1C - Control Pupitru Local</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P030" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P030-T4 - Selectie Mod Operare Manual</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P031" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P031-T4 - Selectie Mod Operare Automat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P032" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P032-T4 - Ciclu Automat - Cmd. Start</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P033" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P033-T4 - CaleRole 1 - Cmd. Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P034" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P034-T4 - CaleRole 1 - Cmd. Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P035" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P035-T4 - CaleRole 2 - Cmd. Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P036" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P036-T4 - CaleRole 2 - Cmd. Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P037" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P037-T4 - Lant (rostogolire) - Cmd. Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P038" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P038-T4 - Lant (rostogolire) - Cmd. Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P039" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P039-T4 - Lant (transport) - Cmd. Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P040" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P040-T4 - Lant (transport) - Cmd. Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P041" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P041-T4 - Aruncator - Cmd. Sus</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P042" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P042-T4 - Aruncator - Cmd. Jos</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P043" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P043-T4 - Excentric - Cmd. Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P044" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P044-T4 - Blocare Rotire Excentric</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P045" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P045-T4 - Excentric - Cmd. Pas</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P046" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P046-T4 - Blocare Descarcare</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P047" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P047-T4 - Excentric - Cmd. Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P048" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P048-T1E - Selectie Mod Operare Manual</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P049" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P049-T1E - Selectie Mod Operare Automat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P050" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P050-T1E - Ciclu Automat - Cmd. Start</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P051" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P051-T1E - CaleRole - Cmd. Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P052" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P052-T1E - CaleRole - Cmd. Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P053" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P053-T1E - Aruncator - Cmd. Sus</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P054" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P054-T1E - Aruncator - Cmd. Jos</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P055" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P055-T1E - Lant Colector - Cmd. Sus</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P056" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P056-T1E - Lant Colector - Cmd. Jos</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P057" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P057-T4 - Lant (rostogolire) - Cmd. Stop</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P058" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P058-T5 - Selectie Mod Operare Manual</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P059" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P059-T5 - Selectie Mod Operare Automat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P060" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P060-T5 - Ciclu Automat - Cmd. Start</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P061" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P061-T5 - CaleRole - Cmd. Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P062" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P062-T5 - CaleRole - Cmd. Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P063" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P063-T5 - Lant (rostogolire) - Cmd. Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P064" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P064-T5 - Lant (rostogolire) - Cmd. Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P065" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P065-T5 - Lant (transport) - Cmd. Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P066" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P066-T5 - Lant (transport) - Cmd. Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P067" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P067-T5 - Aruncator - Cmd. Sus</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P068" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P068-T5 - Aruncator - Cmd. Jos</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P069" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P069-T5 - Excentric - Cmd. Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P070" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P070-T5 - Blocare Descarcare</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P071" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P071-T5 - Excentric - Cmd. Pas</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P072" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P072-T5 - Excentric - Cmd. Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P073" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P073-T6 - Selectie Mod Operare Manual</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P074" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P074-T6 - Selectie Mod Operare Automat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P075" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P075-T6 - Ciclu Automat - Cmd. Start</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P076" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P076-T6 - CaleRole - Cmd. Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P077" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P077-T6 - CaleRole - Cmd. Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P078" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P078-T6 - Lant (rostogolire) - Cmd. Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P079" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P079-T6 - Lant (rostogolire) - Cmd. Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P080" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P080-T6 - Lant (transport) - Cmd. Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P081" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P081-T6 - Lant (transport) - Cmd. Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P082" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P082-T6 - Aruncator - Cmd. Sus</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P083" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P083-T6 - Aruncator - Cmd. Jos</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P084" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P084-T6 - Excentric - Cmd. Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P085" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P085-T6 - Blocare Rotire Excentric</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P086" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P086-T6 - Excentric - Cmd. Pas</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P087" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P087-T6 - Blocare Descarcare</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P088" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P088-T1D - Blocare Incarcare</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P089" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P089-T1D - Selectie Mod Operare Manual</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P090" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P090-T1D - Selectie Mod Operare Automat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P091" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P091-T1D - Ciclu Automat - Cmd. Start</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P092" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P092-T1D - CaleRole - Cmd. Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P093" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P093-T1D - CaleRoel - Cmd. Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P094" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P094-T1D - Opritor - Cmd. Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P095" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P095-T1D - Opritor - Cmd. Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P096" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P096-T1E - Opritor - Cmd. Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P097" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P097-T1E - Opritor - Cmd. Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P098" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P098-T1D - Aruncator - Cmd. Sus</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P099" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P099-T1D - Aruncator - Cmd. Jos</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P100" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P100-T6 - Excentric - Cmd. Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P101" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P101-T7 - Selectie Mod Operare Manual</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P102" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P102-T7 - Selectie Mod Operare Automat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P103" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P103-T7 - Ciclu Automat - Cmd. Start</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P104" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P104-T7 - CaleRole 1 - Cmd. Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P105" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P105-T7 - CaleRole 1 - Cmd. Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P106" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P106-T7 - CaleRole 2 - Cmd. Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P107" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P107-T7 - CaleRole 2 - Cmd. Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P108" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P108-T7 - Aruncator - Cmd. Sus</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P109" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P109-T7 - Aruncator - Cmd. Jos</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P110" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P110-T7 - Excentric 1 - Cmd. Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P111" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P111-T7 - Excentric 1 - Cmd. Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P112" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P112-T7 - Excentric 1 - Cmd. Pas</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P113" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P113-T7 - Excentric 2 - Cmd. Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P114" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P114-T7 - Excentric 2 - Cmd. Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P115" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P115-T7 - Excentric 2 - Cmd. Pas</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P116" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P116-T7A - Lant (rostogolire) - Cmd. Stop</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P117" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P117-T7ABC - Selectie Pupitru Local pt. T7A, T7B, T7C</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P118" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P118-T7ABC - Selectie Pupitru Cabina pt. T7A, T7B, T7C</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P119" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P119-T7A - Selectie Mod Operare Manual</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P120" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P120-T7A - Selectie Mod Operare Automat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P121" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P121-T7A - Ciclu Automat - Cmd. Start</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P122" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P122-T7A - CaleRole 1 - Cmd. Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P123" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P123-T7A - CaleRole 1 - Cmd. Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P124" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P124-T7A - CaleRole 2 - Cmd. Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P125" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P125-T7A - CaleRole 2 - Cmd. Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P126" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P126-T7A - Aruncator - Cmd. Sus</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P127" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P127-T7A - Aruncator - Cmd. Jos</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P128" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P128-T7A - Excentric 1 - Cmd. Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P129" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P129-T7A - Blocare Descarcare</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P130" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P130-T7A - Excentric 1 - Cmd. Pas</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P131" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P131-T7A - Excentric 2 - Cmd. Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P132" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P132-T7A - Lant (rostogolire) - Cmd. Stop</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P133" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P133-T7A - Excentric 2 - Cmd. Pas</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P134" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P134-T7A - Lant (rostogolire) - Cmd. Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P135" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P135-T7A - Lant (rostogolire) - Cmd. Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P136" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P136-T7A - Lant (transport) - Cmd. Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P137" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P137-T7A - Lant (transport) - Cmd. Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P138" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P138-T7A - Excentric 1 - Cmd. Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P139" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P139-T7A - Excentric 2 - Cmd. Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P140" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P140-T1A - Lant - Mod Operare Pas</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P141" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P141-T1A - Lant - Mod Operare Continuu</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P142" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P142-T7B - Selectie Mod Operare Manual</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P143" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P143-T7B - Selectie Mod Operare Automat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P144" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P144-T7B - Ciclu Automat - Cmd. Start</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P145" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P145-T7B - CaleRole - Cmd. Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P146" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P146-T7B - CaleRole - Cmd. Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P147" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P147-T7B - Aruncator 1 - Cmd. Sus</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P148" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P148-T7B - Aruncator 1 - Cmd. Jos</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P149" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P149-T7B - Aruncator 2 - Cmd. Sus</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P150" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P150-T7B - Aruncator 2 - Cmd. Jos</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P151" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P151-T7B - Lant (rostogolire) - Cmd. Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P152" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P152-T7B - Lant (rostogolire) - Cmd. Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P153" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P153-T7B - Lant (transport) - Cmd. Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P154" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P154-T7B - Lant (transport) - Cmd. Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P155" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P155-T7B - Lant Colector - Cmd. Sus</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P156" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P156-T7B - Lant Colector - Cmd. Jos</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P157" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P157- Oprire Sirena Alarma Critica</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P158" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P158-T7C - Selectie Mod Operare Manual</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P159" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P159-T7C - Selectie Mod Operare Automat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P160" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P160-T7C - Ciclu Automat - Cmd. Start</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P161" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P161-T7C - CaleRole - Cmd. Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P162" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P162-T7C - CaleRole - Cmd. Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P163" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P163-T7C - Aruncator - Cmd. Sus</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P164" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P164-T7C - Aruncator - Cmd. Jos</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P165" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P165-T7C - Lant Colector - Cmd. Sus</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P166" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P166-T7C - Lant Colector - Cmd. Jos</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P167" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P167-T7C - Opritor Mobil - Cmd. Sus</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P168" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P168-T7C - Opritor Mobil - Cmd. Jos</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P169" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P169-T7C - Activare/Dezactivare Reintrare Teva</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P170" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P170-T1C - Lant - Mod Operare Pas</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P171" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P171-T1C - Lant - Mod Operare Continuu</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P172" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P172-LM4 - Control Pupitru Cabina</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P173" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P173-LM4 - Control Pupitru Local</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P174" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P174-LM5 - Control Pupitru Cabina</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P175" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P175-LM5 - Control Pupitru Local</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P176" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P176-LM6 - Control Pupitru Cabina</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P177" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P177-LM6 - Control Pupitru Local</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P178" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P178-T7C - CaleRole - Cmd. Sus</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P179" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P179-T7C - CaleRole - Cmd. Jos</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P180" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P180-Apa - Selectie Mod Operare Manual</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P181" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P181-Apa - Selectie Mod Operare Automat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P182" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P182-Apa - Ciclu Automat - Cmd. Start</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P183" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P183-T7C - Debitare Selectie Contraprobe</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P184" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P184-Apa - Selectie Insertie/Dezinsertie Destunderizator</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P185" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P185-Apa - Selectie Insertie/Dezinsertie Cap Calire</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P186" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P186-Apa - Pompa 1 (pompa principala) - Cmd. Start</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P187" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P187-Apa - Pompa 1 (pompa principala) - Cmd.Stop</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P188" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P188-Apa - Pompa 2 (pompa principala) - Cmd. Start</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P189" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P189-Apa - Pompa 2 (pompa principala) - Cmd. Stop</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P190" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P190-Apa - Pompa 3 (pompa principala) - Cmd. Start</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P191" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P191-Apa - Pompa 3 (pompa principala) - Cmd. Stop</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P192" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P192-Apa - Pompa 4 (pompa principala) - Cmd. Start</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P193" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P193-Apa - Pompa 4 (pompa principala) - Cmd. Stop</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P194" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P194-Apa - Pompa 5 (pompa turnuri racire) - Cmd. Start</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P195" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P195-Apa - Pompa 5 (pompa turnuri racire) - Cmd. Stop</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P196" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P196-Apa - Pompa 5R - Cmd. Start</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P197" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P197-Apa - Pompa 5R - Cmd. Stop</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P198" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P198-Apa - Pompa 5 - Selectie</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P199" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P199-Apa - Pompa 5R -  Selectie</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P200" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P100-Apa - Pompa 8 (pompa drenaj) - Cmd. Start</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P201" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P201-Apa - Pompa 8 (pompa drenaj) - Cmd. Stop</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P202" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P202-Apa - Pompa 9 (pompa tunder) - Cmd. Start</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P203" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P203-Apa - Pompa 9 (pompa tunder) - Cmd. Stop</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P204" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P204-Apa - Pompa 10 (pompa evacuare canal) - Cmd. Start</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P205" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P205-Apa - Pompa 10 (pompa evacuare canal) - Cmd. Stop</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P206" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P206-Apa - Pompa 11 (pompa evacuare avarie) - Cmd. Start</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P207" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P207-Apa - Pompa 11 (pompa evacuare avarie) - Cmd. Stop</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P208" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P208-Apa - Pompa Rez (1-4) Cmd. Start</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P209" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P209-Apa - pompa Rez (1-4) Cmd. Stop</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P210" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P210-Apa - Transportator Elicoidal TE1 - Cmd. Start</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P211" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P211-Apa - Transportator Elicoidal TE1 - Cmd. Stop</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P212" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P212-Apa - Transportator Elicoidal TE2 - Cmd. Start</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P213" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P213-Apa - Transportator Elicoidal TE2 - Cmd. Stop</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P214" Datatype="Bool" />
+    <Member Name="P215" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P215-Dezactivare buzzer</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P216" Datatype="Bool" />
+    <Member Name="P217" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P217-Apa - Ventilator Turn Racire 1 - Cmd. Stop</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P218" Datatype="Bool" />
+    <Member Name="P219" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P219-Apa - Ventilator Turn Racire 2 - Cmd. Stop</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P220" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P220 - Apa - Pompa 1 (pompa principala) - Btn + (Incrementare Setpoint)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P221" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P220 - Apa - Pompa 1 (pompa principala) - Btn - (Decrementare Setpoint)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P222" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P222-Apa - Selectie/Deselectie Pompa 1</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P223" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P223-Apa - Selectie/Deselectie Pompa 2</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P224" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P224-Apa - Selectie/Deselectie Pompa 3</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P225" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P225-Apa - Selectie/Deselectie Pompa 4</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P226" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P226-Apa - Selectie/Deselectie Pompa Rez</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P227" Datatype="Bool" />
+    <Member Name="P228" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P228-Apa - Ventilator Turn Racire 1 - Cmd. Start Turatie Mica</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P229" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P229-Apa - Ventilator Turn Racire 1 - Cmd. Start Turatie Mare</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P230" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P230-Apa - Ventilator Turn Racire 2 - Cmd. Start Turatie Mica</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P231" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P231-Apa - Ventilator Turn Racire 2 - Cmd. Start Turatie Mare</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P232" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P232-Apa - Control Pupitru Local</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P233" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P233-Apa - Control Pupitru Cabina</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P234" Datatype="Bool" />
+    <Member Name="P235" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P235-Apa - Y1 - Comanda ON/OFF in Mod Operare Manual</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P236" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P236-Apa - Y2 - Comanda ON/OFF in Mod Operare Manual</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P237" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P237-Apa - Y3 - Comanda ON/OFF in Mod Operare Manual</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P238" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P238-Apa - Deztunderizator - Mod Operare Automat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P239" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P239-T3 - Deztunderizator - Cmd. Start</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P240" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P240-T3 - Deztunderizator - Cmd. Stop</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P241" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P241-T3 - CaleRole - Cmd. Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P242" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P242-T3 - CaleRole - Cmd. Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P243" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P243-T3 - Cap Calitor 1 - Cmd. Ridicare</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P244" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P244-T3 - Cap Calitor 1 - Cmd. Coborare</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P245" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P245-T3 - Cap Calitor 2 - Cmd. Ridicare</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P246" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P246-T3 - Cap Calitor 2 - Cmd. Coborare</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P247" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P247-T3 - Cap Calitor 3 - Cmd. Ridicare</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P248" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P248-T3 - Cap Calitor 3 - Cmd. Coborare</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P249" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P249-T3 - Grinda - Cmd. Ridicare</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P250" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P250-T3 - Grinda - Cmd. Coborare</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P251" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P251-T3 - Filtru - Cmd. Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P252" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P252-T3 - Filtru - Cmd. Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P253" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P253-T3 - Servovalvola Filtru - Cmd. Start</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P254" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P254-Apa - Deztunderizator - Mod Operare Manual</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P255" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P255-T3 - Servovalvola - Cmd. Start Stropire</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P256" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P256-Apa - Ciclu Automat Deztunderizator - Cmd. Start</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P257" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P257-T7A - Selectie Mod Operare Manual (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P258" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P258-T7A - Selectie Mod Operare Automat (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P259" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P259-T7A - Ciclu Automat - Cmd. Start (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P260" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P260-T7A - CaleRole 1 - Cmd. Inainte (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P261" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P261-T7A - CaleRole 1 - Cmd. Inapoi (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P262" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P262-T7A - CaleRole 2 - Cmd. Inainte (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P263" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P263-T7A - CaleRole 2 - Cmd. Inapoi (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P264" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P264-T7A - Aruncator - Cmd. Sus (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P265" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P265-T7A - Aruncator - Cmd. Jos (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P266" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P266-T7A - Excentric 1 - Cmd. Inainte (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P267" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P267-T7A - Excentric 1 - Cmd. Pas (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P268" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P268-T7A - Excentric 2 - Cmd. Inainte (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P269" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P269-T7A - Excentric 2 - Cmd. Pas (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P270" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P270-T7A - Lant (rostogolire) - Cmd. Inainte (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P271" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P271-T7A - Lant (rostogolire) - Cmd. Inapoi (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P272" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P272-T7A - Lant (transport) - Cmd. Inainte (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P273" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P273-T7A - Lant (transport) - Cmd. Inapoi (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P274" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P274-T7A - Blocare Descarcare (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P275" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P275-T7A - Excentric 1 - Cmd. Inapoi (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P276" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P276-T7A - Excentric 2 - Cmd. Inapoi (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P277" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P277-T4 - Lant - Mod Operare Pas (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P278" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P278-T4 - Lant - Mod Operare Continuu (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P279" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P279-T5 - Lant - Mod Operare Pas (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P280" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P280-T5 - Lant - Mod Operare Continuu (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P281" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P281-T7B - Selectie Mod Operare Manual (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P282" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P282-T7B - Selectie Mod Operare Automat (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P283" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P283-T7B - Ciclu Automat - Cmd. Start (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P284" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P284-T7B - CaleRole - Cmd. Inainte (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P285" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P285-T7B - CaleRole - Cmd. Inapoi (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P286" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P286-T7B - Aruncator 1 - Cmd. Sus (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P287" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P287-T7B - Aruncator 1 - Cmd. Jos (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P288" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P288-T7B - Aruncator 2 - Cmd. Sus (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P289" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P289-T7B - Aruncator 2 - Cmd. Jos (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P290" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P290-T7B - Lant (rostogolire) - Cmd. Inainte (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P291" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P291-T7B - Lant (rostogolire) - Cmd. Inapoi (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P292" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P292-T7B - Lant (transport) - Cmd. Inainte (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P293" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P293-T7B - Lant (transport) - Cmd. Inapoi (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P294" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P294-T7B - Lant Colector - Cmd. Ridicare (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P295" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P295-T7B - Lant Colector - Cmd. Coborare (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P296" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P296-T7B - Lant - Mod Operare Pas</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P297" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P297-T7B - Lant - Mod Operare Continuu</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P298" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P298-T6 - Lant - Mod Operare Pas</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P299" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P299-T6 - Lant - Mod Operare Continuu</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P300" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P300-T7A - Lant - Mod Operare Pas</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P301" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P301-T7A - Lant - Mod Operare Continuu</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P302" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P302-T4 - Reset Tracking</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P303" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P303-T5 - Reset Tracking</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P304" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P304-T6 - Reset Tracking</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P305" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P305-T7C - Selectie Mod Operare Manual (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P306" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P306-T7C - Selectie Mod Operare Automat (loacal)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P307" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P307-T7C - Ciclu Automat - Cmd. Start (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P308" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P308-T7C - CaleRole - Cmd. Inainte (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P309" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P309-T7C - CaleRole - Cmd. Inapoi (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P310" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P310-T7C - Aruncator - Cmd. Sus (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P311" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P311-T7C - Aruncator - Cmd. Jos (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P312" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P312-T7C - Lant Colector - Cmd. Ridicare (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P313" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P313-T7C - Lant Colector - Cmd. Coborare (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P314" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P314-T7C - Opritor Mobil - Cmd. Sus (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P315" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P315-T7C - Opritor Mobil - Cmd. Jos (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P316" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P316-T7C - CaleRole - Cmd. Sus (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P317" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P317-T7A - Lant - Mod Operare Pas (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P318" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P318-T7A - Lant - Mod Operare Continuu (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P319" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P319-T7B - Lant - Mod Operare Pas (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P320" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P320-T7B - Lant - Mod Operare Continuu (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P321" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P321-T7C - CaleRole - Cmd. Jos (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P322" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P322-T4 - Aliniere Teava - Cap</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P323" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P323-T4 - Aliniere Teava - Coada</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P324" Datatype="Bool" />
+    <Member Name="P325" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P325-T7AB - Activare/Dezactivare Masina Marcare</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P326" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P326-T7AB - Masina Marcare - Cmd. Ridicare</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P327" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P327-T7AB - Masina Marcare - Cmd. Coborare</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P328" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P328-T7AB - Masina Marcare - Cmd. Start Marcare</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P329" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P329-Apa - Selectie Mod Operare Manual (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P330" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P330-Apa - Selectie Mod Operare Automat (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P331" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P331-Apa - Ciclu Automat - Cmd. Start (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P332" Datatype="Bool" />
+    <Member Name="P333" Datatype="Bool" />
+    <Member Name="P334" Datatype="Bool" />
+    <Member Name="P335" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P335-Apa - Pompa 1 (pompa principala) - Cmd. Start (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P336" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P336-Apa - Pompa 1 (pompa principala) - Cmd. Stop (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P337" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P337-Apa - Pompa 2 (pompa principala) - Cmd. Start (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P338" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P338-Apa - Pompa 2 (pompa principala) - Cmd. Stop (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P339" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P339-Apa - Pompa 3 (pompa principala) - Cmd. Start (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P340" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P340-Apa - Pompa 3 (pompa principala) - Cmd. Stop (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P341" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P341-Apa - Pompa 4 (pompa principala) - Cmd. Start (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P342" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P342-Apa - Pompa 4 (pompa principala) - Cmd. Stop (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P343" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P343-Apa - Pompa 5 (pompa turnuri racire) - Cmd. Start (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P344" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P344-Apa - Pompa 5 (pompa turnuri racire) - Cmd. Stop (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P345" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P345-Apa - Pompa 6 (pompa schimbator caldura) - Cmd. Start (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P346" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P346-Apa - Pompa 6 (pompa schimbator caldura) - Cmd. Stop (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P347" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P347-Apa - Pompa 7 (pompa EtilenGlicol) - Cmd. Start (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P348" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P348-Apa - Pompa 7 (pompa EtilenGlicol) - Cmd. Stop (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P349" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P349-Apa - Pompa 8 (pompa drenaj) - Cmd. Start (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P350" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P350-Apa - Pompa 8 (pompa drenaj) - Cmd. Stop (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P351" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P351-Apa - Pompa 9 (pompa tunder) - Cmd. Start (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P352" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P352-Apa - Pompa 9 (pompa tunder) - Cmd. Stop (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P353" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P353-Apa - Pompa 10 (pompa evacuare canal) - Cmd. Start (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P354" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P354-Apa - Pompa 10 (pompa evacuare canal) - Cmd. Stop (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P355" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P355-Apa - Pompa 11 (pompa evacuare avarie) - Cmd. Start (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P356" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P356-Apa - Pompa 11 (pompa evacuare avarie) - Cmd. Stop (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P357" Datatype="Bool" />
+    <Member Name="P358" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Buton oprire aer racire senzori T4</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P359" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P359-Apa - Transportator Elicoidal TE1 - Cmd. Start (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P360" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P360-Apa - Transportator Elicoidal TE2 - Cmd. Stop (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P361" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P361-Apa - Transportator Elicoidal TE2 - Cmd. Start (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P362" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P362-Apa - Transportator Elicoidal TE2 - Cmd. Stop (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P363" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P363-T7C-Masina Debitare: Masina Debitare Comanda Activare/Dezactivare</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P364" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P364-T7C-Masina Debitare: Opritor Mobil Comanda 'Ridicare'</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P365" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P365-T7C-Masina Debitare: Opritor Mobil Comanda 'Coborare'</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P366" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P366-Apa - Ventilator Turn Racire 1 - Cmd. Stop (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P367" Datatype="Bool" />
+    <Member Name="P368" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P368-Apa - Ventilator Turn Racire 2 - Cmd. Stop (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P369" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P369-T7C-Masina Debitare: Menghina Comanda 'Deschide'</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P370" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P370-T7C-Masina Debitare: Menghina Comanda 'Inchide'</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P371" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P371-Apa - Selectie/Deselectie Pompa 1 (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P372" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P372-Apa - Selectie/Deselectie Pompa 2 (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P373" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P373-Apa - Selectie/Deselectie Pompa 3 (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P374" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P374-Apa - Selectie/Deselectie Pompa 4 (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P375" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P375-T7C-Masina Debitare: Lama Circulara Comanda 'Ridicare'</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P376" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P376-T7C-Masina Debitare: Lama Circulara Comanda 'Coborare'</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P377" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P377-Apa - Ventilator Turn Racire 1 - Cmd. Start Turatie Mica (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P378" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P378-Apa - Ventilator Turn Racire 1 - Cmd. Start Turatie Mare (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P379" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P379-Apa - Ventilator Turn Racire 2 - Cmd. Start Turatie Mica (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P380" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P380-Apa - Ventilator Turn Racire 2 - Cmd. Start Turatie Mare (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P381" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P381-T7C-Masina Debitare: Centrala Hidraulica Comanda 'Start'</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P382" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P382-Apa - Y1 - Comanda ON/OFF in Mod Operare Manual</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P383" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P383-Apa - Y2 - Comanda ON/OFF in Mod Operare Manual</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P384" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P384-Apa - Y3 - Comanda ON/OFF in Mod Operare Manual</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P385" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P385 - Reset Oprire de Urgenta - Zona 1</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P386" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P386 - Reset Oprire de Urgenta - Zona 2</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P387" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P387 - Reset Oprire de Urgenta - Zona 3</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P388" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P388 - Reset Oprire de Urgenta - Zona 4</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P389" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P389 - Reset Oprire de Urgenta - Zona 5</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P390" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P390 - Reset Oprire de Urgenta - Zona 6</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P391" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P391 - Reset Oprire de Urgenta - Zona 7</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P392" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P392 - Reset Oprire de Urgenta - Zona 8</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P393" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P393-T7C-Masina Debitare: Centrala Hidraulica Comanda 'Stop'</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P394" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P394-T7AB - Activare/Dezactivare Masina Marcare (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P395" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P395-T7AB - Masina Marcare - Cmd. Ridicare (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P396" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P396-T7AB - Masina Marcare - Cmd. Coborare (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P397" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P397-T7AB - Masina Marcare - Cmd. Start Marcare (local)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P398" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P398-T1A - Teava Ident</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P399" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P399-T1C - Teava Ident</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P400" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P400-T1D - Teava Ident</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P401" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P401-Apa - Selectie unitate 100bar pentru Destunderizator</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P402" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P402-Apa - Selectie unitate 180bar pentru Destunderizator</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P403" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P403-Apa - Selectat pompa 9.1</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P404" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P404-Apa - Selectat pompa 9.2</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P405" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P405-Apa - Selectat Start pompe joasa presiune</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P406" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P406-Apa - Selectat Stop pompa joasa presiune</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P407" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P407-Apa - Selectat Start pompa inalta presiune</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P408" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P408-Apa - Selectat Stop pompa inalta presiune</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P409" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P409-Apa - Selectat pompa 9.3</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P410" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Marcare-Comanda sus OP local</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P411" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Marcare-Comanda jos OP local</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P412" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Marcare-Comanda sus OP cabina principala</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P413" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Marcare-Comanda jos OP cabina principala</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P414" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P414-Apa - Selectie unitate 200 bar pentru Destunderizator_PSC</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P415" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P409-Apa - Selectat pompa 9.4</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P416" Datatype="Bool" />
+    <Member Name="RK_FW_KEY" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P417- Role Kasto - Cmd. Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="RK_BW_KEY" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P418- Role Kasto - Cmd. Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="RM_UP_KEY" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P419- Rola Mobila - Cmd. Sus</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="RM_DOWN_KEY" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P420- Rola Mobila - Cmd. Jos</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="TAMPON_LEFT_KEY" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P421- Tampon - Cmd. Stanga</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="TAMPON_RIGHT_KEY" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P422- Tampon - Cmd. Dreapta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="RK_SEL_MANUAL" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P423- Taiere Probe Manual</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="RK_SEL_AUTOMAT" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P424- Taiere Probe Automat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="RK_START_CICLU" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P425- Taiere Probe Start Ciclu</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="RK_ResetAvarie" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Reset avarie zona Kasto</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="RK_ReintroduTeava" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Reintrodu teava in sistem</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="RK_ResetIDBatch" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Buton egalizare batch-uri</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P431" Datatype="Bool" />
+    <Member Name="RK_TaiereCapRefulatactiv" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Selectie cap refulat activ</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="RK_StartTaiere2" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Buton start a doua taiere</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P432" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Start Ventilator Turn 3</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P433" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Stop Ventilator Turn 3</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P434" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Start Ventilator Turn 4</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P435" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Stop Ventilator Turn 4</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P436" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Comanda Scuturator T1C</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P437" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Comanda Scuturator T1A</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P438" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P438 Apa - Pompa 1 Automat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P439" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">P439 Apa - Pompa 1 Manual</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="P440" Datatype="Bool" />
+    <Member Name="OCV_CONV_RST" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">OCV - Reset Convertizor [Main Cabin]</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="OCV_CONV_HOME_MCB" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">OCV - Home Convertizor [Main Cabin]</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="OCV_LED_ON_MCB" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">OCV - LED On [Main Cabin]</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="OCV_LED_OFF_MCB" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">OCV - LED Off [Main Cabin]</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="OCV_CAM_START_MCB" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">OCV - Start Camera [Main Cabin]</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="OCV_MOVE_UP_MCB" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">OCV - Ridicare [Main Cabin]</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="OCV_MOVE_DW_MCB" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">OCV - Coborare [Main Cabin]</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="OCV_CLEAN_CMD_MCB" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">OCV - Curatare Cap Marcare [Main Cabin]</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="OCV_PURGE_CMD_MCB" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">OCV - Purjare Cap Marcare [Main Cabin]</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="OCV_CONV_HOME_LM7" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">OCV - Home Convertizor [LM7]</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="OCV_LED_ON_LM7" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">OCV - LED On [LM7]</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="OCV_LED_OFF_LM7" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">OCV - LED Off [LM7]</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="OCV_CAM_START_LM7" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">OCV - Start Camera [LM7]</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="OCV_MOVE_UP_LM7" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">OCV - Ridicare [LM7]</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="OCV_MOVE_DW_LM7" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">OCV - Coborare [LM7]</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="OCV_CLEAN_CMD_LM7" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">OCV - Curatare Cap Marcare [LM7]</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="OCV_PURGE_CMD_LM7" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">OCV - Purjare Cap Marcare [LM7]</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="var_bool" Datatype="Array[0..70] of Int" />
+  </Section>
+</Sections></Interface>
+      <MemoryLayout>Standard</MemoryLayout>
+      <Name>DB81-OPIN</Name>
+      <Namespace />
+      <Number>81</Number>
+      <ProgrammingLanguage>DB</ProgrammingLanguage>
+    </AttributeList>
+    <ObjectList>
+      <MultilingualText ID="1" CompositionName="Comment">
+        <ObjectList>
+          <MultilingualTextItem ID="2" CompositionName="Items">
+            <AttributeList>
+              <Culture>en-US</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+          <MultilingualTextItem ID="3" CompositionName="Items">
+            <AttributeList>
+              <Culture>it-IT</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+        </ObjectList>
+      </MultilingualText>
+      <MultilingualText ID="4" CompositionName="Title">
+        <ObjectList>
+          <MultilingualTextItem ID="5" CompositionName="Items">
+            <AttributeList>
+              <Culture>en-US</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+          <MultilingualTextItem ID="6" CompositionName="Items">
+            <AttributeList>
+              <Culture>it-IT</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+        </ObjectList>
+      </MultilingualText>
+    </ObjectList>
+  </SW.Blocks.GlobalDB>
+</Document>

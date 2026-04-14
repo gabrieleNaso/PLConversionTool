@@ -1,6 +1,6 @@
 # PLConversionTool
 
-Repository per la conversione di sequenziatori PLC `AWL` in un pacchetto XML importabile in `TIA Portal V20`, composto sempre da `FB GRAPH`, `GlobalDB` e `FC LAD`.
+Repository per la conversione di sequenziatori PLC `AWL` in un pacchetto XML importabile in `TIA Portal V20`, con trio baseline `FB GRAPH` + `GlobalDB` + `FC LAD` ed eventuali blocchi aggiuntivi `DB/FC` derivati dall'IR.
 
 Regola architetturale fondamentale:
 

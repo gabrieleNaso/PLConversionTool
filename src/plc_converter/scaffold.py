@@ -36,7 +36,7 @@ def build_target_profile() -> TargetProfile:
         notes=[
             "Il GRAPH deve mantenere gli statici runtime interni obbligatori.",
             "Il GlobalDB del pacchetto va generato in aggiunta, non in sostituzione degli statici GRAPH.",
-            "La conversione include sempre almeno una FC LAD del pacchetto di orchestrazione.",
+            "La conversione include il trio baseline (FB GRAPH + GlobalDB + FC LAD) e puo' aggiungere DB/FC di supporto quando l'AWL richiede separazione funzionale.",
         ],
     )
 
@@ -84,7 +84,7 @@ def build_conversion_scaffold(
     assumptions = [
         "L'input AWL puo' contenere una logica sequenziale distribuita su set/reset, jump e timer.",
         "L'output finale deve sempre privilegiare importabilita' TIA e struttura esplicita del GRAPH.",
-        "Ogni conversione produce sempre l'intero pacchetto FB GRAPH + GlobalDB + FC LAD.",
+        "Ogni conversione produce sempre il pacchetto baseline FB GRAPH + GlobalDB + FC LAD, con eventuali blocchi FC/DB aggiuntivi derivati dall'IR.",
     ]
 
     return ConversionScaffold(

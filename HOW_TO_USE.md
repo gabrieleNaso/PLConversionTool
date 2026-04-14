@@ -79,11 +79,12 @@ make generate-input
 Output:
 
 - un bundle per file in `output/generated/<nome>/`
-- file generati nel bundle:
+- file baseline sempre presenti:
   - `FB_<Name>_GRAPH_auto.xml`
   - `DB_<Name>_global_auto.xml`
   - `FC_<Name>_lad_auto.xml`
   - `<Name>_analysis.json`
+- in base al contenuto AWL possono essere aggiunti anche altri `DB_*` e `FC_*` di supporto (es. I/O, diagnostica, gestione mode manuale/auto)
 
 ---
 

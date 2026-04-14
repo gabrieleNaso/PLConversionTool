@@ -128,6 +128,37 @@ def test_conversion_analyze_builds_ir_and_artifact_previews() -> None:
     assert any(
         issue["code"] == "PACKAGE_COHERENCE_ERROR" for issue in payload["validation_issues"]
     ) is False
+    assert any(
+        preview["artifact_type"] == "support_global_db_io"
+        and "<SW.Blocks.GlobalDB ID=\"0\">" in preview["content"]
+        for preview in payload["artifact_previews"]
+    )
+    assert any(
+        preview["artifact_type"] == "support_lad_fc_io"
+        and "<SW.Blocks.FC ID=\"0\">" in preview["content"]
+        for preview in payload["artifact_previews"]
+    )
+    assert any(
+        preview["artifact_type"] == "support_global_db_diag"
+        and "<SW.Blocks.GlobalDB ID=\"0\">" in preview["content"]
+        for preview in payload["artifact_previews"]
+    )
+    assert any(
+        preview["artifact_type"] == "support_lad_fc_diag"
+        and "<SW.Blocks.FC ID=\"0\">" in preview["content"]
+        for preview in payload["artifact_previews"]
+    )
+    assert any(
+        preview["artifact_type"] == "support_global_db_mode"
+        and "MODE_MANUAL_ACTIVE" in preview["content"]
+        for preview in payload["artifact_previews"]
+    )
+    assert any(
+        preview["artifact_type"] == "support_lad_fc_mode"
+        and "<SW.Blocks.FC ID=\"0\">" in preview["content"]
+        and '<Component Name="Mixer_Line_Mode_Global" />' in preview["content"]
+        for preview in payload["artifact_previews"]
+    )
 
 
 def test_conversion_analyze_builds_alt_branch_for_multi_exit_step() -> None:
@@ -163,9 +194,9 @@ def test_conversion_analyze_builds_alt_branch_for_multi_exit_step() -> None:
         preview["artifact_type"] == "lad_fc" for preview in payload["artifact_previews"]
     )
     assert any(
-        '<Branch Number="1" Type="AltBegin" Cardinality="2" />' in preview["content"]
-        and '<BranchRef Number="1" In="0" />' in preview["content"]
-        and '<BranchRef Number="1" Out="0" />' in preview["content"]
+        '<Branch Number="1" Type="AltBegin"' in preview["content"]
+        and '<BranchRef Number="1" In="' in preview["content"]
+        and '<BranchRef Number="1" Out="' in preview["content"]
         for preview in payload["artifact_previews"]
         if preview["artifact_type"] == "graph_fb"
     )

@@ -1,0 +1,3153 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Document>
+  <Engineering version="V20" />
+  <SW.Blocks.GlobalDB ID="0">
+    <AttributeList>
+      <AutoNumber>false</AutoNumber>
+      <Interface><Sections xmlns="http://www.siemens.com/automation/Openness/SW/Interface/v5">
+  <Section Name="Static">
+    <Member Name="L001" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L001-T1A - Mod Operare Manual Selectat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L002" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L002-T1A - Mod Operare Automat Selectat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L003" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L003-T1A - Aruncator - In Pozitia "Sus"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L004" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L004-T1A - Aruncator - In Pozitia "Jos"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L005" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L005-T1A - Aruncator 1 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L006" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L006-T1A - Aruncator 2 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L007" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L007-T1A - CaleRole - Senzor 1 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L008" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L008-T1A - CaleRole - Senzor 2 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L009" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L009-T1A - Lant (transport) - In Pozitia "Pas"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L010" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L010-T1A - Senzor Start Masurare Lungime Teava</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L011" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L011-T1A - CaleRole - Rotire Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L012" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L012-T1A - CaleRole - Rotire Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L013" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L013-T1A - Pipe Ident</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L014" Datatype="Bool" />
+    <Member Name="L015" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L015-T1A - Lant (transport) - Deplasare Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L016" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L016-T1A - Lant (transport) - Deplasare Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L017" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L017-T1A - Opritor - Deplasare Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L018" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L018-T1A - Opritor - Deplasare Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L019" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L019-Pompa 1 Regim Auto/Manual</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L020" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L020-T1A - Lant (transport) - Pas Efectuat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L021" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L021-T1A - Incarcare Blocata</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L022" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L022-T1A - Control Pupitru Local</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L023" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L023-T1C - Control Pupitru Cabina</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L024" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L024-T1C - Control Pupitru Local</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L025" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L025-T1C - Mod Operare Manual Selectat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L026" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L026-T1C - Mod Operare Automat Selectat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L027" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L027-T1C - Aruncator - In Pozitia "Sus"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L028" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L028-T1C - Aruncator - In Pozitia "Jos"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L029" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L029-T1C - Aruncator 1 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L030" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L030-T1C - Aruncator 2 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L031" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L031-T1C - CaleRole - Senzor 1 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L032" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L032-T1C - CaleRole - Senzor 2 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L033" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L033-T1C - CaleRole - Senzor 3 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L034" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L034-T1C - Senzor Start Masurare Lungime Teava</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L035" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L035-T1C - Lant (transport) - In Pozitia "Pas"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L036" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L036-T1C - Lant (transport) - Deplasare Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L037" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L037-T1C - Lant (transport) - Deplasare Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L038" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L038-T1C - Pipe Ident</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L039" Datatype="Bool" />
+    <Member Name="L040" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L040-T1C - CaleRole - Rotire Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L041" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L041-T1C - CaleRole - Rotire Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L042" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L042-T1C - Opritor - Deplasare Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L043" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L043-T1C - Opritor - Deplasare Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L044" Datatype="Bool" />
+    <Member Name="L045" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L045-T1A - Scuturator comandat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L046" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L046-T1C - Incarcare Blocata</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L047" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L047-T1C - Scuturator comandat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L048" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L048-T1A - Control Pupitru Cabina</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L049" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L049-T1A - Lant - Mod Operare Pas</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L050" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L050-T1A - Lant - Mod Operare Continuu</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L051" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L051-T1C - Lant - Mod Operare Pas</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L052" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L052-T1C - Lant - Mod Operare Continuu</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L053" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L053-T4 - Lant - Mod Operare Pas</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L054" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L054-T4 - Lant - Mod Operare Continuu</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L055" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L055-T5 - Lant - Mod Operare Pas</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L056" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L056-T5 - Lant - Mod Operare Continuu</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L057" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L057-T4 - Mod Operare Manual Selectat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L058" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L058-T4 - Mod Operare Automat Selectat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L059" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L059-T4 - CaleRole 1 - Rotire Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L060" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L060-T4 - CaleRole 1 - Rotire Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L061" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L061-T4 - CaleRole 2 - Rotire Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L062" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L062-T4 - CaleRole 2 - Rotire Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L063" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L063-T4 - Excentric - Rotire Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L064" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L064-T3 - CaleRole - Senzor - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L065" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L065-T4 - Opritor - In Pozitia "Sus"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L066" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L066-T4 - Opritor - In Pozitia "Jos"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L067" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L067-T4 - Lant (transport) - Deplasare Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L068" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L068-T4 - Lant (transport) - Deplasare Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L069" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L069-T4 - Lant (rostogolire) - Deplasare Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L070" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L070-T4 - Lant (rostogolire) - Deplasare Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L071" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L071-T4 - Lant (transport) - Pas Efectuat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L072" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L072-T4 - CaleRole 1 - Senzor 1 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L073" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L073-T4 - CaleRole 1 - Senzor 2 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L074" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L074-T4 - CaleRole 1 - Senzor 3 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L075" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L075-T4 - CaleRole 2 - Senzor 1 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L076" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L076-T4 - CaleRole 2 - Senzor 2 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L077" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L077-T4 - CaleRole 2 - Senzor 3 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L078" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L078-T4 - Excentric - In Pozitia "Initial"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L079" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L079-T4 - Excentric - In Pozitia "Vertical"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L080" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L080-T4 - Intrare Lant - Senzor 1 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L081" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L081-T4 - Intrare Lant - Senzor 2 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L082" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L082-T4 - Iesire Lant - Senzor 1 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L083" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L083-T4 - Iesire Lant - Senzor 2 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L084" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Calea cu role T4.1 senzor 4 suplimentar</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L085" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L085-T4 - Excentric Rotire Blocata</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L086" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L086-T4 - Descarcare Blocata</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L087" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L087-T6 - Lant - Mod Operare Pas</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L088" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L088-T6 - Lant - Mod Operare Continuu</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L089" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L089-T7A - Lant - Mod Operare Pas</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L090" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L090-T7A - Lant - Mod Operare Continuu</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L091" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L091-T7B - Lant - Mod Operare Pas</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L092" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L092-T7B - Lant - Mod Operare Continuu</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L093" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L093-T4 - Iesire Lant - Senzor 1 (incetinire) - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L094" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L094-T4 - Iesire Lant - Senzor 2 (incetinire) - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L095" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L095-T4 - Iesire Lant - (ultima pozitie in tracking) - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L096" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L096-T4 - Iesire Lant - (ultima pozitie in tracking) - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L097" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L097-T5 - Mod Operare Manual Selectat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L098" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L098-T5 - Mod Operare Automat Selectat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L099" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L099-T5 - CaleRole 1 - Rotire Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L100" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L100-T5 - CaleRole 1 - Rotire Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L101" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L101-T5 - CaleRole 2 - Rotire Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L102" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L102-T5 - CaleRole 2 - Rotire Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L103" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L103-T5 - Excentric - Rotire Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L104" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L104-T5 - Descarcare Blocata</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L105" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L105-T5 - Excentric - In Pozitia "Initial"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L106" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L106-T5 - Excentric - In Pozitia "Vertical"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L107" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L107-T5 - Lant (rostogolire) - Deplasare Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L108" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L108-T5 - Lant (rostogolire) - Deplasare Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L109" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L109-T5 - Lant (transport) - Deplasare Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L110" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L110-T5 - Lant (transport) - Deplasare Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L111" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L111-T5 - Lant (transport) - Pas Efectuat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L112" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L112-T5 - Opritor - In Pozitia "Sus"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L113" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L113-T5 - Opritor - In Pozitia "Jos"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L114" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L114-T5 - CaleRole 1 - Senzor 1 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L115" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L115-T5 - CaleRole 1 - Senzor 2 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L116" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L116-T5 - CaleRole 2 - Senzor 1 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L117" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L117-T5 - CaleRole 2 - Senzor 2 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L118" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L118-T5 - CaleRole 2 - Senzor 3 Intrare Cuptor - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L119" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L119-T5 - Intrare Lant - Senzor 1 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L120" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L120-T5 - Intrare Lant - Senzor 2 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L121" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L121-T5 - Iesire Lant - Senzor 1 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L122" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L122-T5 - Iesire Lant - Senzor 2 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L123" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L123-T5 - Excentric - Rotire Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L124" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L124-T5 - Iesire Lant - Senzor 1 (incetinire) - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L125" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L125-T5 - Iesire Lant - Senzor 2 (incetinire) - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L126" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L126-T5 - Iesire Lant - (ultima pozitie in tracking) - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L127" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L127-T5 - Iesire Lant - (ultime pozitie in tracking) - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L128" Datatype="Bool" />
+    <Member Name="L129" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L129-Taiere Probe - Manual</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L130" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L130-Taiere Probe - Automat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L131" Datatype="Bool" />
+    <Member Name="L132" Datatype="Bool" />
+    <Member Name="L133" Datatype="Bool" />
+    <Member Name="L134" Datatype="Bool" />
+    <Member Name="L135" Datatype="Bool" />
+    <Member Name="L136" Datatype="Bool" />
+    <Member Name="L137" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L137-T1E - Mod Operare Manual Selectat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L138" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L138-T1E - Mod Operare Automat Selectat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L139" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L139-T1E - Aruncator - In Pozitia "Sus"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L140" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L140-T1E - Aruncator - In Pozitia "Jos"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L141" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L141-T1E - Dozator Tevi - In Pozitia "Sus"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L142" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L142-T1E - Dozator Tevi - In Pozitia "Jos"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L143" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L143-T1E - Aruncator - Senzor 1 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L144" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L144-T1E - Aruncator - Senzor 2 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L145" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L145-T1E - Dozator Tevi - Senzor 1 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L146" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L146-T1E - Dozator Tevi - Senzor 1 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L147" Datatype="Bool" />
+    <Member Name="L148" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L148-T1E - Opritor - Deplasare Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L149" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L149-T1E - Opritor - Deplasare Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L150" Datatype="Bool" />
+    <Member Name="L151" Datatype="Bool" />
+    <Member Name="L152" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L152 - Indicatie "Oprire de Urgenta" Actionata in Zona 1</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L153" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L153 - Indicatie "Oprire de Urgenta" Actionata in Zona 2</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L154" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L154 - Indicatie "Oprire de Urgenta" Actionata in Zona 3</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L155" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L155 - Indicatie "Oprire de Urgenta" Actionata in Zona 4</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L156" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L156 - Indicatie "Oprire de Urgenta" Actionata in Zona 5</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L157" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L157 - Indicatie "Oprire de Urgenta" Actionata in Zona 6</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L158" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L158 - Indicatie "Oprire de Urgenta" Actionata in Zona 7</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L159" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L159 - Indicatie "Oprire de Urgenta" Actionata in Zona 8</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L160" Datatype="Bool" />
+    <Member Name="L161" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L161- LM4 - Control Pupitru Cabina</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L162" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L162- LM4 - Control Pupitru Local</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L163" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L163- LM5 - Control Pupitru Cabina</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L164" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L164- LM5 - Control Pupitru Local</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L165" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L165- LM6 - Control Pupitru Cabina</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L166" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L166- LM6 - Control Pupitru Local</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L167" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L167- LM7 - Control Pupitru Cabina</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L168" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L168- LM7 - Control Pupitru Local</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L169" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L169-T6 - Mod Operare Manual Selectat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L170" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L170-T6 - Mod Operare Automat Selectat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L171" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L171-T6 - Excentric - Rotire Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L172" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L172-T6 - Descarcare Blocata</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L173" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L173-T6 - Excentric - Rotire Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L174" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L174-T6 - Excentric - In Pozitia "Initial"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L175" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L175-T6 - Excentric - In Pozitia "Vertical"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L176" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L176-T6 - CaleRole - Rotire Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L177" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L177-T6 - CaleRole - Rotire Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L178" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L178-T6 - Opritor - In Pozitia "Sus"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L179" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L179-T6 - Opritor - In Pozitia "Jos"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L180" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L180-T6 - Lant (transport) - Deplasare Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L181" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L181-T6 - Lant (transport) - Deplasare Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L182" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L182-T6 - Lant (transport) - Pas Efectuat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L183" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L183-T6 - Intrare Lant - Senzor 1 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L184" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L184-T6 - Intrare Lant - Senzor 2 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L185" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L185-T6 - Iesire Lant - Senzor 1 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L186" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L186-T6 - Iesire LAnt - Senzor 2 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L187" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L187-T6 - CaleRole - Senzor 1 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L188" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L188-T6 - CaleRole - Senzor 2 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L189" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L189-T6 - Senzor Start Masurare Lungime Teava</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L190" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L190-T6 - Excentric Rotire Blocata</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L191" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L191-T6 - Iesire Lant - Senzor 1 (incetinire) - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L192" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L192-T6 - Iesire Lant - Senzor 2 (incetinire) - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L193" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L193-T6 - Iesire Lant - (ultima pozitie in tracking) - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L194" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L194-T6 - Iesire Lant - (ultima pozitie in tracking) - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L195" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L195-T6 - Iesire Lant - (ultima pozitie in tracking) - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L196" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L195-T6 - Intrare lant - Senzor mijloc -Teava prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L197" Datatype="Bool" />
+    <Member Name="L198" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L198-T4 - Lant - Alarma Tracking</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L199" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L199-T5 - Lant - Alarma Tracking</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L200" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L100-T6 - Lant - Alarma Tracking</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L201" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L201-T1D - Mod Operare Manual Selectat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L202" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L202-T1D - Mod Operare Automat Selectat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L203" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L203-T1D - Aruncator - In Pozitia "Sus"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L204" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L204-T1D - Aruncator - In Pozitia "Jos"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L205" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L205-T1D - Opritor - Deplasare Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L206" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L206-T1D - Opritor - Deplasare Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L207" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L207-T1D - Pipe Ident</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L208" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L208-T1D - CaleRole - Rotire Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L209" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L209-T1D - CaleRole - Rotire Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L210" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L210-T1D - Aruncator - Senzor 1 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L211" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L211-T1D - Aruncator - Senzor 2 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L212" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L212-T1D - CaleRole - Senzor 1 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L213" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L213-T1D - CaleRole - Senzor 2 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L214" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L214-T1D - Senzor Start Masurare Lungime Teava</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L215" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L215-T1D - Incarcare Blocata</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L216" Datatype="Bool" />
+    <Member Name="L217" Datatype="Bool" />
+    <Member Name="L218" Datatype="Bool" />
+    <Member Name="L219" Datatype="Bool" />
+    <Member Name="L220" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">T6 - Senzor 3 incetinire lant</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L221" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">T6 - Senzor 4 ultima pozitie banca lant</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L222" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">T6 - Senzor 4 pe calea cu role</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L223" Datatype="Bool" />
+    <Member Name="L224" Datatype="Bool" />
+    <Member Name="L225" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L225-T7 - Mod Operare Manual Selectat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L226" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L226-T7 - Mod Operare Automat Selectat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L227" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L227-T7 - CaleRole - Rotire Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L228" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L228-T7 - CaleRole - Rotire Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L229" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L229-T7 - Aruncator - In Pozitia "Sus"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L230" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L230-T7 - Aruncator - In Pozitia "Jos"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L231" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L231-T7 - Excentric 1 - Rotire Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L232" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L232-T7 - Excentric 1 - Rotire Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L233" Datatype="Bool" />
+    <Member Name="L234" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L234-T7 - Excentric 1 - In Pozitia "Vertical"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L235" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L235-T7 - Excentric 1 - In Pozitia "Initial"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L236" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L236-T7 - Excentric 2 - Rotire Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L237" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L237-T7 - Excentric 2 - Rotire Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L238" Datatype="Bool" />
+    <Member Name="L239" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L239-T7 - Excentric 2 - In Pozitia "Vertical"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L240" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L240-T7 - Excentric 2 - In Pozitia "Initial"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L241" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L241-T7 - Excentric 1 - Senzor 1 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L242" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L242-T7 - Excentric 1 - Senzor 2 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L243" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L243-T7 - Excentric 2 - Senzor 1 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L244" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L244-T7 - Excentric 2 - Senzor 2 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L245" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L245-T7 - CaleRole - Senzor 1 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L246" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L246-T7 - CaleRole - Senzor 2 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L247" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L247-T7 - CaleRole - Senzor 3 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L248" Datatype="Bool" />
+    <Member Name="L249" Datatype="Bool" />
+    <Member Name="L250" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L250-T4 - Aliniere Teava - Cap</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L251" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L251-T4 - Aliniere Teava - Coada</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L252" Datatype="Bool" />
+    <Member Name="L253" Datatype="Bool" />
+    <Member Name="L254" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Alarma posibil teava blocata in calitor</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L255" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Eroare comunicatie cu Level2 (Teava Nemarcata)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L256" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L256-Apa - Control Pupitru Cabina</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L257" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L257-T7A - Mod Operare Manual Selectat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L258" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L258-T7A - Mod Operare Automat Selectat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L259" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L259-T7A - CaleRole - Rotire Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L260" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L260-T7A - CaleRole - Rotire Ianpoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L261" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L261-T7A - Excentric 1 - Rotire Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L262" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L261-T7A - Descarcare Blocata</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L263" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L263-T7A - Excentric 1 - Rotire Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L264" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L264-T7A - Excentric 1 - In Pozitia "Vertical"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L265" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L265-T7A - Excentric 1 - In Pozitia "Initial"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L266" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L266-T7A - Excentric 2 - Rotire Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L267" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L266-T7A - Excentric 2 - Rotire Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L268" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Senzor mijloc lant iesire T7A</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L269" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L269-T7A - Excentric 1 - In Pozitia "Initial"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L270" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L270-T7A - Excentric 1 - In Pozitia "Vertical"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L271" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L271-T7A - Lant (rostogolire) - Deplasare Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L272" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L272-T7A - Lant (rostogolire) - Deplasare Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L273" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L273-T7A - Lant (transport) - Deplasare Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L274" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L274-T7A - Lant (transport) - Deplasare Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L275" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L275-T7A - Lant (transport) - Pas Efectuat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L276" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L276-T7A - Excentric 1 - Senzor 1 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L277" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L277-T7A - Excentric 1 - Senzor 2 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L278" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L278-T7A - Intrare Lant - Senzor 1 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L279" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L279-T7A - Intrare Lant - Senzor 2 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L280" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L280-T7A - Iesire Lant - Senzor 1 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L281" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L281-T7A - Iesire Lant - Senzor 2 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L282" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L282-T7A - CaleRole - Senzor 1 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L283" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L283-T7A - CaleRole - Senzor 2 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L284" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L284-T7A - CaleRole - Senzor 3 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L285" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L285-T7AB - Masina Marcare - Senzor (inainte de marcare) - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L286" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L286-T7AB - Masina Marcare - Senzor (dupa de marcare) - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L287" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L287-T7AB - Masina Marcare - Senzor - In Pozitia "Ridicat"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L288" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L288-T7AB - Masina Marcare - Senzor - In Pozitia "Coborat" (cu teava prezenta)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L289" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L289-T7AB - Masina Marcare - ElectroElectroValva Ridicare</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L290" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L290-T7AB - Masina Marcare - ElectroElectroValva Coborare</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L291" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L291-T7AB - Masina Marcare - Marcare Pornita</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L292" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L292-T7AB - Masina Marcare - Mod Operare Automat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L293" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L293-T7AB - Masina Marcare - Mod Operare Manual</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L294" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L294-T7AB - Masina Marcare - Dezactivata</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L295" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L295-T7AB - Masina Marcare - Vopsea Marcare OK</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L296" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L296-T7AB - Masina Marcare - Pompa OK</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L297" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L297-T7B - Mod Operare Manual Selectat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L298" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L298-T7B - Mod Operare Automat Selectat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L299" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L299-T7B - CaleRole - Rotire Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L300" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L300-T7B - CaleRole - Rotire Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L301" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L301-T7B - Lant Colector - Deplasare Urcare</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L302" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L302-T7B - Lant Colector - Deplasare Coborare</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L303" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L303-T7B - Aruncator 1 - In Pozitia "Sus"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L304" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L304-T7B - Aruncator 1 - In Pozitia "Jos"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L305" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L305-T7B - Aruncator 2 - In Pozitia "Sus"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L306" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L306-T7B - Aruncator 2 - In Pozitia "Jos"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L307" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L307-T7B - Aruncator 1 - Senzor 1 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L308" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L308-T7B - Aruncator 1 - Senzor 2 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L309" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L309-T7B - Aruncator 2 - Senzor 1 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L310" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L310-T7B - Aruncator 2 - Senzor 2 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L311" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L311-T7B - CaleRole - Senzor 1 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L312" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L312-T7B - CaleRole - Senzor 2 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L313" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L313-T7B - CaleRole - Senzor 3 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L314" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L314-T7B - Lant Colector - In Pozitia "Sus"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L315" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L315-T7B - Lant Colector - In Pozitia "Jos"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L316" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L316-T7B - Lant (rostogolire) - Deplasare Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L317" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L317-T7B - Lant (rostogolire) - Deplasare Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L318" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L319-T7B - Lant (transport) - Deplasare Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L319" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L318-T7B - Lant (transport) - Deplasare Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L320" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L320-T7B - Lant (transport) - Pas Efectuat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L321" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L321-T7B - Intrare Lant - Senzor 1 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L322" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L322-T7B - Intrare Lant - Senzor 2 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L323" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L323-T7B - Iesire Lant - Senzor 1 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L324" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L324-T7B - Iesire Lant - Senzor 2 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L325" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L325-T7B - Lant Colector - Senzor 1 - Plin</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L326" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L326-T7B - Lant Colector - Senzor 2 - Plin</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L327" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L327-T3 - Deztunderizator Activat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L328" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L328-T3 - Deztunderizator Dezactivat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L329" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L329-T3 - CaleRole - Rotire Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L330" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L330-T3 - CaleRole - Rotire Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L331" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L331-T3 - Cap Calitor 1 - Deplasare Ridicare</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L332" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L332-T3 - Cap Calitor 1 - Deplasare Coborare</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L333" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L333-T3 - Cap Calitor 2 - Deplasare Ridicare</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L334" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L334-T3 - Cap Calitor 2 - Deplasare Coborare</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L335" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L335-T3 - Cap Calitor 3 - Deplasare Ridicare</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L336" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L336-T3 - Cap Calitor 3 - Deplasare Coborare</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L337" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L337-T3 - Grinda - Deplasare Ridicare</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L338" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L338-T3 - Grinda - Deplasare Coborare</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L339" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L339-T3 - Filtru - Rotire Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L340" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L340-T3 - Filtru - Rotire Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L341" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L341-T3 - ServoElectroValva Filtru - Activata</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L342" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L341-T3 - ServoElectroValva Filtru - Dezactivata</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L343" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L343-T3 - Servovalva Stropire - Activata</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L344" Datatype="Bool" />
+    <Member Name="L345" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L345-T7C - Mod Operare Manual Selectat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L346" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L346-T7C - Mod Operare Automat Selectat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L347" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L347-T7C - CaleRole - Rotire Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L348" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L348-T7C - CaleRole - Rotire Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L349" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L349-T7C - Lant Colector - Deplasare Ridicare</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L350" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L350-T7C - Lant Colector - Deplasare Coborare</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L351" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L351-T7C - Aruncator - In Pozitia "Sus"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L352" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L352-T7C - Aruncator - In Pozitia "Jos"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L353" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L353-T7C - CaleRole - Senzor 1 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L354" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L354-T7C - CaleRole - Senzor 2 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L355" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L355-T7C - CaleRole - Senzor 3 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L356" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L356-T7C - Lant Colector - In Pozitia "Sus"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L357" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L357-T7C - Lant Colector - In Pozitia "Jos"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L358" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L358-T7C - Opritor Mobil - Deplasare Sus</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L359" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L359-T7C - Opritor Mobil - Deplasare Jos</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L360" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L360-T7C - Opritor Mobil - In Pozitia "Sus"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L361" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L361-T7C - Opritor Mobil - In Pozitia "Jos"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L362" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L362-T7C - Prelevare ContraProbe Abilitata</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L363" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L363-T7C - CaleRole - Deplasare Sus</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L364" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L364-T7C - CaleRole - Deplasare Jos</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L365" Datatype="Bool" />
+    <Member Name="L366" Datatype="Bool" />
+    <Member Name="L367" Datatype="Bool" />
+    <Member Name="L368" Datatype="Bool" />
+    <Member Name="L369" Datatype="Bool" />
+    <Member Name="L370" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L370-Apa - Mod Operare Manual Selectat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L371" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L371-Apa - Mod Operare Automat Selectat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L372" Datatype="Bool" />
+    <Member Name="L373" Datatype="Bool" />
+    <Member Name="L374" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L374-Apa - Cel Putin 1 Alarma Activa</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L375" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L375-Apa - Pompa 1 (pompa principala) - Pornita</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L376" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L376-Apa - Pompa 1 (pompa principala) - Oprita</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L377" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L377-Apa - Pompa 2 (pompa principala) - Pornita</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L378" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L378-Apa - Pompa 2 (pompa principala) - Oprita</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L379" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L379-Apa - Pompa 3 (pompa principala) - Pornita</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L380" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L380-Apa - Pompa 1 (pompa principala) - Oprita</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L381" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L381-Apa - Pompa 4 (pompa principala) - Pornita</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L382" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L382-Apa - Pompa 4 (pompa principala) - Oprita</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L383" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L383-Apa - Pompa 5 (pompa turnuri racire) - Pornita</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L384" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L384-Apa - Pompa 5 (pompa turnuri racire) - Oprita</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L385" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L385-Apa - Pompa 5R - Pornita</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L386" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L386-Apa - Pompa 5R - Oprita</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L387" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L387-Apa - Pompa 5 Selectata</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L388" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L388-Apa - Pompa 5R Selectata</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L389" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L389-Apa - Pompa 8 (pompa drenaj) - Pornita</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L390" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L390-Apa - Pompa 8 (pompa drenaj) - Oprita</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L391" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L391-Apa - Pompa 9 (pompa tunder) - Pornita</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L392" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L392-Apa - Pompa 9 (pompa tunder) - Oprita</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L393" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L393-Apa - Pompa 10 (pompa evacuare canal) - Pornita</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L394" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L394-Apa - Pompa 10 (pompa evacuare canal) - Oprita</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L395" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L395-Apa - Pompa 11 (pompa evacuare avarie) - Pornita</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L396" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L396-Apa - Pompa 11 (pompa evacuare avarie) - Oprita</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L397" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L397-Apa - Pompa Rez - Pornita</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L398" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L398-Apa - Pompa Rez - Oprita</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L399" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Ventilator 3 racire cuplat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L400" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L400-Apa - Transportator Elicoidal TE1 - Pornit</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L401" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L401-Apa - Transportator Elicoidal TE1 - Oprit</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L402" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L402-Apa - Transportator Elicoidal TE2 - Pornit</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L403" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L403-Apa - Transportator Elicoidal TE1 - Oprit</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L404" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L404-Apa - Semnalizare Selectie/Deselectie Deztunderizator</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L405" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L405-Apa - Semnalizare Selectie/Deselectie Cap Calitor</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L406" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L406-Apa - Ventilator Turn Racire 1 - Pornit</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L407" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L407-Apa - Ventilator Turn Racire 1 - Oprit</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L408" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L408-Apa - Ventilator Turn Racire 2 - Pornit</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L409" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L409-Apa - Ventilator Turn Racire 2 - Oprit</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L410" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L410-Apa - Deztunderizator SIKO - Pornit</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L411" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Ventilator 4 racire cuplat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L412" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L412-Apa - ElectroValva Y1 - Actionat Directia 1</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L413" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L413-Apa - ElectroValva Y1 - Actionat Directia 2</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L414" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L414-Apa - ElectroValva Y2 - Actionat Directia 1</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L415" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L415-Apa - ElectroValva Y2 - Actionat Directia 2</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L416" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L416-Apa - ElectroValva Y3 - Actionat Directia 1</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L417" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L417-Apa - ElectroValva Y3 - Actionat Directia 2</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L418" Datatype="Bool" />
+    <Member Name="L419" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L419-Apa - Pompa 1 Selectata</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L420" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L420-Apa - Pompa 2 Selectata</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L421" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L421-Apa - Pompa 3 Selectata</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L422" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L422-Apa - Pompa 4 Selectata</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L423" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L423-Apa - Pompa Rez Selectata</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L424" Datatype="Bool" />
+    <Member Name="L425" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L425-Apa - Ventilator Turn Racire 1 - Rotire Turatie Mica</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L426" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L426-Apa - Ventilator Turn Racire 1 - Rotire Turatie Mare</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L427" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L427-Apa - Ventilator Turn Racire 2 - Rotire Turatie Mica</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L428" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L428-Apa - Ventilator Turn Racire 1 - Rotire Turatie Mare</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L429" Datatype="Bool" />
+    <Member Name="L430" Datatype="Bool" />
+    <Member Name="L431" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L431-Apa - Pompa 1 - Sesizor Curgere</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L432" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L432-Apa - Pompa 2 - Sesizor Curgere</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L433" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L433-Apa - Pompa 3 - Sesizor Curgere</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L434" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L434-Apa - Pompa 4 - Sesizor Curgere</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L435" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L435-Apa - Pompa 5 - Sesizor Curgere</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L436" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L436-Apa - Pompa 5R - Sesizor Curgere</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L437" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L437-Apa - Pompa 7 - Sesizor Curgere</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L438" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L438-Apa - Pompa 8 - Sesizor Curgere</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L439" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L439-Apa - Pompa 9 - Sesizor Curgere</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L440" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L440-Apa - Pompa 10 - Sesizor Curgere</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L441" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L441-Apa - Pompa 11 - Sesizor Curgere</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L442" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L442-Apa - Bazin Tunder - Senzor Nivel Maxim</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L443" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L443-Apa - Bazin Tunder - Senzor Nivel Minim</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L444" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L444-Apa - Bazin Pompare - Senzor Nivel Maxim</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L445" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L445-Apa - Bazin Pompare - Senzor Nivel Minim</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L446" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L446-Apa - Racitor Pornit</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L447" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L447-Apa - Instalatie Depozitare Pornita</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L448" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L448-Apa - Filtru Autocuratate FA2 Pornit</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L449" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L449-Apa - Senzor Presiune scazuta pe Linia de Calire</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L450" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L450-Apa - Senzor Presiune Scazuta Turnuri Racire</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L451" Datatype="Bool" />
+    <Member Name="L452" Datatype="Bool" />
+    <Member Name="L453" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L453-Apa - Control Pupitru Local Apa</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L454" Datatype="Bool" />
+    <Member Name="L455" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L455-T3 - Cap Calitor 1 - Deplasare Sus</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L456" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L456-T3 - Cap Calitor 1 - Deplasare Jos</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L457" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L457-T3 - Cap Calitor 2 - Deplasare Sus</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L458" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L458-T3 - Cap Calitor 2 - Deplasare Jos</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L459" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L459-T3 - Cap Calitor 3 - Deplasare Sus</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L460" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L460-T3 - Cap Calitor 3 - Deplasare Jos</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L461" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L461-T3 - Grinda - Deplasare Sus</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L462" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L462-T3 - Grinda - Deplasare Jos</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L463" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L463- Deztunderizator - Mod Operare Automat Selectat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L464" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L464- Deztunderizator - Mod Operare Manual Selectat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L465" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L465-T7A - Mod Operare Manual Selectat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L466" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L466-T7A - Mod Operare Automat Selectat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L467" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L467-T7A - CaleRole - Rotire Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L468" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L468-T7A - CaleRole - Rotire Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L469" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L469-T7A - Excentric 1 - Rotire Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L470" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L470-T7A - Excentric 1 - In Pozitia "Vertical"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L471" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L471-T7A - Excentric 1 - In Pozitia "Initial"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L472" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L472-T7A - Excentric 2 - Rotire Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L473" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L473-T7A - Excentric 1 - In Pozitia "Initial"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L474" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L474-T7A - Excentric 1 - In Pozitia "Vertical"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L475" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L475-T7A - Lant (rostogolire) - Deplasare Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L476" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L476-T7A - Lant (rostogolire) - Deplasare Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L477" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L477-T7A - Lant (transport) - Deplasare Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L478" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L478-T7A - Lant (transport) - Deplasare Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L479" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L479-T7A - Lant (transport) - Pas Efectuat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L480" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L480-T7A - Excentric 1 - Senzor 1 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L481" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L481-T7A - Excentric 1 - Senzor 2 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L482" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L482-T7A - Intrare Lant - Senzor 1 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L483" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L483-T7A - Intrare Lant - Senzor 2 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L484" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L484-T7A - Iesire Lant - Senzor 1 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L485" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L485-T7A - Iesire Lant - Senzor 2 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L486" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L486-T7A - CaleRole - Senzor 1 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L487" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L487-T7A - CaleRole - Senzor 2 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L488" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L488-T7A - CaleRole - Senzor 3 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L489" Datatype="Bool" />
+    <Member Name="L490" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Ventilator Turn 3 pornit</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L491" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Ventilator Turn 3 oprit</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L492" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Ventilator Turn 4 pornit</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L493" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Ventilator Turn 4 oprit</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L494" Datatype="Bool" />
+    <Member Name="L495" Datatype="Bool" />
+    <Member Name="L496" Datatype="Bool" />
+    <Member Name="L497" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L497-T7B - Mod Operare Manual Selectat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L498" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L498-T7B - Mod Operare Automat Selectat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L499" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L499-T7B - CaleRole - Rotire Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L500" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L500-T7B - CaleRole - Rotire Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L501" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L501-T7B - Lant Colector - Deplasare Sus</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L502" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L502-T7B - Lant Colector - Deplasare Jos</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L503" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L503-T7B - Aruncator 1 - In Pozitia "Sus"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L504" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L504-T7B - Aruncator 1 - In Pozitia "Jos"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L505" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L505-T7B - Aruncator 2 - In Pozitia "Sus"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L506" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L506-T7B - Aruncator 2 - In Pozitia "Jos"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L507" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L507-T7B - Aruncator 1 - Senzor 1 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L508" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L508-T7B - Aruncator 1 - Senzor 2 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L509" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L509-T7B - Aruncator 2 - Senzor 1 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L510" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L510-T7B - Aruncator 2 - Senzor 2 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L511" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L511-T7B - CaleRole - Senzor 1 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L512" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L512-T7B - CaleRole - Senzor 2 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L513" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L513-T7B - CaleRole - Senzor 3 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L514" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L514-T7B - Lant Colector - In Pozitia "Sus"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L515" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L515-T7B - Lant Colector - In Pozitia "Jos"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L516" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L516-T7B - Lant (rostogolire) - Deplasare Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L517" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L517-T7B - Lant (rostogolire) - Deplasare Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L518" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L518-T7B - Lant (transport) - Deplasare Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L519" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L519-T7B - Lant (transport) - Deplasare Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L520" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L520-T7B - Lant (transport) - Pas Efectuat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L521" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L521-T7B - Intrare Lant - Senzor 1 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L522" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L522-T7B - Intrare Lant - Senzor 2 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L523" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L523-T7B - Iesire Lant - Senzor 1 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L524" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L524-T7B - Iesire Lant - Senzor 2 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L525" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L525-T7B - Lant Colector - Senzor 1 - Plin</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L526" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L526-T7B - Lant colector - Senzor 2 - Plin</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L527" Datatype="Bool" />
+    <Member Name="L528" Datatype="Bool" />
+    <Member Name="L529" Datatype="Bool" />
+    <Member Name="L530" Datatype="Bool" />
+    <Member Name="L531" Datatype="Bool" />
+    <Member Name="L532" Datatype="Bool" />
+    <Member Name="L533" Datatype="Bool" />
+    <Member Name="L534" Datatype="Bool" />
+    <Member Name="L535" Datatype="Bool" />
+    <Member Name="L536" Datatype="Bool" />
+    <Member Name="L537" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L537-T7C - Mod Operare Manual Selectat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L538" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L538-T7C - Mod Operare Automat Selectat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L539" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L539-T7C - CaleRole - Rotire Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L540" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L540-T7C - CaleRole - Rotire Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L541" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L541-T7C - Lant Colector - Deplasare Sus</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L542" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L542-T7C - Lant Colector - Deplasare Jos</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L543" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L543-T7C - Aruncator - In Pozitia "Sus"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L544" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L544-T7C - Aruncator - In Pozitia "Jos"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L545" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L545-T7C - CaleRole - Senzor 1 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L546" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L546-T7C - CaleRole - Senzor 2 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L547" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L547-T7C - CaleRole - Senzor 3 - Teava Prezenta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L548" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L548-T7C - Lant Colector - In Pozitia "Sus"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L549" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L549-T7C - Lant Colector - In Pozitia "Jos"</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L550" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L550-T7C - Opritor Mobil - Deplasare Sus</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L551" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L551-T7C - Opritor Mobil - Deplasare Jos</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L552" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L552-T7C - Opritor Mobil - Deplasare Sus</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L553" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L553-T7C - Opritor Mobil - Deplasare Jos</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L554" Datatype="Bool" />
+    <Member Name="L555" Datatype="Bool" />
+    <Member Name="L556" Datatype="Bool" />
+    <Member Name="L557" Datatype="Bool" />
+    <Member Name="L558" Datatype="Bool" />
+    <Member Name="L559" Datatype="Bool" />
+    <Member Name="L560" Datatype="Bool" />
+    <Member Name="L561" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L560-L370-Apa - Mod Operare Manual Selectat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L562" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L561-L371-Apa - Mod Operare Automat Selectat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L563" Datatype="Bool" />
+    <Member Name="L564" Datatype="Bool" />
+    <Member Name="L565" Datatype="Bool" />
+    <Member Name="L566" Datatype="Bool" />
+    <Member Name="L567" Datatype="Bool" />
+    <Member Name="L568" Datatype="Bool" />
+    <Member Name="L569" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L569-T7C - Debitare - Masina DezAbilitata</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L570" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L569-T7C - Debitare - Role T7C - In Pozitia 'Ridicat'</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L571" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L569-T7C - Debitare - Role T7C - In Pozitia 'Coborit'</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L572" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L569-T7C - Debitare - Opritor Mobil - Miscare 'Ridicare'</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L573" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L569-T7C - Debitare - Opritor Mobil - Miscare 'Coborire'</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L574" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L569-T7C - Debitare - Opritor Mobil - in Pozitia 'Ridicat'</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L575" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L569-T7C - Debitare - Opritor Mobil - in Pozitia 'Coborit'</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L576" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L569-T7C - Debitare - Menghina - Miscare 'Stringere'</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L577" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L569-T7C - Debitare - Menghina - Miscare 'Deschidere'</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L578" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L569-T7C - Debitare - Menghina - in Pozitia 'Inchis'</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L579" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L569-T7C - Debitare - Menghina - in Pozitia 'Deschis'</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L580" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L569-T7C - Debitare - Lama Circulara - Miscare 'Ridicare'</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L581" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L569-T7C - Debitare - Lama Circulara - Miscare 'Coborire'</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L582" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L569-T7C - Debitare - Lama Circulara - Ridicata</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L583" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L569-T7C - Debitare - Lama Circulara - Coborita</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L584" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L569-T7C - Debitare - Lama Circulara - Miscare 'Rotire'</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L585" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L569-T7C - Debitare - Lama Circulara - Convertizor 'Avarie'</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L586" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L569-T7C - Debitare - Temperatura Minima Ulei Hidraulic (start incalzire)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L587" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L569-T7C - Debitare - Temperatura Ridicata Ulei Hidraulic (start ventilatie)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L588" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L569-T7C - Debitare - Temperatura Maxima Ulei Hidraulic</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L589" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L569-T7C - Debitare - Nivel Minim Ulei Hidraulic</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L590" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L569-T7C - Debitare - Pompa Hidraulica Pornita</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L591" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L569-T7C - Debitare - Incalzire Pornita</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L592" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L569-T7C - Debitare - Ventilatie Pornita</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L593" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L569-T7C - Debitare - Nivel Minim Apa</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L594" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L569-T7C - Debitare - Pompa Apa Racire Pornita</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L595" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L569-T7C - Debitare - Lubrifiere Lama Pornita</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L596" Datatype="Bool" />
+    <Member Name="L597" Datatype="Bool" />
+    <Member Name="L598" Datatype="Bool" />
+    <Member Name="L599" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L599-T3 - Unitate 200bar selectata_PSC</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L600" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L600-T3 - Unitate 100bar selectata</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L601" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L601-T3 - Unitate 180bar selectata</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L602" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L602-T3 - Pompa joasa presiune 9.1 selectata</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L603" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L603-T3 - Pompa joasa presiune 9.2 selectata</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L604" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L604-T3 - Pompa joasa presiune pornita</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L605" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L605-T3 - Pompa inalta presiune pornita</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L606" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L606-T3 - Presostat apa alimentare</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L607" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L607-T3 - Senzor proximitate Robinet izolare 6.1 inainte pompa 9.2</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L608" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L608-T3 - Senzor proximitate Robinet izolare 6.2 inainte pompa 9.1</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L609" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L609-T3 - Senzor proximitate Robinet izolare 6.3 dupa pompa 9.2</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L610" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L610-T3 - Senzor proximitate Robinet izolare 6.4 dupa pompa 9.1</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L611" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L611-T3 - Robinet pneumatic Inalta presiune 20.1 deschis</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L612" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L612-T3 - Robinet pneumatic 29.2 deschis</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L613" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L613-T3 - Robinet pneumatic 29.1 deschis</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L614" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L614-t3 -Robinet sinclercolins 29.1 selectat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L615" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L615-T3 -Robinet sinclercolins 29.1 selectat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L616" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L603-T3 - Pompa joasa presiune 9.3 selectata</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L617" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Fierastrau Kasto: Emergency</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L618" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Fierastrau Kasto: Ready</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L619" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Fierastrau Kasto: Taiere pornita</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L620" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Fierastrau Kasto: Taiere Terminata</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L621" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Fierastrau Kasto: Avarie/avertizare</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L622" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Role Kasto: Prezenta teava intrare</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L623" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Fierastrau Kasto: Local/Distanta 1 = distanta</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L624" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">L603-T3 - Pompa joasa presiune 9.4 selectata</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L625" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Role Kasto - Deplasare Inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L626" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Role Kasto - Deplasare Inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L627" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Role Kasto: Prezenta teava pe role nr. 3</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L628" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Role Kasto: Prezenta teava pe role nr. 6</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L629" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Role Kasto: Prezenta teava pe role nr. 9</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L630" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Role Kasto: Prezenta teava pe role nr. 11</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L631" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Role Kasto: Prezenta teava pe role nr. 13</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L632" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Role Kasto: Prezenta teava inainte de rola mobila</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L633" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Role Kasto: Prezenta teava dupa rola mobila inainte Kasto</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L634" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Role Kasto: Prezenta teava in Kasto (la tampon)</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L635" Datatype="Bool" />
+    <Member Name="L636" Datatype="Bool" />
+    <Member Name="L637" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Marcare: Limita cursa sus motomartinet</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L638" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Marcare: Limita cursa jos motomartinet</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L639" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Marcare: Senzor de ZERO cursa motomartinet</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L640" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Marcare: Brat Marcare nu este sus</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L641" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Marcare: Senzor Marcare Cap</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L642" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Rola centrare cap refulat: Proximitate ridicata</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L643" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Rola centrare cap refulat: Proximitate coborata</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L644" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Tampon masurare proba: Limita cursa inainte</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L645" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Tampon masurare proba: Limita cursa inapoi</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L646" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Alarma zona Kasto</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L647" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Activare taiere teava cu cap refulat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L648" Datatype="Bool" />
+    <Member Name="L649" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">PompaRacire1 - Avarie Convertizor</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L650" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">PompaRacire1 - Limita Curent Convertizor</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L651" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">PompaRacire1 - Suprasarcina Convertizor</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="L652" Datatype="Bool" />
+    <Member Name="L653" Datatype="Bool" />
+    <Member Name="L654" Datatype="Bool" />
+    <Member Name="L655" Datatype="Bool" />
+    <Member Name="L656" Datatype="Bool" />
+    <Member Name="OCV_CONV_RST" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">OCV - Reset Convertizor</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="OCV_CONV_HOME" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">OCV - Home Convertizor</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="OCV_LED_ON" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">OCV - LED On</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="OCV_LED_OFF" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">OCV - LED Off</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="OCV_CAM_START" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">OCV - Start Camera</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="OCV_MOVE_UP" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">OCV - Comanda Ridicare</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="OCV_MOVE_DW" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">OCV - Comanda Coborare</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="OCV_AXAFESTO_HOME" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">OCV - Axa Festo Pozitie Home</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="OCV_AXAFESTO_EME" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">OCV - Axa Festo in Emergenta [1=ok]</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="OCV_AXAFESTO_SAFESTOP" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">OCV - Axa Festo Stop Safety</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="OCV_AXAFESTO_DRVENA" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">OCV - Axa Festo Abilitare Convertizor</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="OCV_ELECTROCV_COMM_OK" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">OCV - Electronica OCV Comunicatie OK</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="OCV_ELECTROCV_READ_PROG" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">OCV - Electronica OCV Citire in Curs</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="OCV_ELECTROCV_READ_DONE" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">OCV - Electronica OCV Citire Terminata</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="OCV_MOVE_FBK_UP_POS" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">OCV - Confirmare Pozitie Ridicat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="OCV_MOVE_FBK_DW_POS" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">OCV - Confirmare Pozitie Coborat</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="OCV_MOVE_ELE_TRIP" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">OCV - Avarie Deplasare</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="OCV_MOVE_FBK_UP_Moving" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">OCV - Confirmare Deplasare Ridicare</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="OCV_MOVE_FBK_DW_Moving" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">OCV - Confirmare Deplasare Coborare</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="OCV_CLEAN_CMD_ON" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">OCV - Comanda Curatare Cap Marcare</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="OCV_PURGE_CMD_ON" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">OCV - Comanda Purjare Cap Marcare</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="OCV_CLEAN_CNT_ON" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">OCV - Indicatie Contorizare Timp Start Spray</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="OCV_CLEAN_EXP_ON" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">OCV - Indicatie Timp Start Spray Depasit</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="OCV_CLEAN_NIV_OK" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">OCV - Indicatie Nivel OK Solvent</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="OCV_CLEAN_NIV_MIN" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">OCV - Indicatie Nivel Minim Solvent</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="OCV_CLEAN_SLV_VLV" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">OCV - Indicatie Cap Marcare Valva Solvent</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="OCV_START_MARCARE_CAP" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">OCV - Indicatie Prezenta Teava Start Marcare Cap</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="OCV_START_MARCARE_COADA" Datatype="Bool">
+      <Comment>
+        <MultiLanguageText Lang="en-US">OCV - Indicatie Prezenta Teava Start Marcare Coada</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="bool_var" Datatype="Array[0..56] of Int" />
+  </Section>
+</Sections></Interface>
+      <MemoryLayout>Standard</MemoryLayout>
+      <Name>DB82-OPOUT</Name>
+      <Namespace />
+      <Number>82</Number>
+      <ProgrammingLanguage>DB</ProgrammingLanguage>
+    </AttributeList>
+    <ObjectList>
+      <MultilingualText ID="1" CompositionName="Comment">
+        <ObjectList>
+          <MultilingualTextItem ID="2" CompositionName="Items">
+            <AttributeList>
+              <Culture>en-US</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+          <MultilingualTextItem ID="3" CompositionName="Items">
+            <AttributeList>
+              <Culture>it-IT</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+        </ObjectList>
+      </MultilingualText>
+      <MultilingualText ID="4" CompositionName="Title">
+        <ObjectList>
+          <MultilingualTextItem ID="5" CompositionName="Items">
+            <AttributeList>
+              <Culture>en-US</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+          <MultilingualTextItem ID="6" CompositionName="Items">
+            <AttributeList>
+              <Culture>it-IT</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+        </ObjectList>
+      </MultilingualText>
+    </ObjectList>
+  </SW.Blocks.GlobalDB>
+</Document>

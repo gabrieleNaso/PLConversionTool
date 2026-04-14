@@ -1,0 +1,217 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Document>
+  <Engineering version="V20" />
+  <SW.Blocks.GlobalDB ID="0">
+    <AttributeList>
+      <AutoNumber>false</AutoNumber>
+      <HeaderAuthor>SAS</HeaderAuthor>
+      <Interface><Sections xmlns="http://www.siemens.com/automation/Openness/SW/Interface/v5">
+  <Section Name="Static">
+    <Member Name="Conditions" Datatype="Struct">
+      <Member Name="CG" Datatype="&quot;Pop_Up_Aux&quot;">
+        <Comment>
+          <MultiLanguageText Lang="en-US">General conditions</MultiLanguageText>
+        </Comment>
+        <Sections>
+          <Section Name="None">
+            <Member Name="Conditions" Datatype="Struct">
+              <Member Name="n1" Datatype="Bool">
+                <Comment>
+                  <MultiLanguageText Lang="en-US">Tensiune Alimentare OK</MultiLanguageText>
+                </Comment>
+              </Member>
+            </Member>
+          </Section>
+        </Sections>
+      </Member>
+      <Member Name="CA" Datatype="&quot;Pop_Up_Aux&quot;">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Start Auto mode conditions</MultiLanguageText>
+        </Comment>
+        <Sections>
+          <Section Name="None">
+            <Member Name="Conditions" Datatype="Struct">
+              <Member Name="n1" Datatype="Bool">
+                <Comment>
+                  <MultiLanguageText Lang="en-US">Conditiie Generale</MultiLanguageText>
+                </Comment>
+              </Member>
+              <Member Name="n2" Datatype="Bool">
+                <Comment>
+                  <MultiLanguageText Lang="en-US">Aruncator Jos</MultiLanguageText>
+                </Comment>
+              </Member>
+            </Member>
+          </Section>
+        </Sections>
+      </Member>
+      <Member Name="SC" Datatype="&quot;Pop_Up_Aux&quot;">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Start cycle conditions</MultiLanguageText>
+        </Comment>
+        <Sections>
+          <Section Name="None">
+            <Member Name="Conditions" Datatype="Struct">
+              <Member Name="n1" Datatype="Bool">
+                <Comment>
+                  <MultiLanguageText Lang="en-US">Initial Conditions</MultiLanguageText>
+                </Comment>
+              </Member>
+              <Member Name="n2" Datatype="Bool">
+                <Comment>
+                  <MultiLanguageText Lang="en-US">Piece Presence</MultiLanguageText>
+                </Comment>
+              </Member>
+              <Member Name="n3" Datatype="Bool">
+                <Comment>
+                  <MultiLanguageText Lang="en-US">Tracking OK</MultiLanguageText>
+                </Comment>
+              </Member>
+              <Member Name="n4" Datatype="Bool">
+                <Comment>
+                  <MultiLanguageText Lang="en-US">Condition of movement</MultiLanguageText>
+                </Comment>
+              </Member>
+              <Member Name="n5" Datatype="Bool">
+                <Comment>
+                  <MultiLanguageText Lang="en-US">Sel. Incarca Cuptor calitor sin T1-A</MultiLanguageText>
+                </Comment>
+              </Member>
+              <Member Name="n6" Datatype="Bool">
+                <Comment>
+                  <MultiLanguageText Lang="en-US">T1-A role Stop</MultiLanguageText>
+                </Comment>
+              </Member>
+              <Member Name="n7" Datatype="Bool">
+                <Comment>
+                  <MultiLanguageText Lang="en-US">T1-A role Free</MultiLanguageText>
+                </Comment>
+              </Member>
+              <Member Name="n8" Datatype="Bool">
+                <Comment>
+                  <MultiLanguageText Lang="en-US">Production Blocare</MultiLanguageText>
+                </Comment>
+              </Member>
+              <Member Name="n9" Datatype="Bool">
+                <Comment>
+                  <MultiLanguageText Lang="en-US">Calire Consents</MultiLanguageText>
+                </Comment>
+              </Member>
+            </Member>
+          </Section>
+        </Sections>
+      </Member>
+      <Member Name="MOV_UP" Datatype="&quot;Pop_Up_Aux&quot;">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Movement interlocks Up</MultiLanguageText>
+        </Comment>
+        <Sections>
+          <Section Name="None">
+            <Member Name="Conditions" Datatype="Struct">
+              <Member Name="n1" Datatype="Bool">
+                <Comment>
+                  <MultiLanguageText Lang="en-US">Permanent Conditions</MultiLanguageText>
+                </Comment>
+              </Member>
+            </Member>
+          </Section>
+        </Sections>
+      </Member>
+    </Member>
+    <Member Name="HMI" Datatype="Struct">
+      <Member Name="PB" Datatype="Struct">
+        <Member Name="s0" Datatype="Bool" />
+        <Member Name="s1" Datatype="Bool" />
+        <Member Name="s2" Datatype="Bool" />
+        <Member Name="s3" Datatype="Bool" />
+        <Member Name="s4" Datatype="Bool" />
+        <Member Name="Pause" Datatype="Bool">
+          <Comment>
+            <MultiLanguageText Lang="en-US">Pause</MultiLanguageText>
+          </Comment>
+        </Member>
+        <Member Name="s6" Datatype="Bool" />
+        <Member Name="s7" Datatype="Bool" />
+        <Member Name="s8" Datatype="Bool" />
+        <Member Name="s9" Datatype="Bool" />
+        <Member Name="s10" Datatype="Bool" />
+        <Member Name="s11" Datatype="Bool" />
+        <Member Name="s12" Datatype="Bool" />
+        <Member Name="s13" Datatype="Bool" />
+        <Member Name="s14" Datatype="Bool" />
+        <Member Name="s15" Datatype="Bool" />
+      </Member>
+      <Member Name="ST" Datatype="Struct">
+        <Member Name="s0" Datatype="Bool" />
+        <Member Name="s1" Datatype="Bool" />
+        <Member Name="s2" Datatype="Bool" />
+        <Member Name="s3" Datatype="Bool" />
+        <Member Name="s4" Datatype="Bool" />
+        <Member Name="Pause" Datatype="Bool">
+          <Comment>
+            <MultiLanguageText Lang="en-US">Pause</MultiLanguageText>
+          </Comment>
+        </Member>
+        <Member Name="s6" Datatype="Bool" />
+        <Member Name="s7" Datatype="Bool" />
+        <Member Name="s8" Datatype="Bool" />
+        <Member Name="s9" Datatype="Bool" />
+        <Member Name="ST Machine" Datatype="Int">
+          <Comment>
+            <MultiLanguageText Lang="en-US">Device label status (0=EME, 1=Safe, 2=Fault, 3=Run, 4=Stopped) </MultiLanguageText>
+          </Comment>
+        </Member>
+        <Member Name="ST Sequencer step" Datatype="Int">
+          <Comment>
+            <MultiLanguageText Lang="en-US">Sequencer step</MultiLanguageText>
+          </Comment>
+        </Member>
+      </Member>
+    </Member>
+  </Section>
+</Sections></Interface>
+      <IsRetainMemResEnabled>true</IsRetainMemResEnabled>
+      <MemoryLayout>Optimized</MemoryLayout>
+      <MemoryReserve>100</MemoryReserve>
+      <Name>T1-A ARUNC HMI</Name>
+      <Namespace />
+      <Number>1202</Number>
+      <ProgrammingLanguage>DB</ProgrammingLanguage>
+      <RetainMemoryReserve>100</RetainMemoryReserve>
+    </AttributeList>
+    <ObjectList>
+      <MultilingualText ID="1" CompositionName="Comment">
+        <ObjectList>
+          <MultilingualTextItem ID="2" CompositionName="Items">
+            <AttributeList>
+              <Culture>en-US</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+          <MultilingualTextItem ID="3" CompositionName="Items">
+            <AttributeList>
+              <Culture>it-IT</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+        </ObjectList>
+      </MultilingualText>
+      <MultilingualText ID="4" CompositionName="Title">
+        <ObjectList>
+          <MultilingualTextItem ID="5" CompositionName="Items">
+            <AttributeList>
+              <Culture>en-US</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+          <MultilingualTextItem ID="6" CompositionName="Items">
+            <AttributeList>
+              <Culture>it-IT</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+        </ObjectList>
+      </MultilingualText>
+    </ObjectList>
+  </SW.Blocks.GlobalDB>
+</Document>

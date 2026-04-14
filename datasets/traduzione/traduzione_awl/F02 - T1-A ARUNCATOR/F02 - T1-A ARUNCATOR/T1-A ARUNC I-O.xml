@@ -1,0 +1,100 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Document>
+  <Engineering version="V20" />
+  <SW.Blocks.GlobalDB ID="0">
+    <AttributeList>
+      <AutoNumber>false</AutoNumber>
+      <HeaderAuthor>SAS</HeaderAuthor>
+      <Interface><Sections xmlns="http://www.siemens.com/automation/Openness/SW/Interface/v5">
+  <Section Name="Static">
+    <Member Name="DI" Datatype="Struct">
+      <Member Name="F8.1" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E25.0) T1A Prezenta Tensiune Alimentare ElectroValva Arunctor</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="S44.6" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E25.7) T1A Aruncator Comanda ''Ridicare''</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="S44.7" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E26.0) T1A Aruncator Comanda 'Coborare'</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="S44.8" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E26.7) T1A-Aruncator: Scuturator</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="B48.1" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E30.0) T1A Aruncator Senzor Prozimitate Pozitia 'Jos'</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="B48.2" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E30.1) T1A Aruncator Senzor Prozimitate Pozitia 'Sus'</MultiLanguageText>
+        </Comment>
+      </Member>
+    </Member>
+    <Member Name="DO" Datatype="Struct">
+      <Member Name="K56.1" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(A24.0) T1A Aruncator ElectroValva ''Ridicare''</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="A24.3" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(A24.3) Comanda scuturator T1A</MultiLanguageText>
+        </Comment>
+      </Member>
+    </Member>
+  </Section>
+</Sections></Interface>
+      <IsRetainMemResEnabled>true</IsRetainMemResEnabled>
+      <MemoryLayout>Optimized</MemoryLayout>
+      <MemoryReserve>100</MemoryReserve>
+      <Name>T1-A ARUNC I-O</Name>
+      <Namespace />
+      <Number>1602</Number>
+      <ProgrammingLanguage>DB</ProgrammingLanguage>
+      <RetainMemoryReserve>100</RetainMemoryReserve>
+    </AttributeList>
+    <ObjectList>
+      <MultilingualText ID="1" CompositionName="Comment">
+        <ObjectList>
+          <MultilingualTextItem ID="2" CompositionName="Items">
+            <AttributeList>
+              <Culture>en-US</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+          <MultilingualTextItem ID="3" CompositionName="Items">
+            <AttributeList>
+              <Culture>it-IT</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+        </ObjectList>
+      </MultilingualText>
+      <MultilingualText ID="4" CompositionName="Title">
+        <ObjectList>
+          <MultilingualTextItem ID="5" CompositionName="Items">
+            <AttributeList>
+              <Culture>en-US</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+          <MultilingualTextItem ID="6" CompositionName="Items">
+            <AttributeList>
+              <Culture>it-IT</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+        </ObjectList>
+      </MultilingualText>
+    </ObjectList>
+  </SW.Blocks.GlobalDB>
+</Document>

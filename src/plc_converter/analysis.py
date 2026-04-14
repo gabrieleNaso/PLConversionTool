@@ -668,6 +668,100 @@ def _build_artifact_previews(scaffold, ir: AwlIR, graph_topology: GraphTopology)
             content=fc_xml,
         )
     )
+    previews.extend(_build_support_artifact_previews(ir))
+    return previews
+
+
+def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
+    previews: list[ArtifactPreview] = []
+
+    io_members = _collect_io_support_members(ir)
+    if io_members:
+        io_db_name = f"{ir.sequence_name}_IO_Global"
+        previews.append(
+            ArtifactPreview(
+                artifact_type="support_global_db_io",
+                file_name=f"DB_{ir.sequence_name}_io_global_auto.xml",
+                content=_build_support_global_db_xml(
+                    block_name=io_db_name,
+                    title=f"{ir.sequence_name} IO Global",
+                    members=io_members,
+                    number_seed=f"{ir.sequence_name}_IO_DB",
+                ),
+            )
+        )
+        previews.append(
+            ArtifactPreview(
+                artifact_type="support_lad_fc_io",
+                file_name=f"FC_{ir.sequence_name}_io_lad_auto.xml",
+                content=_build_support_lad_fc_xml(
+                    fc_name=f"{ir.sequence_name}_IO_LAD",
+                    title=f"{ir.sequence_name} IO LAD",
+                    db_name=io_db_name,
+                    members=[name for name, _ in io_members],
+                    number_seed=f"{ir.sequence_name}_IO_FC",
+                ),
+            )
+        )
+
+    diag_members = _collect_diag_support_members(ir)
+    if diag_members:
+        diag_db_name = f"{ir.sequence_name}_Diag_Global"
+        previews.append(
+            ArtifactPreview(
+                artifact_type="support_global_db_diag",
+                file_name=f"DB_{ir.sequence_name}_diag_global_auto.xml",
+                content=_build_support_global_db_xml(
+                    block_name=diag_db_name,
+                    title=f"{ir.sequence_name} Diag Global",
+                    members=diag_members,
+                    number_seed=f"{ir.sequence_name}_DIAG_DB",
+                ),
+            )
+        )
+        previews.append(
+            ArtifactPreview(
+                artifact_type="support_lad_fc_diag",
+                file_name=f"FC_{ir.sequence_name}_diag_lad_auto.xml",
+                content=_build_support_lad_fc_xml(
+                    fc_name=f"{ir.sequence_name}_DIAG_LAD",
+                    title=f"{ir.sequence_name} Diag LAD",
+                    db_name=diag_db_name,
+                    members=[name for name, _ in diag_members],
+                    number_seed=f"{ir.sequence_name}_DIAG_FC",
+                ),
+            )
+        )
+
+    mode_members = _collect_mode_support_members(ir)
+    if mode_members:
+        mode_db_name = f"{ir.sequence_name}_Mode_Global"
+        previews.append(
+            ArtifactPreview(
+                artifact_type="support_global_db_mode",
+                file_name=f"DB_{ir.sequence_name}_mode_global_auto.xml",
+                content=_build_support_global_db_xml(
+                    block_name=mode_db_name,
+                    title=f"{ir.sequence_name} Mode Global",
+                    members=mode_members,
+                    number_seed=f"{ir.sequence_name}_MODE_DB",
+                ),
+            )
+        )
+        previews.append(
+            ArtifactPreview(
+                artifact_type="support_lad_fc_mode",
+                file_name=f"FC_{ir.sequence_name}_mode_lad_auto.xml",
+                content=_build_support_lad_fc_xml(
+                    fc_name=f"{ir.sequence_name}_MODE_LAD",
+                    title=f"{ir.sequence_name} Mode LAD",
+                    db_name=mode_db_name,
+                    members=[name for name, _ in mode_members],
+                    number_seed=f"{ir.sequence_name}_MODE_FC",
+                ),
+            )
+        )
+
     return previews
 
 
@@ -922,6 +1016,71 @@ def _build_global_db_xml(ir: AwlIR, graph_topology: GraphTopology) -> str:
     )
 
 
+def _build_support_global_db_xml(
+    block_name: str,
+    title: str,
+    members: list[tuple[str, str]],
+    number_seed: str,
+) -> str:
+    db_number = _stable_block_number(number_seed, base=400, span=200)
+    rendered_members = [
+        (
+            f'    <Member Name="{escape(member_name)}" Datatype="Bool">\n'
+            '      <Comment Informative="true">\n'
+            f'        <MultiLanguageText Lang="en-US">{escape(member_comment)}</MultiLanguageText>\n'
+            '      </Comment>\n'
+            '    </Member>'
+        )
+        for member_name, member_comment in members
+    ]
+    if not rendered_members:
+        rendered_members = ['    <Member Name="NoData" Datatype="Bool" />']
+    members_xml = "\n".join(dict.fromkeys(rendered_members))
+    return (
+        '<?xml version="1.0" encoding="utf-8"?>\n'
+        '<Document>\n'
+        '  <Engineering version="V20" />\n'
+        '  <SW.Blocks.GlobalDB ID="0">\n'
+        '    <AttributeList>\n'
+        '      <Interface><Sections xmlns="http://www.siemens.com/automation/Openness/SW/Interface/v5">\n'
+        '  <Section Name="Static">\n'
+        f"{members_xml}\n"
+        '  </Section>\n'
+        '</Sections></Interface>\n'
+        '      <MemoryLayout>Optimized</MemoryLayout>\n'
+        '      <MemoryReserve>100</MemoryReserve>\n'
+        f'      <Name>{escape(block_name)}</Name>\n'
+        '      <Namespace />\n'
+        f'      <Number>{db_number}</Number>\n'
+        '      <ProgrammingLanguage>DB</ProgrammingLanguage>\n'
+        '    </AttributeList>\n'
+        '    <ObjectList>\n'
+        '      <MultilingualText ID="1" CompositionName="Comment">\n'
+        '        <ObjectList>\n'
+        '          <MultilingualTextItem ID="2" CompositionName="Items">\n'
+        '            <AttributeList>\n'
+        '              <Culture>en-US</Culture>\n'
+        '              <Text />\n'
+        '            </AttributeList>\n'
+        '          </MultilingualTextItem>\n'
+        '        </ObjectList>\n'
+        '      </MultilingualText>\n'
+        '      <MultilingualText ID="3" CompositionName="Title">\n'
+        '        <ObjectList>\n'
+        '          <MultilingualTextItem ID="4" CompositionName="Items">\n'
+        '            <AttributeList>\n'
+        '              <Culture>en-US</Culture>\n'
+        f'              <Text>{escape(title)}</Text>\n'
+        '            </AttributeList>\n'
+        '          </MultilingualTextItem>\n'
+        '        </ObjectList>\n'
+        '      </MultilingualText>\n'
+        '    </ObjectList>\n'
+        '  </SW.Blocks.GlobalDB>\n'
+        '</Document>\n'
+    )
+
+
 def _build_lad_fc_xml(ir: AwlIR, graph_topology: GraphTopology) -> str:
     fc_number = _stable_block_number(f"{ir.sequence_name}_FC", base=300, span=100)
     temp_members = _build_lad_temp_members(ir)
@@ -963,6 +1122,74 @@ def _build_lad_fc_xml(ir: AwlIR, graph_topology: GraphTopology) -> str:
         '        </ObjectList>\n'
         '      </MultilingualText>\n'
         f"{compile_units}\n"
+        '    </ObjectList>\n'
+        '  </SW.Blocks.FC>\n'
+        '</Document>\n'
+    )
+
+
+def _build_support_lad_fc_xml(
+    fc_name: str,
+    title: str,
+    db_name: str,
+    members: list[str],
+    number_seed: str,
+) -> str:
+    fc_number = _stable_block_number(number_seed, base=600, span=200)
+    temp_members = "\n".join(
+        f'    <Member Name="{escape(member)}" Datatype="Bool" />'
+        for member in dict.fromkeys(members)
+    )
+    if not temp_members:
+        temp_members = '    <Member Name="PACKET_READY" Datatype="Bool" />'
+    compile_units = _build_support_lad_compile_units(db_name=db_name, members=members)
+    return (
+        '<?xml version="1.0" encoding="utf-8"?>\n'
+        '<Document>\n'
+        '  <Engineering version="V20" />\n'
+        '  <SW.Blocks.FC ID="0">\n'
+        '    <AttributeList>\n'
+        '      <Interface><Sections xmlns="http://www.siemens.com/automation/Openness/SW/Interface/v5">\n'
+        '  <Section Name="Input" />\n'
+        '  <Section Name="Output" />\n'
+        '  <Section Name="InOut" />\n'
+        '  <Section Name="Temp">\n'
+        f"{temp_members}\n"
+        '  </Section>\n'
+        '  <Section Name="Constant" />\n'
+        '  <Section Name="Return">\n'
+        '    <Member Name="Ret_Val" Datatype="Void" />\n'
+        '  </Section>\n'
+        '</Sections></Interface>\n'
+        '      <MemoryLayout>Optimized</MemoryLayout>\n'
+        f'      <Name>{escape(fc_name)}</Name>\n'
+        '      <Namespace />\n'
+        f'      <Number>{fc_number}</Number>\n'
+        '      <ProgrammingLanguage>LAD</ProgrammingLanguage>\n'
+        '      <SetENOAutomatically>false</SetENOAutomatically>\n'
+        '    </AttributeList>\n'
+        '    <ObjectList>\n'
+        '      <MultilingualText ID="1" CompositionName="Comment">\n'
+        '        <ObjectList>\n'
+        '          <MultilingualTextItem ID="2" CompositionName="Items">\n'
+        '            <AttributeList>\n'
+        '              <Culture>en-US</Culture>\n'
+        '              <Text />\n'
+        '            </AttributeList>\n'
+        '          </MultilingualTextItem>\n'
+        '        </ObjectList>\n'
+        '      </MultilingualText>\n'
+        f"{compile_units}\n"
+        '      <MultilingualText ID="F0" CompositionName="Title">\n'
+        '        <ObjectList>\n'
+        '          <MultilingualTextItem ID="F1" CompositionName="Items">\n'
+        '            <AttributeList>\n'
+        '              <Culture>en-US</Culture>\n'
+        f'              <Text>{escape(title)}</Text>\n'
+        '            </AttributeList>\n'
+        '          </MultilingualTextItem>\n'
+        '        </ObjectList>\n'
+        '      </MultilingualText>\n'
         '    </ObjectList>\n'
         '  </SW.Blocks.FC>\n'
         '</Document>\n'
@@ -1129,6 +1356,115 @@ def _build_lad_compile_units(ir: AwlIR, graph_topology: GraphTopology) -> str:
             '      </SW.Blocks.CompileUnit>'
         )
     return "\n".join(units)
+
+
+def _build_support_lad_compile_units(db_name: str, members: list[str]) -> str:
+    units: list[str] = []
+    unique_members = list(dict.fromkeys(member for member in members if member))
+    if not unique_members:
+        unique_members = ["PACKET_READY"]
+    base_id = 3
+    for index, member_name in enumerate(unique_members):
+        unit_id = format(base_id + (index * 3), "X")
+        comment_id = format(base_id + (index * 3) + 1, "X")
+        comment_item_id = format(base_id + (index * 3) + 2, "X")
+        units.append(
+            '      <SW.Blocks.CompileUnit ID="'
+            + unit_id
+            + '" CompositionName="CompileUnits">\n'
+            '        <AttributeList>\n'
+            '          <NetworkSource><FlgNet xmlns="http://www.siemens.com/automation/Openness/SW/NetworkSource/FlgNet/v5">\n'
+            '  <Parts>\n'
+            '    <Access Scope="GlobalVariable" UId="21">\n'
+            '      <Symbol>\n'
+            f'        <Component Name="{escape(db_name)}" />\n'
+            f'        <Component Name="{escape(member_name)}" />\n'
+            '      </Symbol>\n'
+            '    </Access>\n'
+            '    <Part Name="Contact" UId="22" />\n'
+            '    <Part Name="Coil" UId="23" />\n'
+            '  </Parts>\n'
+            '  <Wires>\n'
+            '    <Wire UId="31">\n'
+            '      <Powerrail />\n'
+            '      <NameCon UId="22" Name="in" />\n'
+            '    </Wire>\n'
+            '    <Wire UId="32">\n'
+            '      <IdentCon UId="21" />\n'
+            '      <NameCon UId="22" Name="operand" />\n'
+            '    </Wire>\n'
+            '    <Wire UId="33">\n'
+            '      <NameCon UId="22" Name="out" />\n'
+            '      <NameCon UId="23" Name="in" />\n'
+            '    </Wire>\n'
+            '  </Wires>\n'
+            '</FlgNet></NetworkSource>\n'
+            '        </AttributeList>\n'
+            '        <ObjectList>\n'
+            '          <MultilingualText ID="'
+            + comment_id
+            + '" CompositionName="Comment">\n'
+            '            <ObjectList>\n'
+            '              <MultilingualTextItem ID="'
+            + comment_item_id
+            + '" CompositionName="Items">\n'
+            '                <AttributeList>\n'
+            '                  <Culture>en-US</Culture>\n'
+            f'                  <Text>{escape(member_name)} support network</Text>\n'
+            '                </AttributeList>\n'
+            '              </MultilingualTextItem>\n'
+            '            </ObjectList>\n'
+            '          </MultilingualText>\n'
+            '        </ObjectList>\n'
+            '      </SW.Blocks.CompileUnit>'
+        )
+    return "\n".join(units)
+
+
+def _collect_io_support_members(ir: AwlIR) -> list[tuple[str, str]]:
+    members: list[tuple[str, str]] = []
+    for output in ir.outputs:
+        members.append((_support_member_name(output.name, "Q"), f"Output mapping {output.name}"))
+    for ext in ir.external_refs:
+        if ext.startswith(("A", "Q")):
+            continue
+        members.append((_support_member_name(ext, "X"), f"External reference {ext}"))
+    return list(dict.fromkeys(members))
+
+
+def _collect_diag_support_members(ir: AwlIR) -> list[tuple[str, str]]:
+    members: list[tuple[str, str]] = []
+    for timer in ir.timers:
+        members.append((_support_member_name(timer.source_timer, "T"), f"Timer diagnostic {timer.source_timer}"))
+    for fault in ir.faults:
+        members.append((_support_member_name(fault.name, "F"), f"Fault diagnostic {fault.name}"))
+    return list(dict.fromkeys(members))
+
+
+def _collect_mode_support_members(ir: AwlIR) -> list[tuple[str, str]]:
+    members: list[tuple[str, str]] = []
+    if ir.manual_logic_networks:
+        members.append(
+            (
+                "MODE_MANUAL_ACTIVE",
+                f"Manual mode networks {','.join(str(i) for i in sorted(set(ir.manual_logic_networks)))}",
+            )
+        )
+    if ir.auto_logic_networks:
+        members.append(
+            (
+                "MODE_AUTO_ACTIVE",
+                f"Auto mode networks {','.join(str(i) for i in sorted(set(ir.auto_logic_networks)))}",
+            )
+        )
+    if ir.manual_logic_networks and ir.auto_logic_networks:
+        members.append(("MODE_INTERLOCK_OK", "Manual/Auto arbitration coherence"))
+    return members
+
+
+def _support_member_name(raw_symbol: str, prefix: str) -> str:
+    normalized = _normalize_symbol_name(raw_symbol, f"{prefix}_SIGNAL")
+    return _db_member_name(f"{prefix}_{normalized}")
 
 
 def _render_graph_step(step: GraphStepNode) -> str:
