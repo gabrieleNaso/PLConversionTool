@@ -37,6 +37,16 @@ CONDITION_OPCODES = {"U", "UN", "O", "ON", "A", "AN", "X", "XN"}
 ACTION_OPCODES = {"S", "R", "="}
 JUMP_OPCODES = {"JC", "JCN", "JU"}
 TIMER_OPCODES = {"SD", "SE", "SP", "SS", "SF"}
+SUPPORT_BLOCK_SCHEMA = {
+    "io": {"token": "IO", "file_token": "io"},
+    "diag": {"token": "DIAG", "file_token": "diag"},
+    "mode": {"token": "MODE", "file_token": "mode"},
+    "network": {"token": "N", "file_token": "n"},
+    "hmi": {"token": "HMI", "file_token": "hmi"},
+    "aux": {"token": "AUX", "file_token": "aux"},
+    "transitions": {"token": "TRANSITIONS", "file_token": "transitions"},
+    "output": {"token": "OUTPUT", "file_token": "output"},
+}
 
 
 def analyze_awl_source(
@@ -44,6 +54,7 @@ def analyze_awl_source(
     awl_source: str,
     source_name: str | None = None,
 ) -> ConversionAnalysis:
+    awl_source = _normalize_awl_source(awl_source)
     scaffold = build_conversion_scaffold(
         sequence_name=sequence_name,
         awl_source=awl_source,
@@ -55,12 +66,61 @@ def analyze_awl_source(
     graph_topology = _build_graph_topology(ir)
     issues = _validate_ir(ir, graph_topology)
     previews = _build_artifact_previews(scaffold, ir, graph_topology)
+    manifest = _build_artifact_manifest(previews)
     return ConversionAnalysis(
         scaffold=scaffold,
         ir=ir,
         graph_topology=graph_topology,
         validation_issues=issues,
         artifact_previews=previews,
+        artifact_manifest=manifest,
+    )
+
+
+def _normalize_awl_source(awl_source: str) -> str:
+    if "```" not in awl_source:
+        return awl_source
+
+    blocks = _extract_markdown_awl_blocks(awl_source)
+    if not blocks:
+        return awl_source
+
+    normalized_blocks: list[str] = []
+    for index, block in enumerate(blocks, start=1):
+        cleaned_block = block.strip()
+        if not cleaned_block:
+            continue
+        if re.search(r"^\s*NETWORK\b", cleaned_block, flags=re.IGNORECASE | re.MULTILINE):
+            normalized_blocks.append(cleaned_block)
+            continue
+        normalized_blocks.append(f"NETWORK {index}\n{cleaned_block}")
+
+    if not normalized_blocks:
+        return awl_source
+    return "\n\n".join(normalized_blocks).strip() + "\n"
+
+
+def _extract_markdown_awl_blocks(raw_text: str) -> list[str]:
+    pattern = re.compile(r"```(?:awl|il|stl|text)?\s*\n(.*?)```", re.IGNORECASE | re.DOTALL)
+    matches = [match.group(1) for match in pattern.finditer(raw_text)]
+    if not matches:
+        return []
+
+    awl_like_blocks = [block for block in matches if _looks_like_awl_block(block)]
+    return awl_like_blocks or matches
+
+
+def _looks_like_awl_block(block: str) -> bool:
+    heuristics = (
+        r"\bNETWORK\b",
+        r"^\s*(A|AN|O|ON|U|UN|=|S|R|L|T|SD|SE|SP|SS|SF|JC|JCN|JU)\b",
+        r"\bS5T#",
+        r"\bDB\d+\.",
+        r"\b[QAEIM]\d+\.\d+\b",
+    )
+    return any(
+        re.search(pattern, block, flags=re.IGNORECASE | re.MULTILINE)
+        for pattern in heuristics
     )
 
 
@@ -227,12 +287,16 @@ def _build_ir(sequence_name: str, source_name: str, networks: list[AwlNetwork]) 
 
         external_refs.update(_collect_matches(network, EXTERNAL_RE))
 
+    if not transitions:
+        transitions = _build_network_pattern_transitions(step_map, networks)
+
     for reserved_step in ("S29", "S30", "S32"):
         step_map.setdefault(reserved_step, StepCandidate(name=reserved_step))
 
     assumptions = [
         "Il parser usa euristiche incrementali sui pattern AWL piu' frequenti.",
         "Le transizioni vengono dedotte da step letti nello stesso network e step attivati tramite S/=.",
+        "Se il sorgente non contiene step Sxx sufficienti, viene applicato un fallback sequenziale per network.",
         "Il bundle XML generato e' una baseline strutturale iniziale, non ancora un serializer TIA completo.",
     ]
 
@@ -251,6 +315,81 @@ def _build_ir(sequence_name: str, source_name: str, networks: list[AwlNetwork]) 
         external_refs=sorted(external_refs),
         assumptions=assumptions,
     )
+
+
+def _build_network_pattern_transitions(
+    step_map: dict[str, StepCandidate],
+    networks: list[AwlNetwork],
+) -> list[TransitionCandidate]:
+    meaningful = [network for network in networks if _network_is_transition_candidate(network)]
+    if len(meaningful) < 2:
+        return []
+
+    label_to_network: dict[str, int] = {}
+    for network in meaningful:
+        for instr in network.instructions:
+            if instr.label:
+                label_to_network[instr.label.upper()] = network.index
+
+    ordered_step_names: list[str] = []
+    step_by_network: dict[int, str] = {}
+    for network in meaningful:
+        step_name = f"N{network.index}"
+        candidate = step_map.setdefault(step_name, StepCandidate(name=step_name))
+        candidate.source_networks.append(network.index)
+        candidate.activation_networks.append(network.index)
+        ordered_step_names.append(step_name)
+        step_by_network[network.index] = step_name
+
+    transitions: list[TransitionCandidate] = []
+    for index, source_network in enumerate(meaningful):
+        source_step = step_by_network[source_network.index]
+        operands = _collect_condition_operands(source_network)
+        guard_expression = " AND ".join(operands) if operands else "TRUE"
+        successors: list[int] = []
+
+        # Structural default: flow continues to next meaningful network.
+        if index + 1 < len(meaningful):
+            successors.append(meaningful[index + 1].index)
+
+        # Semantic jump flow: when labels are available, wire explicit jump targets.
+        for instr in source_network.instructions:
+            if instr.opcode not in JUMP_OPCODES or not instr.args:
+                continue
+            label = _normalize_operand_token(instr.args[0])
+            if not label:
+                continue
+            target_network = label_to_network.get(label)
+            if target_network is not None:
+                successors.append(target_network)
+
+        for target_network_index in dict.fromkeys(successors):
+            target_step = step_by_network.get(target_network_index)
+            if not target_step or target_step == source_step:
+                continue
+            transitions.append(
+                TransitionCandidate(
+                    transition_id=f"T_NET_{source_network.index}_{target_network_index}",
+                    source_step=source_step,
+                    target_step=target_step,
+                    network_index=source_network.index,
+                    guard_expression=guard_expression,
+                    guard_operands=operands,
+                    jump_labels=[
+                        _normalize_operand_token(instr.args[0])
+                        for instr in source_network.instructions
+                        if instr.opcode in JUMP_OPCODES and instr.args
+                    ],
+                )
+            )
+
+    return transitions
+
+
+def _network_is_transition_candidate(network: AwlNetwork) -> bool:
+    if any(instr.opcode in ACTION_OPCODES | CONDITION_OPCODES | TIMER_OPCODES for instr in network.instructions):
+        return True
+    return bool(_collect_output_targets(network) or _collect_memory_targets(network))
 
 
 def _build_graph_topology(ir: AwlIR) -> GraphTopology:
@@ -573,6 +712,7 @@ def _validate_ir(ir: AwlIR, graph_topology: GraphTopology) -> list[ValidationIss
         )
     package_issues = _validate_package_coherence(ir, graph_topology)
     issues.extend(package_issues)
+    issues.extend(_validate_operand_coherence(ir))
     for warning in graph_topology.warnings:
         issues.append(
             ValidationIssue(
@@ -635,6 +775,39 @@ def _validate_package_coherence(ir: AwlIR, graph_topology: GraphTopology) -> lis
     return issues
 
 
+def _validate_operand_coherence(ir: AwlIR) -> list[ValidationIssue]:
+    issues: list[ValidationIssue] = []
+    bad_operands: set[str] = set()
+    for transition in ir.transitions:
+        for operand in transition.guard_operands:
+            if not operand:
+                continue
+            if any(token in operand for token in ('"', "'", " ", ":", "-", ";")):
+                bad_operands.add(operand)
+    if bad_operands:
+        issues.append(
+            ValidationIssue(
+                level="warning",
+                code="OPERAND_NORMALIZATION_WARNING",
+                message="Sono presenti operandi guard con token non canonici dopo il parsing.",
+                context=", ".join(sorted(bad_operands)[:10]),
+            )
+        )
+
+    if ir.transitions and all(item.transition_id.startswith("T_FALLBACK_") for item in ir.transitions):
+        issues.append(
+            ValidationIssue(
+                level="warning",
+                code="FALLBACK_TRANSITIONS_ONLY",
+                message=(
+                    "Le transizioni sono derivate solo via fallback sequenziale per network; "
+                    "serve affinare il parser semantico per la logica AWL reale."
+                ),
+            )
+        )
+    return issues
+
+
 def _stable_block_number(seed: str, base: int, span: int) -> int:
     if span <= 0:
         return base
@@ -672,16 +845,54 @@ def _build_artifact_previews(scaffold, ir: AwlIR, graph_topology: GraphTopology)
     return previews
 
 
+def _build_artifact_manifest(previews: list[ArtifactPreview]) -> dict[str, list[dict[str, str]]]:
+    manifest: dict[str, list[dict[str, str]]] = {
+        "baseline": [],
+        "support_io": [],
+        "support_diag": [],
+        "support_mode": [],
+        "support_network": [],
+        "support_transitions": [],
+        "support_output": [],
+        "support_hmi": [],
+        "support_aux": [],
+        "other": [],
+    }
+    for preview in previews:
+        item = {"artifactType": preview.artifact_type, "fileName": preview.file_name}
+        if preview.artifact_type in {"graph_fb", "global_db", "lad_fc"}:
+            manifest["baseline"].append(item)
+        elif preview.artifact_type in {"support_global_db_io", "support_lad_fc_io"}:
+            manifest["support_io"].append(item)
+        elif preview.artifact_type in {"support_global_db_diag", "support_lad_fc_diag"}:
+            manifest["support_diag"].append(item)
+        elif preview.artifact_type in {"support_global_db_mode", "support_lad_fc_mode"}:
+            manifest["support_mode"].append(item)
+        elif preview.artifact_type in {"support_global_db_network", "support_lad_fc_network"}:
+            manifest["support_network"].append(item)
+        elif preview.artifact_type in {"support_global_db_transitions", "support_lad_fc_transitions"}:
+            manifest["support_transitions"].append(item)
+        elif preview.artifact_type in {"support_global_db_output", "support_lad_fc_output"}:
+            manifest["support_output"].append(item)
+        elif preview.artifact_type in {"support_global_db_hmi", "support_lad_fc_hmi"}:
+            manifest["support_hmi"].append(item)
+        elif preview.artifact_type in {"support_global_db_aux", "support_lad_fc_aux"}:
+            manifest["support_aux"].append(item)
+        else:
+            manifest["other"].append(item)
+    return manifest
+
+
 def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
     previews: list[ArtifactPreview] = []
 
     io_members = _collect_io_support_members(ir)
     if io_members:
-        io_db_name = f"{ir.sequence_name}_IO_Global"
+        io_db_name, io_fc_name, io_db_file, io_fc_file = _support_block_names(ir.sequence_name, "io")
         previews.append(
             ArtifactPreview(
                 artifact_type="support_global_db_io",
-                file_name=f"DB_{ir.sequence_name}_io_global_auto.xml",
+                file_name=io_db_file,
                 content=_build_support_global_db_xml(
                     block_name=io_db_name,
                     title=f"{ir.sequence_name} IO Global",
@@ -693,9 +904,9 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
         previews.append(
             ArtifactPreview(
                 artifact_type="support_lad_fc_io",
-                file_name=f"FC_{ir.sequence_name}_io_lad_auto.xml",
+                file_name=io_fc_file,
                 content=_build_support_lad_fc_xml(
-                    fc_name=f"{ir.sequence_name}_IO_LAD",
+                    fc_name=io_fc_name,
                     title=f"{ir.sequence_name} IO LAD",
                     db_name=io_db_name,
                     members=[name for name, _ in io_members],
@@ -706,11 +917,13 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
 
     diag_members = _collect_diag_support_members(ir)
     if diag_members:
-        diag_db_name = f"{ir.sequence_name}_Diag_Global"
+        diag_db_name, diag_fc_name, diag_db_file, diag_fc_file = _support_block_names(
+            ir.sequence_name, "diag"
+        )
         previews.append(
             ArtifactPreview(
                 artifact_type="support_global_db_diag",
-                file_name=f"DB_{ir.sequence_name}_diag_global_auto.xml",
+                file_name=diag_db_file,
                 content=_build_support_global_db_xml(
                     block_name=diag_db_name,
                     title=f"{ir.sequence_name} Diag Global",
@@ -722,9 +935,9 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
         previews.append(
             ArtifactPreview(
                 artifact_type="support_lad_fc_diag",
-                file_name=f"FC_{ir.sequence_name}_diag_lad_auto.xml",
+                file_name=diag_fc_file,
                 content=_build_support_lad_fc_xml(
-                    fc_name=f"{ir.sequence_name}_DIAG_LAD",
+                    fc_name=diag_fc_name,
                     title=f"{ir.sequence_name} Diag LAD",
                     db_name=diag_db_name,
                     members=[name for name, _ in diag_members],
@@ -735,11 +948,13 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
 
     mode_members = _collect_mode_support_members(ir)
     if mode_members:
-        mode_db_name = f"{ir.sequence_name}_Mode_Global"
+        mode_db_name, mode_fc_name, mode_db_file, mode_fc_file = _support_block_names(
+            ir.sequence_name, "mode"
+        )
         previews.append(
             ArtifactPreview(
                 artifact_type="support_global_db_mode",
-                file_name=f"DB_{ir.sequence_name}_mode_global_auto.xml",
+                file_name=mode_db_file,
                 content=_build_support_global_db_xml(
                     block_name=mode_db_name,
                     title=f"{ir.sequence_name} Mode Global",
@@ -751,9 +966,9 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
         previews.append(
             ArtifactPreview(
                 artifact_type="support_lad_fc_mode",
-                file_name=f"FC_{ir.sequence_name}_mode_lad_auto.xml",
+                file_name=mode_fc_file,
                 content=_build_support_lad_fc_xml(
-                    fc_name=f"{ir.sequence_name}_MODE_LAD",
+                    fc_name=mode_fc_name,
                     title=f"{ir.sequence_name} Mode LAD",
                     db_name=mode_db_name,
                     members=[name for name, _ in mode_members],
@@ -764,12 +979,14 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
 
     network_specs = _collect_network_support_specs(ir)
     for network_no, network_title, members in network_specs:
-        suffix = f"N{network_no}"
-        network_db_name = f"{ir.sequence_name}_{suffix}_Global"
+        suffix = _network_support_suffix(network_no, network_title)
+        network_db_name, network_fc_name, network_db_file, network_fc_file = _support_block_names(
+            ir.sequence_name, "network", suffix=suffix
+        )
         previews.append(
             ArtifactPreview(
                 artifact_type="support_global_db_network",
-                file_name=f"DB_{ir.sequence_name}_{suffix.lower()}_global_auto.xml",
+                file_name=network_db_file,
                 content=_build_support_global_db_xml(
                     block_name=network_db_name,
                     title=f"{ir.sequence_name} Network {network_no} Global",
@@ -781,13 +998,137 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
         previews.append(
             ArtifactPreview(
                 artifact_type="support_lad_fc_network",
-                file_name=f"FC_{ir.sequence_name}_{suffix.lower()}_lad_auto.xml",
+                file_name=network_fc_file,
                 content=_build_support_lad_fc_xml(
-                    fc_name=f"{ir.sequence_name}_{suffix}_LAD",
+                    fc_name=network_fc_name,
                     title=f"{ir.sequence_name} Network {network_no} LAD ({network_title})",
                     db_name=network_db_name,
                     members=[name for name, _ in members],
                     number_seed=f"{ir.sequence_name}_{suffix}_FC",
+                ),
+            )
+        )
+
+    transitions_members = _collect_transitions_support_members(ir, network_specs)
+    if transitions_members:
+        tr_db_name, tr_fc_name, tr_db_file, tr_fc_file = _support_block_names(
+            ir.sequence_name, "transitions"
+        )
+        previews.append(
+            ArtifactPreview(
+                artifact_type="support_global_db_transitions",
+                file_name=tr_db_file,
+                content=_build_support_global_db_xml(
+                    block_name=tr_db_name,
+                    title=f"{ir.sequence_name} Transitions Global",
+                    members=transitions_members,
+                    number_seed=f"{ir.sequence_name}_TRANSITIONS_DB",
+                ),
+            )
+        )
+        previews.append(
+            ArtifactPreview(
+                artifact_type="support_lad_fc_transitions",
+                file_name=tr_fc_file,
+                content=_build_support_lad_fc_xml(
+                    fc_name=tr_fc_name,
+                    title=f"{ir.sequence_name} Transitions LAD",
+                    db_name=tr_db_name,
+                    members=[name for name, _ in transitions_members],
+                    number_seed=f"{ir.sequence_name}_TRANSITIONS_FC",
+                ),
+            )
+        )
+
+    output_members = _collect_output_family_members(ir)
+    if output_members:
+        out_db_name, out_fc_name, out_db_file, out_fc_file = _support_block_names(
+            ir.sequence_name, "output"
+        )
+        previews.append(
+            ArtifactPreview(
+                artifact_type="support_global_db_output",
+                file_name=out_db_file,
+                content=_build_support_global_db_xml(
+                    block_name=out_db_name,
+                    title=f"{ir.sequence_name} Output Global",
+                    members=output_members,
+                    number_seed=f"{ir.sequence_name}_OUTPUT_DB",
+                ),
+            )
+        )
+        previews.append(
+            ArtifactPreview(
+                artifact_type="support_lad_fc_output",
+                file_name=out_fc_file,
+                content=_build_support_lad_fc_xml(
+                    fc_name=out_fc_name,
+                    title=f"{ir.sequence_name} Output LAD",
+                    db_name=out_db_name,
+                    members=[name for name, _ in output_members],
+                    number_seed=f"{ir.sequence_name}_OUTPUT_FC",
+                ),
+            )
+        )
+
+    hmi_members = _collect_hmi_support_members(ir)
+    if hmi_members:
+        hmi_db_name, hmi_fc_name, hmi_db_file, hmi_fc_file = _support_block_names(
+            ir.sequence_name, "hmi"
+        )
+        previews.append(
+            ArtifactPreview(
+                artifact_type="support_global_db_hmi",
+                file_name=hmi_db_file,
+                content=_build_support_global_db_xml(
+                    block_name=hmi_db_name,
+                    title=f"{ir.sequence_name} HMI Global",
+                    members=hmi_members,
+                    number_seed=f"{ir.sequence_name}_HMI_DB",
+                ),
+            )
+        )
+        previews.append(
+            ArtifactPreview(
+                artifact_type="support_lad_fc_hmi",
+                file_name=hmi_fc_file,
+                content=_build_support_lad_fc_xml(
+                    fc_name=hmi_fc_name,
+                    title=f"{ir.sequence_name} HMI LAD",
+                    db_name=hmi_db_name,
+                    members=[name for name, _ in hmi_members],
+                    number_seed=f"{ir.sequence_name}_HMI_FC",
+                ),
+            )
+        )
+
+    aux_members = _collect_aux_support_members(ir)
+    if aux_members:
+        aux_db_name, aux_fc_name, aux_db_file, aux_fc_file = _support_block_names(
+            ir.sequence_name, "aux"
+        )
+        previews.append(
+            ArtifactPreview(
+                artifact_type="support_global_db_aux",
+                file_name=aux_db_file,
+                content=_build_support_global_db_xml(
+                    block_name=aux_db_name,
+                    title=f"{ir.sequence_name} Aux Global",
+                    members=aux_members,
+                    number_seed=f"{ir.sequence_name}_AUX_DB",
+                ),
+            )
+        )
+        previews.append(
+            ArtifactPreview(
+                artifact_type="support_lad_fc_aux",
+                file_name=aux_fc_file,
+                content=_build_support_lad_fc_xml(
+                    fc_name=aux_fc_name,
+                    title=f"{ir.sequence_name} Aux LAD",
+                    db_name=aux_db_name,
+                    members=[name for name, _ in aux_members],
+                    number_seed=f"{ir.sequence_name}_AUX_FC",
                 ),
             )
         )
@@ -1458,7 +1799,8 @@ def _collect_io_support_members(ir: AwlIR) -> list[tuple[str, str]]:
     for ext in ir.external_refs:
         if ext.startswith(("A", "Q")):
             continue
-        members.append((_support_member_name(ext, "X"), f"External reference {ext}"))
+        family = _classify_operand_family(ext)
+        members.append((_support_member_name(ext, family), f"External reference {ext} ({family})"))
     return list(dict.fromkeys(members))
 
 
@@ -1492,13 +1834,56 @@ def _collect_mode_support_members(ir: AwlIR) -> list[tuple[str, str]]:
     return members
 
 
+def _collect_transitions_support_members(
+    ir: AwlIR,
+    network_specs: list[tuple[int, str, list[tuple[str, str]]]],
+) -> list[tuple[str, str]]:
+    members: list[tuple[str, str]] = []
+    for transition in ir.transitions:
+        member = _support_member_name(transition.transition_id, "TR")
+        members.append((member, f"Transition edge {transition.source_step}->{transition.target_step}"))
+    for network_no, _, _ in network_specs:
+        members.append((f"TR_NETWORK_{network_no}_ACTIVE", f"Transition network {network_no} active"))
+    return list(dict.fromkeys(members))
+
+
+def _collect_output_family_members(ir: AwlIR) -> list[tuple[str, str]]:
+    members: list[tuple[str, str]] = []
+    for output in ir.outputs:
+        member = _support_member_name(output.name, "OUT_CMD")
+        members.append((member, f"Output command {output.action} {output.name}"))
+    return list(dict.fromkeys(members))
+
+
+def _collect_hmi_support_members(ir: AwlIR) -> list[tuple[str, str]]:
+    members: list[tuple[str, str]] = []
+    for ext in ir.external_refs:
+        candidate = ext.upper()
+        if any(marker in candidate for marker in ("HMI", "OPIN", "OPOUT", "DB81", "DB82")):
+            member = _support_member_name(candidate, "HMI")
+            members.append((member, f"HMI/Operator reference {candidate}"))
+    return list(dict.fromkeys(members))
+
+
+def _collect_aux_support_members(ir: AwlIR) -> list[tuple[str, str]]:
+    members: list[tuple[str, str]] = []
+    for memory in ir.memories:
+        member = _support_member_name(memory.name, "AUX_MEM")
+        members.append((member, f"Aux memory ({memory.role}) {memory.name}"))
+    for timer in ir.timers:
+        member = _support_member_name(timer.source_timer, "AUX_TIMER")
+        members.append((member, f"Aux timer {timer.source_timer}"))
+    return list(dict.fromkeys(members))
+
+
 def _collect_network_support_specs(ir: AwlIR) -> list[tuple[int, str, list[tuple[str, str]]]]:
     specs: list[tuple[int, str, list[tuple[str, str]]]] = []
     for network in ir.networks:
         network_members: list[tuple[str, str]] = []
         for operand in _collect_condition_operands(network):
-            member = _support_member_name(operand, "COND")
-            network_members.append((member, f"Condition operand {operand}"))
+            family = _classify_operand_family(operand)
+            member = _support_member_name(operand, f"COND_{family}")
+            network_members.append((member, f"Condition operand {operand} ({family})"))
         for output_name, action in _collect_output_targets(network):
             member = _support_member_name(output_name, "OUT")
             network_members.append((member, f"Output action {action} {output_name}"))
@@ -1515,6 +1900,58 @@ def _collect_network_support_specs(ir: AwlIR) -> list[tuple[int, str, list[tuple
 def _support_member_name(raw_symbol: str, prefix: str) -> str:
     normalized = _normalize_symbol_name(raw_symbol, f"{prefix}_SIGNAL")
     return _db_member_name(f"{prefix}_{normalized}")
+
+
+def _network_support_suffix(network_no: int, network_title: str) -> str:
+    title_slug = _normalize_symbol_name(network_title, f"N{network_no}")
+    if not title_slug:
+        return f"N{network_no}"
+    title_slug = title_slug[:20]
+    return f"N{network_no}_{title_slug}"
+
+
+def _support_block_names(
+    sequence_name: str,
+    category: str,
+    suffix: str | None = None,
+) -> tuple[str, str, str, str]:
+    schema = SUPPORT_BLOCK_SCHEMA.get(category)
+    if schema is None:
+        token = _normalize_symbol_name(category, category.upper())
+        file_token = token.lower()
+    else:
+        token = schema["token"]
+        file_token = schema["file_token"]
+
+    if suffix:
+        block_token = _normalize_symbol_name(suffix, suffix)
+        file_suffix = block_token.lower()
+    else:
+        block_token = token
+        file_suffix = file_token
+
+    db_name = f"{sequence_name}_{block_token}_Global"
+    fc_name = f"{sequence_name}_{block_token}_LAD"
+    db_file = f"DB_{sequence_name}_{file_suffix}_global_auto.xml"
+    fc_file = f"FC_{sequence_name}_{file_suffix}_lad_auto.xml"
+    return db_name, fc_name, db_file, fc_file
+
+
+def _classify_operand_family(operand: str) -> str:
+    candidate = operand.upper()
+    if re.fullmatch(r"[IE]\d+(?:\.\d+)?", candidate):
+        return "IN"
+    if re.fullmatch(r"[AQ]\d+(?:\.\d+)?", candidate):
+        return "OUT"
+    if re.fullmatch(r"M\d+(?:\.\d+)?", candidate):
+        return "MEM"
+    if re.fullmatch(r"T\d+", candidate):
+        return "TIMER"
+    if re.fullmatch(r"DB\d+\.DB[XBWD]\d+(?:\.\d+)?", candidate):
+        return "DBEXT"
+    if candidate.startswith("DB"):
+        return "DB"
+    return "SIG"
 
 
 def _render_graph_step(step: GraphStepNode) -> str:
@@ -1716,10 +2153,12 @@ def _collect_condition_operands(network: AwlNetwork) -> list[str]:
             continue
         if not instr.args:
             continue
-        candidate = instr.args[0].rstrip(",")
+        candidate = _select_instruction_operand(instr.args)
+        if not candidate:
+            continue
         if STEP_RE.fullmatch(candidate):
             continue
-        operands.append(candidate.upper())
+        operands.append(candidate)
     return _dedupe_list(operands)
 
 
@@ -1730,7 +2169,9 @@ def _collect_step_targets(network: AwlNetwork) -> list[str]:
             continue
         if not instr.args:
             continue
-        candidate = instr.args[0].rstrip(",").upper()
+        candidate = _select_instruction_operand(instr.args)
+        if not candidate:
+            continue
         if STEP_RE.fullmatch(candidate):
             targets.append(candidate)
     return _dedupe_list(targets)
@@ -1741,7 +2182,9 @@ def _collect_timers(network: AwlNetwork) -> list[tuple[str, str, str | None]]:
     for instr in network.instructions:
         preset = None
         if instr.opcode in TIMER_OPCODES and instr.args:
-            timer_name = instr.args[0].rstrip(",").upper()
+            timer_name = _select_instruction_operand(instr.args)
+            if not timer_name:
+                continue
             preset = _extract_preset(network)
             timers.append((timer_name, instr.opcode, preset))
         for match in TIMER_RE.findall(instr.raw):
@@ -1762,7 +2205,9 @@ def _collect_memory_targets(network: AwlNetwork) -> list[tuple[str, str]]:
     for instr in network.instructions:
         if instr.opcode not in ACTION_OPCODES or not instr.args:
             continue
-        candidate = instr.args[0].rstrip(",").upper()
+        candidate = _select_instruction_operand(instr.args)
+        if not candidate:
+            continue
         if MEMORY_RE.fullmatch(candidate):
             targets.append((candidate, instr.opcode))
     return targets
@@ -1773,10 +2218,48 @@ def _collect_output_targets(network: AwlNetwork) -> list[tuple[str, str]]:
     for instr in network.instructions:
         if instr.opcode not in ACTION_OPCODES or not instr.args:
             continue
-        candidate = instr.args[0].rstrip(",").upper()
+        candidate = _select_instruction_operand(instr.args)
+        if not candidate:
+            continue
         if OUTPUT_RE.fullmatch(candidate):
             targets.append((candidate, instr.opcode))
     return targets
+
+
+def _select_instruction_operand(args: list[str]) -> str | None:
+    cleaned: list[str] = []
+    for raw_arg in args:
+        if raw_arg == "--":
+            break
+        normalized = _normalize_operand_token(raw_arg)
+        if normalized:
+            cleaned.append(normalized)
+
+    if not cleaned:
+        return None
+
+    preferred = next((item for item in cleaned if _is_address_like_operand(item)), None)
+    return preferred or cleaned[0]
+
+
+def _normalize_operand_token(token: str) -> str:
+    value = token.strip().rstrip(",;").strip("()")
+    value = value.strip().strip('"').strip("'")
+    if not value:
+        return ""
+    value = value.replace(":", "_").replace("-", "_")
+    value = re.sub(r"[^A-Za-z0-9_.]+", "_", value)
+    value = re.sub(r"_+", "_", value).strip("_")
+    return value.upper()
+
+
+def _is_address_like_operand(value: str) -> bool:
+    patterns = (
+        r"^(?:[QAEIMT]\d+(?:\.\d+)?)$",
+        r"^DB\d+\.DB[XBWD]\d+(?:\.\d+)?$",
+        r"^DB\d+\.D[IBD]\d+$",
+    )
+    return any(re.fullmatch(pattern, value, flags=re.IGNORECASE) for pattern in patterns)
 
 
 def _collect_fault_tokens(network: AwlNetwork) -> list[str]:

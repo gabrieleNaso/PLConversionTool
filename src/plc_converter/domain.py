@@ -277,6 +277,7 @@ class ConversionAnalysis:
     graph_topology: GraphTopology
     validation_issues: list[ValidationIssue]
     artifact_previews: list[ArtifactPreview]
+    artifact_manifest: dict[str, list[dict[str, str]]]
 
     def to_dict(self) -> dict:
         return asdict(self)

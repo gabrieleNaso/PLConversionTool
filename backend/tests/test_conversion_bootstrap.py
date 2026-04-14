@@ -81,6 +81,12 @@ def test_conversion_analyze_builds_ir_and_artifact_previews() -> None:
     assert payload["ir"]["transitions"][0]["target_step"] == "S29"
     assert payload["ir"]["timers"][0]["source_timer"] == "T1"
     assert payload["ir"]["manual_logic_networks"] == [2]
+    assert len(payload["artifact_manifest"]["baseline"]) == 3
+    assert len(payload["artifact_manifest"]["support_io"]) >= 2
+    assert len(payload["artifact_manifest"]["support_network"]) >= 2
+    assert len(payload["artifact_manifest"]["support_transitions"]) >= 2
+    assert len(payload["artifact_manifest"]["support_output"]) >= 2
+    assert len(payload["artifact_manifest"]["support_aux"]) >= 2
     assert payload["graph_topology"]["entry_step"] == "S1"
     assert payload["graph_topology"]["step_nodes"][0]["init"] is True
     assert payload["graph_topology"]["connections"][0]["source_ref"] == "S1"
@@ -156,7 +162,7 @@ def test_conversion_analyze_builds_ir_and_artifact_previews() -> None:
     assert any(
         preview["artifact_type"] == "support_lad_fc_mode"
         and "<SW.Blocks.FC ID=\"0\">" in preview["content"]
-        and '<Component Name="Mixer_Line_Mode_Global" />' in preview["content"]
+        and '<Component Name="Mixer_Line_MODE_Global" />' in preview["content"]
         for preview in payload["artifact_previews"]
     )
     assert any(
@@ -166,7 +172,8 @@ def test_conversion_analyze_builds_ir_and_artifact_previews() -> None:
     )
     assert any(
         preview["artifact_type"] == "support_lad_fc_network"
-        and "_N1_LAD" in preview["content"]
+        and "_N1_" in preview["content"]
+        and "_LAD" in preview["content"]
         for preview in payload["artifact_previews"]
     )
 

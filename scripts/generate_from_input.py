@@ -24,11 +24,44 @@ def _slugify(name: str) -> str:
 
 
 def _extract_awl_from_markdown(raw_text: str) -> str:
-    fenced_blocks = re.findall(r"```(?:awl|text)?\s*\n(.*?)```", raw_text, flags=re.IGNORECASE | re.DOTALL)
-    for block in fenced_blocks:
-        if "NETWORK" in block.upper():
-            return block.strip() + "\n"
-    return raw_text
+    fenced_blocks = re.findall(
+        r"```(?:awl|il|stl|text)?\s*\n(.*?)```",
+        raw_text,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    if not fenced_blocks:
+        return raw_text
+
+    selected_blocks = [block.strip() for block in fenced_blocks if _looks_like_awl_block(block)]
+    if not selected_blocks:
+        selected_blocks = [block.strip() for block in fenced_blocks]
+
+    normalized_blocks: list[str] = []
+    for index, block in enumerate(selected_blocks, start=1):
+        if not block:
+            continue
+        if re.search(r"^\s*NETWORK\b", block, flags=re.IGNORECASE | re.MULTILINE):
+            normalized_blocks.append(block)
+        else:
+            normalized_blocks.append(f"NETWORK {index}\n{block}")
+
+    if not normalized_blocks:
+        return raw_text
+    return "\n\n".join(normalized_blocks).strip() + "\n"
+
+
+def _looks_like_awl_block(block: str) -> bool:
+    heuristics = (
+        r"\bNETWORK\b",
+        r"^\s*(A|AN|O|ON|U|UN|=|S|R|L|T|SD|SE|SP|SS|SF|JC|JCN|JU)\b",
+        r"\bS5T#",
+        r"\bDB\d+\.",
+        r"\b[QAEIM]\d+\.\d+\b",
+    )
+    return any(
+        re.search(pattern, block, flags=re.IGNORECASE | re.MULTILINE)
+        for pattern in heuristics
+    )
 
 
 def _load_awl_text(path: Path) -> str:
@@ -84,7 +117,7 @@ def main() -> int:
     generated = 0
     for source in sources:
         awl_source = _load_awl_text(source)
-        if "NETWORK" not in awl_source.upper():
+        if "NETWORK" not in awl_source.upper() and source.suffix.lower() != ".md":
             print(f"Skipping {source.name}: no AWL NETWORK found.")
             continue
 
