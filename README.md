@@ -28,7 +28,7 @@ API backend operative del primo slice:
 
 Aggiornamenti operativi consolidati:
 
-- il `tia-bridge` accoda automaticamente un job `compile` subito dopo ogni job `import` (`POST /api/jobs/import`);
+- il `tia-bridge` accoda automaticamente un job `compile` subito dopo ogni job `import` (`POST /api/jobs/import`), riusando `targetPath/targetName` dell'import per limitare la compile al target appena toccato;
 - il generatore mantiene coerenza tra tag usati nel `GRAPH/FC` e member dichiarati nel `GlobalDB`, incluse transizioni sintetiche (es. `T_HOLD_*`, `T_CHAIN_*`);
 - la coerenza del pacchetto e' un requisito hard: non e' ammesso considerare `FB`, `DB`, `FC` o blocchi aggiuntivi come artefatti isolati se poi in compile si referenziano fra loro;
 - la diagnostica compile lato Windows agent include dettaglio esteso dei messaggi e del contesto per accelerare il debug sui blocchi TIA.

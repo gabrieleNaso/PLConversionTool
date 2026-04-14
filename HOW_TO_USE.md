@@ -198,11 +198,13 @@ Soluzioni:
 
 ### Compile post-import va in `blocked` con molti errori
 
-La compile automatica è spesso **globale** (CPU / Program blocks) e può includere blocchi legacy.
+La compile automatica post-import e' accodata dal `tia-bridge` sullo **stesso targetPath/targetName** dell'import.
+Se il target e' ampio (es. `Program blocks/generati da tool`), il risultato puo' comunque includere errori di blocchi gia' presenti in quel gruppo.
 
 Strategie:
 
-- compila solo il blocco/gruppo appena importato (targetName/targetPath)
+- usa un `targetPath` piu' specifico per bundle (es. `Program blocks/generati da tool/<nome_bundle>`)
+- se serve isolamento massimo, imposta anche `targetName` sul blocco specifico da compilare
 - pulisci i blocchi legacy nel progetto prima di compilare globalmente
 
 ### Backend o bridge non raggiungibili

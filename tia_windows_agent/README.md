@@ -365,6 +365,7 @@ Eccezioni operative principali:
 
 - `compile` non usa davvero il contenuto di `artifactPath`: quel campo resta un placeholder tecnico obbligatorio dal contratto.
 - `compile` non si blocca per i `warning`; si blocca solo quando TIA restituisce errori reali.
+- `compile` puo' essere scoped su gruppo/blocco impostando `targetPath` e, opzionalmente, `targetName`; senza target esplicito il fallback resta la compile del `PlcSoftware` (o project).
 - `export` esegue automaticamente una `compile` preliminare del `PlcSoftware`.
 - quando il job passa tramite `tia-bridge`, anche `import` accoda automaticamente una `compile` post-import.
 - Se la `compile` preliminare dell'`export` trova errori reali, l'`export` viene annullato.

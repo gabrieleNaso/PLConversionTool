@@ -50,5 +50,5 @@ make generate-and-import PROJECT_PATH="C:\\Users\\Admin\\Desktop\\prova_connessi
 Note:
 
 - l'import viene fatto per ogni sottocartella in `output/generated/`;
-- dopo ogni import, il `tia-bridge` accoda automaticamente la `compile`;
+- dopo ogni import, il `tia-bridge` accoda automaticamente la `compile` usando lo stesso `targetPath/targetName` dell'import (compile scoped sul target importato);
 - se vuoi limitare a un sottoinsieme, usa `--prefix` nello script `scripts/import_generated_to_tia.py`.

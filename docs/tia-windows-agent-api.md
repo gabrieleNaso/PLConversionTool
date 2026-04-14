@@ -42,9 +42,12 @@ Campi aggiuntivi:
 - `targetPath`: path logico del `BlockGroup` di destinazione per l'import
 - `targetName`: nome del blocco da esportare
 - `saveProject`: se `true`, prova a salvare il progetto dopo l'operazione
+- per `compile`, `targetPath` e `targetName` possono essere usati per compilare solo un gruppo/blocco specifico invece dell'intero `PlcSoftware`
 
 Nota operativa: `targetPath` va inteso come percorso che parte da `Program blocks/`.
 Per creare una sottocartella ordinata usa ad esempio `Program blocks/generati da tool/<nome>`.
+
+Nota bridge: quando il job passa da `tia-bridge`, dopo ogni `import` viene accodato automaticamente un job `compile` e la risposta dell'import espone anche `AutoCompileJobId`.
 
 ## Note
 

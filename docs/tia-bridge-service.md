@@ -19,6 +19,7 @@ Nel setup dev il container `tia-bridge`:
 - espone una API minima di health/status;
 - monta `output/` e `tmp/` come aree condivise di scambio artefatti;
 - prepara il punto di integrazione verso una VM Windows che ospita `TIA Portal`.
+- dopo ogni job `import`, accoda automaticamente un job `compile` usando lo stesso `targetPath/targetName` dell'import (scoping del target compilato).
 
 ## VM Windows remota
 
@@ -37,6 +38,15 @@ Questo vincolo e' importante: `Openness` non si collega da remoto direttamente c
 - `TIA_WINDOWS_HOST`
 - `TIA_WINDOWS_AGENT_PORT`
 - `TIA_WINDOWS_AGENT_URL`
+
+## Comportamento operativo import -> compile
+
+Nel flusso attuale:
+
+- `POST /api/jobs/import` inoltra l'import all'agent Windows;
+- se l'import viene accodato correttamente, il bridge accoda subito `POST /api/jobs/compile`;
+- il job compile riusa `targetPath` e `targetName` dell'import, cosi' la compile resta focalizzata sul gruppo/blocco appena importato;
+- la risposta dell'import include anche `AutoCompileJobId` per tracciare end-to-end entrambe le operazioni.
 
 ## Nota importante
 
