@@ -1,4 +1,4 @@
-# Report aggiornato del 14-04-2026
+# Report aggiornato del 15-04-2026
 
 ## Progetto
 Conversione di sequenziatori PLC da AWL a GRAPH in TIA Portal V20 tramite XML.
@@ -16,7 +16,7 @@ L'obiettivo di questa versione consolidata è:
 - mantenere una baseline unica, leggibile e riusabile;
 - integrare in un unico testo sia la parte di reverse engineering XML sia la parte operativa su TIA Portal Openness.
 
-Il documento va quindi usato come riferimento tecnico corrente del progetto alla data del 10-04-2026.
+Il documento va quindi usato come riferimento tecnico corrente del progetto alla data del 15-04-2026.
 
 ---
 
@@ -59,6 +59,18 @@ Il progetto include ora anche il livello operativo di orchestrazione TIA, con ob
 - raccolta strutturata degli errori di import o compile.
 
 ---
+
+
+## 2-bis. Chiarimenti documentali e operativi consolidati al 15-04-2026
+
+A valle del confronto tra i documenti operativi, i report consolidati e i tipici XML del caso `T1-A ARUNC`, i seguenti punti sono da considerare fissati.
+
+- La documentazione del progetto e' ora distinta in due livelli: **documenti normativi** (`report` + `specifica master`) e **documenti operativi derivati** (`flow`, `operations`, `tia-integration`, `workflow-checklists`, `conventions`, template).
+- In caso di conflitto tra una convenzione generica e una regola hard di traduzione o serializer, prevale sempre la specifica master del convertitore.
+- La regola corretta di cardinalita' resta: `1 sequenza AWL -> 1 x FB GRAPH + N x GlobalDB + M x FC LAD`.
+- Il naming globale non puo' essere ridotto a un semplice suffisso finale: owner DB, branch path e leaf name costituiscono un contratto bloccante tra IR, serializer e bundle XML.
+- I tipici legacy importabili ma basati su runtime `V6` restano utili per reverse engineering semantico e topologico, ma non sono pattern validi per il serializer finale `V20 / GRAPH V2`.
+- La segmentazione reale dell'AWL deve tenere conto delle famiglie funzionali ricorrenti osservate nel caso `FC102 / AWL Romania`: allarmi, memorie/ausiliari, sequenza, manuale/automatico, emergenza/fault, uscite.
 
 ## 3. Target tecnico consolidato
 
@@ -929,7 +941,7 @@ I prossimi step non sono più “far parlare il sistema con TIA”, ma:
 
 ---
 
-# PARTE F - BASELINE FINALE DEL PROGETTO AL 10-04-2026
+# PARTE F - BASELINE FINALE DEL PROGETTO AL 15-04-2026
 
 ## 38. Baseline consolidata
 

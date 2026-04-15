@@ -1,5 +1,11 @@
 # Convenzioni e dataset
 
+## Gerarchia delle regole
+- Questo documento raccoglie convenzioni operative e di repository.
+- Le regole hard di traduzione e serializer stanno nella specifica master corrente.
+- In caso di conflitto fra convenzione generica e tipico XML validato o regola della specifica, prevale sempre la specifica master.
+
+
 ## Naming file (artefatti XML)
 - **FB GRAPH**: `FB_<AreaOImpianto>_<Funzione>_GRAPH_<variant>.xml`
   - es.: `FB_BottlingLine_GRAPH_strict_rebased.xml`
@@ -12,7 +18,7 @@ Suggerimento: usare suffissi di variante solo quando aggiungono informazione uti
 - `golden`: campione import riuscito da usare come riferimento stabile
 
 ## Naming strutture nel GlobalDB (consigliato)
-Organizzare per macro-strutture funzionali, evitando DB piatti:
+Organizzare per macro-strutture funzionali, evitando DB piatti, **quando il caso non richiede il mantenimento di naming storici gia' fissati dai tipici**:
 - `Cmd` (comandi)
 - `Fb` (feedback)
 - `Par` (parametri/ricetta)
@@ -20,6 +26,10 @@ Organizzare per macro-strutture funzionali, evitando DB piatti:
 - `Diag` (diagnostica)
 - `Hmi` (dati HMI)
 - `Map` (mapping AWL->GRAPH / supporto tool)
+
+Nota importante:
+- per i DB fissi del progetto e per i bundle che devono restare aderenti ai tipici reali, il generatore puo' dover preservare naming storici come `Transitions`, `Memory`, `Seq Status`, `Conditions`, `AUX`, `AUX_MEMORY`, ecc.;
+- la normalizzazione va applicata all'identita' logica interna, non cancellando automaticamente il nome finale richiesto dal contratto XML.
 
 ## Regole pratiche
 - **Stabilita'**: il naming deve essere deterministico (stesso input -> stessi simboli).
@@ -62,3 +72,28 @@ Tenere separati:
 
 ### Regola d'oro
 Se un file serve da riferimento stabile per debug/validator, deve stare in `data/datasets/golden/`.
+
+
+## Naming globale obbligatorio nel bundle
+Ogni variabile globale deve essere trattata come record strutturato, non come semplice stringa di nome.
+
+Campi minimi da preservare nell'IR:
+- `owner_db`: DB proprietario del simbolo (`T1-A ARUNC`, `T1-A ARUNC HMI`, `DB81-OPIN`, ...)
+- `branch_path`: percorso dei branch interni (`Transitions`, `Conditions/SC/Conditions`, `Memory`, ...)
+- `leaf_name`: nome finale del member (`Safe`, `n1`, `Cycle start request`, ...)
+- `serialized_path`: path finale usato nel `FlgNet`
+
+Regole pratiche:
+- il naming corretto non e' solo il suffisso finale: senza owner DB e path completo il riferimento non e' realmente collegato;
+- i riferimenti con spazi, numeri o naming storici validati dai tipici non vanno riscritti in forma semplificata se il target del bundle li richiede;
+- un simbolo orfano, abbreviato o serializzato con path incompleto va considerato errore bloccante.
+
+Esempi coerenti coi tipici:
+- `T1-A ARUNC -> Transitions -> Safe`
+- `T1-A ARUNC HMI -> Conditions -> SC -> Conditions -> n1`
+- `T1-A ARUNC -> Memory -> Piece Transfered`
+
+## Regole di corpus e target
+- I tipici `V6` o di runtime legacy vanno marcati come **semantic_only** o equivalente nella conoscenza del progetto.
+- I golden sample di target devono essere coerenti con `TIA Portal V20 / GRAPH V2`.
+- Un file puo' essere ottimo per reverse engineering semantico ma inadatto come pattern di serializer finale.

@@ -1,11 +1,12 @@
 # Checklist operative (TIA Portal V20 / GRAPH V2)
 
 Queste checklist sono da eseguire sempre prima di perdere tempo su debug casuale.
-Fonte: `docs/reference/report-2026-04-14.md` e `docs/reference/spec-awl-xml-tia-v20-2026-04-14.md`.
+Fonte: `docs/reference/reports/report-2026-04-15.md` e `docs/reference/specs/spec-awl-xml-tia-v20-2026-04-15.md`.
 
 Regola trasversale:
 - `FB GRAPH`, `GlobalDB`, `FC LAD` e ogni eventuale blocco aggiuntivo vanno verificati come pacchetto coerente.
 - Un import riuscito del singolo XML non e' sufficiente se il blocco non e' coerente con gli altri blocchi che dovranno compilarlo o consumarlo.
+- La checklist va applicata tenendo distinto il ruolo dei tipici legacy semantici dai tipici target `V20 / GRAPH V2`.
 
 ## A) Checklist rapida — FB GRAPH importabile
 - **Documento/namespace**: root `Document` senza prefissi tipo `ns0:`, namespace `Interface` e `Graph` dichiarati localmente.
@@ -21,7 +22,7 @@ Regola trasversale:
 - **Blocco**: `SW.Blocks.GlobalDB` con struttura Openness standard (`AttributeList`, `ObjectList` coerente).
 - **Serializer Member ricorsivo**: `Member` annidati correttamente; niente template statici copiati.
 - **Organizzazione**: preferire `Struct` funzionali (cmd/feedback/param/diag/mapping...).
-- **Naming coerente**: naming deterministico, stabile, leggibile (vedi `conventions.md`).
+- **Naming coerente**: naming deterministico, stabile, leggibile (vedi `docs/guide/standards/conventions.md`).
 - **Commenti visibili in TIA**: verificare forma/posizionamento commenti come nel caso validato del DB di prova.
 - **Contratto cross-blocco**: il DB deve dichiarare tutti i member richiesti dal `GRAPH`, dalla `FC LAD` e da eventuali blocchi aggiuntivi del pacchetto, senza drift di naming.
 
@@ -39,3 +40,12 @@ Regola trasversale:
 - **Regola pratica 2**: distinguere sempre fra errore di import del singolo XML ed errore di incoerenza del pacchetto compilato; i due problemi hanno cause diverse e vanno tracciati separatamente.
 - **Regola pratica 3**: quando la logica diverge dall'AWL, verificare in `<bundle>_analysis.json` le `guard_expression` delle transizioni (`OR/NOT` e gruppi devono restare semantici).
 - **Regola pratica 4**: prima di confrontare output vecchi/nuovi, rigenerare il bundle assicurandosi che la cartella target sia stata ricreata pulita (no XML residui).
+
+
+## E) Gate di coerenza prima dell'import
+- **Target runtime**: confermare che `GraphVersion`, datatype runtime e namespace siano coerenti con `TIA Portal V20 / GRAPH V2`.
+- **Cardinalita' reale**: confermare che il bundle rappresenti `1 x FB GRAPH + N x GlobalDB + M x FC LAD`, senza moltiplicare impropriamente il GRAPH.
+- **Backbone fisso**: se il progetto lo richiede, verificare la presenza logica dei nodi strutturali `S1`, `S29`, `S30`, `S32`.
+- **Naming globale**: verificare owner DB, branch path e leaf name di tutti i riferimenti globali usati in `FlgNet` e GRAPH.
+- **Segmentazione AWL**: verificare che la traduzione non abbia perso famiglie logiche ricorrenti (allarmi, memorie, sequenza, manuale/automatico, emergenza/fault, uscite).
+- **Corpus di riferimento**: se il caso e' stato guidato da tipici `V6`, verificare che l'uso sia rimasto solo semantico e non abbia contaminato il serializer finale.

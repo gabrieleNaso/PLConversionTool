@@ -1,4 +1,4 @@
-Specifica master consolidata del 14-04-2026
+Specifica master consolidata del 15-04-2026
 per le regole di traduzione e generazione XML
 AWL -> IR -> GRAPH / GlobalDB / FC LAD per TIA Portal V20
 
@@ -7,6 +7,11 @@ AWL -> IR -> GRAPH / GlobalDB / FC LAD per TIA Portal V20
 # Uso del documento
 
 Questo file è il riferimento unico per il convertitore.
+
+Gerarchia documentale fissata:
+- questa specifica prevale sui documenti operativi derivati;
+- il report consolidato descrive baseline, evidenze e architettura del progetto;
+- `docs/guide/standards/conventions.md`, `docs/guide/process/flow.md`, `docs/guide/operations/operations.md`, `docs/guide/integration/tia-integration.md` e `docs/guide/checklists/workflow-checklists.md` devono restare coerenti con questa specifica e non possono allentarne le regole hard.
 
 Le Parti I-VI definiscono le regole di traduzione del sorgente AWL, la costruzione dell'IR, il partizionamento nei blocchi TIA e le regole operative finali del convertitore.
 Le Parti VII-IX definiscono la grammatica XML consolidata, il template operativo e lo pseudo-codice del serializer.
@@ -1636,3 +1641,52 @@ Il naming finale dei passi GRAPH resta invece una policy del builder, che può:
 - mantenere il numero storico;
 - assegnare un nome semantico più leggibile;
 - introdurre step di chiusura o fine ciclo, purché il comportamento funzionale resti equivalente.
+
+
+# Appendice B - Integrazioni consolidate al 15-04-2026
+
+## B.1 Regola di prevalenza normativa
+In caso di conflitto tra una convenzione di repository, un'abitudine storica del team o una semplificazione implementativa del tool, prevale sempre la presente specifica.
+
+## B.2 Regola hard sul naming globale completo
+Il generatore non puo' considerare sufficiente un nome finale corretto se mancano owner DB e path completo del simbolo.
+
+Il record minimo di una variabile globale serializzabile deve sempre consentire di ricostruire:
+- DB proprietario;
+- path dei branch intermedi;
+- leaf finale;
+- forma finale del riferimento XML nel `FlgNet`.
+
+Un riferimento abbreviato, orfano o ricostruito per euristica tardiva e' da considerare errore bloccante.
+
+## B.3 Regola sull'uso dei tipici legacy
+I tipici `V6` o di altra famiglia runtime possono essere usati per:
+- riconoscimento semantico della sequenza;
+- topologia del GRAPH;
+- naming storico di rami e campi;
+- confronto diagnostico.
+
+Non possono invece imporre al serializer finale:
+- `GraphVersion` legacy;
+- datatype runtime legacy;
+- wrapper XML incompatibili con il target `V20 / GRAPH V2`.
+
+## B.4 Regola di segmentazione AWL ricorrente
+Quando il sorgente AWL e' monolitico, il parser deve cercare esplicitamente almeno le seguenti famiglie:
+- allarmi;
+- memorie e ausiliari;
+- sequenza principale;
+- gestione manuale/automatico;
+- emergenza e fault;
+- uscite macchina.
+
+La presenza di tali famiglie non implica un ordine testuale fisso, ma impone una classificazione semantica nell'IR.
+
+## B.5 Regola di gate prima dell'import TIA
+Prima dell'import il bundle deve superare almeno i seguenti controlli:
+- target `GraphVersion = 2.0`;
+- datatype runtime della famiglia `..._V2`;
+- cardinalita' `1 x FB GRAPH + N x GlobalDB + M x FC LAD`;
+- naming globale completo e coerente;
+- topologia GRAPH valida;
+- separazione corretta fra semantica del corpus legacy e serializer finale target.

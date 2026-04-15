@@ -44,6 +44,13 @@ Controllo rapido dallo status:
 curl -sS http://127.0.0.1:8010/api/status
 ```
 
+
+## Prima di generare: controlli obbligatori
+- Verificare se il caso AWL sta usando tipici target `V20/GRAPH V2` o tipici legacy solo semantici.
+- Ricordare che il bundle atteso non e' `1 + 1 + 1`, ma `1 x FB GRAPH + N x GlobalDB + M x FC LAD`.
+- Verificare che il caso abbia una policy chiara per il naming globale: owner DB, branch path e leaf name devono essere determinabili prima della serializzazione.
+- Se il caso deriva da un AWL monolitico, segmentarlo almeno nelle famiglie ricorrenti: allarmi, memorie/ausiliari, sequenza, manuale/automatico, emergenza/fault, uscite.
+
 ## Generare XML senza AI (da file in `data/input/`)
 
 ### 1) Metti i sorgenti AWL
@@ -69,7 +76,9 @@ Output:
 
 Comportamento importante:
 - la cartella del bundle target viene **pulita automaticamente** prima della nuova generazione;
-- non restano file XML "stale" di run precedenti nello stesso bundle.
+- non restano file XML "stale" di run precedenti nello stesso bundle;
+- il bundle va letto come pacchetto coerente e non come somma casuale di file;
+- il file `<Name>_analysis.json` va conservato come diagnosi primaria del mapping AWL -> IR -> XML.
 
 ### Genera da un solo file
 

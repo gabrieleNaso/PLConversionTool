@@ -1,6 +1,17 @@
-# Flusso del progetto (AWL -> Codex -> Python -> XML -> TIA)
+# Flusso del progetto (AWL -> ChatGPT/Codex -> IR -> XML -> TIA)
 
-Guida completa: da un sorgente AWL a un pacchetto XML importabile in TIA, con i passaggi operativi e i punti di controllo.
+Guida completa: da un sorgente AWL a un pacchetto XML importabile in TIA, con i passaggi operativi, i punti di controllo e le regole di coerenza oggi consolidate.
+
+
+## 0) Qualificazione delle fonti di riferimento
+
+Prima dell'analisi il convertitore deve distinguere sempre fra:
+- **sorgente primario**: AWL reale da tradurre;
+- **tipici XML target**: campioni compatibili col target corrente `TIA Portal V20 / GRAPH V2`;
+- **tipici XML legacy**: campioni semanticamente utili ma basati su runtime diversi (es. `V6`), da usare solo per topologia, naming storico e significato funzionale;
+- **documentazione normativa**: report e specifica master, che fissano cardinalita', regole hard e criteri di validazione.
+
+Il convertitore non deve mescolare questi piani: il target finale resta `V20 / GRAPH V2`.
 
 ## 1) Input (AWL)
 
@@ -27,25 +38,28 @@ L'IR nasce da:
 - vincoli di coerenza (naming e contratti cross‑blocco).
 
 ### Come l'AWL viene interpretato
-- L'AWL viene letto come testo e segmentato per `NETWORK`.
+- L'AWL viene letto come testo e segmentato per `NETWORK` e per famiglie logiche ricorrenti del sequenziatore.
 - Il parser identifica:
   - step e transizioni;
   - logiche LAD/GRAPH equivalenti (incluse guardie booleane con `AND/OR/NOT`);
-  - simboli e riferimenti che devono esistere nel `GlobalDB`.
+  - simboli e riferimenti che devono esistere nel `GlobalDB`;
+  - famiglie funzionali ricorrenti: allarmi, memorie/ausiliari, sequenza, manuale/automatico, emergenza/fault, uscite.
 
 ### Come l'IR viene creato (passi operativi)
 1. **Split per `NETWORK`** e tokenizzazione (istruzioni, simboli, indirizzi).
 2. **Parsing semantico**: ogni network diventa logica sequenziale (step, transizioni, guard, timer, set/reset).
    - Per le transizioni pilotate da `Trs` viene preservata la struttura booleana delle condizioni (`A/AN/O/ON` e gruppi con parentesi).
 3. **Normalizzazione**: naming deterministico e riferimenti uniformati.
-4. **Costruzione IR**: grafo/struttura di nodi (step, transition, timer, mapping DB).
-5. **Validazione**: coerenza minima (riferimenti presenti, topologia consistente).
+4. **Costruzione IR**: grafo/struttura di nodi (step, transition, timer, mapping DB, ownership delle variabili globali, riferimenti simbolici completi).
+5. **Validazione**: coerenza minima e contratti cross-blocco (riferimenti presenti, topologia consistente, owner DB, branch path, leaf name, cardinalita' del pacchetto).
 
 ### Cos'e' l'IR (cosa rappresenta)
 L'IR e' il modello dati del sequenziatore:
 - topologia di step e transizioni;
+- backbone fisso del sequenziatore quando presente (`S1`, `S29`, `S30`, `S32`);
 - condizioni/guard;
 - simboli e variabili richieste dal `GlobalDB`;
+- owner DB, branch path e leaf name delle variabili globali;
 - mapping coerente verso `FB GRAPH`, `GlobalDB`, `FC LAD`.
 
 In pratica e' il **contratto interno** che garantisce coerenza tra i blocchi.
@@ -59,14 +73,16 @@ In pratica e' il **contratto interno** che garantisce coerenza tra i blocchi.
 ## 3) Generazione XML (pacchetto coerente)
 
 Il generator produce sempre un **pacchetto coerente**:
-- `FB GRAPH`
-- `GlobalDB`
-- `FC LAD`
+- `1 x FB GRAPH` della sequenza
+- `N x GlobalDB` applicativi e di supporto
+- `M x FC LAD` di supporto
 - eventuali blocchi aggiuntivi richiesti dal caso
 
 Regola chiave:
 - nessun blocco va considerato isolato;
-- ogni riferimento deve essere risolto tra `FB`, `DB`, `FC` e blocchi extra.
+- ogni riferimento deve essere risolto tra `FB`, `DB`, `FC` e blocchi extra;
+- la riuscita reale non e' l'import del singolo XML, ma la coerenza del bundle importato e compilato;
+- i campioni legacy servono a capire il comportamento, non a imporre `GraphVersion`, datatype runtime o serializer finale.
 
 ## 4) Backend API
 
@@ -119,8 +135,8 @@ Il risultato corretto e' un progetto TIA che:
 
 ## 8) Dove guardare rapidamente
 
-- Operazioni: `docs/guide/operations.md`
-- Checklists: `docs/guide/workflow-checklists.md`
-- Convenzioni: `docs/guide/conventions.md`
-- Integrazione TIA: `docs/guide/tia-integration.md`
+- Operazioni: `docs/guide/operations/operations.md`
+- Checklists: `docs/guide/checklists/workflow-checklists.md`
+- Convenzioni: `docs/guide/standards/conventions.md`
+- Integrazione TIA: `docs/guide/integration/tia-integration.md`
 - Architettura: `docs/architettura/plant.uml`

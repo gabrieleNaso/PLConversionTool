@@ -31,6 +31,7 @@ Nel setup dev il container `tia-bridge`:
 - se l'import viene accodato correttamente, il bridge accoda subito `POST /api/jobs/compile`
 - il job compile riusa `targetPath` e `targetName` dell'import
 - la risposta dell'import include `AutoCompileJobId` per tracciare entrambe le operazioni
+- il bridge deve essere pensato come orchestratore di **bundle**, non come semplice uploader di XML isolati
 
 ## Windows VM + Agent (`tia_windows_agent/`)
 
@@ -123,3 +124,11 @@ Note operative:
 - il bridge accoda automaticamente una `compile` post-import e restituisce `AutoCompileJobId`
 - l'agent processa i job in modo seriale (scelta prudente per il runtime TIA)
 - in modalita' `real` prova a caricare `Siemens.Engineering.dll` via reflection
+
+
+## Regole operative consolidate per l'integrazione
+- Il successo dell'import del singolo file non chiude la validazione: il criterio corretto e' import + compile del pacchetto.
+- L'agent Windows non deve correggere XML sbagliati: deve eseguire operazioni TIA su artefatti gia' coerenti.
+- La diagnostica ideale del bridge deve mantenere separati: errore di import strutturale, errore di compile cross-blocco, errore di raggiungibilita' della VM, errore applicativo Openness.
+- In prospettiva, export e confronto post-compile devono essere trattati come parte della regressione del pacchetto generato, non come step indipendente.
+- I bundle che derivano da tipici legacy possono essere importati nel progetto target solo dopo normalizzazione esplicita a `V20 / GRAPH V2`.
