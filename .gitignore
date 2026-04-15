@@ -25,3 +25,5 @@ frontend/node_modules
 data/output/*
 !data/output/output.md
 data/tmp/*
+data/input/*
+!data/input/.gitkeep

@@ -582,3 +582,33 @@ def test_conversion_export_ir_writes_bundle() -> None:
     assert payload["sequenceName"] == "Excel_Export"
     assert any(path.endswith("_analysis.json") for path in payload["writtenFiles"])
     assert any(path.endswith("_GRAPH_auto.xml") for path in payload["writtenFiles"])
+
+
+def test_conversion_analyze_ir_ensures_s1_exists_from_arbitrary_entry_name() -> None:
+    client = TestClient(app)
+    res = client.post(
+        "/api/conversion/analyze-ir",
+        json={
+            "sequenceName": "Init Entry",
+            "sourceName": "init_entry.xlsx",
+            "ir": {
+                "steps": [{"name": "Init"}, {"name": "S2"}],
+                "transitions": [
+                    {
+                        "transition_id": "T1",
+                        "source_step": "Init",
+                        "target_step": "S2",
+                        "network_index": 1,
+                        "guard_expression": "TRUE",
+                    }
+                ],
+            },
+        },
+    )
+    assert res.status_code == 200
+    payload = res.json()
+    step_names = {item["name"] for item in payload["ir"]["steps"]}
+    assert "S1" in step_names
+    assert "Init" not in step_names
+    assert payload["graph_topology"]["entry_step"] == "S1"
+    assert payload["ir"]["transitions"][0]["source_step"] == "S1"

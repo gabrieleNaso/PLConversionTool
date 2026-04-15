@@ -232,6 +232,7 @@ def _ir_from_payload(
         for index, item in enumerate(transitions_payload, start=1)
         if str(item.get("source_step") or "").strip() and str(item.get("target_step") or "").strip()
     ]
+    _ensure_s1_entry_step(steps, transitions)
 
     timers = [
         TimerCandidate(
@@ -293,6 +294,78 @@ def _ir_from_payload(
             "IR caricato da JSON esterno (es. Excel): verificare coerenza semantica delle guardie prima dell'import TIA."
         ],
     )
+
+
+def _ensure_s1_entry_step(
+    steps: list[StepCandidate],
+    transitions: list[TransitionCandidate],
+) -> None:
+    step_names = [item.name for item in steps if item.name]
+    if "S1" in step_names:
+        return
+
+    transition_refs = {
+        token
+        for item in transitions
+        for token in (item.source_step, item.target_step)
+        if token
+    }
+
+    # Case 1: transitions already reference S1, but steps list forgot it.
+    if "S1" in transition_refs:
+        steps.insert(0, StepCandidate(name="S1"))
+        return
+
+    # Case 2: pick best candidate to become S1.
+    preferred = next(
+        (name for name in step_names if name.lower() in {"init", "start", "inizio"}),
+        None,
+    )
+    if preferred is None and step_names:
+        preferred = step_names[0]
+
+    if preferred:
+        _rename_step_token(preferred, "S1", steps, transitions)
+        return
+
+    # Case 3: no explicit steps; remap first transition source to S1 if available.
+    if transitions:
+        first_source = transitions[0].source_step
+        if first_source:
+            _rename_step_token(first_source, "S1", steps, transitions)
+            return
+
+    # Last resort: synthesize a minimal S1 step.
+    steps.insert(0, StepCandidate(name="S1"))
+
+
+def _rename_step_token(
+    original: str,
+    replacement: str,
+    steps: list[StepCandidate],
+    transitions: list[TransitionCandidate],
+) -> None:
+    if not original or original == replacement:
+        if replacement and all(item.name != replacement for item in steps):
+            steps.insert(0, StepCandidate(name=replacement))
+        return
+
+    replaced = False
+    for item in steps:
+        if item.name == original:
+            item.name = replacement
+            replaced = True
+
+    for item in transitions:
+        if item.source_step == original:
+            item.source_step = replacement
+            replaced = True
+        if item.target_step == original:
+            item.target_step = replacement
+            replaced = True
+
+    if not replaced and replacement and all(item.name != replacement for item in steps):
+        steps.insert(0, StepCandidate(name=replacement))
 
 
 def _build_ir_scaffold(ir: AwlIR) -> ConversionScaffold:

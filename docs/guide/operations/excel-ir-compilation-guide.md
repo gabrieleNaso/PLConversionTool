@@ -165,6 +165,38 @@ Errori comuni sulle transizioni:
 - due righe duplicate identiche
   - Effetto: duplicazioni inutili in IR/XML.
 
+### 3.4.1 Paralleli, Join e Jump di Fine Sequenza
+
+Come rappresentare i "paralleli" nel file Excel:
+- Nel tool attuale li gestisci come **rami multipli in uscita dallo stesso step**.
+- Traduzione pratica: piu' righe `transitions` con lo stesso `from_step`.
+
+Esempio split:
+- Riga 1: `from_step=S10`, `to_step=S20`, `condition_expression=I0.0`
+- Riga 2: `from_step=S10`, `to_step=S30`, `condition_expression=NOT I0.0`
+
+Cosa genera:
+- il mapper crea automaticamente un branch alternativo (`AltBegin`) sullo step con uscite multiple.
+
+Come fare il join verso fine sequenza:
+- Se due rami devono convergere, usa lo stesso `to_step` su piu' righe.
+
+Esempio join su step finale:
+- Riga 3: `from_step=S20`, `to_step=S99`, `condition_expression=M20.0`
+- Riga 4: `from_step=S30`, `to_step=S99`, `condition_expression=M30.0`
+
+Cosa genera:
+- verso `S99` il primo ingresso resta `Direct`, gli ingressi extra diventano `Jump` in automatico (regola anti-errore TIA).
+
+Fine sequenza:
+- Definisci uno step finale (es. `S99`) nel foglio `steps`.
+- Non aggiungere transizioni in uscita da `S99` se vuoi una fine netta.
+- Aggiungi invece `S99 -> S1` se vuoi ciclo continuo.
+
+Nota importante:
+- Questo flusso realizza split/join pratici compatibili con il mapper corrente.
+- Non e' ancora un modellatore esplicito di parallelismo GRAPH avanzato con sincronizzazione `SimBegin/SimEnd`.
+
 ### 3.5 Foglio `timers`
 Colonne:
 - `timer_name`
@@ -230,6 +262,10 @@ Compila in questo ordine:
 
 Regola d'oro:
 - se la sequenza "non gira", il 90% delle volte il problema e' nelle `transitions`.
+
+Regola automatica del parser IR:
+- se nel tuo Excel manca lo step `S1`, il converter aggiunge sempre `S1` come step iniziale tecnico.
+- se una transizione punta gia' a `S1`, il passo viene creato automaticamente anche se non era nel foglio `steps`.
 
 ## 5) Minimo Sindacale per Generare
 Per un caso minimo funzionante:
