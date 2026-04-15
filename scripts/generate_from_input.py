@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import re
+import shutil
 import sys
 from pathlib import Path
 
@@ -136,6 +137,9 @@ def main() -> int:
         base_name = _slugify(source.stem)
         sequence_name = _slugify(f"{args.name_prefix}_{base_name}")
         bundle_dir = output_root / sequence_name.lower()
+        if bundle_dir.exists():
+            shutil.rmtree(bundle_dir)
+        bundle_dir.mkdir(parents=True, exist_ok=True)
         bundle_dir_relative = bundle_dir.relative_to(PROJECT_ROOT)
 
         result = export_conversion_bundle(

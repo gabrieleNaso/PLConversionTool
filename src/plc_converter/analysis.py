@@ -31,7 +31,7 @@ STEP_RE = re.compile(r"\bS\d+\b", re.IGNORECASE)
 TIMER_RE = re.compile(r"\bT\d+\b", re.IGNORECASE)
 PRESET_RE = re.compile(r"\bS5T#[^\s,;]+", re.IGNORECASE)
 MEMORY_RE = re.compile(r"\bM\d+(?:\.\d+)?\b", re.IGNORECASE)
-OUTPUT_RE = re.compile(r"\bA\d+(?:\.\d+)?\b", re.IGNORECASE)
+OUTPUT_RE = re.compile(r"\b(?:A|Q)\d+(?:\.\d+)?\b", re.IGNORECASE)
 EXTERNAL_RE = re.compile(r"\b(?:E|I|DB|DI|PE|PA)\w*(?:\.\w+)*\b", re.IGNORECASE)
 TOKEN_RE = re.compile(r"\b[A-Z_]\w*(?:\.\w+)*\b", re.IGNORECASE)
 CONDITION_OPCODES = {"U", "UN", "O", "ON", "A", "AN", "X", "XN"}
@@ -84,6 +84,16 @@ SUPPORT_FAMILY_OVERRIDES = {
     "aux": {"db_family": "aux", "fc_family": "aux"},
     "transitions": {"db_family": "sequence", "fc_family": "transitions"},
     "output": {"db_family": "sequence", "fc_family": "output"},
+}
+
+TIA_MEMBER_NAME_MAX_LEN = 96
+TIA_RESERVED_KEYWORDS = {
+    "AND",
+    "OR",
+    "NOT",
+    "XOR",
+    "TRUE",
+    "FALSE",
 }
 
 
@@ -257,6 +267,7 @@ def _build_ir(sequence_name: str, source_name: str, networks: list[AwlNetwork]) 
         jump_labels = [instr.args[0] for instr in network.instructions if instr.opcode in JUMP_OPCODES and instr.args]
         step_targets = _collect_step_targets(network)
         pattern_transitions = _collect_transition_patterns(network)
+        trs_transitions = _collect_trs_transitions(network)
 
         for step_name in step_refs:
             step_map.setdefault(step_name, StepCandidate(name=step_name)).source_networks.append(network.index)
@@ -271,7 +282,22 @@ def _build_ir(sequence_name: str, source_name: str, networks: list[AwlNetwork]) 
                     network.index
                 )
 
-        if pattern_transitions:
+        if trs_transitions:
+            for source_step, target, guard_expression, guard_ops in trs_transitions:
+                if target == source_step:
+                    continue
+                transitions.append(
+                    TransitionCandidate(
+                        transition_id=f"T{len(transitions) + 1}",
+                        source_step=source_step,
+                        target_step=target,
+                        network_index=network.index,
+                        guard_expression=guard_expression if guard_expression else "TRUE",
+                        guard_operands=guard_ops,
+                        jump_labels=jump_labels,
+                    )
+                )
+        elif pattern_transitions:
             for source_step, target, guard_ops, pattern_jump_labels in pattern_transitions:
                 if target == source_step:
                     continue
@@ -345,8 +371,22 @@ def _build_ir(sequence_name: str, source_name: str, networks: list[AwlNetwork]) 
     if not transitions:
         transitions = _build_network_pattern_transitions(step_map, networks)
 
-    for reserved_step in ("S1", "S29", "S30", "S32"):
-        step_map.setdefault(reserved_step, StepCandidate(name=reserved_step))
+    if any(item.transition_id.startswith("T_NET_") for item in transitions):
+        network_only = [
+            item
+            for item in transitions
+            if item.source_step.startswith("N") and item.target_step.startswith("N")
+        ]
+        if network_only:
+            transitions = network_only
+
+    if transitions:
+        referenced_steps = {item.source_step for item in transitions} | {
+            item.target_step for item in transitions
+        }
+        step_map = {
+            name: candidate for name, candidate in step_map.items() if name in referenced_steps
+        }
 
     assumptions = [
         "Il parser usa euristiche incrementali sui pattern AWL piu' frequenti.",
@@ -468,10 +508,6 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
             break
     if entry_step is None:
         entry_step = ordered_steps[0].name
-    for step in ordered_steps:
-        if step.name.lower() == "s1":
-            entry_step = step.name
-            break
 
     transition_nodes = [
         GraphTransitionNode(
@@ -497,8 +533,10 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
     next_transition_no = len(transition_nodes) + 1
 
     all_steps = list(ordered_steps)
-    reserved_step_numbers = {1, 29, 30, 32}
-    reserved_step_names = {f"S{num}" for num in reserved_step_numbers}
+    reserved_step_names = {"S1", "S29", "S30", "S32"}
+    reserved_step_numbers = {
+        int(name[1:]) for name in reserved_step_names if any(step.name == name for step in all_steps)
+    }
     used_step_numbers: set[int] = set()
     step_nodes: list[GraphStepNode] = []
     next_sequential = 1
@@ -528,38 +566,16 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
                 action_networks=step.action_networks,
             )
         )
+
+    entry_node = next((node for node in step_nodes if node.init), None)
+    if entry_node and entry_node.step_no != 1:
+        current_one = next((node for node in step_nodes if node.step_no == 1), None)
+        if current_one and current_one is not entry_node:
+            current_one.step_no = entry_node.step_no
+        entry_node.step_no = 1
+    step_nodes.sort(key=lambda node: node.step_no)
+
     step_no_by_name = {step.name: step.step_no for step in step_nodes}
-
-    # GRAPH rejects terminal steps without a following element.
-    # Add a deterministic hold transition so terminal steps remain valid
-    # without changing the nominal process flow.
-    outgoing_from_ir: dict[str, int] = {}
-    for transition in transition_nodes:
-        outgoing_from_ir[transition.source_step] = outgoing_from_ir.get(transition.source_step, 0) + 1
-
-    for step in ordered_steps:
-        if outgoing_from_ir.get(step.name, 0) > 0:
-            continue
-        if step.name == entry_step and len(ordered_steps) == 1:
-            continue
-        synthetic_name = f"T_HOLD_{step.name}"
-        transition_nodes.append(
-            GraphTransitionNode(
-                name=synthetic_name,
-                transition_no=next_transition_no,
-                source_step=step.name,
-                # Keep terminal steps topologically closed without introducing
-                # self-loop incoming edges that can destabilize GRAPH editing.
-                target_step=entry_step,
-                guard_expression="FALSE",
-                guard_operands=[],
-                network_index=next_synthetic_network,
-                db_block_name=_global_db_block_name(ir),
-                db_member_name=_transition_db_member_name_from_values(synthetic_name, "FALSE"),
-            )
-        )
-        next_transition_no += 1
-        next_synthetic_network += 1
 
     reserved_chain = ["S29", "S30", "S32"]
     present_reserved = [name for name in reserved_chain if name in step_no_by_name]
@@ -605,6 +621,32 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
             next_transition_no += 1
             next_synthetic_network += 1
             existing_incoming.add(next_step)
+
+    existing_incoming = {transition.target_step for transition in transition_nodes}
+    for step in ordered_steps:
+        if step.name == entry_step or step.name in existing_incoming:
+            continue
+        transition_name = f"T_CHAIN_{entry_step}_TO_{step.name}"
+        if any(node.name == transition_name for node in transition_nodes):
+            transition_name = f"{transition_name}_{next_transition_no}"
+        transition_nodes.append(
+            GraphTransitionNode(
+                name=transition_name,
+                transition_no=next_transition_no,
+                source_step=entry_step,
+                target_step=step.name,
+                guard_expression="FALSE",
+                guard_operands=[],
+                network_index=next_synthetic_network,
+                db_block_name=_global_db_block_name(ir),
+                db_member_name=_transition_db_member_name_from_values(transition_name, "FALSE"),
+            )
+        )
+        next_transition_no += 1
+        next_synthetic_network += 1
+        existing_incoming.add(step.name)
+
+    _assign_unique_transition_db_member_names(transition_nodes)
 
     transitions_by_source: dict[str, list[GraphTransitionNode]] = {}
     for transition in transition_nodes:
@@ -1055,7 +1097,9 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
             )
         )
 
-    network_specs = _collect_network_support_specs(ir)
+    network_specs: list[tuple[int, str, list[tuple[str, str]]]] = []
+    if len(ir.networks) <= 5:
+        network_specs = _collect_network_support_specs(ir)
     for network_no, network_title, members in network_specs:
         suffix = _network_support_suffix(network_no, network_title)
         (
@@ -1514,9 +1558,10 @@ def _build_support_global_db_xml(
     number_span: int = 200,
 ) -> str:
     db_number = _stable_block_number(number_seed, base=number_base, span=number_span)
+    unique_members = _dedupe_named_members(members)
     member_irs = [
         MemberIR(name=member_name, datatype="Bool", comment=member_comment)
-        for member_name, member_comment in members
+        for member_name, member_comment in unique_members
     ]
     if not member_irs:
         member_irs = [MemberIR(name="NoData", datatype="Bool")]
@@ -1672,9 +1717,9 @@ def _build_support_lad_fc_xml(
         '        </ObjectList>\n'
         '      </MultilingualText>\n'
         f"{compile_units}\n"
-        '      <MultilingualText ID="F0" CompositionName="Title">\n'
+        '      <MultilingualText ID="FFFF0" CompositionName="Title">\n'
         '        <ObjectList>\n'
-        '          <MultilingualTextItem ID="F1" CompositionName="Items">\n'
+        '          <MultilingualTextItem ID="FFFF1" CompositionName="Items">\n'
         '            <AttributeList>\n'
         '              <Culture>en-US</Culture>\n'
         f'              <Text>{escape(title)}</Text>\n'
@@ -1769,7 +1814,6 @@ def _build_global_db_member_irs(ir: AwlIR, graph_topology: GraphTopology) -> lis
                 datatype="IEC_TIMER",
                 version="1.0",
                 comment=f"Timer {timer.source_timer} ({timer.kind})",
-                start_value=timer.preset,
             )
         )
 
@@ -1991,6 +2035,12 @@ def _build_lad_pattern(
         '    </Access>\n'
         '    <Part Name="Contact" UId="22" />\n'
         '    <Part Name="Coil" UId="23" />\n'
+        '    <Access Scope="GlobalVariable" UId="24">\n'
+        '      <Symbol>\n'
+        f'        <Component Name="{db_name}" />\n'
+        f'        <Component Name="{member_name}" />\n'
+        '      </Symbol>\n'
+        '    </Access>\n'
         '  </Parts>\n'
         '  <Wires>\n'
         '    <Wire UId="31">\n'
@@ -2004,6 +2054,10 @@ def _build_lad_pattern(
         '    <Wire UId="33">\n'
         '      <NameCon UId="22" Name="out" />\n'
         '      <NameCon UId="23" Name="in" />\n'
+        '    </Wire>\n'
+        '    <Wire UId="34">\n'
+        '      <IdentCon UId="24" />\n'
+        '      <NameCon UId="23" Name="operand" />\n'
         '    </Wire>\n'
         '  </Wires>\n'
         '</FlgNet></NetworkSource>'
@@ -2339,7 +2393,8 @@ def _normalize_symbol_name(guard_expression: str, fallback: str) -> str:
 
 
 def _db_member_name(raw_name: str) -> str:
-    return raw_name.replace(".", "_")
+    sanitized = raw_name.replace(".", "_")
+    return _sanitize_tia_member_name(sanitized, fallback="Signal", seed=raw_name)
 
 
 def _global_db_block_name(ir: AwlIR) -> str:
@@ -2356,7 +2411,59 @@ def _transition_db_member_name(transition: TransitionCandidate) -> str:
 
 def _transition_db_member_name_from_values(transition_name: str, guard_expression: str) -> str:
     normalized = _normalize_symbol_name(guard_expression, transition_name)
-    return f"{transition_name}_Guard_{normalized}"
+    raw = f"{transition_name}_Guard_{normalized}"
+    fallback = f"{_normalize_symbol_name(transition_name, 'T')}_Guard"
+    return _sanitize_tia_member_name(raw, fallback=fallback, seed=f"{transition_name}|{guard_expression}")
+
+
+def _assign_unique_transition_db_member_names(transition_nodes: list[GraphTransitionNode]) -> None:
+    used: set[str] = set()
+    for node in transition_nodes:
+        candidate = _transition_db_member_name_from_values(node.name, node.guard_expression)
+        if candidate in used:
+            digest = _stable_hash_token(
+                f"{node.name}|{node.guard_expression}|{node.source_step}|{node.target_step}",
+                size=6,
+            )
+            candidate = _sanitize_tia_member_name(
+                f"{candidate}_{digest}",
+                fallback=f"{_normalize_symbol_name(node.name, 'T')}_Guard_{digest}",
+                seed=f"{node.name}|{node.transition_no}|{digest}",
+            )
+            suffix = 2
+            while candidate in used:
+                candidate = _sanitize_tia_member_name(
+                    f"{candidate}_{suffix}",
+                    fallback=f"{_normalize_symbol_name(node.name, 'T')}_Guard_{suffix}",
+                    seed=f"{node.name}|{node.transition_no}|{suffix}",
+                )
+                suffix += 1
+        node.db_member_name = candidate
+        used.add(candidate)
+
+
+def _sanitize_tia_member_name(raw_name: str, fallback: str, seed: str) -> str:
+    cleaned = re.sub(r"[^A-Za-z0-9_]", "_", raw_name)
+    cleaned = re.sub(r"_+", "_", cleaned).strip("_")
+    if not cleaned:
+        cleaned = re.sub(r"[^A-Za-z0-9_]", "_", fallback) or "Signal"
+    if cleaned[0].isdigit():
+        cleaned = f"N_{cleaned}"
+    if cleaned.upper() in TIA_RESERVED_KEYWORDS:
+        cleaned = f"{cleaned}_ID"
+    if len(cleaned) > TIA_MEMBER_NAME_MAX_LEN:
+        digest = _stable_hash_token(seed, size=8)
+        keep = TIA_MEMBER_NAME_MAX_LEN - len(digest) - 1
+        if keep <= 0:
+            cleaned = digest[:TIA_MEMBER_NAME_MAX_LEN]
+        else:
+            cleaned = f"{cleaned[:keep]}_{digest}"
+    return cleaned
+
+
+def _stable_hash_token(seed: str, size: int = 8) -> str:
+    digest = hashlib.sha1(seed.encode("utf-8")).hexdigest().upper()
+    return digest[: max(size, 1)]
 
 
 def _step_sort_key(name: str) -> tuple[int, str]:
@@ -2382,24 +2489,23 @@ def _collect_matches(network: AwlNetwork, pattern: re.Pattern[str]) -> set[str]:
     matches: set[str] = set()
     for line in network.raw_lines:
         for match in pattern.findall(line):
-            matches.add(match.upper())
+            matches.add(_canonicalize_step_token(match.upper()))
     return matches
 
 
+def _collect_condition_logic(network: AwlNetwork) -> tuple[str, list[str]]:
+    tokens = _tokenize_condition_logic(network)
+    if not tokens:
+        return "TRUE", []
+    expression, operands, _ = _parse_condition_expression(tokens, 0)
+    if not expression:
+        return "TRUE", _dedupe_list(operands)
+    return expression, _dedupe_list(operands)
+
+
 def _collect_condition_operands(network: AwlNetwork) -> list[str]:
-    operands: list[str] = []
-    for instr in network.instructions:
-        if instr.opcode not in CONDITION_OPCODES:
-            continue
-        if not instr.args:
-            continue
-        candidate = _select_instruction_operand(instr.args)
-        if not candidate:
-            continue
-        if STEP_RE.fullmatch(candidate):
-            continue
-        operands.append(candidate)
-    return _dedupe_list(operands)
+    _, operands = _collect_condition_logic(network)
+    return operands
 
 
 def _collect_step_targets(network: AwlNetwork) -> list[str]:
@@ -2470,6 +2576,175 @@ def _collect_timers(network: AwlNetwork) -> list[tuple[str, str, str | None]]:
     return _dedupe_timers(timers)
 
 
+def _collect_trs_transitions(network: AwlNetwork) -> list[tuple[str, str, str, list[str]]]:
+    trs_target: tuple[str, str] | None = None
+    for index, instr in enumerate(network.instructions):
+        if instr.opcode != "L" or not instr.args:
+            continue
+        numeric = _normalize_operand_token(instr.args[0])
+        if not re.fullmatch(r"\d+", numeric):
+            continue
+        for follower in network.instructions[index + 1 : index + 6]:
+            if follower.opcode != "T":
+                continue
+            prefix = _extract_trs_prefix(follower.args)
+            if not prefix:
+                continue
+            trs_target = (prefix, f"S{int(numeric)}")
+            break
+        if trs_target:
+            break
+
+    if not trs_target:
+        return []
+
+    prefix, target_step = trs_target
+    source_steps: list[str] = []
+    for instr in network.instructions:
+        if instr.opcode not in CONDITION_OPCODES or not instr.args:
+            continue
+        for raw_arg in instr.args:
+            token = _normalize_operand_token(raw_arg)
+            match = re.fullmatch(rf"{re.escape(prefix)}\.S0*(\d+)", token)
+            if match:
+                source_steps.append(f"S{int(match.group(1))}")
+
+    source_steps = _dedupe_list(source_steps)
+    if not source_steps:
+        return []
+
+    guard_expression, guard_ops = _collect_condition_logic(network)
+    return [(source_step, target_step, guard_expression, guard_ops) for source_step in source_steps]
+
+
+def _tokenize_condition_logic(network: AwlNetwork) -> list[dict[str, str]]:
+    tokens: list[dict[str, str]] = []
+    for raw_line in network.raw_lines:
+        body = raw_line.split("--", 1)[0].strip()
+        if not body:
+            continue
+        if ":" in body:
+            possible_label, remainder = body.split(":", 1)
+            if possible_label and " " not in possible_label:
+                body = remainder.strip() or "NOP 0"
+        if body == ")":
+            tokens.append({"kind": "close"})
+            continue
+
+        parts = body.split()
+        if not parts:
+            continue
+
+        opcode = parts[0].upper()
+        if opcode.endswith("("):
+            base = opcode[:-1]
+            connector, negated = _logic_opcode_shape(base)
+            if connector is None:
+                continue
+            tokens.append({"kind": "open", "connector": connector, "negated": "1" if negated else "0"})
+            continue
+
+        if opcode in CONDITION_OPCODES:
+            if not parts[1:]:
+                connector, _ = _logic_opcode_shape(opcode)
+                if connector is not None:
+                    tokens.append({"kind": "override", "connector": connector})
+                continue
+            operand = _select_instruction_operand(parts[1:])
+            if not operand:
+                continue
+            connector, negated = _logic_opcode_shape(opcode)
+            if connector is None:
+                continue
+            tokens.append(
+                {
+                    "kind": "atom",
+                    "connector": connector,
+                    "negated": "1" if negated else "0",
+                    "operand": _canonicalize_step_token(operand),
+                }
+            )
+    return tokens
+
+
+def _logic_opcode_shape(opcode: str) -> tuple[str | None, bool]:
+    base = opcode.upper()
+    connector = "AND"
+    if base in {"O", "ON"}:
+        connector = "OR"
+    if base in {"A", "AN", "O", "ON", "U", "UN", "X", "XN"}:
+        return connector, base.endswith("N")
+    return None, False
+
+
+def _parse_condition_expression(
+    tokens: list[dict[str, str]],
+    start_index: int,
+) -> tuple[str, list[str], int]:
+    expression: str | None = None
+    operands: list[str] = []
+    pending_override: str | None = None
+    index = start_index
+
+    while index < len(tokens):
+        token = tokens[index]
+        kind = token.get("kind")
+        if kind == "close":
+            return expression or "", operands, index + 1
+        if kind == "override":
+            pending_override = token.get("connector")
+            index += 1
+            continue
+
+        term_expr: str | None = None
+        term_ops: list[str] = []
+        connector = token.get("connector") or "AND"
+
+        if kind == "atom":
+            operand = token.get("operand") or ""
+            if not STEP_RE.fullmatch(operand):
+                term_ops = [operand]
+                if token.get("negated") == "1":
+                    term_expr = f"NOT {operand}"
+                else:
+                    term_expr = operand
+            index += 1
+        elif kind == "open":
+            subexpr, subops, next_index = _parse_condition_expression(tokens, index + 1)
+            index = next_index
+            if subexpr:
+                term_expr = f"({subexpr})"
+                if token.get("negated") == "1":
+                    term_expr = f"NOT {term_expr}"
+            term_ops = subops
+        else:
+            index += 1
+            continue
+
+        if not term_expr:
+            operands.extend(term_ops)
+            continue
+
+        effective_connector = pending_override or connector
+        pending_override = None
+        if expression is None:
+            expression = term_expr
+        else:
+            expression = f"({expression} {effective_connector} {term_expr})"
+        operands.extend(term_ops)
+
+    return expression or "", operands, index
+
+
+def _extract_trs_prefix(args: list[str]) -> str | None:
+    for raw_arg in args:
+        token = _normalize_operand_token(raw_arg)
+        match = re.fullmatch(r"([A-Z0-9_]+)\.TRS", token)
+        if match:
+            return match.group(1)
+    return None
+
+
 def _extract_preset(network: AwlNetwork) -> str | None:
     for line in network.raw_lines:
         match = PRESET_RE.search(line)
@@ -2516,8 +2791,13 @@ def _select_instruction_operand(args: list[str]) -> str | None:
     if not cleaned:
         return None
 
+    merged = _merge_split_address_operand(cleaned)
+    if merged:
+        cleaned = [merged, *cleaned]
+
     preferred = next((item for item in cleaned if _is_address_like_operand(item)), None)
-    return preferred or cleaned[0]
+    selected = preferred or cleaned[0]
+    return _canonicalize_step_token(selected)
 
 
 def _normalize_operand_token(token: str) -> str:
@@ -2538,6 +2818,17 @@ def _is_address_like_operand(value: str) -> bool:
         r"^DB\d+\.D[IBD]\d+$",
     )
     return any(re.fullmatch(pattern, value, flags=re.IGNORECASE) for pattern in patterns)
+
+
+def _merge_split_address_operand(tokens: list[str]) -> str | None:
+    if len(tokens) < 2:
+        return None
+    head, tail = tokens[0], tokens[1]
+    if head not in {"A", "E", "I", "M", "Q", "T"}:
+        return None
+    if not re.fullmatch(r"\d+(?:\.\d+)?", tail):
+        return None
+    return f"{head}{tail}"
 
 
 def _collect_fault_tokens(network: AwlNetwork) -> list[str]:
@@ -2590,3 +2881,19 @@ def _dedupe_timers(items: list[tuple[str, str, str | None]]) -> list[tuple[str, 
     for item in items:
         ordered[item] = None
     return list(ordered.keys())
+
+
+def _dedupe_named_members(items: list[tuple[str, str]]) -> list[tuple[str, str]]:
+    ordered: dict[str, str] = {}
+    for name, comment in items:
+        if name in ordered:
+            continue
+        ordered[name] = comment
+    return list(ordered.items())
+
+
+def _canonicalize_step_token(token: str) -> str:
+    match = re.fullmatch(r"S0*(\d+)", token, flags=re.IGNORECASE)
+    if not match:
+        return token
+    return f"S{int(match.group(1))}"

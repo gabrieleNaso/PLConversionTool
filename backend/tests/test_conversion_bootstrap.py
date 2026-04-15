@@ -238,6 +238,145 @@ def test_conversion_analyze_builds_alt_branch_for_multi_exit_step() -> None:
     )
 
 
+def test_conversion_analyze_sanitizes_and_dedupes_long_transition_member_names() -> None:
+    client = TestClient(app)
+    long_guard = (
+        "DB106.DBX6.2 AND DB105.DBX23.4 AND DB106.DBX25.1 AND M30.1 "
+        "AND DB106.DBX25.3 AND DB162.DBX23.1 AND DB107.DBX6.2 AND DB107.DBX23.3"
+    )
+    res = client.post(
+        "/api/conversion/analyze",
+        json={
+            "sequenceName": "Long Guard Line",
+            "sourceName": "long_guard.awl",
+            "awlSource": "\n".join(
+                [
+                    "NETWORK 1",
+                    "      U     S1",
+                    "      U     DB106.DBX6.2",
+                    "      U     DB105.DBX23.4",
+                    "      U     DB106.DBX25.1",
+                    "      U     M30.1",
+                    "      U     DB106.DBX25.3",
+                    "      U     DB162.DBX23.1",
+                    "      U     DB107.DBX6.2",
+                    "      U     DB107.DBX23.3",
+                    "      S     S2",
+                    "NETWORK 2",
+                    "      U     S1",
+                    "      U     DB106.DBX6.2",
+                    "      U     DB105.DBX23.4",
+                    "      U     DB106.DBX25.1",
+                    "      U     M30.1",
+                    "      U     DB106.DBX25.3",
+                    "      U     DB162.DBX23.1",
+                    "      U     DB107.DBX6.2",
+                    "      U     DB107.DBX23.3",
+                    "      S     S3",
+                ]
+            ),
+        },
+    )
+    assert res.status_code == 200
+
+    payload = res.json()
+    names = [
+        node["db_member_name"]
+        for node in payload["graph_topology"]["transition_nodes"]
+        if node["guard_expression"] == long_guard
+    ]
+    assert len(names) >= 2
+    assert len(set(names)) == len(names)
+    assert all(len(name) <= 96 for name in names)
+    assert all("_Guard_" in name for name in names)
+
+
+def test_conversion_analyze_parses_split_timer_operand_as_t_number() -> None:
+    client = TestClient(app)
+    res = client.post(
+        "/api/conversion/analyze",
+        json={
+            "sequenceName": "Split Timer",
+            "sourceName": "split_timer.awl",
+            "awlSource": "\n".join(
+                [
+                    "NETWORK 1",
+                    "      A     S1",
+                    "      L     S5T#10S",
+                    "      SD    T 209",
+                    "      A     T 209",
+                    "      S     S2",
+                ]
+            ),
+        },
+    )
+    assert res.status_code == 200
+    payload = res.json()
+    global_db = next(
+        preview["content"]
+        for preview in payload["artifact_previews"]
+        if preview["artifact_type"] == "global_db"
+    )
+    assert '<Member Name="T209" Datatype="IEC_TIMER" Version="1.0">' in global_db
+    assert '<Member Name="T" Datatype="IEC_TIMER" Version="1.0">' not in global_db
+    assert "_Guard_T209" in global_db
+
+
+def test_conversion_analyze_dedupes_aux_members_by_name() -> None:
+    client = TestClient(app)
+    res = client.post(
+        "/api/conversion/analyze",
+        json={
+            "sequenceName": "Aux Dedupe",
+            "sourceName": "aux_dedupe.awl",
+            "awlSource": "\n".join(
+                [
+                    "NETWORK 1",
+                    "      U     S1",
+                    "      S     M6.0",
+                    "NETWORK 2",
+                    "      U     S2",
+                    "      S     M6.0",
+                ]
+            ),
+        },
+    )
+    assert res.status_code == 200
+    payload = res.json()
+    aux_db = next(
+        preview["content"]
+        for preview in payload["artifact_previews"]
+        if preview["artifact_type"] == "support_global_db_aux"
+    )
+    assert aux_db.count('<Member Name="AUX_MEM_M6_0" Datatype="Bool">') == 1
+
+
+def test_conversion_analyze_canonicalizes_step_tokens_with_leading_zeros() -> None:
+    client = TestClient(app)
+    res = client.post(
+        "/api/conversion/analyze",
+        json={
+            "sequenceName": "Step Canon",
+            "sourceName": "step_canon.awl",
+            "awlSource": "\n".join(
+                [
+                    "NETWORK 1",
+                    "      A     S01",
+                    "      S     S2",
+                    "NETWORK 2",
+                    "      A     S1",
+                    "      S     S3",
+                ]
+            ),
+        },
+    )
+    assert res.status_code == 200
+    payload = res.json()
+    step_names = {item["name"] for item in payload["ir"]["steps"]}
+    assert "S1" in step_names
+    assert "S01" not in step_names
+
+
 def test_conversion_analyze_uses_jump_for_multi_entry_step() -> None:
     client = TestClient(app)
     res = client.post(
@@ -287,3 +426,79 @@ def test_conversion_analyze_uses_jump_for_multi_entry_step() -> None:
         for preview in payload["artifact_previews"]
         if preview["artifact_type"] == "graph_fb"
     )
+
+
+def test_conversion_analyze_preserves_or_not_logic_for_trs_transitions() -> None:
+    client = TestClient(app)
+    res = client.post(
+        "/api/conversion/analyze",
+        json={
+            "sequenceName": "TRS Bool",
+            "sourceName": "trs_bool.awl",
+            "awlSource": "\n".join(
+                [
+                    "NETWORK 1",
+                    "      A     M06.S14",
+                    "      A(",
+                    "          O     M06.UP",
+                    "          O     DB202.DBX74.1",
+                    "      )",
+                    "      JNB   _001",
+                    "      L     18",
+                    "      T     M06.Trs",
+                    "_001: NOP 0",
+                    "NETWORK 2",
+                    "      A(",
+                    "          O     M06.S29",
+                    "          O     M06.S32",
+                    "      )",
+                    "      AN    DB106.DBX25.5",
+                    "      AN    M47.1",
+                    "      JNB   _002",
+                    "      L     1",
+                    "      T     M06.Trs",
+                    "_002: NOP 0",
+                ]
+            ),
+        },
+    )
+    assert res.status_code == 200
+    payload = res.json()
+    transitions = payload["ir"]["transitions"]
+    assert any(
+        item["source_step"] == "S14"
+        and item["target_step"] == "S18"
+        and " OR " in item["guard_expression"]
+        for item in transitions
+    )
+    s1_transitions = [
+        item
+        for item in transitions
+        if item["target_step"] == "S1" and item["source_step"] in {"S29", "S32"}
+    ]
+    assert len(s1_transitions) == 2
+    assert all(" OR " in item["guard_expression"] for item in s1_transitions)
+    assert all("NOT DB106.DBX25.5" in item["guard_expression"] for item in s1_transitions)
+    assert all("NOT M47.1" in item["guard_expression"] for item in s1_transitions)
+
+
+def test_conversion_analyze_detects_q_outputs_as_output_targets() -> None:
+    client = TestClient(app)
+    res = client.post(
+        "/api/conversion/analyze",
+        json={
+            "sequenceName": "Q Outputs",
+            "sourceName": "q_outputs.awl",
+            "awlSource": "\n".join(
+                [
+                    "NETWORK 1",
+                    "      A     S29",
+                    "      =     Q40.2",
+                ]
+            ),
+        },
+    )
+    assert res.status_code == 200
+    payload = res.json()
+    outputs = payload["ir"]["outputs"]
+    assert any(item["name"] == "Q40.2" and item["action"] == "=" for item in outputs)

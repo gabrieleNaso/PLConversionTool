@@ -26,6 +26,19 @@ Organizzare per macro-strutture funzionali, evitando DB piatti:
 - **Allineamento**: simboli referenziati nel `FlgNet` devono esistere e avere naming identico tra FB/DB.
 - **Evitare ambiguita'**: niente acronimi non condivisi; preferire naming impiantistico.
 
+## Convenzioni logiche AWL -> Guard XML
+- **Operatori booleani**:
+  - `A/U` -> `AND`
+  - `AN/UN` -> `AND NOT`
+  - `O` -> `OR`
+  - `ON` -> `OR NOT`
+- **Gruppi parentesizzati**:
+  - i blocchi `A(...)` / `O(...)` vanno mantenuti come sottogruppi in `guard_expression`.
+- **Passi sorgente**:
+  - i token step (`Sxx`) usati per identificare la sorgente transizione non devono inquinare la parte semantica della guardia.
+- **Output fisiche**:
+  - riconoscere sia notazione `Axx(.x)` sia `Qxx(.x)` per mapping uscite.
+
 ## Datasets e campioni
 
 ### Obiettivo

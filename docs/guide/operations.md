@@ -67,6 +67,10 @@ Output:
   - `<Name>_analysis.json`
 - in base al contenuto AWL possono comparire anche altri `DB_*` e `FC_*` di supporto
 
+Comportamento importante:
+- la cartella del bundle target viene **pulita automaticamente** prima della nuova generazione;
+- non restano file XML "stale" di run precedenti nello stesso bundle.
+
 ### Genera da un solo file
 
 ```bash
@@ -159,6 +163,11 @@ curl -sS "http://127.0.0.1:8000/api/tia/jobs/<JOB_ID>"
 - **Ingressi multipli** su uno step non iniziale:
   - il primo ingresso puo' essere `Direct`;
   - gli ingressi extra devono essere `Jump`.
+- **Guard logiche transizioni (`Trs`)**:
+  - il parser preserva operatori booleani `AND` / `OR` / `NOT` da AWL (`A/AN/O/ON`, inclusi gruppi `A(...)`/`O(...)`);
+  - le guardie non vanno appiattite in `AND` quando in AWL esistono rami `OR`.
+- **Output fisiche**:
+  - sono riconosciute sia in formato `Axx(.x)` sia `Qxx(.x)` quando usate con `=`.
 - **targetPath**: deve partire da `Program blocks/`.
   - Se ometti il prefisso, TIA crea un gruppo con nome letterale (es. `generati da tool/xxx`).
 
@@ -192,6 +201,13 @@ Verifica in `http://127.0.0.1:8010/api/status` che `remoteAgentStatus` sia popol
 - Crash TIA aprendo FB GRAPH:
   - Causa tipica: topologia invalida (doppi ingressi `Direct`).
   - Fix: converti gli ingressi extra in `Jump`.
+
+- Logica XML "diversa" dall'AWL su transizioni:
+  - Causa tipica: sorgente con condizioni complesse `OR/NOT` o gruppi non verificata dopo rigenerazione.
+  - Fix rapido:
+    1. rigenera (`make generate-input INPUT_FILE="..."`);
+    2. controlla `<Name>_analysis.json` (`ir.transitions[].guard_expression`);
+    3. verifica che l'espressione mantenga `OR` e `NOT` dove presenti in AWL.
 
 ## Comandi base utili
 

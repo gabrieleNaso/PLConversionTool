@@ -1,4 +1,4 @@
-.PHONY: help doctor build pull up logs shell-backend shell-frontend shell-tia run-backend run-tia test-backend lint-backend fmt-backend generate-input import-generated generate-and-import clean down
+.PHONY: help doctor build pull up logs shell-backend shell-frontend shell-tia run-backend run-tia test-backend lint-backend fmt-backend generate-input import-generated generate-and-import generate-import clean down
 
 PROJECT_NAME := plconversiontool
 COMPOSE := docker compose -p $(PROJECT_NAME) -f compose.dev.yml
@@ -22,6 +22,7 @@ help:
 	"  generate-input - generate XML (use INPUT_FILE/INPUT_PREFIX filters)" \
 	"  import-generated - import bundles into TIA (use IMPORT_BUNDLE/IMPORT_PREFIX)" \
 	"  generate-and-import - generate-input + import-generated" \
+	"  generate-import - alias of generate-and-import" \
 	"  clean   - remove data/tmp/ and data/output/*" \
 	"  down    - stop compose services"
 
@@ -73,6 +74,8 @@ import-generated:
 	@python3 scripts/import_generated_to_tia.py --output-root data/output/generated --project-path "$(PROJECT_PATH)" --target-path "$(TARGET_PATH)" --prefix "$(IMPORT_PREFIX)" --bundle "$(IMPORT_BUNDLE)"
 
 generate-and-import: generate-input import-generated
+
+generate-import: generate-and-import
 
 clean:
 	@mkdir -p ./data/tmp

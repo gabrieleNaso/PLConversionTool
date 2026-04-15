@@ -30,12 +30,13 @@ L'IR nasce da:
 - L'AWL viene letto come testo e segmentato per `NETWORK`.
 - Il parser identifica:
   - step e transizioni;
-  - logiche LAD/GRAPH equivalenti;
+  - logiche LAD/GRAPH equivalenti (incluse guardie booleane con `AND/OR/NOT`);
   - simboli e riferimenti che devono esistere nel `GlobalDB`.
 
 ### Come l'IR viene creato (passi operativi)
 1. **Split per `NETWORK`** e tokenizzazione (istruzioni, simboli, indirizzi).
 2. **Parsing semantico**: ogni network diventa logica sequenziale (step, transizioni, guard, timer, set/reset).
+   - Per le transizioni pilotate da `Trs` viene preservata la struttura booleana delle condizioni (`A/AN/O/ON` e gruppi con parentesi).
 3. **Normalizzazione**: naming deterministico e riferimenti uniformati.
 4. **Costruzione IR**: grafo/struttura di nodi (step, transition, timer, mapping DB).
 5. **Validazione**: coerenza minima (riferimenti presenti, topologia consistente).
@@ -77,6 +78,7 @@ Flusso tipico:
 1. `analyze` riceve `awlSource`.
 2. Il core produce IR + anteprime XML.
 3. `export` scrive i file in `data/output/generated/<bundle>/`.
+   - Prima della scrittura, il bundle target viene ricreato pulito per evitare residui XML di run precedenti.
 
 ## 5) Bridge TIA e Windows Agent
 

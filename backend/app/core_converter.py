@@ -57,18 +57,20 @@ def export_conversion_bundle(
         source_name=source_name,
     ).to_dict()
 
-    output_root = (PROJECT_ROOT / "output").resolve()
+    data_output_root = (PROJECT_ROOT / "data" / "output").resolve()
     relative_output = Path(output_dir)
     if relative_output.is_absolute():
         relative_output = Path(*relative_output.parts[1:])
-    if relative_output.parts and relative_output.parts[0] == "output":
-        relative_output = (
-            Path(*relative_output.parts[1:])
-            if len(relative_output.parts) > 1
-            else Path()
-        )
-    destination = (output_root / relative_output).resolve()
-    if output_root not in destination.parents and destination != output_root:
+
+    # Normalizza path legacy/varianti mantenendo sempre output sotto data/output.
+    parts_lower = [part.lower() for part in relative_output.parts]
+    if len(parts_lower) >= 2 and parts_lower[0] == "data" and parts_lower[1] == "output":
+        relative_output = Path(*relative_output.parts[2:])
+    elif parts_lower and parts_lower[0] == "output":
+        relative_output = Path(*relative_output.parts[1:])
+
+    destination = (data_output_root / relative_output).resolve()
+    if data_output_root not in destination.parents and destination != data_output_root:
         raise ValueError(
             "outputDir deve rimanere dentro la cartella data/output/ del progetto."
         )

@@ -37,3 +37,5 @@ Regola trasversale:
 - **Poi**: isolare la causa con diff mentale rispetto a un golden sample importato.
 - **Regola pratica**: nei GRAPH complessi serve coerenza piu' stretta tra `Sequence`, `Static`, `Temp` e `FlgNet`.
 - **Regola pratica 2**: distinguere sempre fra errore di import del singolo XML ed errore di incoerenza del pacchetto compilato; i due problemi hanno cause diverse e vanno tracciati separatamente.
+- **Regola pratica 3**: quando la logica diverge dall'AWL, verificare in `<bundle>_analysis.json` le `guard_expression` delle transizioni (`OR/NOT` e gruppi devono restare semantici).
+- **Regola pratica 4**: prima di confrontare output vecchi/nuovi, rigenerare il bundle assicurandosi che la cartella target sia stata ricreata pulita (no XML residui).
