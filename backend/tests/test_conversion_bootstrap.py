@@ -1,3 +1,6 @@
+import shutil
+from pathlib import Path
+
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -502,3 +505,80 @@ def test_conversion_analyze_detects_q_outputs_as_output_targets() -> None:
     payload = res.json()
     outputs = payload["ir"]["outputs"]
     assert any(item["name"] == "Q40.2" and item["action"] == "=" for item in outputs)
+
+
+def test_conversion_analyze_ir_accepts_manual_ir_payload() -> None:
+    client = TestClient(app)
+    res = client.post(
+        "/api/conversion/analyze-ir",
+        json={
+            "sequenceName": "Excel Line",
+            "sourceName": "excel_manual.xlsx",
+            "ir": {
+                "networks": [{"index": 1, "title": "N1"}],
+                "steps": [
+                    {"name": "S1", "source_networks": [1], "activation_networks": [1]},
+                    {"name": "S2", "source_networks": [1], "activation_networks": [1]},
+                ],
+                "transitions": [
+                    {
+                        "transition_id": "T1",
+                        "source_step": "S1",
+                        "target_step": "S2",
+                        "network_index": 1,
+                        "guard_expression": "M10.0 AND T1",
+                        "guard_operands": ["M10.0", "T1"],
+                    }
+                ],
+                "timers": [{"source_timer": "T1", "network_index": 1, "kind": "SD"}],
+                "memories": [{"name": "M10.0", "role": "aux", "network_index": 1}],
+                "outputs": [{"name": "Q4.0", "network_index": 1, "action": "="}],
+                "manual_logic_networks": [1],
+                "external_refs": ["I0.0"],
+            },
+        },
+    )
+    assert res.status_code == 200
+    payload = res.json()
+    assert payload["ir"]["sequence_name"] == "Excel_Line"
+    assert payload["scaffold"]["source_analysis"]["source_kind"] == "ir_json"
+    assert payload["graph_topology"]["entry_step"] == "S1"
+    assert any(
+        preview["artifact_type"] == "graph_fb"
+        for preview in payload["artifact_previews"]
+    )
+
+
+def test_conversion_export_ir_writes_bundle() -> None:
+    client = TestClient(app)
+    output_dir = "data/output/generated/test_ir_export"
+    output_path = Path(__file__).resolve().parents[2] / output_dir
+    if output_path.exists():
+        shutil.rmtree(output_path)
+
+    res = client.post(
+        "/api/conversion/export-ir",
+        json={
+            "sequenceName": "Excel Export",
+            "sourceName": "excel_export.xlsx",
+            "outputDir": output_dir,
+            "ir": {
+                "networks": [{"index": 1, "title": "N1"}],
+                "steps": [{"name": "S1"}, {"name": "S2"}],
+                "transitions": [
+                    {
+                        "transition_id": "T1",
+                        "source_step": "S1",
+                        "target_step": "S2",
+                        "network_index": 1,
+                        "guard_expression": "TRUE",
+                    }
+                ],
+            },
+        },
+    )
+    assert res.status_code == 200
+    payload = res.json()
+    assert payload["sequenceName"] == "Excel_Export"
+    assert any(path.endswith("_analysis.json") for path in payload["writtenFiles"])
+    assert any(path.endswith("_GRAPH_auto.xml") for path in payload["writtenFiles"])

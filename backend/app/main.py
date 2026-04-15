@@ -2,8 +2,10 @@ from fastapi import FastAPI, HTTPException
 
 from app.core_converter import (
     analyze_conversion,
+    analyze_conversion_from_ir,
     bootstrap_conversion,
     export_conversion_bundle,
+    export_conversion_bundle_from_ir,
     get_target_profile,
 )
 from app.project_context import build_project_summary
@@ -68,6 +70,19 @@ def conversion_analyze(payload: dict) -> dict:
     )
 
 
+@app.post("/api/conversion/analyze-ir")
+def conversion_analyze_ir(payload: dict) -> dict:
+    ir_payload = payload.get("ir")
+    if not isinstance(ir_payload, dict):
+        raise HTTPException(status_code=400, detail="ir e' obbligatorio e deve essere un oggetto.")
+
+    return analyze_conversion_from_ir(
+        sequence_name=payload.get("sequenceName"),
+        ir_payload=ir_payload,
+        source_name=payload.get("sourceName"),
+    )
+
+
 @app.post("/api/conversion/export")
 def conversion_export(payload: dict) -> dict:
     awl_source = (payload.get("awlSource") or "").strip()
@@ -78,6 +93,23 @@ def conversion_export(payload: dict) -> dict:
         return export_conversion_bundle(
             sequence_name=payload.get("sequenceName"),
             awl_source=awl_source,
+            source_name=payload.get("sourceName"),
+            output_dir=payload.get("outputDir", "data/output/generated"),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/conversion/export-ir")
+def conversion_export_ir(payload: dict) -> dict:
+    ir_payload = payload.get("ir")
+    if not isinstance(ir_payload, dict):
+        raise HTTPException(status_code=400, detail="ir e' obbligatorio e deve essere un oggetto.")
+
+    try:
+        return export_conversion_bundle_from_ir(
+            sequence_name=payload.get("sequenceName"),
+            ir_payload=ir_payload,
             source_name=payload.get("sourceName"),
             output_dir=payload.get("outputDir", "data/output/generated"),
         )

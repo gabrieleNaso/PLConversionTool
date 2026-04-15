@@ -5,11 +5,14 @@ import hashlib
 from xml.sax.saxutils import escape
 
 from .domain import (
+    ArtifactPlan,
     ArtifactPreview,
     AwlIR,
     AwlInstruction,
     AwlNetwork,
+    ConversionRoadmap,
     ConversionAnalysis,
+    ConversionScaffold,
     GraphBranchNode,
     FaultCandidate,
     GraphConnection,
@@ -19,6 +22,7 @@ from .domain import (
     MemberIR,
     MemoryCandidate,
     OutputCandidate,
+    SourceAnalysis,
     StepCandidate,
     TimerCandidate,
     TransitionCandidate,
@@ -123,6 +127,282 @@ def analyze_awl_source(
         artifact_previews=previews,
         artifact_manifest=manifest,
     )
+
+
+def analyze_ir_payload(
+    ir_payload: dict,
+    sequence_name: str | None = None,
+    source_name: str | None = None,
+) -> ConversionAnalysis:
+    ir = _ir_from_payload(ir_payload=ir_payload, sequence_name=sequence_name, source_name=source_name)
+    scaffold = _build_ir_scaffold(ir)
+    graph_topology = _build_graph_topology(ir)
+    issues = _validate_ir(ir, graph_topology)
+    previews = _build_artifact_previews(scaffold, ir, graph_topology)
+    manifest = _build_artifact_manifest(previews)
+    return ConversionAnalysis(
+        scaffold=scaffold,
+        ir=ir,
+        graph_topology=graph_topology,
+        validation_issues=issues,
+        artifact_previews=previews,
+        artifact_manifest=manifest,
+    )
+
+
+def _ir_from_payload(
+    ir_payload: dict,
+    sequence_name: str | None = None,
+    source_name: str | None = None,
+) -> AwlIR:
+    raw_sequence = sequence_name or ir_payload.get("sequence_name") or "Sequence"
+    normalized_sequence = re.sub(r"[^A-Za-z0-9]+", "_", str(raw_sequence)).strip("_") or "Sequence"
+    source_label = source_name or ir_payload.get("source_name") or f"{normalized_sequence}_ir.json"
+
+    networks_payload = ir_payload.get("networks") or []
+    networks: list[AwlNetwork] = []
+    for fallback_index, raw_network in enumerate(networks_payload, start=1):
+        network_index = _as_int(raw_network.get("index"), fallback_index)
+        raw_lines = _as_str_list(raw_network.get("raw_lines"))
+        instructions_payload = raw_network.get("instructions") or []
+        instructions: list[AwlInstruction] = []
+        for line_fallback, raw_instruction in enumerate(instructions_payload, start=1):
+            args = _as_str_list(raw_instruction.get("args"))
+            raw = str(raw_instruction.get("raw") or "").strip()
+            if not raw:
+                rendered_args = f" {' '.join(args)}" if args else ""
+                raw = f"{str(raw_instruction.get('opcode') or '').upper()}{rendered_args}".strip()
+            instructions.append(
+                AwlInstruction(
+                    line_no=_as_int(raw_instruction.get("line_no"), line_fallback),
+                    network_index=network_index,
+                    label=_as_optional_str(raw_instruction.get("label")),
+                    opcode=str(raw_instruction.get("opcode") or "NOP").upper(),
+                    args=args,
+                    raw=raw,
+                )
+            )
+
+        networks.append(
+            AwlNetwork(
+                index=network_index,
+                title=_as_optional_str(raw_network.get("title")),
+                raw_lines=raw_lines,
+                instructions=instructions,
+            )
+        )
+
+    transitions_payload = ir_payload.get("transitions") or []
+    if not networks:
+        synthetic_indexes = sorted(
+            {
+                _as_int(item.get("network_index"), 1)
+                for item in transitions_payload
+                if isinstance(item, dict)
+            }
+        )
+        if not synthetic_indexes:
+            synthetic_indexes = [1]
+        networks = [
+            AwlNetwork(index=index, title=f"IR_Network_{index}", raw_lines=[], instructions=[])
+            for index in synthetic_indexes
+        ]
+
+    steps = [
+        StepCandidate(
+            name=str(item.get("name") or "").strip(),
+            source_networks=_as_int_list(item.get("source_networks")),
+            activation_networks=_as_int_list(item.get("activation_networks")),
+            action_networks=_as_int_list(item.get("action_networks")),
+        )
+        for item in (ir_payload.get("steps") or [])
+        if str(item.get("name") or "").strip()
+    ]
+
+    transitions = [
+        TransitionCandidate(
+            transition_id=str(item.get("transition_id") or f"T{index}"),
+            source_step=str(item.get("source_step") or "").strip(),
+            target_step=str(item.get("target_step") or "").strip(),
+            network_index=_as_int(item.get("network_index"), 1),
+            guard_expression=str(item.get("guard_expression") or "TRUE"),
+            guard_operands=_as_str_list(item.get("guard_operands")),
+            jump_labels=_as_str_list(item.get("jump_labels")),
+        )
+        for index, item in enumerate(transitions_payload, start=1)
+        if str(item.get("source_step") or "").strip() and str(item.get("target_step") or "").strip()
+    ]
+
+    timers = [
+        TimerCandidate(
+            source_timer=str(item.get("source_timer") or "").strip(),
+            network_index=_as_int(item.get("network_index"), 1),
+            kind=str(item.get("kind") or "SD").upper(),
+            preset=_as_optional_str(item.get("preset")),
+            trigger_operands=_as_str_list(item.get("trigger_operands")),
+        )
+        for item in (ir_payload.get("timers") or [])
+        if str(item.get("source_timer") or "").strip()
+    ]
+
+    memories = [
+        MemoryCandidate(
+            name=str(item.get("name") or "").strip(),
+            role=str(item.get("role") or "aux"),
+            network_index=_as_int(item.get("network_index"), 1),
+        )
+        for item in (ir_payload.get("memories") or [])
+        if str(item.get("name") or "").strip()
+    ]
+
+    faults = [
+        FaultCandidate(
+            name=str(item.get("name") or "").strip(),
+            network_index=_as_int(item.get("network_index"), 1),
+            evidence=str(item.get("evidence") or "").strip(),
+        )
+        for item in (ir_payload.get("faults") or [])
+        if str(item.get("name") or "").strip()
+    ]
+
+    outputs = [
+        OutputCandidate(
+            name=str(item.get("name") or "").strip(),
+            network_index=_as_int(item.get("network_index"), 1),
+            action=str(item.get("action") or "="),
+        )
+        for item in (ir_payload.get("outputs") or [])
+        if str(item.get("name") or "").strip()
+    ]
+
+    return AwlIR(
+        sequence_name=normalized_sequence,
+        source_name=source_label,
+        networks=sorted(networks, key=lambda item: item.index),
+        steps=steps,
+        transitions=transitions,
+        timers=timers,
+        memories=memories,
+        faults=faults,
+        outputs=outputs,
+        manual_logic_networks=_as_int_list(ir_payload.get("manual_logic_networks")),
+        auto_logic_networks=_as_int_list(ir_payload.get("auto_logic_networks")),
+        external_refs=sorted(set(_as_str_list(ir_payload.get("external_refs")))),
+        assumptions=_as_str_list(ir_payload.get("assumptions"))
+        or [
+            "IR caricato da JSON esterno (es. Excel): verificare coerenza semantica delle guardie prima dell'import TIA."
+        ],
+    )
+
+
+def _build_ir_scaffold(ir: AwlIR) -> ConversionScaffold:
+    network_count = len(ir.networks)
+    line_count = sum(max(len(network.raw_lines), len(network.instructions), 1) for network in ir.networks)
+    set_reset_count = sum(1 for output in ir.outputs if output.action in {"S", "R", "="})
+    jump_count = sum(len(item.jump_labels) for item in ir.transitions)
+
+    return ConversionScaffold(
+        sequence_name=ir.sequence_name,
+        target_profile=build_target_profile(),
+        source_analysis=SourceAnalysis(
+            source_kind="ir_json",
+            source_name=ir.source_name,
+            network_count=network_count,
+            set_reset_count=set_reset_count,
+            jump_count=jump_count,
+            timer_hint_count=len(ir.timers),
+            manual_mode_hint=bool(ir.manual_logic_networks),
+            alarm_hint=bool(ir.faults),
+            lines=line_count,
+        ),
+        artifact_plan=ArtifactPlan(
+            graph_fb_name=f"FB_{ir.sequence_name}_GRAPH_auto.xml",
+            global_db_name=f"DB12_{ir.sequence_name}_seq_global_auto.xml",
+            lad_fc_name=f"FC04_{ir.sequence_name}_transitions_lad_auto.xml",
+            output_directory="data/output/",
+            naming_notes=[
+                "Naming allineato al flusso standard AWL per mantenere import e diff consistenti.",
+            ],
+        ),
+        graph_static_contract=[
+            "RT_DATA : G7_RTDataPlus_V2",
+            "un member G7_TransitionPlus_V2 per ogni transition",
+            "un member G7_StepPlus_V2 per ogni step",
+        ],
+        global_db_sections=["Cmd", "Fb", "Par", "En", "Diag", "Hmi", "Map"],
+        orchestration_flow=[
+            "excel/json source -> backend -> artifact previews",
+            "backend genera bundle XML in data/output/",
+            "tia-bridge importa e compila via windows agent",
+        ],
+        roadmap=ConversionRoadmap(
+            phases=[
+                "acquisizione IR da fonte esterna",
+                "costruzione topologia GRAPH",
+                "serializzazione XML baseline + support",
+                "validazione/import in TIA",
+            ],
+            immediate_next_actions=[
+                "validare gli identificatori step/transizione dell'IR",
+                "controllare guard_expression e guard_operands nel report analysis",
+            ],
+            open_points=[
+                "coerenza semantica tra rete originale e IR manuale",
+            ],
+        ),
+        assumptions=ir.assumptions
+        or [
+            "IR compilato manualmente: verificare sempre i warning topologici prima dell'import.",
+        ],
+    )
+
+
+def _as_optional_str(value: object) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+def _as_str_list(value: object) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, list):
+        items = [str(item).strip() for item in value if str(item).strip()]
+        return items
+    text = str(value).strip()
+    if not text:
+        return []
+    parts = re.split(r"[|,;]", text)
+    return [part.strip() for part in parts if part.strip()]
+
+
+def _as_int(value: object, default: int = 0) -> int:
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, int):
+        return value
+    text = str(value).strip()
+    if not text:
+        return default
+    match = re.search(r"-?\d+", text)
+    if not match:
+        return default
+    return int(match.group(0))
+
+
+def _as_int_list(value: object) -> list[int]:
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return [_as_int(item) for item in value if str(item).strip()]
+    text = str(value).strip()
+    if not text:
+        return []
+    parts = re.split(r"[|,;]", text)
+    return [_as_int(part) for part in parts if str(part).strip()]
 
 
 def _normalize_awl_source(awl_source: str) -> str:

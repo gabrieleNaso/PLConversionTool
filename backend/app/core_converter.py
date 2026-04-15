@@ -12,6 +12,7 @@ if str(SRC_ROOT) not in sys.path:
 
 from plc_converter import (  # noqa: E402
     analyze_awl_source,
+    analyze_ir_payload,
     build_conversion_scaffold,
     build_target_profile,
 )
@@ -45,6 +46,18 @@ def analyze_conversion(
     ).to_dict()
 
 
+def analyze_conversion_from_ir(
+    sequence_name: str | None,
+    ir_payload: dict,
+    source_name: str | None = None,
+) -> dict:
+    return analyze_ir_payload(
+        ir_payload=ir_payload,
+        sequence_name=sequence_name,
+        source_name=source_name,
+    ).to_dict()
+
+
 def export_conversion_bundle(
     sequence_name: str | None,
     awl_source: str,
@@ -56,7 +69,23 @@ def export_conversion_bundle(
         awl_source=awl_source,
         source_name=source_name,
     ).to_dict()
+    return _write_bundle(analysis=analysis, output_dir=output_dir)
 
+def export_conversion_bundle_from_ir(
+    sequence_name: str | None,
+    ir_payload: dict,
+    source_name: str | None = None,
+    output_dir: str = "data/output/generated",
+) -> dict:
+    analysis = analyze_ir_payload(
+        ir_payload=ir_payload,
+        sequence_name=sequence_name,
+        source_name=source_name,
+    ).to_dict()
+    return _write_bundle(analysis=analysis, output_dir=output_dir)
+
+
+def _write_bundle(analysis: dict, output_dir: str) -> dict:
     data_output_root = (PROJECT_ROOT / "data" / "output").resolve()
     relative_output = Path(output_dir)
     if relative_output.is_absolute():

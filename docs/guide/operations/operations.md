@@ -142,6 +142,64 @@ curl -sS -X POST "http://127.0.0.1:8000/api/conversion/export" \
   }'
 ```
 
+### Export da IR JSON (senza AWL) via API backend
+
+```bash
+curl -sS -X POST "http://127.0.0.1:8000/api/conversion/export-ir" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sequenceName":"MySeq_IR_001",
+    "sourceName":"myseq_ir.xlsx",
+    "outputDir":"data/output/generated/myseq_ir_001",
+    "ir":{
+      "networks":[{"index":1,"title":"Init"}],
+      "steps":[{"name":"S1"},{"name":"S2"}],
+      "transitions":[
+        {
+          "transition_id":"T1",
+          "source_step":"S1",
+          "target_step":"S2",
+          "network_index":1,
+          "guard_expression":"TRUE"
+        }
+      ]
+    }
+  }'
+```
+
+## Generare da Excel manuale (IR -> JSON -> XML)
+
+Guida completa compilazione Excel:
+- `docs/guide/operations/excel-ir-compilation-guide.md`
+
+Template pronto:
+- `data/input/templates/ir_excel_template.xlsx`
+- `data/input/templates/ir_excel_template_no_network.xlsx` (senza foglio `networks`)
+
+Comando:
+
+```bash
+make generate-excel-ir EXCEL_FILE="data/input/templates/ir_excel_template.xlsx"
+```
+
+Output nel bundle:
+- `<Name>_ir.json` (IR estratto dall'Excel)
+- `<Name>_analysis.json` (analisi completa usata per generare XML)
+- XML baseline e support (in base al contenuto IR)
+
+Fogli Excel supportati:
+- `meta`: chiavi libere `key/value` (`sequence_name`, `source_name`, `manual_logic_networks`, `auto_logic_networks`, `external_refs`, `assumptions`)
+- `networks`: `network_index`, `network_title`, `network_lines_for_traceability` (`|` oppure `;` come separatore)
+- `steps`: `step_name`, `networks_where_step_is_read`, `networks_where_step_is_activated`, `networks_with_step_actions`
+- `transitions`: `transition_id`, `from_step`, `to_step`, `condition_network_index`, `condition_expression`, `operands_used_in_condition`, `jump_labels_used`
+- `timers`: `timer_name`, `defined_in_network_index`, `timer_instruction_kind`, `timer_preset_value`, `timer_trigger_operands`
+- `memories`: `memory_operand`, `memory_role`, `found_in_network_index`
+- `faults`: `fault_tag`, `found_in_network_index`, `fault_evidence`
+- `outputs`: `output_operand`, `found_in_network_index`, `write_action`
+
+Compatibilita':
+- lo script accetta anche i vecchi nomi colonna (`name`, `source_networks`, `guard_expression`, ecc.), ma per nuovi file usare i nomi espliciti sopra.
+
 ### Import via API backend (inoltro al bridge)
 
 ```bash
