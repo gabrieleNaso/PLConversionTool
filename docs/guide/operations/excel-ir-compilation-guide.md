@@ -19,6 +19,10 @@ Compatibilita':
 - `sequence`: pagina principale (step + transition).
 - `operands`: classificazione operandi per funzione.
 
+Nota importante:
+- non devi compilare nessun `network_index`.
+- il generatore assegna automaticamente i network interni partendo dall'ordine delle transizioni e dagli operandi usati.
+
 ## 2) Foglio `meta`
 Colonne: `key`, `value`
 
@@ -55,7 +59,6 @@ Qui classifichi gli operandi usati nella logica LAD delle transizioni.
 Colonne:
 - `operand`: nome operando (es. `M10.0`, `Q4.0`, `ALM_OVERTEMP`, `DB81.DBX0.0`).
 - `category`: categoria funzionale.
-- `network_index`: rete di riferimento (intero, consigliata).
 - `write_action`: per output (`=`, `S`, `R`), opzionale.
 - `timer_instruction_kind`: per timer (`SD`, `SE`, `SP`, `SS`, `SF`), opzionale.
 - `timer_preset_value`: preset timer, opzionale.

@@ -134,6 +134,17 @@ def _dedupe_dict_rows(items: list[dict[str, object]], keys: tuple[str, ...]) -> 
     return deduped
 
 
+def _infer_network_index_for_operand(operand: str, transitions: list[dict[str, object]], default: int) -> int:
+    if not operand:
+        return default
+    for transition in transitions:
+        if operand in transition.get("guard_operands", []):
+            return int(transition.get("network_index", 0) or default)
+        if _contains_token(str(transition.get("guard_expression", "")), operand):
+            return int(transition.get("network_index", 0) or default)
+    return default
+
+
 
 def _read_sheet_rows(path: Path, sheet_name: str) -> list[dict[str, object]]:
     workbook = load_workbook(path, data_only=True)
@@ -225,10 +236,8 @@ def _build_transitions_from_rows(rows: list[dict[str, object]]) -> list[dict[str
         target_step = _cell_text(_pick(row, "to_step", "target_step"))
         if not source_step or not target_step:
             continue
-        network_index = _int_or_default(
-            _pick(row, "condition_network_index", "network_index"),
-            idx,
-        )
+        # Network index is always auto-managed by generator.
+        network_index = idx
         guard_expression = _cell_text(_pick(row, "condition_expression", "guard_expression")) or "TRUE"
         guard_operands = _split_list(_pick(row, "operands_used_in_condition", "guard_operands"))
         if not guard_operands and guard_expression and guard_expression.upper() != "TRUE":
@@ -261,14 +270,8 @@ def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[s
     source_name = meta.get("source_name") or path.name
 
     explicit_networks: list[dict[str, object]] = []
-    for idx, row in enumerate(_read_sheet_rows(path, "networks"), start=1):
-        explicit_networks.append(
-            {
-                "index": _int_or_default(_pick(row, "network_index", "index"), idx),
-                "title": _cell_text(_pick(row, "network_title", "title")) or None,
-                "raw_lines": _split_list(_pick(row, "network_lines_for_traceability", "raw_lines")),
-            }
-        )
+    # Excel input does not expose manual network modeling.
+    # Keep list empty and synthesize it from transitions/operands.
 
     sequence_rows = _read_sheet_rows(path, "sequence")
     if sequence_rows:
@@ -328,10 +331,7 @@ def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[s
         timers.append(
             {
                 "source_timer": source_timer,
-                "network_index": _int_or_default(
-                    _pick(row, "defined_in_network_index", "network_index"),
-                    inferred_network or idx,
-                ),
+                "network_index": inferred_network or idx,
                 "kind": (
                     _cell_text(_pick(row, "timer_instruction_kind", "kind")) or "SD"
                 ).upper(),
@@ -362,10 +362,7 @@ def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[s
             {
                 "name": name,
                 "role": _cell_text(_pick(row, "memory_role", "role")) or "aux",
-                "network_index": _int_or_default(
-                    _pick(row, "found_in_network_index", "network_index"),
-                    inferred_network or idx,
-                ),
+                "network_index": inferred_network or idx,
             }
         )
 
@@ -383,10 +380,7 @@ def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[s
         faults.append(
             {
                 "name": name,
-                "network_index": _int_or_default(
-                    _pick(row, "found_in_network_index", "network_index"),
-                    inferred_network or idx,
-                ),
+                "network_index": inferred_network or idx,
                 "evidence": _cell_text(_pick(row, "fault_evidence", "evidence")),
             }
         )
@@ -405,10 +399,7 @@ def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[s
         outputs.append(
             {
                 "name": name,
-                "network_index": _int_or_default(
-                    _pick(row, "found_in_network_index", "network_index"),
-                    inferred_network or idx,
-                ),
+                "network_index": inferred_network or idx,
                 "action": _cell_text(_pick(row, "write_action", "action")) or "=",
             }
         )
@@ -425,7 +416,7 @@ def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[s
         if not operand:
             continue
         category = _normalize_operand_category(_pick(row, "category", "type", "group"))
-        network_index = _int_or_default(_pick(row, "network_index"), idx)
+        network_index = _infer_network_index_for_operand(operand, transitions, idx)
         note = _cell_text(_pick(row, "note", "notes", "evidence"))
 
         if category == "alarm":
