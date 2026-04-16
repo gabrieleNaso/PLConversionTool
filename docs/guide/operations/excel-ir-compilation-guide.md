@@ -131,34 +131,28 @@ Errori comuni sulle transizioni:
 ### 3.4.1 Paralleli, Join e Jump di Fine Sequenza
 
 Come rappresentare i "paralleli" nel file Excel:
-- Nel tool attuale li gestisci come **rami multipli in uscita dallo stesso step**.
-- Traduzione pratica: piu' righe `transitions` con lo stesso `from_step`.
+- Definisci piu' righe `transitions` con lo stesso `from_step` (split).
+- Definisci poi una convergenza dei rami verso uno step comune (join) in avanti nella sequenza.
 
-Esempio split:
-- Riga 1: `from_step=S10`, `to_step=S20`, `condition_expression=I0.0`
-- Riga 2: `from_step=S10`, `to_step=S30`, `condition_expression=NOT I0.0`
-
-Cosa genera:
-- il mapper crea automaticamente un branch alternativo (`AltBegin`) sullo step con uscite multiple.
-
-Come fare il join verso fine sequenza:
-- Se due rami devono convergere, usa lo stesso `to_step` su piu' righe.
-
-Esempio join su step finale:
-- Riga 3: `from_step=S20`, `to_step=S99`, `condition_expression=M20.0`
-- Riga 4: `from_step=S30`, `to_step=S99`, `condition_expression=M30.0`
+Esempio split/join parallelo:
+- Riga 1: `from_step=S4`, `to_step=S5`, `condition_expression=M7`
+- Riga 2: `from_step=S4`, `to_step=S6`, `condition_expression=M8`
+- Riga 3: `from_step=S5`, `to_step=S7`, `condition_expression=M9`
+- Riga 4: `from_step=S6`, `to_step=S8`, `condition_expression=M10`
+- Riga 5: `from_step=S7`, `to_step=S9`, `condition_expression=M12`
+- Riga 6: `from_step=S8`, `to_step=S9`, `condition_expression=M11`
 
 Cosa genera:
-- verso `S99` il primo ingresso resta `Direct`, gli ingressi extra diventano `Jump` in automatico (regola anti-errore TIA).
+- se il mapper riconosce uno split/join reale, crea `SimBegin` sullo step di split e `SimEnd` sullo step di join.
+- se non trova una convergenza valida, mantiene branch alternativo `AltBegin`.
+
+Quando viene usato ancora `Jump`:
+- se uno step riceve ingressi multipli non classificati come join parallelo (`SimEnd`), il primo ingresso resta `Direct` e gli altri diventano `Jump`.
 
 Fine sequenza:
 - Definisci uno step finale (es. `S99`) nel foglio `steps`.
 - Non aggiungere transizioni in uscita da `S99` se vuoi una fine netta.
 - Aggiungi invece `S99 -> S1` se vuoi ciclo continuo.
-
-Nota importante:
-- Questo flusso realizza split/join pratici compatibili con il mapper corrente.
-- Non e' ancora un modellatore esplicito di parallelismo GRAPH avanzato con sincronizzazione `SimBegin/SimEnd`.
 
 ### 3.5 Foglio `timers`
 Colonne:

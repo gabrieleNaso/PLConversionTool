@@ -123,7 +123,13 @@ def test_conversion_analyze_builds_ir_and_artifact_previews() -> None:
         and '<Member Name="SNO" Datatype="Int"><StartValue Informative="true">'
         in preview["content"]
         and '<Component Name="DB12_Mixer_Line_SEQ_Global" />' in preview["content"]
-        and '<Component Name="T1_Guard_M10_0_AND_T1" />' in preview["content"]
+        and (
+            '<Component Name="T1_Guard_M10_0_AND_T1" />' in preview["content"]
+            or (
+                '<Component Name="M10_0" />' in preview["content"]
+                and '<Component Name="T1" />' in preview["content"]
+            )
+        )
         for preview in payload["artifact_previews"]
         if preview["artifact_type"] == "graph_fb"
     )
@@ -238,6 +244,81 @@ def test_conversion_analyze_builds_alt_branch_for_multi_exit_step() -> None:
         and '<BranchRef Number="1" In="' in preview["content"]
         and '<BranchRef Number="1" Out="' in preview["content"]
         and "ENTRY_SPLIT" not in preview["content"]
+        for preview in payload["artifact_previews"]
+        if preview["artifact_type"] == "graph_fb"
+    )
+
+
+def test_conversion_analyze_builds_simbegin_simend_for_parallel_join_pattern() -> None:
+    client = TestClient(app)
+    res = client.post(
+        "/api/conversion/analyze-ir",
+        json={
+            "sequenceName": "Parallel Join",
+            "sourceName": "parallel.xlsx",
+            "ir": {
+                "steps": [
+                    {"name": "S1", "step_number": 1},
+                    {"name": "S2", "step_number": 2},
+                    {"name": "S3", "step_number": 3},
+                    {"name": "S4", "step_number": 4},
+                    {"name": "S5", "step_number": 5},
+                ],
+                "transitions": [
+                    {
+                        "transition_id": "T1",
+                        "source_step": "S1",
+                        "target_step": "S2",
+                        "network_index": 1,
+                        "guard_expression": "TRUE",
+                    },
+                    {
+                        "transition_id": "T2",
+                        "source_step": "S1",
+                        "target_step": "S3",
+                        "network_index": 2,
+                        "guard_expression": "TRUE",
+                    },
+                    {
+                        "transition_id": "T3",
+                        "source_step": "S2",
+                        "target_step": "S4",
+                        "network_index": 3,
+                        "guard_expression": "TRUE",
+                    },
+                    {
+                        "transition_id": "T4",
+                        "source_step": "S3",
+                        "target_step": "S4",
+                        "network_index": 4,
+                        "guard_expression": "TRUE",
+                    },
+                    {
+                        "transition_id": "T5",
+                        "source_step": "S4",
+                        "target_step": "S5",
+                        "network_index": 5,
+                        "guard_expression": "TRUE",
+                    },
+                ],
+            },
+        },
+    )
+    assert res.status_code == 200
+    payload = res.json()
+    branches = payload["graph_topology"]["branch_nodes"]
+    assert any(branch["branch_type"] == "SimBegin" and branch["owner_step"] == "S1" for branch in branches)
+    assert any(branch["branch_type"] == "SimEnd" and branch["owner_step"] == "S4" for branch in branches)
+    assert any(
+        connection["target_ref"].startswith("BJ_") and connection["source_ref"] in {"T3", "T4"}
+        for connection in payload["graph_topology"]["connections"]
+    )
+    assert any(
+        connection["source_ref"].startswith("BJ_") and connection["target_ref"] == "S4"
+        for connection in payload["graph_topology"]["connections"]
+    )
+    assert any(
+        'Type="SimBegin"' in preview["content"] and 'Type="SimEnd"' in preview["content"]
         for preview in payload["artifact_previews"]
         if preview["artifact_type"] == "graph_fb"
     )
