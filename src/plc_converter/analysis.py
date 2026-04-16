@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import re
 import hashlib
-from collections import deque
 from xml.sax.saxutils import escape
 
 from .domain import (
@@ -871,107 +870,6 @@ def _network_is_transition_candidate(network: AwlNetwork) -> bool:
     return bool(_collect_output_targets(network) or _collect_memory_targets(network))
 
 
-def _build_step_adjacency(transitions: list[GraphTransitionNode]) -> dict[str, list[str]]:
-    adjacency: dict[str, list[str]] = {}
-    for transition in transitions:
-        adjacency.setdefault(transition.source_step, []).append(transition.target_step)
-    return adjacency
-
-
-def _shortest_step_distances(
-    adjacency: dict[str, list[str]],
-    start: str,
-    forbidden_steps: set[str] | None = None,
-) -> dict[str, int]:
-    forbidden = forbidden_steps or set()
-    if start in forbidden:
-        return {}
-    distances: dict[str, int] = {start: 0}
-    queue: deque[str] = deque([start])
-    while queue:
-        current = queue.popleft()
-        for nxt in adjacency.get(current, []):
-            if nxt in forbidden or nxt in distances:
-                continue
-            distances[nxt] = distances[current] + 1
-            queue.append(nxt)
-    return distances
-
-
-def _detect_parallel_join_for_source(
-    source_step: str,
-    outgoing: list[GraphTransitionNode],
-    all_transitions: list[GraphTransitionNode],
-    step_order_rank: dict[str, int],
-) -> tuple[str, list[str]] | None:
-    if len(outgoing) < 2:
-        return None
-    branch_targets = [item.target_step for item in outgoing if item.target_step]
-    if len(set(branch_targets)) < 2:
-        return None
-
-    adjacency = _build_step_adjacency(all_transitions)
-    distances_by_target = [
-        _shortest_step_distances(adjacency, target, forbidden_steps={source_step}) for target in branch_targets
-    ]
-    if not all(distances_by_target):
-        return None
-
-    common_candidates = set(distances_by_target[0].keys())
-    for item in distances_by_target[1:]:
-        common_candidates &= set(item.keys())
-    common_candidates.discard(source_step)
-    if not common_candidates:
-        return None
-
-    max_target_rank = max(step_order_rank.get(target, -1) for target in branch_targets)
-    forward_candidates = [
-        step_name for step_name in common_candidates if step_order_rank.get(step_name, -1) > max_target_rank
-    ]
-    if not forward_candidates:
-        return None
-
-    ranked_candidates = sorted(
-        forward_candidates,
-        key=lambda step_name: (
-            max(item.get(step_name, 10**9) for item in distances_by_target),
-            sum(item.get(step_name, 10**9) for item in distances_by_target),
-            step_order_rank.get(step_name, 10**9),
-        ),
-    )
-    for join_step in ranked_candidates:
-        incoming_transition_names: list[str] = []
-        incoming_source_steps: set[str] = set()
-        valid = True
-        for branch in branch_targets:
-            dist_map = _shortest_step_distances(adjacency, branch, forbidden_steps={source_step})
-            if join_step not in dist_map or dist_map[join_step] <= 0:
-                valid = False
-                break
-
-            predecessor: str | None = None
-            for transition in all_transitions:
-                if transition.target_step != join_step:
-                    continue
-                if transition.source_step in incoming_source_steps:
-                    continue
-                src_dist = dist_map.get(transition.source_step)
-                if src_dist is None:
-                    continue
-                if src_dist + 1 == dist_map[join_step]:
-                    predecessor = transition.source_step
-                    incoming_source_steps.add(transition.source_step)
-                    incoming_transition_names.append(transition.name)
-                    break
-            if predecessor is None:
-                valid = False
-                break
-
-        if valid and len(incoming_transition_names) >= 2:
-            return join_step, incoming_transition_names
-    return None
-
-
 def _build_graph_topology(ir: AwlIR) -> GraphTopology:
     if any(step.step_number is not None for step in ir.steps):
         ordered_steps = sorted(
@@ -1170,8 +1068,6 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
     for transition in transition_nodes:
         transitions_by_source.setdefault(transition.source_step, []).append(transition)
 
-    step_order_rank = {step.name: idx for idx, step in enumerate(ordered_steps)}
-    parallel_join_by_source: dict[str, tuple[str, list[str]]] = {}
     incoming_to_sim_end: dict[str, str] = {}
     sim_end_branch_by_name: dict[str, GraphBranchNode] = {}
 
@@ -1180,16 +1076,6 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
         if len(items) <= 1:
             continue
         branch_type = "AltBegin"
-        detected_parallel = _detect_parallel_join_for_source(
-            source_step=source_step,
-            outgoing=items,
-            all_transitions=transition_nodes,
-            step_order_rank=step_order_rank,
-        )
-        if detected_parallel is not None:
-            join_step, join_incoming_transition_names = detected_parallel
-            parallel_join_by_source[source_step] = (join_step, join_incoming_transition_names)
-            branch_type = "SimBegin"
         branch = GraphBranchNode(
             name=f"B_{source_step}",
             branch_no=next_branch_no,
@@ -1201,21 +1087,6 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
         next_branch_no += 1
         branch_nodes.append(branch)
         branch_by_source_step[source_step] = branch
-
-    for source_step, (join_step, incoming_transition_names) in parallel_join_by_source.items():
-        branch = GraphBranchNode(
-            name=f"BJ_{source_step}_{join_step}",
-            branch_no=next_branch_no,
-            branch_type="SimEnd",
-            owner_step=join_step,
-            incoming_refs=list(incoming_transition_names),
-            outgoing_refs=[join_step],
-        )
-        next_branch_no += 1
-        branch_nodes.append(branch)
-        sim_end_branch_by_name[branch.name] = branch
-        for transition_name in incoming_transition_names:
-            incoming_to_sim_end[transition_name] = branch.name
 
     connections: list[GraphConnection] = []
     direct_incoming_counts: dict[str, int] = {step.name: 0 for step in ordered_steps}

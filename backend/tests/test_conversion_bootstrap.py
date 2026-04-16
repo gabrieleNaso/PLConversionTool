@@ -249,7 +249,7 @@ def test_conversion_analyze_builds_alt_branch_for_multi_exit_step() -> None:
     )
 
 
-def test_conversion_analyze_builds_simbegin_simend_for_parallel_join_pattern() -> None:
+def test_conversion_analyze_keeps_altbegin_for_parallel_like_split_join_pattern() -> None:
     client = TestClient(app)
     res = client.post(
         "/api/conversion/analyze-ir",
@@ -307,21 +307,9 @@ def test_conversion_analyze_builds_simbegin_simend_for_parallel_join_pattern() -
     assert res.status_code == 200
     payload = res.json()
     branches = payload["graph_topology"]["branch_nodes"]
-    assert any(branch["branch_type"] == "SimBegin" and branch["owner_step"] == "S1" for branch in branches)
-    assert any(branch["branch_type"] == "SimEnd" and branch["owner_step"] == "S4" for branch in branches)
-    assert any(
-        connection["target_ref"].startswith("BJ_") and connection["source_ref"] in {"T3", "T4"}
-        for connection in payload["graph_topology"]["connections"]
-    )
-    assert any(
-        connection["source_ref"].startswith("BJ_") and connection["target_ref"] == "S4"
-        for connection in payload["graph_topology"]["connections"]
-    )
-    assert any(
-        'Type="SimBegin"' in preview["content"] and 'Type="SimEnd"' in preview["content"]
-        for preview in payload["artifact_previews"]
-        if preview["artifact_type"] == "graph_fb"
-    )
+    assert any(branch["branch_type"] == "AltBegin" and branch["owner_step"] == "S1" for branch in branches)
+    assert not any(branch["branch_type"] == "SimBegin" for branch in branches)
+    assert not any(branch["branch_type"] == "SimEnd" for branch in branches)
 
 
 def test_conversion_analyze_sanitizes_and_dedupes_long_transition_member_names() -> None:

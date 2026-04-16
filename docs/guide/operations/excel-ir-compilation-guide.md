@@ -143,11 +143,10 @@ Esempio split/join parallelo:
 - Riga 6: `from_step=S8`, `to_step=S9`, `condition_expression=M11`
 
 Cosa genera:
-- se il mapper riconosce uno split/join reale, crea `SimBegin` sullo step di split e `SimEnd` sullo step di join.
-- se non trova una convergenza valida, mantiene branch alternativo `AltBegin`.
+- il mapper crea branch alternativi (`AltBegin`) sullo step con uscite multiple.
 
-Quando viene usato ancora `Jump`:
-- se uno step riceve ingressi multipli non classificati come join parallelo (`SimEnd`), il primo ingresso resta `Direct` e gli altri diventano `Jump`.
+Quando viene usato `Jump`:
+- se uno step riceve ingressi multipli, il primo ingresso resta `Direct` e gli altri diventano `Jump`.
 
 Fine sequenza:
 - Definisci uno step finale (es. `S99`) nel foglio `steps`.
