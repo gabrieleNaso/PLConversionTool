@@ -100,6 +100,7 @@ class AwlNetwork:
 @dataclass(slots=True)
 class StepCandidate:
     name: str
+    step_number: int | None = None
     source_networks: list[int] = field(default_factory=list)
     activation_networks: list[int] = field(default_factory=list)
     action_networks: list[int] = field(default_factory=list)

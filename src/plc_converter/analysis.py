@@ -211,6 +211,7 @@ def _ir_from_payload(
     steps = [
         StepCandidate(
             name=str(item.get("name") or "").strip(),
+            step_number=_as_positive_int(item.get("step_number")),
             source_networks=_as_int_list(item.get("source_networks")),
             activation_networks=_as_int_list(item.get("activation_networks")),
             action_networks=_as_int_list(item.get("action_networks")),
@@ -493,6 +494,11 @@ def _as_int_list(value: object) -> list[int]:
         return []
     parts = re.split(r"[|,;]", text)
     return [_as_int(part) for part in parts if str(part).strip()]
+
+
+def _as_positive_int(value: object) -> int | None:
+    parsed = _as_int(value, 0)
+    return parsed if parsed > 0 else None
 
 
 def _normalize_awl_source(awl_source: str) -> str:
@@ -901,6 +907,7 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
     branch_nodes: list[GraphBranchNode] = []
     next_branch_no = 1
     next_transition_no = len(transition_nodes) + 1
+    warnings: list[str] = []
 
     all_steps = list(ordered_steps)
     reserved_step_names = {"S1", "S29", "S30", "S32"}
@@ -912,7 +919,18 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
     next_sequential = 1
 
     for step in all_steps:
-        if step.name in reserved_step_names:
+        explicit_step_no = step.step_number if step.step_number and step.step_number > 0 else None
+        if explicit_step_no is not None and explicit_step_no not in used_step_numbers:
+            step_no = explicit_step_no
+        elif explicit_step_no is not None and explicit_step_no in used_step_numbers:
+            warnings.append(
+                f"Numero step duplicato ({explicit_step_no}) rilevato per '{step.name}': assegnato un numero progressivo libero."
+            )
+            while next_sequential in used_step_numbers or next_sequential in reserved_step_numbers:
+                next_sequential += 1
+            step_no = next_sequential
+            next_sequential += 1
+        elif step.name in reserved_step_names:
             step_no = int(step.name[1:])
         else:
             while next_sequential in used_step_numbers or next_sequential in reserved_step_numbers:
@@ -1016,60 +1034,9 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
         next_synthetic_network += 1
         existing_incoming.add(step.name)
 
-    # TIA Graph import is strict on the entry step:
-    # - sequencer must visibly start from a step
-    # - entry step cannot fan out via multiple direct outgoing links
-    # If the entry has multiple outgoing transitions, route them through a
-    # synthetic split step placed right after the entry step.
-    entry_outgoing = [item for item in transition_nodes if item.source_step == entry_step]
-    if len(entry_outgoing) > 1:
-        split_name = _ensure_unique_step_name(
-            f"{entry_step}_ENTRY_SPLIT",
-            {item.name for item in step_nodes},
-        )
-        max_step_no = max((item.step_no for item in step_nodes), default=1)
-        step_nodes.append(
-            GraphStepNode(
-                name=split_name,
-                step_no=max_step_no + 1,
-                init=False,
-                source_step=split_name,
-                action_networks=[],
-            )
-        )
-        step_nodes.sort(key=lambda node: node.step_no)
-        step_no_by_name = {step.name: step.step_no for step in step_nodes}
-
-        for item in transition_nodes:
-            if item.source_step == entry_step:
-                item.source_step = split_name
-
-        synthetic_transition_name = _ensure_unique_transition_name(
-            f"T_ENTRY_{entry_step}_TO_{split_name}",
-            {item.name for item in transition_nodes},
-        )
-        transition_nodes.append(
-            GraphTransitionNode(
-                name=synthetic_transition_name,
-                transition_no=next_transition_no,
-                source_step=entry_step,
-                target_step=split_name,
-                guard_expression="TRUE",
-                guard_operands=[],
-                network_index=next_synthetic_network,
-                db_block_name=_global_db_block_name(ir),
-                db_member_name=_transition_db_member_name_from_values(
-                    synthetic_transition_name,
-                    "TRUE",
-                ),
-            )
-        )
-        next_transition_no += 1
-        next_synthetic_network += 1
-
     # Keep the initial flow explicit: first transition must leave the init step.
     # This avoids Graph imports where the sequencer appears to start from a
-    # non-init branch/split node.
+    # non-init branch node.
     transition_nodes.sort(
         key=lambda item: (
             0 if item.source_step == entry_step else 1,
@@ -1150,7 +1117,6 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
             )
         )
 
-    warnings: list[str] = []
     outgoing_counts: dict[str, int] = {step.name: 0 for step in ordered_steps}
     incoming_counts: dict[str, int] = {step.name: 0 for step in ordered_steps}
     for transition in transition_nodes:

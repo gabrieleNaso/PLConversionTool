@@ -237,6 +237,7 @@ def test_conversion_analyze_builds_alt_branch_for_multi_exit_step() -> None:
         '<Branch Number="1" Type="AltBegin"' in preview["content"]
         and '<BranchRef Number="1" In="' in preview["content"]
         and '<BranchRef Number="1" Out="' in preview["content"]
+        and "ENTRY_SPLIT" not in preview["content"]
         for preview in payload["artifact_previews"]
         if preview["artifact_type"] == "graph_fb"
     )
@@ -615,3 +616,36 @@ def test_conversion_analyze_ir_ensures_s1_exists_from_arbitrary_entry_name() -> 
         item["source_step"] == "S1" and item["target_step"] == "S2"
         for item in payload["ir"]["transitions"]
     )
+
+
+def test_conversion_analyze_ir_honors_explicit_step_number_from_payload() -> None:
+    client = TestClient(app)
+    res = client.post(
+        "/api/conversion/analyze-ir",
+        json={
+            "sequenceName": "Step Number Line",
+            "sourceName": "step_number.xlsx",
+            "ir": {
+                "steps": [
+                    {"name": "S1", "step_number": 1},
+                    {"name": "S2", "step_number": 20},
+                ],
+                "transitions": [
+                    {
+                        "transition_id": "T1",
+                        "source_step": "S1",
+                        "target_step": "S2",
+                        "network_index": 1,
+                        "guard_expression": "TRUE",
+                    }
+                ],
+            },
+        },
+    )
+    assert res.status_code == 200
+    payload = res.json()
+    step_no_by_name = {
+        item["name"]: item["step_no"] for item in payload["graph_topology"]["step_nodes"]
+    }
+    assert step_no_by_name["S1"] == 1
+    assert step_no_by_name["S2"] == 20

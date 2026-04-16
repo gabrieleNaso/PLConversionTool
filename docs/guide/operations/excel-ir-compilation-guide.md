@@ -5,8 +5,8 @@ Questa guida spiega esattamente come compilare ogni colonna del file Excel per o
 2. XML TIA (`FB/DB/FC`)
 
 Template disponibili:
-- `data/input/templates/ir_excel_template.xlsx`
-- `data/input/templates/ir_excel_template_no_network.xlsx` (senza foglio `networks`)
+- `docs/templates/ir_excel_template.xlsx`
+- `docs/templates/ir_excel_template_no_network.xlsx` (senza foglio `networks`)
 
 ## 1) Regole di Compilazione
 - Non cambiare nome fogli e header.
@@ -82,6 +82,12 @@ Colonne:
   - Obbligatoria: si.
   - Formato: stringa step (`S1`, `S2`, ...).
   - Effetto: crea nodi step GRAPH.
+- `numero_step`
+  - Obbligatoria: consigliata (fortemente).
+  - Alias accettati: `step_number`, `step_no`, `numero`, `number`.
+  - Formato: intero positivo (`1`, `2`, `10`, ...).
+  - Effetto: imposta il `Step Number` del GRAPH in modo esplicito.
+  - Nota pratica: usa un numero univoco per ogni step. Se duplicato, il tool assegna automaticamente un progressivo libero e segnala warning.
 - `networks_where_step_is_read`
   - Obbligatoria: no.
   - Formato: lista interi (`1;2`).
@@ -264,8 +270,8 @@ Regola d'oro:
 - se la sequenza "non gira", il 90% delle volte il problema e' nelle `transitions`.
 
 Regola automatica del parser IR:
-- se nel tuo Excel manca lo step `S1`, il converter aggiunge sempre `S1` come step iniziale tecnico.
-- se una transizione punta gia' a `S1`, il passo viene creato automaticamente anche se non era nel foglio `steps`.
+- deve sempre esistere uno step iniziale `S1` (richiesto dal target GRAPH/TIA).
+- se non lo definisci esplicitamente, il converter promuove/rinomina il vero step di ingresso a `S1` senza aggiungere step intermedi tecnici.
 
 ## 5) Minimo Sindacale per Generare
 Per un caso minimo funzionante:
@@ -278,6 +284,7 @@ Tutto il resto puo' restare vuoto.
 ## 6) Esempio Minimo (righe)
 - `meta`: `sequence_name = Demo_Line`
 - `steps`: `S1` e `S2`
+- `numero_step`: `1` per `S1`, `2` per `S2`
 - `transitions`: `T1 | S1 | S2 | 1 | TRUE | |`
 
 ## 7) Esempio Completo Transizioni (sequenza 3 step)
@@ -309,12 +316,12 @@ Supponiamo di avere `S10 -> S20 -> S30`:
 
 ## 9) Generazione da Excel
 ```bash
-make generate-excel-ir EXCEL_FILE="data/input/templates/ir_excel_template.xlsx"
+make generate-excel-ir EXCEL_FILE="docs/templates/ir_excel_template.xlsx"
 ```
 
 Senza foglio `networks`:
 ```bash
-make generate-excel-ir EXCEL_FILE="data/input/templates/ir_excel_template_no_network.xlsx"
+make generate-excel-ir EXCEL_FILE="docs/templates/ir_excel_template_no_network.xlsx"
 ```
 
 Output:

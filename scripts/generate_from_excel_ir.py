@@ -70,6 +70,17 @@ def _int_or_default(value: object, default: int) -> int:
     return int(match.group(0))
 
 
+def _int_or_none(value: object) -> int | None:
+    text = _cell_text(value)
+    if not text:
+        return None
+    match = re.search(r"-?\d+", text)
+    if not match:
+        return None
+    parsed = int(match.group(0))
+    return parsed if parsed > 0 else None
+
+
 def _read_sheet_rows(path: Path, sheet_name: str) -> list[dict[str, object]]:
     workbook = load_workbook(path, data_only=True)
     if sheet_name not in workbook.sheetnames:
@@ -131,6 +142,9 @@ def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[s
         steps.append(
             {
                 "name": name,
+                "step_number": _int_or_none(
+                    _pick(row, "numero_step", "step_number", "step_no", "numero", "number")
+                ),
                 "source_networks": _split_int_list(
                     _pick(
                         row,

@@ -173,13 +173,13 @@ Guida completa compilazione Excel:
 - `docs/guide/operations/excel-ir-compilation-guide.md`
 
 Template pronto:
-- `data/input/templates/ir_excel_template.xlsx`
-- `data/input/templates/ir_excel_template_no_network.xlsx` (senza foglio `networks`)
+- `docs/templates/ir_excel_template.xlsx`
+- `docs/templates/ir_excel_template_no_network.xlsx` (senza foglio `networks`)
 
 Comando:
 
 ```bash
-make generate-excel-ir EXCEL_FILE="data/input/templates/ir_excel_template.xlsx"
+make generate-excel-ir EXCEL_FILE="docs/templates/ir_excel_template.xlsx"
 ```
 
 Output nel bundle:
