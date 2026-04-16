@@ -37,14 +37,6 @@ Righe chiave supportate:
   - Obbligatoria: no.
   - Effetto: etichetta sorgente in `analysis`.
   - Esempio: `linea_imbottigliamento.xlsx`
-- `manual_logic_networks`
-  - Obbligatoria: no.
-  - Formato: lista indici rete (`2;5`).
-  - Effetto: flag/manual hints nel report.
-- `auto_logic_networks`
-  - Obbligatoria: no.
-  - Formato: lista indici rete (`1;3;4`).
-  - Effetto: flag/auto hints nel report.
 - `external_refs`
   - Obbligatoria: no.
   - Formato: lista operandi esterni (`I0.0;DB100.DBX0.0`).
@@ -55,10 +47,7 @@ Righe chiave supportate:
   - Effetto: riportato in IR/analysis.
 
 ### 3.2 Foglio `networks`
-Nel nuovo formato standard **non si usa**. Lascialo assente.
-
-Fallback automatico:
-- il tool crea reti sintetiche dagli indici trovati nelle transizioni.
+Nel formato standard non e' usato.
 
 ### 3.3 Foglio `steps`
 Colonne:
@@ -72,18 +61,6 @@ Colonne:
   - Formato: intero positivo (`1`, `2`, `10`, ...).
   - Effetto: imposta il `Step Number` del GRAPH in modo esplicito.
   - Nota pratica: usa un numero univoco per ogni step. Se duplicato, il tool assegna automaticamente un progressivo libero e segnala warning.
-- `networks_where_step_is_read`
-  - Obbligatoria: no.
-  - Formato: lista interi (`1;2`).
-  - Effetto: metadato IR (source_networks).
-- `networks_where_step_is_activated`
-  - Obbligatoria: no.
-  - Formato: lista interi.
-  - Effetto: metadato IR (activation_networks).
-- `networks_with_step_actions`
-  - Obbligatoria: no.
-  - Formato: lista interi.
-  - Effetto: metadato IR (action_networks).
 
 ### 3.4 Foglio `transitions` (fondamentale)
 
@@ -122,10 +99,6 @@ Colonne (versione chiara):
   - Obbligatoria: no ma consigliata.
   - Formato: lista separata da `;`
   - Esempio: `M10.0;T1`
-- `condition_network_index`
-  - Cosa rappresenta: riferimento rete di provenienza della logica (solo tracciabilita').
-  - Obbligatoria: no.
-  - Esempio: `3`
 - `jump_labels_used`
   - Cosa rappresenta: etichette AWL legacy correlate, se le hai.
   - Obbligatoria: no.
@@ -193,9 +166,6 @@ Colonne:
   - Obbligatoria: no.
   - Formato: `T1`, `T209`, ...
   - Effetto: crea member timer nel DB.
-- `defined_in_network_index`
-  - Obbligatoria: no.
-  - Formato: intero.
 - `timer_instruction_kind`
   - Obbligatoria: no (default `SD`).
   - Formato: `SD|SE|SP|SS|SF`.
@@ -215,9 +185,6 @@ Colonne:
 - `memory_role`
   - Obbligatoria: no (default `aux`).
   - Formato: testo (`aux`, ...).
-- `found_in_network_index`
-  - Obbligatoria: no.
-  - Formato: intero.
 
 ### 3.7 Foglio `faults`
 Colonne:
@@ -225,8 +192,6 @@ Colonne:
   - Obbligatoria: no.
   - Formato: es. `ALARM_OVERTEMP`.
   - Effetto: diagnostica + support artifacts.
-- `found_in_network_index`
-  - Obbligatoria: no.
 - `fault_evidence`
   - Obbligatoria: no.
   - Formato: testo libero.
@@ -237,8 +202,6 @@ Colonne:
   - Obbligatoria: no ma consigliata.
   - Formato: `Q4.0` o `A4.0`.
   - Effetto: output family XML e temp LAD.
-- `found_in_network_index`
-  - Obbligatoria: no.
 - `write_action`
   - Obbligatoria: no (default `=`).
   - Formato: `=`, `S`, `R` (se usi semantica coerente).
@@ -269,7 +232,7 @@ Tutto il resto puo' restare vuoto.
 - `meta`: `sequence_name = Demo_Line`
 - `steps`: `S1` e `S2`
 - `numero_step`: `1` per `S1`, `2` per `S2`
-- `transitions`: `T1 | S1 | S2 | 1 | TRUE | |`
+- `transitions`: `T1 | S1 | S2 | TRUE | |`
 
 ## 7) Esempio Completo Transizioni (sequenza 3 step)
 Supponiamo di avere `S10 -> S20 -> S30`:

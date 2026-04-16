@@ -159,7 +159,6 @@ curl -sS -X POST "http://127.0.0.1:8000/api/conversion/export-ir" \
           "transition_id":"T1",
           "source_step":"S1",
           "target_step":"S2",
-          "network_index":1,
           "guard_expression":"TRUE"
         }
       ]
@@ -187,16 +186,16 @@ Output nel bundle:
 - XML baseline e support (in base al contenuto IR)
 
 Fogli Excel supportati:
-- `meta`: chiavi libere `key/value` (`sequence_name`, `source_name`, `manual_logic_networks`, `auto_logic_networks`, `external_refs`, `assumptions`)
-- `steps`: `step_name`, `numero_step`, `networks_where_step_is_read`, `networks_where_step_is_activated`, `networks_with_step_actions`
-- `transitions`: `transition_id`, `from_step`, `to_step`, `condition_network_index`, `condition_expression`, `operands_used_in_condition`, `jump_labels_used`
-- `timers`: `timer_name`, `defined_in_network_index`, `timer_instruction_kind`, `timer_preset_value`, `timer_trigger_operands`
-- `memories`: `memory_operand`, `memory_role`, `found_in_network_index`
-- `faults`: `fault_tag`, `found_in_network_index`, `fault_evidence`
-- `outputs`: `output_operand`, `found_in_network_index`, `write_action`
+- `meta`: chiavi libere `key/value` (`sequence_name`, `source_name`, `external_refs`, `assumptions`)
+- `steps`: `step_name`, `numero_step`
+- `transitions`: `transition_id`, `from_step`, `to_step`, `condition_expression`, `operands_used_in_condition`, `jump_labels_used`
+- `timers`: `timer_name`, `timer_instruction_kind`, `timer_preset_value`, `timer_trigger_operands`
+- `memories`: `memory_operand`, `memory_role`
+- `faults`: `fault_tag`, `fault_evidence`
+- `outputs`: `output_operand`, `write_action`
 
 Compatibilita':
-- lo script accetta anche i vecchi nomi colonna (`name`, `source_networks`, `guard_expression`, ecc.), ma per nuovi file usare i nomi espliciti sopra.
+- lo script accetta anche vecchi alias di colonna, ma per nuovi file usare i nomi espliciti sopra.
 
 ### Import via API backend (inoltro al bridge)
 
