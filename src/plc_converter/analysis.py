@@ -878,6 +878,30 @@ def _network_is_transition_candidate(network: AwlNetwork) -> bool:
     return bool(_collect_output_targets(network) or _collect_memory_targets(network))
 
 
+def _merge_guard_expressions(expressions: list[str]) -> str:
+    cleaned = [str(item or "").strip() for item in expressions if str(item or "").strip()]
+    if not cleaned:
+        return "TRUE"
+    if any(item.upper() == "TRUE" for item in cleaned):
+        return "TRUE"
+    unique: list[str] = []
+    for item in cleaned:
+        if item not in unique:
+            unique.append(item)
+    if len(unique) == 1:
+        return unique[0]
+    return " OR ".join(f"({item})" for item in unique)
+
+
+def _merge_guard_operands(groups: list[list[str]]) -> list[str]:
+    merged: list[str] = []
+    for group in groups:
+        for operand in group:
+            if operand not in merged:
+                merged.append(operand)
+    return merged
+
+
 def _build_graph_topology(ir: AwlIR) -> GraphTopology:
     if any(step.step_number is not None for step in ir.steps):
         ordered_steps = sorted(
@@ -909,6 +933,69 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
     if entry_step is None:
         entry_step = ordered_steps[0].name
 
+    warnings: list[str] = []
+
+    working_transitions = [
+        TransitionCandidate(
+            transition_id=item.transition_id,
+            source_step=item.source_step,
+            target_step=item.target_step,
+            network_index=item.network_index,
+            guard_expression=item.guard_expression,
+            guard_operands=list(item.guard_operands),
+            jump_labels=list(item.jump_labels),
+            flow_type=item.flow_type,
+        )
+        for item in ir.transitions
+    ]
+
+    parallel_start_meta: dict[str, dict[str, object]] = {}
+    by_source_parallel: dict[str, list[TransitionCandidate]] = {}
+    for item in working_transitions:
+        if item.flow_type == "parallel":
+            by_source_parallel.setdefault(item.source_step, []).append(item)
+    for source_step, items in by_source_parallel.items():
+        if len(items) < 2:
+            continue
+        keeper = items[0]
+        removed = items[1:]
+        keeper.guard_expression = _merge_guard_expressions([x.guard_expression for x in items])
+        keeper.guard_operands = _merge_guard_operands([x.guard_operands for x in items])
+        parallel_start_meta[source_step] = {
+            "keeper": keeper.transition_id,
+            "targets": [x.target_step for x in items],
+        }
+        removed_names = {x.transition_id for x in removed}
+        working_transitions = [x for x in working_transitions if x.transition_id not in removed_names]
+        if removed_names:
+            warnings.append(
+                f"Parallel split su {source_step}: consolidate {len(items)} transizioni in {keeper.transition_id}."
+            )
+
+    parallel_join_meta: dict[str, dict[str, object]] = {}
+    by_target_parallel: dict[str, list[TransitionCandidate]] = {}
+    for item in working_transitions:
+        if item.flow_type == "parallel":
+            by_target_parallel.setdefault(item.target_step, []).append(item)
+    for target_step, items in by_target_parallel.items():
+        sources = {x.source_step for x in items}
+        if len(items) < 2 or len(sources) < 2:
+            continue
+        keeper = items[0]
+        removed = items[1:]
+        keeper.guard_expression = _merge_guard_expressions([x.guard_expression for x in items])
+        keeper.guard_operands = _merge_guard_operands([x.guard_operands for x in items])
+        parallel_join_meta[target_step] = {
+            "keeper": keeper.transition_id,
+            "sources": [x.source_step for x in items],
+        }
+        removed_names = {x.transition_id for x in removed}
+        working_transitions = [x for x in working_transitions if x.transition_id not in removed_names]
+        if removed_names:
+            warnings.append(
+                f"Parallel join su {target_step}: consolidate {len(items)} transizioni in {keeper.transition_id}."
+            )
+
     transition_nodes = [
         GraphTransitionNode(
             name=transition.transition_id,
@@ -921,7 +1008,7 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
             db_block_name=_global_db_block_name(ir),
             db_member_name=_transition_db_member_name(transition),
         )
-        for index, transition in enumerate(ir.transitions)
+        for index, transition in enumerate(working_transitions)
     ]
     next_synthetic_network = (
         max((transition.network_index for transition in transition_nodes if transition.network_index), default=0)
@@ -931,7 +1018,6 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
     branch_nodes: list[GraphBranchNode] = []
     next_branch_no = 1
     next_transition_no = len(transition_nodes) + 1
-    warnings: list[str] = []
 
     all_steps = list(ordered_steps)
     reserved_step_names = {"S1", "S29", "S30", "S32"}
@@ -1035,6 +1121,10 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
             existing_incoming.add(next_step)
 
     existing_incoming = {transition.target_step for transition in transition_nodes}
+    for meta in parallel_start_meta.values():
+        for target in (meta.get("targets") or []):
+            if isinstance(target, str) and target:
+                existing_incoming.add(target)
     for step in ordered_steps:
         if step.name == entry_step or step.name in existing_incoming:
             continue
@@ -1058,6 +1148,23 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
         next_synthetic_network += 1
         existing_incoming.add(step.name)
 
+    parallel_declared_targets = {
+        str(target)
+        for meta in parallel_start_meta.values()
+        for target in (meta.get("targets") or [])
+        if str(target)
+    }
+    if parallel_declared_targets:
+        transition_nodes = [
+            item
+            for item in transition_nodes
+            if not (
+                item.name.startswith("T_CHAIN_")
+                and item.source_step == entry_step
+                and item.target_step in parallel_declared_targets
+            )
+        ]
+
     # Keep the initial flow explicit: first transition must leave the init step.
     # This avoids Graph imports where the sequencer appears to start from a
     # non-init branch node.
@@ -1076,18 +1183,42 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
     for transition in transition_nodes:
         transitions_by_source.setdefault(transition.source_step, []).append(transition)
 
-    incoming_to_sim_end: dict[str, str] = {}
-    sim_end_branch_by_name: dict[str, GraphBranchNode] = {}
+    parallel_start_by_source: dict[str, GraphBranchNode] = {}
+    parallel_start_keeper_by_transition: dict[str, GraphBranchNode] = {}
+    parallel_start_targets_by_source: dict[str, list[str]] = {}
+    parallel_join_by_target: dict[str, GraphBranchNode] = {}
+    parallel_join_keeper_by_transition: dict[str, GraphBranchNode] = {}
+    parallel_join_sources_by_target: dict[str, list[str]] = {}
 
     branch_by_source_step: dict[str, GraphBranchNode] = {}
     for source_step, items in transitions_by_source.items():
+        if source_step in parallel_start_meta:
+            meta = parallel_start_meta[source_step]
+            keeper_name = str(meta.get("keeper") or "")
+            keeper_node = next((item for item in items if item.name == keeper_name), None)
+            if keeper_node is not None:
+                targets = [str(item) for item in (meta.get("targets") or []) if str(item)]
+                branch = GraphBranchNode(
+                    name=f"PB_{source_step}",
+                    branch_no=next_branch_no,
+                    branch_type="SimBegin",
+                    owner_step=source_step,
+                    incoming_refs=[keeper_name],
+                    outgoing_refs=targets,
+                )
+                next_branch_no += 1
+                branch_nodes.append(branch)
+                parallel_start_by_source[source_step] = branch
+                parallel_start_keeper_by_transition[keeper_name] = branch
+                parallel_start_targets_by_source[source_step] = targets
+                continue
+
         if len(items) <= 1:
             continue
-        branch_type = "AltBegin"
         branch = GraphBranchNode(
             name=f"B_{source_step}",
             branch_no=next_branch_no,
-            branch_type=branch_type,
+            branch_type="AltBegin",
             owner_step=source_step,
             incoming_refs=[source_step],
             outgoing_refs=[item.name for item in items],
@@ -1096,9 +1227,102 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
         branch_nodes.append(branch)
         branch_by_source_step[source_step] = branch
 
+    for target_step, meta in parallel_join_meta.items():
+        keeper_name = str(meta.get("keeper") or "")
+        keeper_node = next((item for item in transition_nodes if item.name == keeper_name), None)
+        if keeper_node is None:
+            continue
+        sources = [str(item) for item in (meta.get("sources") or []) if str(item)]
+        branch = GraphBranchNode(
+            name=f"PJ_{target_step}",
+            branch_no=next_branch_no,
+            branch_type="SimEnd",
+            owner_step=target_step,
+            incoming_refs=sources,
+            outgoing_refs=[keeper_name],
+        )
+        next_branch_no += 1
+        branch_nodes.append(branch)
+        parallel_join_by_target[target_step] = branch
+        parallel_join_keeper_by_transition[keeper_name] = branch
+        parallel_join_sources_by_target[target_step] = sources
+
     connections: list[GraphConnection] = []
     direct_incoming_counts: dict[str, int] = {step.name: 0 for step in ordered_steps}
     for transition in transition_nodes:
+        if transition.name in parallel_start_keeper_by_transition:
+            branch = parallel_start_keeper_by_transition[transition.name]
+            connections.append(
+                GraphConnection(
+                    source_ref=transition.source_step,
+                    target_ref=transition.name,
+                    link_type="Direct",
+                )
+            )
+            connections.append(
+                GraphConnection(
+                    source_ref=transition.name,
+                    target_ref=branch.name,
+                    link_type="Direct",
+                )
+            )
+            for index, target_step in enumerate(parallel_start_targets_by_source.get(transition.source_step, [])):
+                if target_step == entry_step:
+                    link_type = "Jump"
+                else:
+                    link_type = "Direct"
+                    if direct_incoming_counts.get(target_step, 0) > 0:
+                        link_type = "Jump"
+                if link_type == "Direct":
+                    direct_incoming_counts[target_step] = direct_incoming_counts.get(target_step, 0) + 1
+                connections.append(
+                    GraphConnection(
+                        source_ref=branch.name,
+                        target_ref=target_step,
+                        link_type=link_type,
+                    )
+                )
+            continue
+
+        if transition.name in parallel_join_keeper_by_transition:
+            branch = parallel_join_keeper_by_transition[transition.name]
+            for source_step in parallel_join_sources_by_target.get(transition.target_step, []):
+                if any(
+                    connection.source_ref == source_step
+                    and connection.target_ref == branch.name
+                    for connection in connections
+                ):
+                    continue
+                connections.append(
+                    GraphConnection(
+                        source_ref=source_step,
+                        target_ref=branch.name,
+                        link_type="Direct",
+                    )
+                )
+            connections.append(
+                GraphConnection(
+                    source_ref=branch.name,
+                    target_ref=transition.name,
+                    link_type="Direct",
+                )
+            )
+            target_link_type = "Direct"
+            if transition.target_step == entry_step:
+                target_link_type = "Jump"
+            if target_link_type == "Direct":
+                direct_incoming_counts[transition.target_step] = (
+                    direct_incoming_counts.get(transition.target_step, 0) + 1
+                )
+            connections.append(
+                GraphConnection(
+                    source_ref=transition.name,
+                    target_ref=transition.target_step,
+                    link_type=target_link_type,
+                )
+            )
+            continue
+
         source_ref = transition.source_step
         if transition.source_step in branch_by_source_step:
             branch = branch_by_source_step[transition.source_step]
@@ -1121,16 +1345,6 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
                 link_type="Direct",
             )
         )
-        sim_end_branch_name = incoming_to_sim_end.get(transition.name)
-        if sim_end_branch_name:
-            connections.append(
-                GraphConnection(
-                    source_ref=transition.name,
-                    target_ref=sim_end_branch_name,
-                    link_type="Direct",
-                )
-            )
-            continue
 
         target_link_type = "Direct"
         if transition.target_step == entry_step and transition.source_step != entry_step:
@@ -1156,22 +1370,6 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
                 link_type=target_link_type,
             )
         )
-
-    for sim_end in sim_end_branch_by_name.values():
-        if not any(
-            connection.source_ref == sim_end.name and connection.target_ref == sim_end.owner_step
-            for connection in connections
-        ):
-            connections.append(
-                GraphConnection(
-                    source_ref=sim_end.name,
-                    target_ref=sim_end.owner_step,
-                    link_type="Direct",
-                )
-            )
-            direct_incoming_counts[sim_end.owner_step] = (
-                direct_incoming_counts.get(sim_end.owner_step, 0) + 1
-            )
 
     outgoing_counts: dict[str, int] = {step.name: 0 for step in ordered_steps}
     incoming_counts: dict[str, int] = {step.name: 0 for step in ordered_steps}

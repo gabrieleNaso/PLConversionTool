@@ -141,13 +141,24 @@ Come rappresentare i "paralleli" nel file Excel:
 - Definisci poi una convergenza dei rami verso uno step comune (join) in avanti nella sequenza.
 - Per ogni riga coinvolta imposta anche `flow_type=parallel`.
 
+Regola pratica (obbligatoria per il generatore):
+- metti `flow_type=parallel` su tutte le transizioni del blocco parallelo:
+  - transizioni di split (stesso `from_step`, target diversi),
+  - transizioni di join (source diversi, stesso `to_step`).
+- se `flow_type` non e' `parallel`, la transizione viene trattata come ramo normale (`alternative`).
+
+Comportamento del generatore quando trova `flow_type=parallel`:
+- split: le transizioni parallele con stesso `from_step` vengono aggregate in un ingresso `SimBegin`.
+- join: le transizioni parallele con stesso `to_step` vengono aggregate in una uscita `SimEnd`.
+- quando aggrega piu' transizioni, la guardia viene fusa in OR (esempio: `M7` + `M8` -> `(M7) OR (M8)`).
+
 Esempio split/join parallelo:
-- Riga 1: `from_step=S4`, `to_step=S5`, `condition_expression=M7`
-- Riga 2: `from_step=S4`, `to_step=S6`, `condition_expression=M8`
-- Riga 3: `from_step=S5`, `to_step=S7`, `condition_expression=M9`
-- Riga 4: `from_step=S6`, `to_step=S8`, `condition_expression=M10`
-- Riga 5: `from_step=S7`, `to_step=S9`, `condition_expression=M12`
-- Riga 6: `from_step=S8`, `to_step=S9`, `condition_expression=M11`
+- Riga 1: `from_step=S4`, `to_step=S5`, `condition_expression=M7`, `flow_type=parallel`
+- Riga 2: `from_step=S4`, `to_step=S6`, `condition_expression=M8`, `flow_type=parallel`
+- Riga 3: `from_step=S5`, `to_step=S7`, `condition_expression=M9`, `flow_type=parallel`
+- Riga 4: `from_step=S6`, `to_step=S8`, `condition_expression=M10`, `flow_type=parallel`
+- Riga 5: `from_step=S7`, `to_step=S9`, `condition_expression=M12`, `flow_type=parallel`
+- Riga 6: `from_step=S8`, `to_step=S9`, `condition_expression=M11`, `flow_type=parallel`
 
 Cosa genera:
 - il mapper crea branch alternativi (`AltBegin`) sullo step con uscite multiple.

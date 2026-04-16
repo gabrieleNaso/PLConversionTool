@@ -312,6 +312,85 @@ def test_conversion_analyze_keeps_altbegin_for_parallel_like_split_join_pattern(
     assert not any(branch["branch_type"] == "SimEnd" for branch in branches)
 
 
+def test_conversion_analyze_builds_parallel_branches_when_flow_type_is_parallel() -> None:
+    client = TestClient(app)
+    res = client.post(
+        "/api/conversion/analyze-ir",
+        json={
+            "sequenceName": "Parallel Explicit",
+            "sourceName": "parallel_explicit.xlsx",
+            "ir": {
+                "steps": [
+                    {"name": "S1", "step_number": 1},
+                    {"name": "S2", "step_number": 2},
+                    {"name": "S3", "step_number": 3},
+                    {"name": "S4", "step_number": 4},
+                    {"name": "S5", "step_number": 5},
+                ],
+                "transitions": [
+                    {
+                        "transition_id": "T1",
+                        "source_step": "S1",
+                        "target_step": "S2",
+                        "network_index": 1,
+                        "guard_expression": "M1",
+                        "flow_type": "parallel",
+                    },
+                    {
+                        "transition_id": "T2",
+                        "source_step": "S1",
+                        "target_step": "S3",
+                        "network_index": 2,
+                        "guard_expression": "M2",
+                        "flow_type": "parallel",
+                    },
+                    {
+                        "transition_id": "T3",
+                        "source_step": "S2",
+                        "target_step": "S4",
+                        "network_index": 3,
+                        "guard_expression": "M3",
+                        "flow_type": "parallel",
+                    },
+                    {
+                        "transition_id": "T4",
+                        "source_step": "S3",
+                        "target_step": "S4",
+                        "network_index": 4,
+                        "guard_expression": "M4",
+                        "flow_type": "parallel",
+                    },
+                    {
+                        "transition_id": "T5",
+                        "source_step": "S4",
+                        "target_step": "S5",
+                        "network_index": 5,
+                        "guard_expression": "M5",
+                    },
+                ],
+            },
+        },
+    )
+    assert res.status_code == 200
+    payload = res.json()
+    branches = payload["graph_topology"]["branch_nodes"]
+    assert any(branch["branch_type"] == "SimBegin" and branch["owner_step"] == "S1" for branch in branches)
+    assert any(branch["branch_type"] == "SimEnd" and branch["owner_step"] == "S4" for branch in branches)
+    assert any(
+        connection["source_ref"] == "T1" and connection["target_ref"].startswith("PB_")
+        for connection in payload["graph_topology"]["connections"]
+    )
+    assert any(
+        connection["source_ref"].startswith("PJ_") and connection["target_ref"] == "T3"
+        for connection in payload["graph_topology"]["connections"]
+    )
+    assert any(
+        'Type="SimBegin"' in preview["content"] and 'Type="SimEnd"' in preview["content"]
+        for preview in payload["artifact_previews"]
+        if preview["artifact_type"] == "graph_fb"
+    )
+
+
 def test_conversion_analyze_sanitizes_and_dedupes_long_transition_member_names() -> None:
     client = TestClient(app)
     long_guard = (
