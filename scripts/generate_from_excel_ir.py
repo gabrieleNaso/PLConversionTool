@@ -94,6 +94,46 @@ def _normalize_flow_type(value: object) -> str:
     return "alternative"
 
 
+def _normalize_operand_category(value: object) -> str:
+    raw = _cell_text(value).strip().lower()
+    aliases = {
+        "allarme": "alarm",
+        "allarmi": "alarm",
+        "fault": "alarm",
+        "faults": "alarm",
+        "alarm": "alarm",
+        "aux": "aux",
+        "ausiliario": "aux",
+        "hmi": "hmi",
+        "operatore": "hmi",
+        "output": "output",
+        "uscita": "output",
+        "timer": "timer",
+        "tempo": "timer",
+        "memory": "memory",
+        "memoria": "memory",
+        "external": "external",
+        "esterno": "external",
+        "manual_mode": "manual_mode",
+        "manual": "manual_mode",
+        "auto_mode": "auto_mode",
+        "auto": "auto_mode",
+    }
+    return aliases.get(raw, raw or "aux")
+
+
+def _dedupe_dict_rows(items: list[dict[str, object]], keys: tuple[str, ...]) -> list[dict[str, object]]:
+    seen: set[tuple[str, ...]] = set()
+    deduped: list[dict[str, object]] = []
+    for item in items:
+        signature = tuple(_cell_text(item.get(key)) for key in keys)
+        if signature in seen:
+            continue
+        seen.add(signature)
+        deduped.append(item)
+    return deduped
+
+
 
 def _read_sheet_rows(path: Path, sheet_name: str) -> list[dict[str, object]]:
     workbook = load_workbook(path, data_only=True)
@@ -125,60 +165,62 @@ def _read_meta(path: Path) -> dict[str, str]:
     return meta
 
 
-def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[str, str, dict]:
-    meta = _read_meta(path)
-    base_name = sequence_name or meta.get("sequence_name") or path.stem
-    normalized_sequence = _slugify(base_name)
-    source_name = meta.get("source_name") or path.name
+def _build_steps_from_sequence_rows(rows: list[dict[str, object]]) -> list[dict[str, object]]:
+    step_map: dict[str, dict[str, object]] = {}
+    for row in rows:
+        explicit_name = _cell_text(_pick(row, "step_name", "name", "step"))
+        explicit_no = _int_or_none(_pick(row, "numero_step", "step_number", "step_no", "numero", "number"))
+        if explicit_name:
+            step_map.setdefault(
+                explicit_name,
+                {
+                    "name": explicit_name,
+                    "step_number": explicit_no,
+                    "source_networks": [],
+                    "activation_networks": [],
+                    "action_networks": [],
+                },
+            )
+            if step_map[explicit_name].get("step_number") is None and explicit_no is not None:
+                step_map[explicit_name]["step_number"] = explicit_no
 
-    explicit_networks: list[dict[str, object]] = []
-    for idx, row in enumerate(_read_sheet_rows(path, "networks"), start=1):
-        explicit_networks.append(
-            {
-                "index": _int_or_default(_pick(row, "network_index", "index"), idx),
-                "title": _cell_text(_pick(row, "network_title", "title")) or None,
-                "raw_lines": _split_list(_pick(row, "network_lines_for_traceability", "raw_lines")),
-            }
-        )
+        from_name = _cell_text(_pick(row, "from_step", "source_step"))
+        from_no = _int_or_none(_pick(row, "from_step_number"))
+        if from_name:
+            step_map.setdefault(
+                from_name,
+                {
+                    "name": from_name,
+                    "step_number": from_no,
+                    "source_networks": [],
+                    "activation_networks": [],
+                    "action_networks": [],
+                },
+            )
+            if step_map[from_name].get("step_number") is None and from_no is not None:
+                step_map[from_name]["step_number"] = from_no
 
-    steps: list[dict[str, object]] = []
-    for row in _read_sheet_rows(path, "steps"):
-        name = _cell_text(_pick(row, "step_name", "name"))
-        if not name:
-            continue
-        steps.append(
-            {
-                "name": name,
-                "step_number": _int_or_none(
-                    _pick(row, "numero_step", "step_number", "step_no", "numero", "number")
-                ),
-                "source_networks": _split_int_list(
-                    _pick(
-                        row,
-                        "networks_where_step_is_read",
-                        "source_networks",
-                    )
-                ),
-                "activation_networks": _split_int_list(
-                    _pick(
-                        row,
-                        "networks_where_step_is_activated",
-                        "activation_networks",
-                    )
-                ),
-                "action_networks": _split_int_list(
-                    _pick(
-                        row,
-                        "networks_with_step_actions",
-                        "action_networks",
-                    )
-                ),
-            }
-        )
+        to_name = _cell_text(_pick(row, "to_step", "target_step"))
+        to_no = _int_or_none(_pick(row, "to_step_number"))
+        if to_name:
+            step_map.setdefault(
+                to_name,
+                {
+                    "name": to_name,
+                    "step_number": to_no,
+                    "source_networks": [],
+                    "activation_networks": [],
+                    "action_networks": [],
+                },
+            )
+            if step_map[to_name].get("step_number") is None and to_no is not None:
+                step_map[to_name]["step_number"] = to_no
+    return list(step_map.values())
 
+
+def _build_transitions_from_rows(rows: list[dict[str, object]]) -> list[dict[str, object]]:
     transitions: list[dict[str, object]] = []
-    transition_rows = _read_sheet_rows(path, "transitions")
-    for idx, row in enumerate(transition_rows, start=1):
+    for idx, row in enumerate(rows, start=1):
         source_step = _cell_text(_pick(row, "from_step", "source_step"))
         target_step = _cell_text(_pick(row, "to_step", "target_step"))
         if not source_step or not target_step:
@@ -209,6 +251,65 @@ def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[s
                 ),
             }
         )
+    return transitions
+
+
+def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[str, str, dict]:
+    meta = _read_meta(path)
+    base_name = sequence_name or meta.get("sequence_name") or path.stem
+    normalized_sequence = _slugify(base_name)
+    source_name = meta.get("source_name") or path.name
+
+    explicit_networks: list[dict[str, object]] = []
+    for idx, row in enumerate(_read_sheet_rows(path, "networks"), start=1):
+        explicit_networks.append(
+            {
+                "index": _int_or_default(_pick(row, "network_index", "index"), idx),
+                "title": _cell_text(_pick(row, "network_title", "title")) or None,
+                "raw_lines": _split_list(_pick(row, "network_lines_for_traceability", "raw_lines")),
+            }
+        )
+
+    sequence_rows = _read_sheet_rows(path, "sequence")
+    if sequence_rows:
+        steps = _build_steps_from_sequence_rows(sequence_rows)
+        transitions = _build_transitions_from_rows(sequence_rows)
+    else:
+        steps = []
+        for row in _read_sheet_rows(path, "steps"):
+            name = _cell_text(_pick(row, "step_name", "name"))
+            if not name:
+                continue
+            steps.append(
+                {
+                    "name": name,
+                    "step_number": _int_or_none(
+                        _pick(row, "numero_step", "step_number", "step_no", "numero", "number")
+                    ),
+                    "source_networks": _split_int_list(
+                        _pick(
+                            row,
+                            "networks_where_step_is_read",
+                            "source_networks",
+                        )
+                    ),
+                    "activation_networks": _split_int_list(
+                        _pick(
+                            row,
+                            "networks_where_step_is_activated",
+                            "activation_networks",
+                        )
+                    ),
+                    "action_networks": _split_int_list(
+                        _pick(
+                            row,
+                            "networks_with_step_actions",
+                            "action_networks",
+                        )
+                    ),
+                }
+            )
+        transitions = _build_transitions_from_rows(_read_sheet_rows(path, "transitions"))
 
     timers: list[dict[str, object]] = []
     timer_rows = _read_sheet_rows(path, "timers")
@@ -312,6 +413,89 @@ def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[s
             }
         )
 
+    manual_logic_networks = _split_int_list(meta.get("manual_logic_networks"))
+    auto_logic_networks = _split_int_list(meta.get("auto_logic_networks"))
+    external_refs = _split_list(meta.get("external_refs"))
+
+    # New readable format: optional operand catalog that classifies signals
+    # used in LAD transition logic by function (alarm/aux/hmi/output/timer/...).
+    operand_rows = _read_sheet_rows(path, "operands")
+    for idx, row in enumerate(operand_rows, start=1):
+        operand = _cell_text(_pick(row, "operand", "name", "tag"))
+        if not operand:
+            continue
+        category = _normalize_operand_category(_pick(row, "category", "type", "group"))
+        network_index = _int_or_default(_pick(row, "network_index"), idx)
+        note = _cell_text(_pick(row, "note", "notes", "evidence"))
+
+        if category == "alarm":
+            faults.append(
+                {
+                    "name": operand,
+                    "network_index": network_index,
+                    "evidence": note or "Classified from operands sheet",
+                }
+            )
+            continue
+        if category == "output":
+            outputs.append(
+                {
+                    "name": operand,
+                    "network_index": network_index,
+                    "action": _cell_text(_pick(row, "write_action", "action")) or "=",
+                }
+            )
+            continue
+        if category == "timer":
+            timers.append(
+                {
+                    "source_timer": operand,
+                    "network_index": network_index,
+                    "kind": (_cell_text(_pick(row, "timer_instruction_kind", "kind")) or "SD").upper(),
+                    "preset": _cell_text(_pick(row, "timer_preset_value", "preset")) or None,
+                    "trigger_operands": _split_list(_pick(row, "trigger_operands", "timer_trigger_operands")),
+                }
+            )
+            continue
+        if category == "hmi":
+            external_refs.append(operand)
+            memories.append(
+                {
+                    "name": operand,
+                    "role": "hmi",
+                    "network_index": network_index,
+                }
+            )
+            continue
+        if category == "external":
+            external_refs.append(operand)
+            continue
+        if category == "manual_mode":
+            if network_index not in manual_logic_networks:
+                manual_logic_networks.append(network_index)
+            continue
+        if category == "auto_mode":
+            if network_index not in auto_logic_networks:
+                auto_logic_networks.append(network_index)
+            continue
+
+        # Default mapping for aux/memory/other custom categories.
+        memories.append(
+            {
+                "name": operand,
+                "role": category if category != "memory" else "aux",
+                "network_index": network_index,
+            }
+        )
+
+    timers = _dedupe_dict_rows(timers, ("source_timer", "network_index"))
+    memories = _dedupe_dict_rows(memories, ("name", "network_index"))
+    faults = _dedupe_dict_rows(faults, ("name", "network_index"))
+    outputs = _dedupe_dict_rows(outputs, ("name", "network_index", "action"))
+    external_refs = sorted(set(external_refs))
+    manual_logic_networks = sorted(set(manual_logic_networks))
+    auto_logic_networks = sorted(set(auto_logic_networks))
+
     # Enrich step metadata from transitions when not explicitly provided in Excel.
     step_map: dict[str, dict[str, object]] = {item["name"]: item for item in steps}
     for transition in transitions:
@@ -355,9 +539,9 @@ def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[s
         "memories": memories,
         "faults": faults,
         "outputs": outputs,
-        "manual_logic_networks": _split_int_list(meta.get("manual_logic_networks")),
-        "auto_logic_networks": _split_int_list(meta.get("auto_logic_networks")),
-        "external_refs": _split_list(meta.get("external_refs")),
+        "manual_logic_networks": manual_logic_networks,
+        "auto_logic_networks": auto_logic_networks,
+        "external_refs": external_refs,
         "assumptions": _split_list(meta.get("assumptions")),
     }
     return normalized_sequence, source_name, ir_payload

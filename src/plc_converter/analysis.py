@@ -2818,6 +2818,10 @@ def _collect_hmi_support_members(ir: AwlIR) -> list[tuple[str, str]]:
         if any(marker in candidate for marker in ("HMI", "OPIN", "OPOUT", "DB81", "DB82")):
             member = _support_member_name(candidate, "HMI")
             members.append((member, f"HMI/Operator reference {candidate}"))
+    for memory in ir.memories:
+        if str(memory.role).lower() == "hmi":
+            member = _support_member_name(memory.name, "HMI")
+            members.append((member, f"HMI tagged memory {memory.name}"))
     return list(dict.fromkeys(members))
 
 
