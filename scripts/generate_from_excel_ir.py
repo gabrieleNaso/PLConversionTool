@@ -87,6 +87,13 @@ def _contains_token(text: str, token: str) -> bool:
     return re.search(rf"\b{re.escape(token)}\b", text, flags=re.IGNORECASE) is not None
 
 
+def _normalize_flow_type(value: object) -> str:
+    raw = _cell_text(value).strip().lower()
+    if raw in {"parallel", "parallelo"}:
+        return "parallel"
+    return "alternative"
+
+
 
 def _read_sheet_rows(path: Path, sheet_name: str) -> list[dict[str, object]]:
     workbook = load_workbook(path, data_only=True)
@@ -197,6 +204,9 @@ def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[s
                 "guard_expression": guard_expression,
                 "guard_operands": guard_operands,
                 "jump_labels": _split_list(_pick(row, "jump_labels_used", "jump_labels")),
+                "flow_type": _normalize_flow_type(
+                    _pick(row, "flow_type", "branch_mode", "parallel_mode")
+                ),
             }
         )
 

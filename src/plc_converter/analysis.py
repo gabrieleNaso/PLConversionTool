@@ -229,6 +229,7 @@ def _ir_from_payload(
             guard_expression=str(item.get("guard_expression") or "TRUE"),
             guard_operands=_as_str_list(item.get("guard_operands")),
             jump_labels=_as_str_list(item.get("jump_labels")),
+            flow_type=_normalize_flow_type(item.get("flow_type")),
         )
         for index, item in enumerate(transitions_payload, start=1)
         if str(item.get("source_step") or "").strip() and str(item.get("target_step") or "").strip()
@@ -460,6 +461,13 @@ def _as_optional_str(value: object) -> str | None:
         return None
     text = str(value).strip()
     return text or None
+
+
+def _normalize_flow_type(value: object) -> str:
+    raw = str(value or "").strip().lower()
+    if raw in {"parallel", "parallelo"}:
+        return "parallel"
+    return "alternative"
 
 
 def _as_str_list(value: object) -> list[str]:

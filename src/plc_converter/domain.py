@@ -118,6 +118,7 @@ class TransitionCandidate:
     guard_expression: str
     guard_operands: list[str] = field(default_factory=list)
     jump_labels: list[str] = field(default_factory=list)
+    flow_type: str = "alternative"
 
     def to_dict(self) -> dict:
         return asdict(self)

@@ -599,6 +599,7 @@ def test_conversion_analyze_ir_accepts_manual_ir_payload() -> None:
                         "network_index": 1,
                         "guard_expression": "M10.0 AND T1",
                         "guard_operands": ["M10.0", "T1"],
+                        "flow_type": "parallel",
                     }
                 ],
                 "timers": [{"source_timer": "T1", "network_index": 1, "kind": "SD"}],
@@ -614,6 +615,7 @@ def test_conversion_analyze_ir_accepts_manual_ir_payload() -> None:
     assert payload["ir"]["sequence_name"] == "Excel_Line"
     assert payload["scaffold"]["source_analysis"]["source_kind"] == "ir_json"
     assert payload["graph_topology"]["entry_step"] == "S1"
+    assert payload["ir"]["transitions"][0]["flow_type"] == "parallel"
     assert any(
         preview["artifact_type"] == "graph_fb"
         for preview in payload["artifact_previews"]

@@ -103,13 +103,19 @@ Colonne (versione chiara):
   - Cosa rappresenta: etichette AWL legacy correlate, se le hai.
   - Obbligatoria: no.
   - Esempio: `NEXT`
+- `flow_type`
+  - Cosa rappresenta: tipo di flusso dichiarato per la transizione.
+  - Obbligatoria: no (default `alternative`).
+  - Valori ammessi: `alternative` oppure `parallel` (accettato anche `parallelo`).
+  - Nota: il valore viene salvato nell'IR JSON per pilotare la logica di ramo.
 
 Ordine mentale consigliato per compilare una riga:
 1. Decidi `from_step`.
 2. Decidi `to_step`.
 3. Scrivi `condition_expression`.
 4. Copia gli operandi in `operands_used_in_condition`.
-5. Compila gli altri campi solo se ti servono.
+5. Imposta `flow_type` (`alternative` o `parallel`) se vuoi dichiarare esplicitamente il tipo ramo.
+6. Compila gli altri campi solo se ti servono.
 
 Pattern pronti da copiare:
 - Passaggio diretto:
@@ -133,6 +139,7 @@ Errori comuni sulle transizioni:
 Come rappresentare i "paralleli" nel file Excel:
 - Definisci piu' righe `transitions` con lo stesso `from_step` (split).
 - Definisci poi una convergenza dei rami verso uno step comune (join) in avanti nella sequenza.
+- Per ogni riga coinvolta imposta anche `flow_type=parallel`.
 
 Esempio split/join parallelo:
 - Riga 1: `from_step=S4`, `to_step=S5`, `condition_expression=M7`
