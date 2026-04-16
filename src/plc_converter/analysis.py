@@ -311,16 +311,31 @@ def _ensure_s1_entry_step(
         if token
     }
 
-    # Case 1: transitions already reference S1, but steps list forgot it.
+    # If transitions already reference S1, ensure steps contains it and keep
+    # original sequence untouched.
     if "S1" in transition_refs:
         steps.insert(0, StepCandidate(name="S1"))
         return
 
-    # Case 2: pick best candidate to become S1.
+    # Pick the real entry step and rename it to S1 so topology is preserved
+    # without adding synthetic jumps/transitions.
+    incoming_targets = {item.target_step for item in transitions if item.target_step}
+    entry_candidates = [name for name in step_names if name not in incoming_targets]
+
     preferred = next(
-        (name for name in step_names if name.lower() in {"init", "start", "inizio"}),
+        (
+            name
+            for name in entry_candidates
+            if name and name.lower() in {"init", "start", "inizio"}
+        ),
         None,
     )
+    if preferred is None and entry_candidates:
+        preferred = entry_candidates[0]
+
+    if preferred is None:
+        preferred = next((item.source_step for item in transitions if item.source_step), None)
+
     if preferred is None and step_names:
         preferred = step_names[0]
 
@@ -328,14 +343,6 @@ def _ensure_s1_entry_step(
         _rename_step_token(preferred, "S1", steps, transitions)
         return
 
-    # Case 3: no explicit steps; remap first transition source to S1 if available.
-    if transitions:
-        first_source = transitions[0].source_step
-        if first_source:
-            _rename_step_token(first_source, "S1", steps, transitions)
-            return
-
-    # Last resort: synthesize a minimal S1 step.
     steps.insert(0, StepCandidate(name="S1"))
 
 
@@ -366,6 +373,16 @@ def _rename_step_token(
 
     if not replaced and replacement and all(item.name != replacement for item in steps):
         steps.insert(0, StepCandidate(name=replacement))
+
+
+def _next_transition_id(transitions: list[TransitionCandidate]) -> str:
+    used = {item.transition_id for item in transitions}
+    index = 1
+    while True:
+        candidate = f"T{index}"
+        if candidate not in used:
+            return candidate
+        index += 1
 
 
 def _build_ir_scaffold(ir: AwlIR) -> ConversionScaffold:
@@ -999,6 +1016,69 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
         next_synthetic_network += 1
         existing_incoming.add(step.name)
 
+    # TIA Graph import is strict on the entry step:
+    # - sequencer must visibly start from a step
+    # - entry step cannot fan out via multiple direct outgoing links
+    # If the entry has multiple outgoing transitions, route them through a
+    # synthetic split step placed right after the entry step.
+    entry_outgoing = [item for item in transition_nodes if item.source_step == entry_step]
+    if len(entry_outgoing) > 1:
+        split_name = _ensure_unique_step_name(
+            f"{entry_step}_ENTRY_SPLIT",
+            {item.name for item in step_nodes},
+        )
+        max_step_no = max((item.step_no for item in step_nodes), default=1)
+        step_nodes.append(
+            GraphStepNode(
+                name=split_name,
+                step_no=max_step_no + 1,
+                init=False,
+                source_step=split_name,
+                action_networks=[],
+            )
+        )
+        step_nodes.sort(key=lambda node: node.step_no)
+        step_no_by_name = {step.name: step.step_no for step in step_nodes}
+
+        for item in transition_nodes:
+            if item.source_step == entry_step:
+                item.source_step = split_name
+
+        synthetic_transition_name = _ensure_unique_transition_name(
+            f"T_ENTRY_{entry_step}_TO_{split_name}",
+            {item.name for item in transition_nodes},
+        )
+        transition_nodes.append(
+            GraphTransitionNode(
+                name=synthetic_transition_name,
+                transition_no=next_transition_no,
+                source_step=entry_step,
+                target_step=split_name,
+                guard_expression="TRUE",
+                guard_operands=[],
+                network_index=next_synthetic_network,
+                db_block_name=_global_db_block_name(ir),
+                db_member_name=_transition_db_member_name_from_values(
+                    synthetic_transition_name,
+                    "TRUE",
+                ),
+            )
+        )
+        next_transition_no += 1
+        next_synthetic_network += 1
+
+    # Keep the initial flow explicit: first transition must leave the init step.
+    # This avoids Graph imports where the sequencer appears to start from a
+    # non-init branch/split node.
+    transition_nodes.sort(
+        key=lambda item: (
+            0 if item.source_step == entry_step else 1,
+            item.transition_no,
+        )
+    )
+    for index, item in enumerate(transition_nodes, start=1):
+        item.transition_no = index
+
     _assign_unique_transition_db_member_names(transition_nodes)
 
     transitions_by_source: dict[str, list[GraphTransitionNode]] = {}
@@ -1046,6 +1126,8 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
             )
         )
         target_link_type = "Direct"
+        if transition.target_step == entry_step and transition.source_step != entry_step:
+            target_link_type = "Jump"
         has_direct_incoming = direct_incoming_counts.get(transition.target_step, 0) > 0
         if transition.target_step != entry_step and has_direct_incoming:
             target_link_type = "Jump"
@@ -1100,6 +1182,24 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
         terminal_steps=terminal_steps,
         warnings=warnings,
     )
+
+
+def _ensure_unique_step_name(candidate: str, existing: set[str]) -> str:
+    if candidate not in existing:
+        return candidate
+    index = 2
+    while f"{candidate}_{index}" in existing:
+        index += 1
+    return f"{candidate}_{index}"
+
+
+def _ensure_unique_transition_name(candidate: str, existing: set[str]) -> str:
+    if candidate not in existing:
+        return candidate
+    index = 2
+    while f"{candidate}_{index}" in existing:
+        index += 1
+    return f"{candidate}_{index}"
 
 
 def _validate_ir(ir: AwlIR, graph_topology: GraphTopology) -> list[ValidationIssue]:
@@ -2598,7 +2698,7 @@ def _classify_operand_family(operand: str) -> str:
 
 
 def _render_graph_step(step: GraphStepNode) -> str:
-    step_name = str(step.step_no)
+    step_name = step.name or str(step.step_no)
     return (
         f'      <Step Number="{step.step_no}" Init="{str(step.init).lower()}" '
         f'Name="{escape(step_name)}" MaximumStepTime="T#10S" WarningTime="T#7S">\n'

@@ -115,6 +115,7 @@ def test_conversion_analyze_builds_ir_and_artifact_previews() -> None:
         in preview["content"]
         and 'Graph xmlns="http://www.siemens.com/automation/Openness/SW/NetworkSource/Graph/v5"'
         in preview["content"]
+        and '<Step Number="1" Init="true" Name="S1"' in preview["content"]
         and "<StepRef Number=" in preview["content"]
         and "<TransitionRef Number=" in preview["content"]
         and "<AlarmsSettings>" in preview["content"]
@@ -228,7 +229,7 @@ def test_conversion_analyze_builds_alt_branch_for_multi_exit_step() -> None:
     assert len(payload["graph_topology"]["transition_nodes"]) >= 2
     assert payload["graph_topology"]["branch_nodes"][0]["branch_type"] == "AltBegin"
     assert payload["graph_topology"]["branch_nodes"][0]["branch_no"] == 1
-    assert payload["graph_topology"]["connections"][0]["target_ref"] == "B_S1"
+    assert payload["graph_topology"]["connections"][0]["source_ref"] == "S1"
     assert any(
         preview["artifact_type"] == "lad_fc" for preview in payload["artifact_previews"]
     )
@@ -609,6 +610,8 @@ def test_conversion_analyze_ir_ensures_s1_exists_from_arbitrary_entry_name() -> 
     payload = res.json()
     step_names = {item["name"] for item in payload["ir"]["steps"]}
     assert "S1" in step_names
-    assert "Init" not in step_names
     assert payload["graph_topology"]["entry_step"] == "S1"
-    assert payload["ir"]["transitions"][0]["source_step"] == "S1"
+    assert any(
+        item["source_step"] == "S1" and item["target_step"] == "S2"
+        for item in payload["ir"]["transitions"]
+    )
