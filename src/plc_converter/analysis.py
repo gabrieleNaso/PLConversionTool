@@ -233,8 +233,6 @@ def _ir_from_payload(
         for index, item in enumerate(transitions_payload, start=1)
         if str(item.get("source_step") or "").strip() and str(item.get("target_step") or "").strip()
     ]
-    _ensure_s1_entry_step(steps, transitions)
-
     timers = [
         TimerCandidate(
             source_timer=str(item.get("source_timer") or "").strip(),
@@ -864,7 +862,16 @@ def _network_is_transition_candidate(network: AwlNetwork) -> bool:
 
 
 def _build_graph_topology(ir: AwlIR) -> GraphTopology:
-    ordered_steps = sorted(ir.steps, key=lambda item: _step_sort_key(item.name))
+    if any(step.step_number is not None for step in ir.steps):
+        ordered_steps = sorted(
+            ir.steps,
+            key=lambda item: (
+                item.step_number is None,
+                item.step_number if item.step_number is not None else 10**9,
+            ),
+        )
+    else:
+        ordered_steps = list(ir.steps)
     if not ordered_steps:
         return GraphTopology(
             step_nodes=[],

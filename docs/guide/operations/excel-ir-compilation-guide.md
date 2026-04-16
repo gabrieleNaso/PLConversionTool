@@ -217,8 +217,8 @@ Regola d'oro:
 - se la sequenza "non gira", il 90% delle volte il problema e' nelle `transitions`.
 
 Regola automatica del parser IR:
-- deve sempre esistere uno step iniziale `S1` (richiesto dal target GRAPH/TIA).
-- se non lo definisci esplicitamente, il converter promuove/rinomina il vero step di ingresso a `S1` senza aggiungere step intermedi tecnici.
+- i nomi step vengono mantenuti come definiti nell'Excel (nessuna rinomina automatica).
+- per massima compatibilita' TIA, usa comunque `S1` come step iniziale quando possibile.
 
 ## 5) Minimo Sindacale per Generare
 Per un caso minimo funzionante:

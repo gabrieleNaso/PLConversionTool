@@ -586,7 +586,7 @@ def test_conversion_export_ir_writes_bundle() -> None:
     assert any(path.endswith("_GRAPH_auto.xml") for path in payload["writtenFiles"])
 
 
-def test_conversion_analyze_ir_ensures_s1_exists_from_arbitrary_entry_name() -> None:
+def test_conversion_analyze_ir_preserves_arbitrary_entry_name() -> None:
     client = TestClient(app)
     res = client.post(
         "/api/conversion/analyze-ir",
@@ -610,10 +610,10 @@ def test_conversion_analyze_ir_ensures_s1_exists_from_arbitrary_entry_name() -> 
     assert res.status_code == 200
     payload = res.json()
     step_names = {item["name"] for item in payload["ir"]["steps"]}
-    assert "S1" in step_names
-    assert payload["graph_topology"]["entry_step"] == "S1"
+    assert "Init" in step_names
+    assert payload["graph_topology"]["entry_step"] == "Init"
     assert any(
-        item["source_step"] == "S1" and item["target_step"] == "S2"
+        item["source_step"] == "Init" and item["target_step"] == "S2"
         for item in payload["ir"]["transitions"]
     )
 

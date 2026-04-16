@@ -81,6 +81,12 @@ def _int_or_none(value: object) -> int | None:
     return parsed if parsed > 0 else None
 
 
+def _contains_token(text: str, token: str) -> bool:
+    if not text or not token:
+        return False
+    return re.search(rf"\b{re.escape(token)}\b", text, flags=re.IGNORECASE) is not None
+
+
 def _read_sheet_rows(path: Path, sheet_name: str) -> list[dict[str, object]]:
     workbook = load_workbook(path, data_only=True)
     if sheet_name not in workbook.sheetnames:
@@ -117,20 +123,13 @@ def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[s
     normalized_sequence = _slugify(base_name)
     source_name = meta.get("source_name") or path.name
 
-    networks: list[dict[str, object]] = []
+    explicit_networks: list[dict[str, object]] = []
     for idx, row in enumerate(_read_sheet_rows(path, "networks"), start=1):
-        networks.append(
+        explicit_networks.append(
             {
-                "index": _int_or_default(
-                    _pick(row, "network_index", "index"),
-                    idx,
-                ),
-                "title": _cell_text(
-                    _pick(row, "network_title", "title")
-                ) or None,
-                "raw_lines": _split_list(
-                    _pick(row, "network_lines_for_traceability", "raw_lines")
-                ),
+                "index": _int_or_default(_pick(row, "network_index", "index"), idx),
+                "title": _cell_text(_pick(row, "network_title", "title")) or None,
+                "raw_lines": _split_list(_pick(row, "network_lines_for_traceability", "raw_lines")),
             }
         )
 
@@ -170,43 +169,56 @@ def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[s
         )
 
     transitions: list[dict[str, object]] = []
-    for idx, row in enumerate(_read_sheet_rows(path, "transitions"), start=1):
+    transition_rows = _read_sheet_rows(path, "transitions")
+    for idx, row in enumerate(transition_rows, start=1):
         source_step = _cell_text(_pick(row, "from_step", "source_step"))
         target_step = _cell_text(_pick(row, "to_step", "target_step"))
         if not source_step or not target_step:
             continue
+        network_index = _int_or_default(
+            _pick(row, "condition_network_index", "network_index"),
+            idx,
+        )
+        guard_expression = _cell_text(_pick(row, "condition_expression", "guard_expression")) or "TRUE"
+        guard_operands = _split_list(_pick(row, "operands_used_in_condition", "guard_operands"))
+        if not guard_operands and guard_expression and guard_expression.upper() != "TRUE":
+            guard_operands = [
+                token
+                for token in re.findall(r"[A-Za-z_]\w*(?:\.\w+)*", guard_expression)
+                if token.upper() not in {"AND", "OR", "NOT", "TRUE", "FALSE"}
+            ]
         transitions.append(
             {
                 "transition_id": _cell_text(_pick(row, "transition_id")) or f"T{idx}",
                 "source_step": source_step,
                 "target_step": target_step,
-                "network_index": _int_or_default(
-                    _pick(row, "condition_network_index", "network_index"),
-                    1,
-                ),
-                "guard_expression": _cell_text(
-                    _pick(row, "condition_expression", "guard_expression")
-                ) or "TRUE",
-                "guard_operands": _split_list(
-                    _pick(row, "operands_used_in_condition", "guard_operands")
-                ),
-                "jump_labels": _split_list(
-                    _pick(row, "jump_labels_used", "jump_labels")
-                ),
+                "network_index": network_index,
+                "guard_expression": guard_expression,
+                "guard_operands": guard_operands,
+                "jump_labels": _split_list(_pick(row, "jump_labels_used", "jump_labels")),
             }
         )
 
     timers: list[dict[str, object]] = []
-    for row in _read_sheet_rows(path, "timers"):
+    timer_rows = _read_sheet_rows(path, "timers")
+    for idx, row in enumerate(timer_rows, start=1):
         source_timer = _cell_text(_pick(row, "timer_name", "source_timer"))
         if not source_timer:
             continue
+        inferred_network = None
+        for transition in transitions:
+            if source_timer in transition.get("guard_operands", []):
+                inferred_network = int(transition.get("network_index", 0) or 0)
+                break
+            if _contains_token(str(transition.get("guard_expression", "")), source_timer):
+                inferred_network = int(transition.get("network_index", 0) or 0)
+                break
         timers.append(
             {
                 "source_timer": source_timer,
                 "network_index": _int_or_default(
                     _pick(row, "defined_in_network_index", "network_index"),
-                    1,
+                    inferred_network or idx,
                 ),
                 "kind": (
                     _cell_text(_pick(row, "timer_instruction_kind", "kind")) or "SD"
@@ -221,52 +233,106 @@ def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[s
         )
 
     memories: list[dict[str, object]] = []
-    for row in _read_sheet_rows(path, "memories"):
+    memory_rows = _read_sheet_rows(path, "memories")
+    for idx, row in enumerate(memory_rows, start=1):
         name = _cell_text(_pick(row, "memory_operand", "name"))
         if not name:
             continue
+        inferred_network = None
+        for transition in transitions:
+            if name in transition.get("guard_operands", []):
+                inferred_network = int(transition.get("network_index", 0) or 0)
+                break
+            if _contains_token(str(transition.get("guard_expression", "")), name):
+                inferred_network = int(transition.get("network_index", 0) or 0)
+                break
         memories.append(
             {
                 "name": name,
                 "role": _cell_text(_pick(row, "memory_role", "role")) or "aux",
                 "network_index": _int_or_default(
                     _pick(row, "found_in_network_index", "network_index"),
-                    1,
+                    inferred_network or idx,
                 ),
             }
         )
 
     faults: list[dict[str, object]] = []
-    for row in _read_sheet_rows(path, "faults"):
+    fault_rows = _read_sheet_rows(path, "faults")
+    for idx, row in enumerate(fault_rows, start=1):
         name = _cell_text(_pick(row, "fault_tag", "name"))
         if not name:
             continue
+        inferred_network = None
+        for transition in transitions:
+            if _contains_token(str(transition.get("guard_expression", "")), name):
+                inferred_network = int(transition.get("network_index", 0) or 0)
+                break
         faults.append(
             {
                 "name": name,
                 "network_index": _int_or_default(
                     _pick(row, "found_in_network_index", "network_index"),
-                    1,
+                    inferred_network or idx,
                 ),
                 "evidence": _cell_text(_pick(row, "fault_evidence", "evidence")),
             }
         )
 
     outputs: list[dict[str, object]] = []
-    for row in _read_sheet_rows(path, "outputs"):
+    output_rows = _read_sheet_rows(path, "outputs")
+    for idx, row in enumerate(output_rows, start=1):
         name = _cell_text(_pick(row, "output_operand", "name"))
         if not name:
             continue
+        inferred_network = None
+        for transition in transitions:
+            if _contains_token(str(transition.get("guard_expression", "")), name):
+                inferred_network = int(transition.get("network_index", 0) or 0)
+                break
         outputs.append(
             {
                 "name": name,
                 "network_index": _int_or_default(
                     _pick(row, "found_in_network_index", "network_index"),
-                    1,
+                    inferred_network or idx,
                 ),
                 "action": _cell_text(_pick(row, "write_action", "action")) or "=",
             }
         )
+
+    # Enrich step metadata from transitions when not explicitly provided in Excel.
+    step_map: dict[str, dict[str, object]] = {item["name"]: item for item in steps}
+    for transition in transitions:
+        source = str(transition.get("source_step") or "")
+        target = str(transition.get("target_step") or "")
+        network_index = int(transition.get("network_index", 0) or 0)
+        if not network_index:
+            continue
+        if source in step_map:
+            current = set(step_map[source].get("source_networks") or [])
+            current.add(network_index)
+            step_map[source]["source_networks"] = sorted(current)
+        if target in step_map:
+            current = set(step_map[target].get("activation_networks") or [])
+            current.add(network_index)
+            step_map[target]["activation_networks"] = sorted(current)
+            actions = set(step_map[target].get("action_networks") or [])
+            actions.add(network_index)
+            step_map[target]["action_networks"] = sorted(actions)
+    steps = list(step_map.values())
+
+    # Build synthetic network registry when the sheet is not used.
+    inferred_network_ids = {
+        int(item.get("network_index", 0) or 0)
+        for item in (transitions + timers + memories + faults + outputs)
+        if int(item.get("network_index", 0) or 0) > 0
+    }
+    inferred_networks = [
+        {"index": network_id, "title": f"Excel_Network_{network_id}", "raw_lines": []}
+        for network_id in sorted(inferred_network_ids)
+    ]
+    networks = explicit_networks or inferred_networks
 
     ir_payload = {
         "sequence_name": normalized_sequence,
