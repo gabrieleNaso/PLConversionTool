@@ -1212,6 +1212,7 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
             keeper_node = next((item for item in items if item.name == keeper_name), None)
             if keeper_node is not None:
                 targets = [str(item) for item in (meta.get("targets") or []) if str(item)]
+                targets = sorted(targets, key=lambda name: step_no_by_name.get(name, 10**9))
                 branch = GraphBranchNode(
                     name=f"PB_{source_step}",
                     branch_no=next_branch_no,
@@ -1247,6 +1248,7 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
         if keeper_node is None:
             continue
         sources = [str(item) for item in (meta.get("sources") or []) if str(item)]
+        sources = sorted(sources, key=lambda name: step_no_by_name.get(name, 10**9))
         branch = GraphBranchNode(
             name=f"PJ_{target_step}",
             branch_no=next_branch_no,
@@ -2487,7 +2489,7 @@ def _build_global_db_member_irs(ir: AwlIR, graph_topology: GraphTopology) -> lis
         for operand in transition.guard_operands:
             members.append(
                 MemberIR(
-                    name=_db_member_name(operand),
+                    name=_guard_operand_db_member_name(operand),
                     datatype="Bool",
                     comment=f"Guard operand {operand}",
                 )
@@ -2520,7 +2522,7 @@ def _build_global_db_member_irs(ir: AwlIR, graph_topology: GraphTopology) -> lis
 def _expected_global_db_member_names(ir: AwlIR, graph_topology: GraphTopology) -> set[str]:
     names = {transition.db_member_name for transition in graph_topology.transition_nodes}
     for transition in graph_topology.transition_nodes:
-        names.update(_db_member_name(operand) for operand in transition.guard_operands)
+        names.update(_guard_operand_db_member_name(operand) for operand in transition.guard_operands)
     names.update(_db_member_name(memory.name) for memory in ir.memories)
     names.update(_db_member_name(timer.source_timer) for timer in ir.timers)
     if not names:
@@ -2992,7 +2994,7 @@ def _render_graph_transition(transition: GraphTransitionNode) -> str:
                     f'            <Access Scope="GlobalVariable" UId="{access_uid}">\n',
                     '              <Symbol>\n',
                     f'                <Component Name="{escape(transition.db_block_name)}" />\n',
-                    f'                <Component Name="{escape(_db_member_name(operand))}" />\n',
+                    f'                <Component Name="{escape(_guard_operand_db_member_name(operand))}" />\n',
                     '              </Symbol>\n',
                     '            </Access>\n',
                 ]
@@ -3283,6 +3285,13 @@ def _normalize_symbol_name(guard_expression: str, fallback: str) -> str:
 def _db_member_name(raw_name: str) -> str:
     sanitized = raw_name.replace(".", "_")
     return _sanitize_tia_member_name(sanitized, fallback="Signal", seed=raw_name)
+
+
+def _guard_operand_db_member_name(operand: str) -> str:
+    token = str(operand or "").strip()
+    if TIMER_RE.fullmatch(token.upper()):
+        return _db_member_name(f"{token}_DONE")
+    return _db_member_name(token)
 
 
 def _global_db_block_name(ir: AwlIR) -> str:

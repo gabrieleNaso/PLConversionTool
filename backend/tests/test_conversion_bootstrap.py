@@ -123,13 +123,16 @@ def test_conversion_analyze_builds_ir_and_artifact_previews() -> None:
         and '<Member Name="SNO" Datatype="Int"><StartValue Informative="true">'
         in preview["content"]
         and '<Component Name="DB12_Mixer_Line_SEQ_Global" />' in preview["content"]
-        and (
-            '<Component Name="T1_Guard_M10_0_AND_T1" />' in preview["content"]
-            or (
-                '<Component Name="M10_0" />' in preview["content"]
-                and '<Component Name="T1" />' in preview["content"]
+            and (
+                '<Component Name="T1_Guard_M10_0_AND_T1" />' in preview["content"]
+                or (
+                    '<Component Name="M10_0" />' in preview["content"]
+                    and (
+                        '<Component Name="T1" />' in preview["content"]
+                        or '<Component Name="T1_DONE" />' in preview["content"]
+                    )
+                )
             )
-        )
         for preview in payload["artifact_previews"]
         if preview["artifact_type"] == "graph_fb"
     )
