@@ -87,6 +87,7 @@ def _contains_token(text: str, token: str) -> bool:
     return re.search(rf"\b{re.escape(token)}\b", text, flags=re.IGNORECASE) is not None
 
 
+
 def _read_sheet_rows(path: Path, sheet_name: str) -> list[dict[str, object]]:
     workbook = load_workbook(path, data_only=True)
     if sheet_name not in workbook.sheetnames:
@@ -378,13 +379,17 @@ def main() -> int:
     if not excel_path.exists():
         raise SystemExit(f"Excel file not found: {excel_path}")
 
+    # Keep internal sequence/block naming aligned with package folder name.
+    # Default source for both is the Excel filename (sanitized), unless explicitly overridden.
+    effective_sequence_name = args.sequence_name or _slugify(excel_path.stem)
     sequence_name, source_name, ir_payload = build_ir_from_excel(
         path=excel_path,
-        sequence_name=args.sequence_name,
+        sequence_name=effective_sequence_name,
     )
 
     output_root = (PROJECT_ROOT / args.output_root).resolve()
-    bundle_dir = output_root / sequence_name.lower()
+    # Keep package folder aligned with internal sequence/block naming.
+    bundle_dir = output_root / sequence_name
     if bundle_dir.exists() and not args.keep_existing:
         shutil.rmtree(bundle_dir)
     bundle_dir.mkdir(parents=True, exist_ok=True)

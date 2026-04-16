@@ -2223,6 +2223,14 @@ def _build_global_db_member_irs(ir: AwlIR, graph_topology: GraphTopology) -> lis
                 comment=f"Transition guard for {transition.name}",
             )
         )
+        for operand in transition.guard_operands:
+            members.append(
+                MemberIR(
+                    name=_db_member_name(operand),
+                    datatype="Bool",
+                    comment=f"Guard operand {operand}",
+                )
+            )
 
     for memory in ir.memories:
         members.append(
@@ -2250,6 +2258,8 @@ def _build_global_db_member_irs(ir: AwlIR, graph_topology: GraphTopology) -> lis
 
 def _expected_global_db_member_names(ir: AwlIR, graph_topology: GraphTopology) -> set[str]:
     names = {transition.db_member_name for transition in graph_topology.transition_nodes}
+    for transition in graph_topology.transition_nodes:
+        names.update(_db_member_name(operand) for operand in transition.guard_operands)
     names.update(_db_member_name(memory.name) for memory in ir.memories)
     names.update(_db_member_name(timer.source_timer) for timer in ir.timers)
     if not names:
@@ -2693,33 +2703,137 @@ def _render_graph_step(step: GraphStepNode) -> str:
 
 
 def _render_graph_transition(transition: GraphTransitionNode) -> str:
-    access_uid = 21
-    contact_uid = 22
-    trcoil_uid = 23
-    parts_lines = [
-        f'            <Access Scope="GlobalVariable" UId="{access_uid}">\n',
-        '              <Symbol>\n',
-        f'                <Component Name="{escape(transition.db_block_name)}" />\n',
-        f'                <Component Name="{escape(transition.db_member_name)}" />\n',
-        '              </Symbol>\n',
-        '            </Access>\n',
-        f'            <Part Name="Contact" UId="{contact_uid}" />\n',
-        f'            <Part Name="TrCoil" UId="{trcoil_uid}" />\n',
-    ]
-    wires_lines = [
-        '            <Wire UId="24">\n',
-        '              <Powerrail />\n',
-        f'              <NameCon UId="{contact_uid}" Name="in" />\n',
-        '            </Wire>\n',
-        '            <Wire UId="25">\n',
-        f'              <IdentCon UId="{access_uid}" />\n',
-        f'              <NameCon UId="{contact_uid}" Name="operand" />\n',
-        '            </Wire>\n',
-        '            <Wire UId="26">\n',
-        f'              <NameCon UId="{contact_uid}" Name="out" />\n',
-        f'              <NameCon UId="{trcoil_uid}" Name="in" />\n',
-        '            </Wire>\n',
-    ]
+    next_uid = 21
+
+    def alloc_uid() -> int:
+        nonlocal next_uid
+        current = next_uid
+        next_uid += 1
+        return current
+
+    parts_lines: list[str] = []
+    wires_lines: list[str] = []
+
+    guard_clauses = _parse_guard_clauses(transition.guard_expression, transition.guard_operands)
+    clause_contact_uids: list[list[int]] = []
+
+    for clause in guard_clauses:
+        contact_uids: list[int] = []
+        for operand, negated in clause:
+            access_uid = alloc_uid()
+            contact_uid = alloc_uid()
+            parts_lines.extend(
+                [
+                    f'            <Access Scope="GlobalVariable" UId="{access_uid}">\n',
+                    '              <Symbol>\n',
+                    f'                <Component Name="{escape(transition.db_block_name)}" />\n',
+                    f'                <Component Name="{escape(_db_member_name(operand))}" />\n',
+                    '              </Symbol>\n',
+                    '            </Access>\n',
+                ]
+            )
+            if negated:
+                parts_lines.extend(
+                    [
+                        f'            <Part Name="Contact" UId="{contact_uid}">\n',
+                        '              <Negated Name="operand" />\n',
+                        '            </Part>\n',
+                    ]
+                )
+            else:
+                parts_lines.append(f'            <Part Name="Contact" UId="{contact_uid}" />\n')
+
+            wire_uid = alloc_uid()
+            wires_lines.extend(
+                [
+                    f'            <Wire UId="{wire_uid}">\n',
+                    f'              <IdentCon UId="{access_uid}" />\n',
+                    f'              <NameCon UId="{contact_uid}" Name="operand" />\n',
+                    '            </Wire>\n',
+                ]
+            )
+            contact_uids.append(contact_uid)
+
+        clause_contact_uids.append(contact_uids)
+
+    trcoil_uid = alloc_uid()
+    parts_lines.append(f'            <Part Name="TrCoil" UId="{trcoil_uid}" />\n')
+
+    if clause_contact_uids:
+        # Powerrail feeds all OR branches (one branch per clause).
+        powerrail_wire_uid = alloc_uid()
+        wires_lines.append(f'            <Wire UId="{powerrail_wire_uid}">\n')
+        wires_lines.append('              <Powerrail />\n')
+        for branch in clause_contact_uids:
+            if branch:
+                wires_lines.append(f'              <NameCon UId="{branch[0]}" Name="in" />\n')
+        wires_lines.append('            </Wire>\n')
+
+        clause_outs: list[int] = []
+        for branch in clause_contact_uids:
+            if not branch:
+                continue
+            for prev_uid, next_contact_uid in zip(branch, branch[1:]):
+                serial_wire_uid = alloc_uid()
+                wires_lines.extend(
+                    [
+                        f'            <Wire UId="{serial_wire_uid}">\n',
+                        f'              <NameCon UId="{prev_uid}" Name="out" />\n',
+                        f'              <NameCon UId="{next_contact_uid}" Name="in" />\n',
+                        '            </Wire>\n',
+                    ]
+                )
+            clause_outs.append(branch[-1])
+
+        if len(clause_outs) > 1:
+            or_uid = alloc_uid()
+            parts_lines.extend(
+                [
+                    f'            <Part Name="O" UId="{or_uid}">\n',
+                    f'              <TemplateValue Name="Card" Type="Cardinality">{len(clause_outs)}</TemplateValue>\n',
+                    '            </Part>\n',
+                ]
+            )
+            for index, out_uid in enumerate(clause_outs, start=1):
+                in_wire_uid = alloc_uid()
+                wires_lines.extend(
+                    [
+                        f'            <Wire UId="{in_wire_uid}">\n',
+                        f'              <NameCon UId="{out_uid}" Name="out" />\n',
+                        f'              <NameCon UId="{or_uid}" Name="in{index}" />\n',
+                        '            </Wire>\n',
+                    ]
+                )
+            out_wire_uid = alloc_uid()
+            wires_lines.extend(
+                [
+                    f'            <Wire UId="{out_wire_uid}">\n',
+                    f'              <NameCon UId="{or_uid}" Name="out" />\n',
+                    f'              <NameCon UId="{trcoil_uid}" Name="in" />\n',
+                    '            </Wire>\n',
+                ]
+            )
+        elif clause_outs:
+            final_wire_uid = alloc_uid()
+            wires_lines.extend(
+                [
+                    f'            <Wire UId="{final_wire_uid}">\n',
+                    f'              <NameCon UId="{clause_outs[0]}" Name="out" />\n',
+                    f'              <NameCon UId="{trcoil_uid}" Name="in" />\n',
+                    '            </Wire>\n',
+                ]
+            )
+    else:
+        # TRUE / empty condition: direct powerrail to transition coil.
+        true_wire_uid = alloc_uid()
+        wires_lines.extend(
+            [
+                f'            <Wire UId="{true_wire_uid}">\n',
+                '              <Powerrail />\n',
+                f'              <NameCon UId="{trcoil_uid}" Name="in" />\n',
+                '            </Wire>\n',
+            ]
+        )
 
     return (
         f'      <Transition IsMissing="false" Name="{escape(transition.name)}" '
@@ -2734,6 +2848,89 @@ def _render_graph_transition(transition: GraphTransitionNode) -> str:
         '        </FlgNet>\n'
         '      </Transition>'
     )
+
+
+def _parse_guard_clauses(guard_expression: str, guard_operands: list[str]) -> list[list[tuple[str, bool]]]:
+    text = (guard_expression or "").strip()
+    if not text or text.upper() == "TRUE":
+        return []
+
+    or_clauses = _split_top_level_boolean(text, operator="OR")
+    if not or_clauses:
+        or_clauses = [text]
+
+    parsed: list[list[tuple[str, bool]]] = []
+    for clause in or_clauses:
+        and_terms = _split_top_level_boolean(clause, operator="AND")
+        if not and_terms:
+            and_terms = [clause]
+        terms: list[tuple[str, bool]] = []
+        for raw_term in and_terms:
+            token = raw_term.strip()
+            if not token:
+                continue
+            negated = False
+            upper = token.upper()
+            if upper.startswith("NOT "):
+                negated = True
+                token = token[4:].strip()
+            token = token.strip("() ")
+            if not token or token.upper() in {"TRUE", "FALSE"}:
+                continue
+            terms.append((token, negated))
+        if terms:
+            parsed.append(terms)
+
+    if parsed:
+        return parsed
+
+    if guard_operands:
+        return [[(item, False) for item in guard_operands if item]]
+    return []
+
+
+def _split_top_level_boolean(expression: str, operator: str) -> list[str]:
+    text = (expression or "").strip()
+    if not text:
+        return []
+
+    op = operator.upper()
+    parts: list[str] = []
+    buff: list[str] = []
+    depth = 0
+    i = 0
+    upper = text.upper()
+    while i < len(text):
+        ch = text[i]
+        if ch == "(":
+            depth += 1
+            buff.append(ch)
+            i += 1
+            continue
+        if ch == ")":
+            depth = max(0, depth - 1)
+            buff.append(ch)
+            i += 1
+            continue
+        if (
+            depth == 0
+            and upper[i : i + len(op)] == op
+            and (i == 0 or not upper[i - 1].isalnum())
+            and (i + len(op) >= len(text) or not upper[i + len(op)].isalnum())
+        ):
+            item = "".join(buff).strip()
+            if item:
+                parts.append(item)
+            buff = []
+            i += len(op)
+            continue
+        buff.append(ch)
+        i += 1
+
+    tail = "".join(buff).strip()
+    if tail:
+        parts.append(tail)
+    return parts
 
 
 def _render_graph_branch(branch: GraphBranchNode) -> str:
