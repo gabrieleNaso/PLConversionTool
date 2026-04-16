@@ -173,13 +173,12 @@ Guida completa compilazione Excel:
 - `docs/guide/operations/excel-ir-compilation-guide.md`
 
 Template pronto:
-- `docs/templates/ir_excel_template.xlsx`
-- `docs/templates/ir_excel_template_no_network.xlsx` (senza foglio `networks`)
+- `docs/templates/ir_excel_template_no_network.xlsx` (formato standard, senza foglio `networks`)
 
 Comando:
 
 ```bash
-make generate-excel-ir EXCEL_FILE="docs/templates/ir_excel_template.xlsx"
+make generate-excel-ir EXCEL_FILE="docs/templates/ir_excel_template_no_network.xlsx"
 ```
 
 Output nel bundle:
@@ -189,8 +188,7 @@ Output nel bundle:
 
 Fogli Excel supportati:
 - `meta`: chiavi libere `key/value` (`sequence_name`, `source_name`, `manual_logic_networks`, `auto_logic_networks`, `external_refs`, `assumptions`)
-- `networks`: `network_index`, `network_title`, `network_lines_for_traceability` (`|` oppure `;` come separatore)
-- `steps`: `step_name`, `networks_where_step_is_read`, `networks_where_step_is_activated`, `networks_with_step_actions`
+- `steps`: `step_name`, `numero_step`, `networks_where_step_is_read`, `networks_where_step_is_activated`, `networks_with_step_actions`
 - `transitions`: `transition_id`, `from_step`, `to_step`, `condition_network_index`, `condition_expression`, `operands_used_in_condition`, `jump_labels_used`
 - `timers`: `timer_name`, `defined_in_network_index`, `timer_instruction_kind`, `timer_preset_value`, `timer_trigger_operands`
 - `memories`: `memory_operand`, `memory_role`, `found_in_network_index`

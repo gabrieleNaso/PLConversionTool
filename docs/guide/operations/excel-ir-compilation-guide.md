@@ -5,8 +5,7 @@ Questa guida spiega esattamente come compilare ogni colonna del file Excel per o
 2. XML TIA (`FB/DB/FC`)
 
 Template disponibili:
-- `docs/templates/ir_excel_template.xlsx`
-- `docs/templates/ir_excel_template_no_network.xlsx` (senza foglio `networks`)
+- `docs/templates/ir_excel_template_no_network.xlsx` (formato standard, senza foglio `networks`)
 
 ## 1) Regole di Compilazione
 - Non cambiare nome fogli e header.
@@ -16,7 +15,6 @@ Template disponibili:
 
 ## 2) Mappa Fogli -> Scopo
 - `meta`: metadati globali del bundle.
-- `networks` (opzionale): tracciabilita' e contesto logico delle reti.
 - `steps`: stati della sequenza.
 - `transitions`: passaggi tra step (foglio piu' importante).
 - `timers`: timer da riportare nel modello.
@@ -56,24 +54,10 @@ Righe chiave supportate:
   - Formato: note separate da `;`.
   - Effetto: riportato in IR/analysis.
 
-### 3.2 Foglio `networks` (opzionale)
-Se usi il template `*_no_network.xlsx`, questo foglio non c'e' ed e' corretto.
+### 3.2 Foglio `networks`
+Nel nuovo formato standard **non si usa**. Lascialo assente.
 
-Colonne:
-- `network_index`
-  - Obbligatoria: no (ma consigliata se il foglio esiste).
-  - Formato: intero (`1`, `2`, `3`...).
-  - Effetto: collega steps/transitions/timers a una rete.
-- `network_title`
-  - Obbligatoria: no.
-  - Formato: testo breve.
-  - Effetto: leggibilita'/naming support XML.
-- `network_lines_for_traceability`
-  - Obbligatoria: no.
-  - Formato: testo con righe separate da `|`.
-  - Effetto: solo tracciabilita' (non parsing AWL completo).
-
-Fallback se manca `networks`:
+Fallback automatico:
 - il tool crea reti sintetiche dagli indici trovati nelle transizioni.
 
 ### 3.3 Foglio `steps`
@@ -315,11 +299,6 @@ Supponiamo di avere `S10 -> S20 -> S30`:
   - Fix: usa `Qx.y` o `Ax.y`.
 
 ## 9) Generazione da Excel
-```bash
-make generate-excel-ir EXCEL_FILE="docs/templates/ir_excel_template.xlsx"
-```
-
-Senza foglio `networks`:
 ```bash
 make generate-excel-ir EXCEL_FILE="docs/templates/ir_excel_template_no_network.xlsx"
 ```
