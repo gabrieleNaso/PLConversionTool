@@ -94,6 +94,11 @@ def _normalize_flow_type(value: object) -> str:
     return "alternative"
 
 
+def _normalize_parallel_group(value: object) -> str:
+    raw = _cell_text(value).strip()
+    return re.sub(r"\s+", "_", raw) if raw else ""
+
+
 def _normalize_operand_category(value: object) -> str:
     raw = _cell_text(value).strip().lower()
     aliases = {
@@ -257,6 +262,9 @@ def _build_transitions_from_rows(rows: list[dict[str, object]]) -> list[dict[str
                 "jump_labels": _split_list(_pick(row, "jump_labels_used", "jump_labels")),
                 "flow_type": _normalize_flow_type(
                     _pick(row, "flow_type", "branch_mode", "parallel_mode")
+                ),
+                "parallel_group": _normalize_parallel_group(
+                    _pick(row, "parallel_group", "parallel_id", "group_id")
                 ),
             }
         )

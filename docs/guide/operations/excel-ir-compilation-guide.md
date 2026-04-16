@@ -46,11 +46,13 @@ Colonne:
 - `condition_expression`: logica LAD/booleana transizione (default `TRUE`).
 - `operands_used_in_condition`: operandi condizione separati da `;`.
 - `flow_type`: `alternative` oppure `parallel`.
+- `parallel_group`: nome gruppo parallelo (es. `P1`, `P_CARICO`), obbligatorio quando `flow_type=parallel`.
 - `jump_labels_used`: opzionale.
 
 Regole pratiche:
 - per una transition sono obbligatori `from_step` e `to_step`.
 - `flow_type=parallel` va usato solo per blocchi paralleli reali.
+- se `flow_type=parallel`, usa lo stesso `parallel_group` su split e join dello stesso blocco.
 - se `flow_type` e' vuoto: default `alternative`.
 
 ## 4) Foglio `operands` (classificazione segnali)
@@ -83,6 +85,7 @@ Categorie non riconosciute:
 Per avere parallelismo esplicito:
 1. Split: transizioni con stesso `from_step`, target diversi, `flow_type=parallel`.
 2. Join: transizioni con source diversi, stesso `to_step`, `flow_type=parallel`.
+3. Stesso valore `parallel_group` su tutte le transizioni del blocco.
 
 Il generatore:
 - crea `SimBegin` per split parallelo

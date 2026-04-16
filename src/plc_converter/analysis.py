@@ -230,6 +230,7 @@ def _ir_from_payload(
             guard_operands=_as_str_list(item.get("guard_operands")),
             jump_labels=_as_str_list(item.get("jump_labels")),
             flow_type=_normalize_flow_type(item.get("flow_type")),
+            parallel_group=_as_optional_str(item.get("parallel_group")) or "",
         )
         for index, item in enumerate(transitions_payload, start=1)
         if str(item.get("source_step") or "").strip() and str(item.get("target_step") or "").strip()
@@ -945,6 +946,7 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
             guard_operands=list(item.guard_operands),
             jump_labels=list(item.jump_labels),
             flow_type=item.flow_type,
+            parallel_group=item.parallel_group,
         )
         for item in ir.transitions
     ]
@@ -955,29 +957,41 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
         if item.flow_type == "parallel":
             by_source_parallel.setdefault(item.source_step, []).append(item)
     for source_step, items in by_source_parallel.items():
-        if len(items) < 2:
+        grouped = [item for item in items if item.parallel_group]
+        distinct_groups = {item.parallel_group for item in grouped}
+        if len(distinct_groups) > 1:
+            warnings.append(
+                f"Parallel split su {source_step}: trovati piu' parallel_group ({', '.join(sorted(distinct_groups))}), "
+                "usa un solo gruppo per ogni split."
+            )
             continue
-        keeper = items[0]
-        removed = items[1:]
-        keeper.guard_expression = _merge_guard_expressions([x.guard_expression for x in items])
-        keeper.guard_operands = _merge_guard_operands([x.guard_operands for x in items])
+
+        candidates = grouped if grouped else items
+        if len(candidates) < 2:
+            continue
+        keeper = candidates[0]
+        removed = candidates[1:]
+        keeper.guard_expression = _merge_guard_expressions([x.guard_expression for x in candidates])
+        keeper.guard_operands = _merge_guard_operands([x.guard_operands for x in candidates])
         parallel_start_meta[source_step] = {
             "keeper": keeper.transition_id,
-            "targets": [x.target_step for x in items],
+            "targets": [x.target_step for x in candidates],
+            "group": keeper.parallel_group,
         }
         removed_names = {x.transition_id for x in removed}
         working_transitions = [x for x in working_transitions if x.transition_id not in removed_names]
         if removed_names:
             warnings.append(
-                f"Parallel split su {source_step}: consolidate {len(items)} transizioni in {keeper.transition_id}."
+                f"Parallel split su {source_step}: consolidate {len(candidates)} transizioni in {keeper.transition_id}."
             )
 
-    parallel_join_meta: dict[str, dict[str, object]] = {}
-    by_target_parallel: dict[str, list[TransitionCandidate]] = {}
+    parallel_join_meta: dict[tuple[str, str], dict[str, object]] = {}
+    by_target_parallel: dict[tuple[str, str], list[TransitionCandidate]] = {}
     for item in working_transitions:
         if item.flow_type == "parallel":
-            by_target_parallel.setdefault(item.target_step, []).append(item)
-    for target_step, items in by_target_parallel.items():
+            key = (item.target_step, item.parallel_group or "__AUTO__")
+            by_target_parallel.setdefault(key, []).append(item)
+    for (target_step, group_key), items in by_target_parallel.items():
         sources = {x.source_step for x in items}
         if len(items) < 2 or len(sources) < 2:
             continue
@@ -985,9 +999,10 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
         removed = items[1:]
         keeper.guard_expression = _merge_guard_expressions([x.guard_expression for x in items])
         keeper.guard_operands = _merge_guard_operands([x.guard_operands for x in items])
-        parallel_join_meta[target_step] = {
+        parallel_join_meta[(target_step, keeper.parallel_group or "__AUTO__")] = {
             "keeper": keeper.transition_id,
             "sources": [x.source_step for x in items],
+            "group": keeper.parallel_group,
         }
         removed_names = {x.transition_id for x in removed}
         working_transitions = [x for x in working_transitions if x.transition_id not in removed_names]
@@ -1186,9 +1201,8 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
     parallel_start_by_source: dict[str, GraphBranchNode] = {}
     parallel_start_keeper_by_transition: dict[str, GraphBranchNode] = {}
     parallel_start_targets_by_source: dict[str, list[str]] = {}
-    parallel_join_by_target: dict[str, GraphBranchNode] = {}
     parallel_join_keeper_by_transition: dict[str, GraphBranchNode] = {}
-    parallel_join_sources_by_target: dict[str, list[str]] = {}
+    parallel_join_sources_by_transition: dict[str, list[str]] = {}
 
     branch_by_source_step: dict[str, GraphBranchNode] = {}
     for source_step, items in transitions_by_source.items():
@@ -1227,7 +1241,7 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
         branch_nodes.append(branch)
         branch_by_source_step[source_step] = branch
 
-    for target_step, meta in parallel_join_meta.items():
+    for (target_step, _group_key), meta in parallel_join_meta.items():
         keeper_name = str(meta.get("keeper") or "")
         keeper_node = next((item for item in transition_nodes if item.name == keeper_name), None)
         if keeper_node is None:
@@ -1243,9 +1257,8 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
         )
         next_branch_no += 1
         branch_nodes.append(branch)
-        parallel_join_by_target[target_step] = branch
         parallel_join_keeper_by_transition[keeper_name] = branch
-        parallel_join_sources_by_target[target_step] = sources
+        parallel_join_sources_by_transition[keeper_name] = sources
 
     connections: list[GraphConnection] = []
     direct_incoming_counts: dict[str, int] = {step.name: 0 for step in ordered_steps}
@@ -1286,7 +1299,7 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
 
         if transition.name in parallel_join_keeper_by_transition:
             branch = parallel_join_keeper_by_transition[transition.name]
-            for source_step in parallel_join_sources_by_target.get(transition.target_step, []):
+            for source_step in parallel_join_sources_by_transition.get(transition.name, []):
                 if any(
                     connection.source_ref == source_step
                     and connection.target_ref == branch.name
