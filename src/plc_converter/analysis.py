@@ -1671,7 +1671,6 @@ def _build_artifact_previews(scaffold, ir: AwlIR, graph_topology: GraphTopology)
     profile = build_target_profile()
     graph_xml = _build_graph_fb_xml(profile, ir, graph_topology)
     db_xml = _build_global_db_xml(ir, graph_topology)
-    fc_xml = _build_lad_fc_xml(ir, graph_topology)
 
     previews = [
         ArtifactPreview(
@@ -1685,14 +1684,24 @@ def _build_artifact_previews(scaffold, ir: AwlIR, graph_topology: GraphTopology)
             content=db_xml,
         ),
     ]
-    previews.append(
-        ArtifactPreview(
-            artifact_type="lad_fc",
-            file_name=scaffold.artifact_plan.lad_fc_name,
-            content=fc_xml,
+
+    if not ir.strict_operand_catalog:
+        fc_xml = _build_lad_fc_xml(ir, graph_topology)
+        previews.append(
+            ArtifactPreview(
+                artifact_type="lad_fc",
+                file_name=scaffold.artifact_plan.lad_fc_name,
+                content=fc_xml,
+            )
         )
-    )
+
     previews.extend(_build_support_artifact_previews(ir))
+    if ir.strict_operand_catalog:
+        previews = [
+            item
+            for item in previews
+            if item.artifact_type != "lad_fc" and not item.artifact_type.startswith("support_lad_fc_")
+        ]
     return previews
 
 
@@ -2557,7 +2566,7 @@ def _build_global_db_member_irs(ir: AwlIR, graph_topology: GraphTopology) -> lis
                 continue
             members.append(
                 MemberIR(
-                    name=_guard_operand_db_member_name(operand),
+                    name=_guard_operand_db_member_name(operand, strict_excel_mode=ir.strict_operand_catalog),
                     datatype="Bool",
                     comment=f"Guard operand {operand}",
                 )
@@ -2566,7 +2575,7 @@ def _build_global_db_member_irs(ir: AwlIR, graph_topology: GraphTopology) -> lis
     for memory in ir.memories:
         members.append(
             MemberIR(
-                name=_db_member_name(memory.name),
+                name=_excel_preserving_db_member_name(memory.name, strict_excel_mode=ir.strict_operand_catalog),
                 datatype="Bool",
                 comment=memory.role,
             )
@@ -2575,7 +2584,7 @@ def _build_global_db_member_irs(ir: AwlIR, graph_topology: GraphTopology) -> lis
     for timer in ir.timers:
         members.append(
             MemberIR(
-                name=_db_member_name(timer.source_timer),
+                name=_excel_preserving_db_member_name(timer.source_timer, strict_excel_mode=ir.strict_operand_catalog),
                 datatype="IEC_TIMER",
                 version="1.0",
                 comment=f"Timer {timer.source_timer} ({timer.kind})",
@@ -2592,12 +2601,15 @@ def _expected_global_db_member_names(ir: AwlIR, graph_topology: GraphTopology) -
     allowed_guard_operands = _strict_allowed_guard_operands(ir)
     for transition in graph_topology.transition_nodes:
         names.update(
-            _guard_operand_db_member_name(operand)
+            _guard_operand_db_member_name(operand, strict_excel_mode=ir.strict_operand_catalog)
             for operand in transition.guard_operands
             if _is_allowed_guard_operand(operand, allowed_guard_operands)
         )
-    names.update(_db_member_name(memory.name) for memory in ir.memories)
-    names.update(_db_member_name(timer.source_timer) for timer in ir.timers)
+    names.update(_excel_preserving_db_member_name(memory.name, strict_excel_mode=ir.strict_operand_catalog) for memory in ir.memories)
+    names.update(
+        _excel_preserving_db_member_name(timer.source_timer, strict_excel_mode=ir.strict_operand_catalog)
+        for timer in ir.timers
+    )
     if not names:
         names.add("NoData")
     return names
@@ -2869,21 +2881,41 @@ def _build_lad_pattern(
 def _collect_io_support_members(ir: AwlIR) -> list[tuple[str, str]]:
     members: list[tuple[str, str]] = []
     for output in ir.outputs:
-        members.append((_support_member_name(output.name, "Q"), f"Output mapping {output.name}"))
+        members.append(
+            (
+                _support_member_name(output.name, "Q", strict_excel_mode=ir.strict_operand_catalog),
+                f"Output mapping {output.name}",
+            )
+        )
     for ext in ir.external_refs:
         if ext.startswith(("A", "Q")):
             continue
         family = _classify_operand_family(ext)
-        members.append((_support_member_name(ext, family), f"External reference {ext} ({family})"))
+        members.append(
+            (
+                _support_member_name(ext, family, strict_excel_mode=ir.strict_operand_catalog),
+                f"External reference {ext} ({family})",
+            )
+        )
     return list(dict.fromkeys(members))
 
 
 def _collect_diag_support_members(ir: AwlIR) -> list[tuple[str, str]]:
     members: list[tuple[str, str]] = []
     for timer in ir.timers:
-        members.append((_support_member_name(timer.source_timer, "T"), f"Timer diagnostic {timer.source_timer}"))
+        members.append(
+            (
+                _support_member_name(timer.source_timer, "T", strict_excel_mode=ir.strict_operand_catalog),
+                f"Timer diagnostic {timer.source_timer}",
+            )
+        )
     for fault in ir.faults:
-        members.append((_support_member_name(fault.name, "F"), f"Fault diagnostic {fault.name}"))
+        members.append(
+            (
+                _support_member_name(fault.name, "F", strict_excel_mode=ir.strict_operand_catalog),
+                f"Fault diagnostic {fault.name}",
+            )
+        )
     return list(dict.fromkeys(members))
 
 
@@ -2914,17 +2946,18 @@ def _collect_transitions_support_members(
 ) -> list[tuple[str, str]]:
     members: list[tuple[str, str]] = []
     for transition in ir.transitions:
-        member = _support_member_name(transition.transition_id, "TR")
+        member = _support_member_name(transition.transition_id, "TR", strict_excel_mode=ir.strict_operand_catalog)
         members.append((member, f"Transition edge {transition.source_step}->{transition.target_step}"))
-    for network_no, _, _ in network_specs:
-        members.append((f"TR_NETWORK_{network_no}_ACTIVE", f"Transition network {network_no} active"))
+    if not ir.strict_operand_catalog:
+        for network_no, _, _ in network_specs:
+            members.append((f"TR_NETWORK_{network_no}_ACTIVE", f"Transition network {network_no} active"))
     return list(dict.fromkeys(members))
 
 
 def _collect_output_family_members(ir: AwlIR) -> list[tuple[str, str]]:
     members: list[tuple[str, str]] = []
     for output in ir.outputs:
-        member = _support_member_name(output.name, "OUT_CMD")
+        member = _support_member_name(output.name, "OUT_CMD", strict_excel_mode=ir.strict_operand_catalog)
         members.append((member, f"Output command {output.action} {output.name}"))
     return list(dict.fromkeys(members))
 
@@ -2934,11 +2967,11 @@ def _collect_hmi_support_members(ir: AwlIR) -> list[tuple[str, str]]:
     for ext in ir.external_refs:
         candidate = ext.upper()
         if any(marker in candidate for marker in ("HMI", "OPIN", "OPOUT", "DB81", "DB82")):
-            member = _support_member_name(candidate, "HMI")
+            member = _support_member_name(candidate, "HMI", strict_excel_mode=ir.strict_operand_catalog)
             members.append((member, f"HMI/Operator reference {candidate}"))
     for memory in ir.memories:
         if str(memory.role).lower() == "hmi":
-            member = _support_member_name(memory.name, "HMI")
+            member = _support_member_name(memory.name, "HMI", strict_excel_mode=ir.strict_operand_catalog)
             members.append((member, f"HMI tagged memory {memory.name}"))
     return list(dict.fromkeys(members))
 
@@ -2946,10 +2979,10 @@ def _collect_hmi_support_members(ir: AwlIR) -> list[tuple[str, str]]:
 def _collect_aux_support_members(ir: AwlIR) -> list[tuple[str, str]]:
     members: list[tuple[str, str]] = []
     for memory in ir.memories:
-        member = _support_member_name(memory.name, "AUX_MEM")
+        member = _support_member_name(memory.name, "AUX_MEM", strict_excel_mode=ir.strict_operand_catalog)
         members.append((member, f"Aux memory ({memory.role}) {memory.name}"))
     for timer in ir.timers:
-        member = _support_member_name(timer.source_timer, "AUX_TIMER")
+        member = _support_member_name(timer.source_timer, "AUX_TIMER", strict_excel_mode=ir.strict_operand_catalog)
         members.append((member, f"Aux timer {timer.source_timer}"))
     return list(dict.fromkeys(members))
 
@@ -2960,13 +2993,13 @@ def _collect_network_support_specs(ir: AwlIR) -> list[tuple[int, str, list[tuple
         network_members: list[tuple[str, str]] = []
         for operand in _collect_condition_operands(network):
             family = _classify_operand_family(operand)
-            member = _support_member_name(operand, f"COND_{family}")
+            member = _support_member_name(operand, f"COND_{family}", strict_excel_mode=ir.strict_operand_catalog)
             network_members.append((member, f"Condition operand {operand} ({family})"))
         for output_name, action in _collect_output_targets(network):
-            member = _support_member_name(output_name, "OUT")
+            member = _support_member_name(output_name, "OUT", strict_excel_mode=ir.strict_operand_catalog)
             network_members.append((member, f"Output action {action} {output_name}"))
         for memory_name, action in _collect_memory_targets(network):
-            member = _support_member_name(memory_name, "MEM")
+            member = _support_member_name(memory_name, "MEM", strict_excel_mode=ir.strict_operand_catalog)
             network_members.append((member, f"Memory action {action} {memory_name}"))
         unique_members = list(dict.fromkeys(network_members))
         if not unique_members:
@@ -2975,7 +3008,9 @@ def _collect_network_support_specs(ir: AwlIR) -> list[tuple[int, str, list[tuple
     return specs
 
 
-def _support_member_name(raw_symbol: str, prefix: str) -> str:
+def _support_member_name(raw_symbol: str, prefix: str, *, strict_excel_mode: bool = False) -> str:
+    if strict_excel_mode:
+        return _excel_preserving_db_member_name(raw_symbol, strict_excel_mode=True)
     normalized = _normalize_symbol_name(raw_symbol, f"{prefix}_SIGNAL")
     return _db_member_name(f"{prefix}_{normalized}")
 
@@ -3390,8 +3425,16 @@ def _db_member_name(raw_name: str) -> str:
     return _sanitize_tia_member_name(sanitized, fallback="Signal", seed=raw_name)
 
 
-def _guard_operand_db_member_name(operand: str) -> str:
+def _excel_preserving_db_member_name(raw_name: str, *, strict_excel_mode: bool) -> str:
+    if strict_excel_mode:
+        return _sanitize_tia_member_name(raw_name, fallback="Signal", seed=raw_name)
+    return _db_member_name(raw_name)
+
+
+def _guard_operand_db_member_name(operand: str, *, strict_excel_mode: bool = False) -> str:
     token = str(operand or "").strip()
+    if strict_excel_mode:
+        return _excel_preserving_db_member_name(token, strict_excel_mode=True)
     if TIMER_RE.fullmatch(token.upper()):
         return _db_member_name(f"{token}_DONE")
     return _db_member_name(token)

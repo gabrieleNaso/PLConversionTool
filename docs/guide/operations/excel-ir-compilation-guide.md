@@ -1,6 +1,6 @@
 # Guida Excel IR (Formato Singola Pagina)
 
-Obiettivo: compilare un Excel leggibile per generare `IR JSON` e XML TIA (`FB/DB/FC`) senza passare da AWL.
+Obiettivo: compilare un Excel leggibile per generare `IR JSON` e XML TIA (`FB/DB`) senza passare da AWL.
 
 Template consigliato:
 - `docs/templates/ir_excel_template_single_page.xlsx`
@@ -8,7 +8,7 @@ Template consigliato:
 Output:
 1. `<Sequence>_ir.json`
 2. `<Sequence>_analysis.json`
-3. bundle XML TIA in `data/output/generated/<sequence_name>/`
+3. bundle XML TIA in `data/output/generated/<sequence_name>/` (solo `FB + DB`, nessuna `FC`)
 
 Compatibilita':
 - il parser legge anche il formato legacy (`steps`, `transitions`, `timers`, `memories`, `faults`, `outputs`), ma per nuovi file usare il formato singola pagina.

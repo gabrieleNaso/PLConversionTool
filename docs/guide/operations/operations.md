@@ -184,7 +184,7 @@ make generate-excel-ir EXCEL_FILE="docs/templates/ir_excel_template_single_page.
 Output nel bundle:
 - `<Name>_ir.json` (IR estratto dall'Excel)
 - `<Name>_analysis.json` (analisi completa usata per generare XML)
-- XML baseline e support (in base al contenuto IR)
+- XML baseline e support per `GRAPH + DB` (in modalità Excel non vengono generate `FC`)
 
 Fogli Excel consigliati:
 - `meta`: chiavi libere `key/value` (`sequence_name`, `source_name`, `assumptions`)
