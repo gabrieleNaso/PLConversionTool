@@ -23,7 +23,7 @@ Compatibilita':
 - `support_fc_logic` (opzionale): logica LAD interna delle FC di supporto.
 
 Regola base:
-- non compilare `network_index`: viene assegnato dal generatore.
+- nei fogli supporto usa la colonna `network` (semplice); `network_index` resta solo alias legacy.
 - per il flusso Excel, `operands` e `support_fc` sono obbligatori e devono contenere almeno una riga valida.
 
 ## 2) Foglio `meta`
@@ -88,14 +88,12 @@ Per input Excel, il generatore usa `operands` come catalogo strict:
 Se una transizione usa operandi non presenti nel catalogo, il report analysis segnala warning dedicati.
 
 ## 6) Foglio `support_fc` (obbligatorio)
-Usa questo foglio quando vuoi controllare direttamente cosa compare nelle FC/DB di supporto (`io`, `output`, `diag`, `hmi`, `aux`, `transitions`, `mode`, `network`) invece di usare l'inferenza automatica.
+Usa questo foglio quando vuoi controllare direttamente cosa compare nelle FC/DB di supporto (`io`, `output`, `diag`, `hmi`, `aux`, `transitions`, `mode`) invece di usare l'inferenza automatica.
 
 Colonne:
-- `category`: categoria supporto. Valori: `io`, `output`, `diag`, `hmi`, `aux`, `transitions`, `mode`, `network`.
+- `category`: categoria supporto. Valori: `io`, `output`, `diag`, `hmi`, `aux`, `transitions`, `mode`.
 - `member_name`: nome variabile da inserire nel DB supporto e nella FC supporto collegata.
 - `comment`: commento opzionale.
-- `network_index`: usato solo con `category=network` per decidere in quale DB/FC rete mettere il member.
-- `network_title`: opzionale per `category=network`.
 
 Regole:
 - se una categoria e' presente in `support_fc`, per quella categoria il generatore usa i member del foglio.
@@ -103,38 +101,38 @@ Regole:
 - `support_fc` puo' convivere con `operands`: `operands` continua a governare topologia/strict DB, `support_fc` governa i support artifacts.
 
 Esempi rapidi (`support_fc`):
-- `io | I_START_BTN | Pulsante start | |`
-- `output | Q_MOTOR_CMD | Comando motore | |`
-- `diag | ALM_OVERTEMP | Allarme temperatura | |`
-- `hmi | HMI_CMD_START | Comando da pannello | |`
-- `aux | M_CYCLE_ACTIVE | Memoria ciclo | |`
-- `transitions | T_INTERLOCK_OK | Segnale interlock | |`
-- `mode | MODE_MANUAL_ACTIVE | Modo manuale attivo | |`
-- `network | COND_LINEA_OK | Condizione rete 1 | 1 | Rete_1_Condizioni`
+- `io | I_START_BTN | Pulsante start`
+- `output | Q_MOTOR_CMD | Comando motore`
+- `diag | ALM_OVERTEMP | Allarme temperatura`
+- `hmi | HMI_CMD_START | Comando da pannello`
+- `aux | M_CYCLE_ACTIVE | Memoria ciclo`
+- `transitions | T_INTERLOCK_OK | Segnale interlock`
+- `mode | MODE_MANUAL_ACTIVE | Modo manuale attivo`
 
 ## 7) Foglio `support_fc_logic` (opzionale, avanzato)
 Usa questo foglio per definire la logica LAD interna delle FC supporto direttamente da Excel.
 
 Colonne:
-- `category`: categoria FC (`io`, `output`, `diag`, `hmi`, `aux`, `transitions`, `mode`, `network`).
+- `category`: categoria FC (`io`, `output`, `diag`, `hmi`, `aux`, `transitions`, `mode`).
 - `result_member`: variabile bobina da scrivere nel DB supporto.
 - `condition_expression`: espressione booleana (es. `I_START_BTN AND NOT I_STOP_BTN`).
 - `condition_operands`: elenco operandi separati da `;` (fallback e tracciabilita').
 - `comment`: commento network.
-- `network_index`: opzionale (obbligatorio per `category=network` se vuoi associare la logica a una rete specifica).
-- `network_title`: opzionale (utile con `category=network`).
+- `network`: numero rete (semplice) a cui la riga appartiene.
 
 Regole:
 - se per una categoria compili `support_fc_logic`, la FC di quella categoria usa la logica custom;
+- per definire piu' network nella stessa FC, compila piu' righe con `network` diverso (`1`, `2`, `3`, ...);
 - i `result_member` e gli operandi usati in `condition_operands` vengono aggiunti automaticamente ai member DB di supporto (se mancanti);
 - OR/AND/NOT sono supportati in `condition_expression`;
 - se lasci vuota `condition_expression` ma compili `condition_operands`, il generatore crea una condizione `AND` tra gli operandi;
 - se lasci entrambe vuote, la rete risulta sempre vera (`TRUE`).
+- `network_index` resta accettato come alias legacy, ma il formato consigliato e' `network`.
 
 Esempi rapidi (`support_fc_logic`):
-- `io | RUN_ENABLE | I_START_BTN AND NOT I_STOP_BTN | I_START_BTN;I_STOP_BTN | Rete start/stop | |`
-- `output | Q_MOTOR_CMD | RUN_ENABLE AND SAFETY_OK | RUN_ENABLE;SAFETY_OK | Comando motore | |`
-- `network | COND_LINEA_OK | SENS_A OR SENS_B | SENS_A;SENS_B | Logica rete 1 | 1 | Rete_1_Condizioni`
+- `io | RUN_ENABLE | I_START_BTN AND NOT I_STOP_BTN | I_START_BTN;I_STOP_BTN | Rete start/stop | 1`
+- `output | Q_MOTOR_CMD | RUN_ENABLE AND SAFETY_OK | RUN_ENABLE;SAFETY_OK | Comando motore | 1`
+- `aux | AUX_READY | AUX_IN_1 OR AUX_IN_2 | AUX_IN_1;AUX_IN_2 | Logica ausiliaria | 2 |`
 
 ## 8) Paralleli
 Per modellare un parallelo reale:

@@ -1874,12 +1874,10 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
             )
         )
 
-    network_specs = _excel_network_support_specs(ir)
-    if not network_specs and len(ir.networks) <= 5:
+    network_specs: list[tuple[int, str, list[tuple[str, str]]]] = []
+    if len(ir.networks) <= 5:
         network_specs = _collect_network_support_specs(ir)
     for network_no, network_title, members in network_specs:
-        network_logic = _excel_support_logic_rows(ir, "network", network_index=network_no)
-        members = _merge_support_members_with_logic(members, network_logic)
         suffix = _network_support_suffix(network_no, network_title)
         (
             network_db_name,
@@ -1911,7 +1909,6 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     title=f"{ir.sequence_name} Network {network_no} LAD ({network_title})",
                     db_name=network_db_name,
                     members=[name for name, _ in members],
-                    logic_rows=network_logic,
                     number_seed=f"{ir.sequence_name}_{suffix}_FC",
                     number_base=network_fc_base,
                 ),
@@ -2773,9 +2770,10 @@ def _build_support_lad_compile_units(
             result_member = str(logic_row.get("result_member") or "").strip()
             if not result_member:
                 continue
+            network_no = _as_positive_int(logic_row.get("network_index")) or (index + 1)
             condition_expression = str(logic_row.get("condition_expression") or "TRUE")
             condition_operands = _as_str_list(logic_row.get("condition_operands"))
-            comment = str(logic_row.get("comment") or "").strip() or f"{result_member} custom logic"
+            comment = str(logic_row.get("comment") or "").strip() or f"Network {network_no} - {result_member}"
             unit_id = format(base_id + (index * 3), "X")
             comment_id = format(base_id + (index * 3) + 1, "X")
             comment_item_id = format(base_id + (index * 3) + 2, "X")
@@ -3146,7 +3144,6 @@ def _excel_support_members(ir: AwlIR, category: str) -> list[tuple[str, str]]:
 def _excel_support_logic_rows(
     ir: AwlIR,
     category: str,
-    network_index: int | None = None,
 ) -> list[dict[str, object]]:
     normalized_category = str(category or "").strip().lower()
     if not normalized_category:
@@ -3159,8 +3156,6 @@ def _excel_support_logic_rows(
             continue
 
         item_network = _as_positive_int(item.get("network_index"))
-        if network_index is not None and item_network not in {None, network_index}:
-            continue
 
         result_raw = str(item.get("result_member") or "").strip()
         if not result_raw:
@@ -3188,6 +3183,12 @@ def _excel_support_logic_rows(
                 "network_index": item_network,
             }
         )
+    rows.sort(
+        key=lambda row: (
+            _as_positive_int(row.get("network_index")) or 10**9,
+            str(row.get("result_member") or ""),
+        )
+    )
     return rows
 
 
@@ -3208,31 +3209,6 @@ def _merge_support_members_with_logic(
                 merged.append((token, "Condition operand from support_fc_logic"))
                 existing.add(token)
     return _dedupe_named_members(merged)
-
-
-def _excel_network_support_specs(ir: AwlIR) -> list[tuple[int, str, list[tuple[str, str]]]]:
-    grouped: dict[int, tuple[str, list[tuple[str, str]]]] = {}
-    for item in ir.support_members:
-        raw_category = str(item.get("category") or "").strip().lower()
-        if raw_category != "network":
-            continue
-        member_name_raw = str(item.get("member_name") or "").strip()
-        if not member_name_raw:
-            continue
-        network_index = _as_positive_int(item.get("network_index")) or 1
-        network_title = str(item.get("network_title") or "").strip() or f"Excel_Network_{network_index}"
-        member_name = _support_member_name(member_name_raw, "", strict_excel_mode=True)
-        comment = str(item.get("comment") or "").strip() or f"Excel override network {network_index}"
-        title, members = grouped.setdefault(network_index, (network_title, []))
-        members.append((member_name, comment))
-        if title != network_title:
-            grouped[network_index] = (title, members)
-
-    specs: list[tuple[int, str, list[tuple[str, str]]]] = []
-    for network_index in sorted(grouped):
-        network_title, members = grouped[network_index]
-        specs.append((network_index, network_title, _dedupe_named_members(members)))
-    return specs
 
 
 def _collect_io_support_members(ir: AwlIR) -> list[tuple[str, str]]:

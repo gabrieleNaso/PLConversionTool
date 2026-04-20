@@ -145,8 +145,6 @@ def _normalize_support_category(value: object) -> str:
         "uscite": "output",
         "hmi": "hmi",
         "aux": "aux",
-        "network": "network",
-        "networks": "network",
     }
     return aliases.get(raw, "")
 
@@ -169,7 +167,7 @@ def _read_support_members(path: Path) -> list[dict[str, object]]:
                 "category": category,
                 "member_name": member_name,
                 "comment": _cell_text(_pick(row, "comment", "note", "notes", "description", "descrizione")),
-                "network_index": _int_or_none(_pick(row, "network_index", "network", "network_no", "rete")),
+                "network_index": _int_or_none(_pick(row, "network", "network_index", "network_no", "rete")),
                 "network_title": _cell_text(_pick(row, "network_title", "title", "network_name")),
             }
         )
@@ -202,7 +200,7 @@ def _read_support_logic_rows(path: Path) -> list[dict[str, object]]:
         logic_rows.append(
             {
                 "category": category,
-                "network_index": _int_or_none(_pick(row, "network_index", "network", "network_no", "rete")),
+                "network_index": _int_or_none(_pick(row, "network", "network_index", "network_no", "rete")),
                 "network_title": _cell_text(_pick(row, "network_title", "title", "network_name")),
                 "result_member": result_member,
                 "condition_expression": condition_expression or "TRUE",

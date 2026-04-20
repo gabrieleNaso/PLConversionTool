@@ -191,8 +191,8 @@ Fogli Excel consigliati:
 - `meta`: chiavi libere `key/value` (`sequence_name`, `source_name`, `assumptions`)
 - `sequence`: `step_name`, `numero_step`, `transition_id`, `from_step`, `to_step`, `condition_expression`, `operands_used_in_condition`, `flow_type`, `parallel_group`, `jump_labels_used`
 - `operands`: `operand`, `category`, `write_action`, `timer_instruction_kind`, `timer_preset_value`, `trigger_operands`, `note`
-- `support_fc` (obbligatorio): `category`, `member_name`, `comment`, `network_index`, `network_title`
-- `support_fc_logic` (opzionale): `category`, `result_member`, `condition_expression`, `condition_operands`, `comment`, `network_index`, `network_title`
+- `support_fc` (obbligatorio): `category`, `member_name`, `comment`
+- `support_fc_logic` (opzionale): `category`, `result_member`, `condition_expression`, `condition_operands`, `comment`, `network`
 
 Regole Excel importanti:
 - l'inizio sequenza e' il passo con `numero_step=1` (non dal nome del passo);
