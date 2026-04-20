@@ -1,9 +1,10 @@
 # Guida Excel IR (Formato Singola Pagina)
 
-Obiettivo: compilare un Excel leggibile per generare `IR JSON` e XML TIA (`FB/DB`) senza passare da AWL.
+Obiettivo: compilare un Excel leggibile per generare `IR JSON` e XML TIA (`FB/DB/FC`) senza passare da AWL.
 
 Template consigliato:
 - `docs/templates/ir_excel_template_single_page.xlsx`
+- `docs/templates/ir_excel_template_single_page_with_support_fc.xlsx` (con foglio `support_fc` gia' pronto)
 
 Output:
 1. `<Sequence>_ir.json`
@@ -12,6 +13,7 @@ Output:
 
 Compatibilita':
 - il parser legge anche il formato legacy (`steps`, `transitions`, `timers`, `memories`, `faults`, `outputs`), ma per nuovi file usare il formato singola pagina.
+- il foglio per override FC puo' chiamarsi `support_fc` (consigliato) o `fc_support` (alias compatibile).
 
 ## 1) Struttura workbook
 - `meta`: metadati generali.
@@ -98,6 +100,16 @@ Regole:
 - se una categoria non e' presente, resta l'inferenza automatica standard.
 - `support_fc` puo' convivere con `operands`: `operands` continua a governare topologia/strict DB, `support_fc` governa i support artifacts.
 
+Esempi rapidi (`support_fc`):
+- `io | I_START_BTN | Pulsante start | |`
+- `output | Q_MOTOR_CMD | Comando motore | |`
+- `diag | ALM_OVERTEMP | Allarme temperatura | |`
+- `hmi | HMI_CMD_START | Comando da pannello | |`
+- `aux | M_CYCLE_ACTIVE | Memoria ciclo | |`
+- `transitions | T_INTERLOCK_OK | Segnale interlock | |`
+- `mode | MODE_MANUAL_ACTIVE | Modo manuale attivo | |`
+- `network | COND_LINEA_OK | Condizione rete 1 | 1 | Rete_1_Condizioni`
+
 ## 7) Paralleli
 Per modellare un parallelo reale:
 1. split: stesso `from_step`, target diversi, `flow_type=parallel`.
@@ -119,6 +131,11 @@ Il generatore emette:
 - `ALM_TEMP | alarm | | | | | allarme temperatura`
 
 ## 9) Generazione
+```bash
+make generate-excel-ir EXCEL_FILE="docs/templates/ir_excel_template_single_page_with_support_fc.xlsx"
+```
+
+Alternativa (template base senza foglio precompilato `support_fc`):
 ```bash
 make generate-excel-ir EXCEL_FILE="docs/templates/ir_excel_template_single_page.xlsx"
 ```

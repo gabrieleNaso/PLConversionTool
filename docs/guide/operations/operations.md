@@ -174,6 +174,7 @@ Guida completa compilazione Excel:
 
 Template pronto:
 - `docs/templates/ir_excel_template_single_page.xlsx` (formato consigliato)
+- `docs/templates/ir_excel_template_single_page_with_support_fc.xlsx` (con foglio `support_fc` di esempio)
 
 Comando:
 
@@ -184,12 +185,13 @@ make generate-excel-ir EXCEL_FILE="docs/templates/ir_excel_template_single_page.
 Output nel bundle:
 - `<Name>_ir.json` (IR estratto dall'Excel)
 - `<Name>_analysis.json` (analisi completa usata per generare XML)
-- XML baseline e support per `GRAPH + DB` (in modalità Excel non vengono generate `FC`)
+- XML baseline e support per `GRAPH + DB + FC`
 
 Fogli Excel consigliati:
 - `meta`: chiavi libere `key/value` (`sequence_name`, `source_name`, `assumptions`)
 - `sequence`: `step_name`, `numero_step`, `transition_id`, `from_step`, `to_step`, `condition_expression`, `operands_used_in_condition`, `flow_type`, `parallel_group`, `jump_labels_used`
 - `operands`: `operand`, `category`, `write_action`, `timer_instruction_kind`, `timer_preset_value`, `trigger_operands`, `note`
+- `support_fc` (opzionale): `category`, `member_name`, `comment`, `network_index`, `network_title`
 
 Regole Excel importanti:
 - l'inizio sequenza e' il passo con `numero_step=1` (non dal nome del passo);
