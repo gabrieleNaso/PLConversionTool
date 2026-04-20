@@ -419,10 +419,13 @@ def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[s
     # New readable format: optional operand catalog that classifies signals
     # used in LAD transition logic by function (alarm/aux/hmi/output/timer/...).
     operand_rows = _read_sheet_rows(path, "operands")
+    operand_catalog: list[str] = []
     for idx, row in enumerate(operand_rows, start=1):
         operand = _cell_text(_pick(row, "operand", "name", "tag"))
         if not operand:
             continue
+        if operand not in operand_catalog:
+            operand_catalog.append(operand)
         category = _normalize_operand_category(_pick(row, "category", "type", "group"))
         network_index = _infer_network_index_for_operand(operand, transitions, idx)
         note = _cell_text(_pick(row, "note", "notes", "evidence"))
@@ -495,6 +498,62 @@ def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[s
     manual_logic_networks = sorted(set(manual_logic_networks))
     auto_logic_networks = sorted(set(auto_logic_networks))
 
+    # Step references in transitions are normalized using explicit step_number
+    # mapping, so Excel naming stays free and consistent.
+    explicit_by_number: dict[int, str] = {}
+    explicit_names = {
+        str(item.get("name") or "").strip()
+        for item in steps
+        if str(item.get("name") or "").strip() and item.get("step_number") is not None
+    }
+    for item in steps:
+        name = str(item.get("name") or "").strip()
+        number = item.get("step_number")
+        if not name or number is None:
+            continue
+        try:
+            step_no = int(number)
+        except (TypeError, ValueError):
+            continue
+        if step_no > 0 and step_no not in explicit_by_number:
+            explicit_by_number[step_no] = name
+
+    alias_pattern = re.compile(r"^S(\d+)$", flags=re.IGNORECASE)
+
+    def _normalize_step_ref(token: str) -> str:
+        token = token.strip()
+        match = alias_pattern.match(token)
+        if not match:
+            return token
+        if token in explicit_names:
+            return token
+        step_no = int(match.group(1))
+        return explicit_by_number.get(step_no, token)
+
+    for transition in transitions:
+        source = str(transition.get("source_step") or "").strip()
+        target = str(transition.get("target_step") or "").strip()
+        if source:
+            transition["source_step"] = _normalize_step_ref(source)
+        if target:
+            transition["target_step"] = _normalize_step_ref(target)
+
+    # Remove alias-only steps (e.g. "S1") when a canonical explicit step with
+    # the same number exists (e.g. "Init" with step_number=1).
+    canonical_by_number = {number: name for number, name in explicit_by_number.items() if name}
+    cleaned_steps: list[dict[str, object]] = []
+    for item in steps:
+        name = str(item.get("name") or "").strip()
+        step_number = item.get("step_number")
+        match = alias_pattern.match(name)
+        if match and step_number is None:
+            alias_no = int(match.group(1))
+            canonical_name = canonical_by_number.get(alias_no)
+            if canonical_name and canonical_name != name:
+                continue
+        cleaned_steps.append(item)
+    steps = cleaned_steps
+
     # Enrich step metadata from transitions when not explicitly provided in Excel.
     step_map: dict[str, dict[str, object]] = {item["name"]: item for item in steps}
     for transition in transitions:
@@ -541,6 +600,8 @@ def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[s
         "manual_logic_networks": manual_logic_networks,
         "auto_logic_networks": auto_logic_networks,
         "external_refs": external_refs,
+        "strict_operand_catalog": True,
+        "operand_catalog": operand_catalog,
         "assumptions": _split_list(meta.get("assumptions")),
     }
     return normalized_sequence, source_name, ir_payload

@@ -299,6 +299,8 @@ def _ir_from_payload(
         manual_logic_networks=_as_int_list(ir_payload.get("manual_logic_networks")),
         auto_logic_networks=_as_int_list(ir_payload.get("auto_logic_networks")),
         external_refs=sorted(set(_as_str_list(ir_payload.get("external_refs")))),
+        strict_operand_catalog=bool(ir_payload.get("strict_operand_catalog", False)),
+        operand_catalog=sorted(set(_as_str_list(ir_payload.get("operand_catalog")))),
         assumptions=_as_str_list(ir_payload.get("assumptions"))
         or [
             "IR caricato da JSON esterno (es. Excel): verificare coerenza semantica delle guardie prima dell'import TIA."
@@ -925,16 +927,60 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
             warnings=["Nessun passo disponibile per costruire il GRAPH target."],
         )
 
+    # Drop orphan steps that are not referenced by any transition.
+    # TIA GRAPH import rejects disconnected elements (e.g. "Init has no connection").
+    if ir.transitions:
+        referenced_steps = {
+            str(item.source_step)
+            for item in ir.transitions
+            if str(item.source_step)
+        } | {
+            str(item.target_step)
+            for item in ir.transitions
+            if str(item.target_step)
+        }
+        orphan_steps = [item.name for item in ordered_steps if item.name not in referenced_steps]
+        if orphan_steps:
+            ordered_steps = [item for item in ordered_steps if item.name in referenced_steps]
+            if not ordered_steps:
+                ordered_steps = list(ir.steps)
+
     transition_targets = {transition.target_step for transition in ir.transitions}
-    entry_step = None
-    for step in ordered_steps:
-        if step.name not in transition_targets:
-            entry_step = step.name
-            break
-    if entry_step is None:
-        entry_step = ordered_steps[0].name
+    step_no_1 = next(
+        (
+            step
+            for step in ordered_steps
+            if step.step_number is not None and int(step.step_number) == 1
+        ),
+        None,
+    )
+    if step_no_1 is not None:
+        entry_step = step_no_1.name
+    else:
+        entry_step = None
+        for step in ordered_steps:
+            if step.name not in transition_targets:
+                entry_step = step.name
+                break
+        if entry_step is None:
+            entry_step = ordered_steps[0].name
 
     warnings: list[str] = []
+    if ir.transitions:
+        referenced_steps = {
+            str(item.source_step)
+            for item in ir.transitions
+            if str(item.source_step)
+        } | {
+            str(item.target_step)
+            for item in ir.transitions
+            if str(item.target_step)
+        }
+        orphan_steps = [item.name for item in ir.steps if item.name not in referenced_steps]
+        if orphan_steps:
+            warnings.append(
+                "Rimossi step non connessi dal GRAPH: " + ", ".join(orphan_steps)
+            )
 
     working_transitions = [
         TransitionCandidate(
@@ -1035,10 +1081,8 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
     next_transition_no = len(transition_nodes) + 1
 
     all_steps = list(ordered_steps)
-    reserved_step_names = {"S1", "S29", "S30", "S32"}
-    reserved_step_numbers = {
-        int(name[1:]) for name in reserved_step_names if any(step.name == name for step in all_steps)
-    }
+    special_step_numbers = {1, 29, 30, 32}
+    reserved_step_numbers = set(special_step_numbers)
     used_step_numbers: set[int] = set()
     step_nodes: list[GraphStepNode] = []
     next_sequential = 1
@@ -1055,8 +1099,6 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
                 next_sequential += 1
             step_no = next_sequential
             next_sequential += 1
-        elif step.name in reserved_step_names:
-            step_no = int(step.name[1:])
         else:
             while next_sequential in used_step_numbers or next_sequential in reserved_step_numbers:
                 next_sequential += 1
@@ -1089,20 +1131,21 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
     step_nodes.sort(key=lambda node: node.step_no)
 
     step_no_by_name = {step.name: step.step_no for step in step_nodes}
+    step_name_by_no = {step.step_no: step.name for step in step_nodes}
 
-    reserved_chain = ["S29", "S30", "S32"]
-    present_reserved = [name for name in reserved_chain if name in step_no_by_name]
-    if present_reserved:
+    reserved_chain_numbers = [29, 30, 32]
+    present_reserved_numbers = [number for number in reserved_chain_numbers if number in step_name_by_no]
+    if present_reserved_numbers:
         existing_incoming = {transition.target_step for transition in transition_nodes}
-        first_reserved = present_reserved[0]
-        if first_reserved not in existing_incoming and first_reserved != entry_step:
-            transition_name = f"T_CHAIN_{entry_step}_TO_{first_reserved}"
+        first_reserved_name = step_name_by_no[present_reserved_numbers[0]]
+        if first_reserved_name not in existing_incoming and first_reserved_name != entry_step:
+            transition_name = f"T_CHAIN_{entry_step}_TO_{first_reserved_name}"
             transition_nodes.append(
                 GraphTransitionNode(
                     name=transition_name,
                     transition_no=next_transition_no,
                     source_step=entry_step,
-                    target_step=first_reserved,
+                    target_step=first_reserved_name,
                     guard_expression="FALSE",
                     guard_operands=[],
                     network_index=next_synthetic_network,
@@ -1112,18 +1155,20 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
             )
             next_transition_no += 1
             next_synthetic_network += 1
-            existing_incoming.add(first_reserved)
+            existing_incoming.add(first_reserved_name)
 
-        for prev_step, next_step in zip(present_reserved, present_reserved[1:]):
-            if next_step in existing_incoming:
+        for prev_number, next_number in zip(present_reserved_numbers, present_reserved_numbers[1:]):
+            prev_name = step_name_by_no[prev_number]
+            next_name = step_name_by_no[next_number]
+            if next_name in existing_incoming:
                 continue
-            transition_name = f"T_CHAIN_{prev_step}_TO_{next_step}"
+            transition_name = f"T_CHAIN_{prev_name}_TO_{next_name}"
             transition_nodes.append(
                 GraphTransitionNode(
                     name=transition_name,
                     transition_no=next_transition_no,
-                    source_step=prev_step,
-                    target_step=next_step,
+                    source_step=prev_name,
+                    target_step=next_name,
                     guard_expression="FALSE",
                     guard_operands=[],
                     network_index=next_synthetic_network,
@@ -1133,7 +1178,7 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
             )
             next_transition_no += 1
             next_synthetic_network += 1
-            existing_incoming.add(next_step)
+            existing_incoming.add(next_name)
 
     existing_incoming = {transition.target_step for transition in transition_nodes}
     for meta in parallel_start_meta.values():
@@ -1579,6 +1624,26 @@ def _validate_operand_coherence(ir: AwlIR) -> list[ValidationIssue]:
                 context=", ".join(sorted(bad_operands)[:10]),
             )
         )
+
+    if ir.strict_operand_catalog:
+        allowed = _strict_allowed_guard_operands(ir)
+        unknown_operands: set[str] = set()
+        for transition in ir.transitions:
+            for operand in transition.guard_operands:
+                if not _is_allowed_guard_operand(operand, allowed):
+                    unknown_operands.add(operand)
+        if unknown_operands:
+            issues.append(
+                ValidationIssue(
+                    level="warning",
+                    code="STRICT_OPERAND_CATALOG_WARNING",
+                    message=(
+                        "Modalita' strict Excel: alcuni operandi guard non sono nel catalogo operands "
+                        "e non verranno materializzati nei DB."
+                    ),
+                    context=", ".join(sorted(unknown_operands)),
+                )
+            )
 
     if ir.transitions and all(item.transition_id.startswith("T_FALLBACK_") for item in ir.transitions):
         issues.append(
@@ -2476,6 +2541,7 @@ def _dedupe_member_irs(members: list[MemberIR]) -> list[MemberIR]:
 
 def _build_global_db_member_irs(ir: AwlIR, graph_topology: GraphTopology) -> list[MemberIR]:
     members: list[MemberIR] = []
+    allowed_guard_operands = _strict_allowed_guard_operands(ir)
 
     for transition in graph_topology.transition_nodes:
         guard_member = transition.db_member_name
@@ -2487,6 +2553,8 @@ def _build_global_db_member_irs(ir: AwlIR, graph_topology: GraphTopology) -> lis
             )
         )
         for operand in transition.guard_operands:
+            if not _is_allowed_guard_operand(operand, allowed_guard_operands):
+                continue
             members.append(
                 MemberIR(
                     name=_guard_operand_db_member_name(operand),
@@ -2521,13 +2589,48 @@ def _build_global_db_member_irs(ir: AwlIR, graph_topology: GraphTopology) -> lis
 
 def _expected_global_db_member_names(ir: AwlIR, graph_topology: GraphTopology) -> set[str]:
     names = {transition.db_member_name for transition in graph_topology.transition_nodes}
+    allowed_guard_operands = _strict_allowed_guard_operands(ir)
     for transition in graph_topology.transition_nodes:
-        names.update(_guard_operand_db_member_name(operand) for operand in transition.guard_operands)
+        names.update(
+            _guard_operand_db_member_name(operand)
+            for operand in transition.guard_operands
+            if _is_allowed_guard_operand(operand, allowed_guard_operands)
+        )
     names.update(_db_member_name(memory.name) for memory in ir.memories)
     names.update(_db_member_name(timer.source_timer) for timer in ir.timers)
     if not names:
         names.add("NoData")
     return names
+
+
+def _strict_allowed_guard_operands(ir: AwlIR) -> set[str] | None:
+    if not ir.strict_operand_catalog:
+        return None
+    raw_items = list(ir.operand_catalog)
+    raw_items.extend(item.name for item in ir.memories)
+    raw_items.extend(item.name for item in ir.faults)
+    raw_items.extend(item.name for item in ir.outputs)
+    raw_items.extend(item.source_timer for item in ir.timers)
+    allowed: set[str] = set()
+    for item in raw_items:
+        token = str(item or "").strip()
+        if not token:
+            continue
+        allowed.add(token.upper())
+        allowed.add(_normalize_symbol_name(token, token).upper())
+    return allowed
+
+
+def _is_allowed_guard_operand(operand: str, allowed: set[str] | None) -> bool:
+    if allowed is None:
+        return True
+    token = str(operand or "").strip()
+    if not token:
+        return False
+    if token.upper() in allowed:
+        return True
+    normalized = _normalize_symbol_name(token, token).upper()
+    return normalized in allowed
 
 
 def _build_lad_temp_members(ir: AwlIR) -> str:
@@ -3794,3 +3897,4 @@ def _canonicalize_step_token(token: str) -> str:
     if not match:
         return token
     return f"S{int(match.group(1))}"
+    allowed_guard_operands = _strict_allowed_guard_operands(ir)

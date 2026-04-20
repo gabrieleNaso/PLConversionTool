@@ -118,6 +118,7 @@ Alternative:
 Note operative:
 - per ogni import, il `tia-bridge` accoda automaticamente una compile
 - se un blocco con lo stesso nome esiste gia' in TIA, l'import viene rifiutato (name collision)
+- lo script `import-generated` effettua polling del job e, su collisione nome blocco, prova automaticamente suffissi numerici (`...1`, `...2`, ...).
 
 ### One command: genera + importa
 
@@ -172,12 +173,12 @@ Guida completa compilazione Excel:
 - `docs/guide/operations/excel-ir-compilation-guide.md`
 
 Template pronto:
-- `docs/templates/ir_excel_template_no_network.xlsx` (formato standard, senza foglio `networks`)
+- `docs/templates/ir_excel_template_single_page.xlsx` (formato consigliato)
 
 Comando:
 
 ```bash
-make generate-excel-ir EXCEL_FILE="docs/templates/ir_excel_template_no_network.xlsx"
+make generate-excel-ir EXCEL_FILE="docs/templates/ir_excel_template_single_page.xlsx"
 ```
 
 Output nel bundle:
@@ -185,14 +186,15 @@ Output nel bundle:
 - `<Name>_analysis.json` (analisi completa usata per generare XML)
 - XML baseline e support (in base al contenuto IR)
 
-Fogli Excel supportati:
-- `meta`: chiavi libere `key/value` (`sequence_name`, `source_name`, `external_refs`, `assumptions`)
-- `steps`: `step_name`, `numero_step`
-- `transitions`: `transition_id`, `from_step`, `to_step`, `condition_expression`, `operands_used_in_condition`, `jump_labels_used`
-- `timers`: `timer_name`, `timer_instruction_kind`, `timer_preset_value`, `timer_trigger_operands`
-- `memories`: `memory_operand`, `memory_role`
-- `faults`: `fault_tag`, `fault_evidence`
-- `outputs`: `output_operand`, `write_action`
+Fogli Excel consigliati:
+- `meta`: chiavi libere `key/value` (`sequence_name`, `source_name`, `assumptions`)
+- `sequence`: `step_name`, `numero_step`, `transition_id`, `from_step`, `to_step`, `condition_expression`, `operands_used_in_condition`, `flow_type`, `parallel_group`, `jump_labels_used`
+- `operands`: `operand`, `category`, `write_action`, `timer_instruction_kind`, `timer_preset_value`, `trigger_operands`, `note`
+
+Regole Excel importanti:
+- l'inizio sequenza e' il passo con `numero_step=1` (non dal nome del passo);
+- i nomi passo sono liberi (`Init`, `StartCiclo`, ecc.);
+- in modalita' Excel, il catalogo `operands` guida la dichiarazione variabili DB (niente inferenze casuali).
 
 Compatibilita':
 - lo script accetta anche vecchi alias di colonna, ma per nuovi file usare i nomi espliciti sopra.
@@ -223,13 +225,17 @@ curl -sS "http://127.0.0.1:8000/api/tia/jobs/<JOB_ID>"
 ```
 
 ## Regole operative essenziali (da non violare)
-- **Numerazione step**: `Sxx` deve diventare `Step Number="xx"` (es. `S29` -> 29).
+- **Numerazione step**: la sorgente primaria e' `step_number/numero_step`; il passo iniziale e' quello con numero `1`.
+- **Naming step**: il nome passo e' libero e non deve cambiare la topologia.
 - **Ingressi multipli** su uno step non iniziale:
   - il primo ingresso puo' essere `Direct`;
   - gli ingressi extra devono essere `Jump`.
 - **Guard logiche transizioni (`Trs`)**:
   - il parser preserva operatori booleani `AND` / `OR` / `NOT` da AWL (`A/AN/O/ON`, inclusi gruppi `A(...)`/`O(...)`);
   - le guardie non vanno appiattite in `AND` quando in AWL esistono rami `OR`.
+- **Excel strict DB**:
+  - la logica transizioni GRAPH resta completa;
+  - nei DB vengono dichiarati solo segnali presenti nel catalogo `operands` (e categorie derivate).
 - **Output fisiche**:
   - sono riconosciute sia in formato `Axx(.x)` sia `Qxx(.x)` quando usate con `=`.
 - **targetPath**: deve partire da `Program blocks/`.
@@ -238,8 +244,8 @@ curl -sS "http://127.0.0.1:8000/api/tia/jobs/<JOB_ID>"
 ## Problemi comuni (e cosa fare)
 
 ### Import bloccato: "block name already exists"
-- rinominare la sequenza (generare un bundle con nome nuovo)
-- oppure cancellare/rinominare il blocco gia' presente in TIA
+- `import-generated` prova automaticamente rinomina con suffissi numerici.
+- se finisce i retry, rinomina sequenza/bundle oppure elimina blocchi duplicati in TIA.
 
 ### Compile post-import in `blocked` con molti errori
 La compile post-import usa lo **stesso targetPath/targetName** dell'import.

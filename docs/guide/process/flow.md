@@ -56,7 +56,8 @@ L'IR nasce da:
 ### Cos'e' l'IR (cosa rappresenta)
 L'IR e' il modello dati del sequenziatore:
 - topologia di step e transizioni;
-- backbone fisso del sequenziatore quando presente (`S1`, `S29`, `S30`, `S32`);
+- passo iniziale determinato da `step_number = 1` quando disponibile;
+- eventuali backbone strutturali speciali quando richiesti dal caso;
 - condizioni/guard;
 - simboli e variabili richieste dal `GlobalDB`;
 - owner DB, branch path e leaf name delle variabili globali;

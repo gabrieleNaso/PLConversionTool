@@ -15,6 +15,7 @@ Regola trasversale:
 - **Static runtime obbligatori**: `RT_DATA : G7_RTDataPlus_V2` + member per ogni step/transition.
 - **Topologia GRAPH**: `Steps/Transitions/Branches/Connections` completa e chiusa.
 - **Transition FlgNet "subset sicuro"**: struttura LAD delle transition nel sottoinsieme accettato da TIA.
+- **Step iniziale**: verificare che `Init="true"` sia assegnato al passo corretto (in workflow Excel: `step_number=1`).
 - **Simboli risolvibili**: tutto cio' che e' referenziato nel `FlgNet` deve essere dichiarato (locale FB o `GlobalDB` con riferimento simbolico esplicito).
 - **Coerenza col pacchetto**: ogni tag, member o nome di blocco referenziato dal `GRAPH` deve esistere e combaciare davvero nel `GlobalDB`/`FC` del pacchetto corrente.
 
@@ -25,6 +26,7 @@ Regola trasversale:
 - **Naming coerente**: naming deterministico, stabile, leggibile (vedi `docs/guide/standards/conventions.md`).
 - **Commenti visibili in TIA**: verificare forma/posizionamento commenti come nel caso validato del DB di prova.
 - **Contratto cross-blocco**: il DB deve dichiarare tutti i member richiesti dal `GRAPH`, dalla `FC LAD` e da eventuali blocchi aggiuntivi del pacchetto, senza drift di naming.
+- **Caso Excel strict**: verificare che i member DB siano coerenti con il catalogo `operands` del file Excel, senza extra non dichiarati.
 
 ## C) Checklist rapida — FC LAD importabile
 - **Blocco**: `SW.Blocks.FC` in LAD, importabile anche con interfaccia minima.
@@ -45,7 +47,7 @@ Regola trasversale:
 ## E) Gate di coerenza prima dell'import
 - **Target runtime**: confermare che `GraphVersion`, datatype runtime e namespace siano coerenti con `TIA Portal V20 / GRAPH V2`.
 - **Cardinalita' reale**: confermare che il bundle rappresenti `1 x FB GRAPH + N x GlobalDB + M x FC LAD`, senza moltiplicare impropriamente il GRAPH.
-- **Backbone fisso**: se il progetto lo richiede, verificare la presenza logica dei nodi strutturali `S1`, `S29`, `S30`, `S32`.
+- **Backbone/inizio sequenza**: verificare la coerenza del passo iniziale (`step_number=1` in workflow Excel) e degli eventuali nodi strutturali richiesti dal caso.
 - **Naming globale**: verificare owner DB, branch path e leaf name di tutti i riferimenti globali usati in `FlgNet` e GRAPH.
 - **Segmentazione AWL**: verificare che la traduzione non abbia perso famiglie logiche ricorrenti (allarmi, memorie, sequenza, manuale/automatico, emergenza/fault, uscite).
 - **Corpus di riferimento**: se il caso e' stato guidato da tipici `V6`, verificare che l'uso sia rimasto solo semantico e non abbia contaminato il serializer finale.

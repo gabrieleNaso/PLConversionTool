@@ -181,6 +181,8 @@ class AwlIR:
     manual_logic_networks: list[int] = field(default_factory=list)
     auto_logic_networks: list[int] = field(default_factory=list)
     external_refs: list[str] = field(default_factory=list)
+    strict_operand_catalog: bool = False
+    operand_catalog: list[str] = field(default_factory=list)
     assumptions: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
