@@ -1,8 +1,8 @@
-Specifica master consolidata del 15-04-2026
+Specifica master consolidata del 20-04-2026
 per le regole di traduzione e generazione XML
-AWL -> IR -> GRAPH / GlobalDB / FC LAD per TIA Portal V20
+AWL / Excel -> IR -> GRAPH / GlobalDB / FC LAD per TIA Portal V20
 
-> Documento unico che unisce: 1) la specifica normativa di traduzione `AWL -> IR -> blocchi TIA`, 2) la specifica rigida di generazione XML, 3) il template operativo e lo pseudo-codice del serializer.
+> Documento unico che unisce: 1) la specifica normativa di traduzione `AWL / Excel -> IR -> blocchi TIA`, 2) la specifica rigida di generazione XML, 3) il template operativo e lo pseudo-codice del serializer.
 
 # Uso del documento
 
@@ -13,7 +13,7 @@ Gerarchia documentale fissata:
 - il report consolidato descrive baseline, evidenze e architettura del progetto;
 - `docs/guide/standards/conventions.md`, `docs/guide/process/flow.md`, `docs/guide/operations/operations.md`, `docs/guide/integration/tia-integration.md` e `docs/guide/checklists/workflow-checklists.md` devono restare coerenti con questa specifica e non possono allentarne le regole hard.
 
-Le Parti I-VI definiscono le regole di traduzione del sorgente AWL, la costruzione dell'IR, il partizionamento nei blocchi TIA e le regole operative finali del convertitore.
+Le Parti I-VI definiscono le regole di traduzione della sorgente di partenza (AWL oppure Excel strutturato), la costruzione dell'IR, il partizionamento nei blocchi TIA e le regole operative finali del convertitore.
 Le Parti VII-IX definiscono la grammatica XML consolidata, il template operativo e lo pseudo-codice del serializer.
 
 ---
@@ -116,6 +116,19 @@ Interpretazione operativa:
 - i ruoli manuale/fault/emergenza vanno riconosciuti semanticamente nell'IR e modellati nel GRAPH secondo la policy di progetto, senza rinomina forzata dei nomi.
 
 Il parser AWL deve riconoscere la logica che porta a questi stati; il builder GRAPH deve preservare topologia e semantica senza imporre nomi hard-coded.
+
+## 4-bis. Regola di doppio ingresso dell'IR
+
+L'IR del convertitore può essere alimentato da due sorgenti ammesse:
+
+- parser AWL;
+- Excel strutturato di progetto.
+
+Le due sorgenti devono convergere sullo stesso contratto semantico di steps, transitions, memories, timers, outputs, hmi_conditions ed external_refs.
+
+Non è ammesso introdurre un backend XML separato che trasformi direttamente l'Excel in blocchi finali bypassando l'IR comune.
+
+L'Excel va quindi trattato come sorgente alternativa di modellazione e catalogazione, non come formato finale di emissione.
 
 # Parte II - Regole di analisi del sorgente AWL
 
@@ -229,7 +242,7 @@ Va modellata esplicitamente distinguendo:
 
 ## 13. IR minimo obbligatorio
 
-Prima della compilazione verso i blocchi TIA, il convertitore deve costruire un IR esplicito contenente almeno:
+Prima della compilazione verso i blocchi TIA, indipendentemente dal fatto che la sorgente sia AWL o Excel strutturato, il convertitore deve costruire un IR esplicito contenente almeno:
 
 - `steps`;
 - `transitions`;
@@ -609,13 +622,17 @@ Sono da considerare fissi almeno:
 
 La pipeline corretta del convertitore è:
 
-`AWL -> segmentazione semantica -> IR -> partizionamento dati -> builder GRAPH/DB/FC -> serializer XML V2 -> validator -> import TIA`
+`AWL / Excel -> normalizzazione sorgente -> IR -> partizionamento dati -> builder GRAPH/DB/FC -> serializer XML V2 -> validator -> import TIA`
 
 ## 35. Regola di non scorciatoia
 
 Non è ammesso il percorso diretto:
 
 `AWL testo libero -> XML finale`
+
+oppure
+
+`Excel foglio libero -> XML finale`
 
 senza passare da:
 
@@ -639,7 +656,8 @@ Una traduzione va considerata corretta solo se soddisfa contemporaneamente:
 
 Le regole consolidate di traduzione del progetto portano a questa conclusione pratica:
 
-- il parser AWL deve estrarre significato, non copiare il contenitore storico;
+- la sorgente AWL deve essere interpretata semanticamente e non copiata nel contenitore storico;
+- l'Excel strutturato può alimentare lo stesso IR del flusso AWL, ma non bypassarlo;
 - l'IR è il centro del convertitore;
 - il partizionamento dei dati è una regola hard del metodo;
 - GRAPH, DB, FC e HMI sono backend distinti ma coordinati;

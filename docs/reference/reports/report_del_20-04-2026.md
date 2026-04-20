@@ -1,4 +1,4 @@
-# Report aggiornato del 15-04-2026
+# Report aggiornato del 20-04-2026
 
 ## Progetto
 Conversione di sequenziatori PLC da AWL a GRAPH in TIA Portal V20 tramite XML.
@@ -16,7 +16,7 @@ L'obiettivo di questa versione consolidata è:
 - mantenere una baseline unica, leggibile e riusabile;
 - integrare in un unico testo sia la parte di reverse engineering XML sia la parte operativa su TIA Portal Openness.
 
-Il documento va quindi usato come riferimento tecnico corrente del progetto alla data del 15-04-2026.
+Il documento va quindi usato come riferimento tecnico corrente del progetto alla data del 20-04-2026.
 
 ---
 
@@ -39,13 +39,27 @@ Uso di ChatGPT per:
 
 Sviluppo di un convertitore che esegua:
 
-- parsing del codice AWL;
-- estrazione formale della macchina a stati implicita;
-- costruzione di un IR esplicito;
+- parsing del codice AWL oppure lettura di una sorgente Excel strutturata;
+- estrazione formale della macchina a stati implicita oppure acquisizione strutturata del modello sequenziale;
+- costruzione di un IR esplicito comune;
 - compilazione verso:
   - `1 x SW.Blocks.FB` GRAPH per la sequenza;
   - `N x SW.Blocks.GlobalDB` applicativi e di supporto quando richiesti dal caso reale;
   - `M x SW.Blocks.FC` LAD di supporto.
+
+### 2.2-bis Ingresso alternativo da Excel
+
+L'IR del progetto non va più considerato legato esclusivamente al parser AWL.
+
+È ora da considerare ammessa anche una seconda sorgente controllata:
+
+- Excel strutturato per passi, transizioni, operandi e mapping dati;
+- catalogo `operands` come sorgente vincolante per il popolamento strict dei `GlobalDB`;
+- convergenza obbligatoria sullo stesso IR usato dal flusso AWL.
+
+Conseguenza architetturale da considerare fissata:
+
+`AWL parser` oppure `Excel strutturato` -> `IR comune` -> `builder GRAPH / GlobalDB / FC` -> `serializer XML`.
 
 ### 2.3 Automazione con TIA Portal Openness
 
@@ -61,7 +75,7 @@ Il progetto include ora anche il livello operativo di orchestrazione TIA, con ob
 ---
 
 
-## 2-bis. Chiarimenti documentali e operativi consolidati al 15-04-2026
+## 2-bis. Chiarimenti documentali e operativi consolidati al 20-04-2026
 
 A valle del confronto tra i documenti operativi, i report consolidati e i tipici XML del caso `T1-A ARUNC`, i seguenti punti sono da considerare fissati.
 
@@ -69,6 +83,7 @@ A valle del confronto tra i documenti operativi, i report consolidati e i tipici
 - In caso di conflitto tra una convenzione generica e una regola hard di traduzione o serializer, prevale sempre la specifica master del convertitore.
 - La regola corretta di cardinalita' resta: `1 sequenza AWL -> 1 x FB GRAPH + N x GlobalDB + M x FC LAD`.
 - Il naming globale non puo' essere ridotto a un semplice suffisso finale: owner DB, branch path e leaf name costituiscono un contratto bloccante tra IR, serializer e bundle XML.
+- L'IR comune del progetto puo' ora essere alimentato sia da parsing AWL sia da Excel strutturato, pur restando invariati i contratti semantici richiesti dai backend.
 - I tipici legacy importabili ma basati su runtime `V6` restano utili per reverse engineering semantico e topologico, ma non sono pattern validi per il serializer finale `V20 / GRAPH V2`.
 - La segmentazione reale dell'AWL deve tenere conto delle famiglie funzionali ricorrenti osservate nel caso `FC102 / AWL Romania`: allarmi, memorie/ausiliari, sequenza, manuale/automatico, emergenza/fault, uscite.
 
@@ -598,7 +613,7 @@ L'architettura del progetto resta a tre compilatori complementari:
 
 Pipeline concettuale consolidata:
 
-`AWL -> parser -> estrazione pattern e macchina a stati -> IR sequenza + IR dati + IR reti -> validator -> GRAPH compiler + GlobalDB compiler + FC compiler -> test import TIA`
+`AWL / Excel -> normalizzazione sorgente -> IR sequenza + IR dati + IR reti -> validator -> GRAPH compiler + GlobalDB compiler + FC compiler -> test import TIA`
 
 ## 31. Principi da considerare fissati
 
@@ -948,11 +963,11 @@ I prossimi step non sono più “far parlare il sistema con TIA”, ma:
 
 ---
 
-# PARTE F - BASELINE FINALE DEL PROGETTO AL 15-04-2026
+# PARTE F - BASELINE FINALE DEL PROGETTO AL 20-04-2026
 
 ## 38. Baseline consolidata
 
-Alla data del 10-04-2026 la baseline consolidata del progetto è la seguente.
+Alla data del 20-04-2026 la baseline consolidata del progetto è la seguente.
 
 ### 38.1 Sul GRAPH
 
@@ -986,6 +1001,7 @@ Alla data del 10-04-2026 la baseline consolidata del progetto è la seguente.
 ### 38.4 Sul metodo generale
 
 - IR espliciti;
+- doppio ingresso verso IR comune: parser AWL oppure Excel strutturato;
 - validator strutturali;
 - linter semantici;
 - selezione dei pattern validati;
@@ -1023,7 +1039,7 @@ I prossimi passi più utili sono:
 2. costruire una libreria di pattern GRAPH e FC esplicitamente convalidati;
 3. implementare validator e linter come parte obbligatoria della pipeline;
 4. estendere i test reali su più tipologie di blocchi XML, mantenendo il target finale sempre in `V2`;
-5. collegare la generazione AWL -> XML alla pipeline TIA già funzionante;
+5. collegare la generazione AWL / Excel -> XML alla pipeline TIA già funzionante;
 6. introdurre una matrice di regressione formale su golden sample importati con successo;
 7. formalizzare nel generatore la regola hard di ingresso (`step_number=1`) e la policy esplicita sui nodi speciali di sicurezza;
 8. fissare in codice una policy esplicita di naming dei passi GRAPH separata dalla numerazione storica AWL.
@@ -1054,14 +1070,14 @@ Questa non è una regola organizzativa, ma un vincolo tecnico del progetto.
 
 ## 42. Sintesi finale
 
-Alla data del 10-04-2026 il progetto ha raggiunto una baseline forte su quattro livelli:
+Alla data del 20-04-2026 il progetto ha raggiunto una baseline forte su quattro livelli:
 
 1. reverse engineering strutturale del `GRAPH`;
 2. generazione stabile dei `GlobalDB` applicativi e di supporto;
 3. backend `FC` guidato da pattern e non da emissione libera;
 4. pipeline reale `Linux -> bridge -> Windows -> TIA Portal Openness` verificata end-to-end.
 
-Il problema centrale del progetto non è più capire se il workflow sia praticabile, ma rendere sistematica, deterministica e regressivamente sicura la conversione `AWL -> GRAPH XML (+ DB/FC)` su casi reali.
+Il problema centrale del progetto non è più capire se il workflow sia praticabile, ma rendere sistematica, deterministica e regressivamente sicura la conversione `AWL / Excel -> IR -> GRAPH XML (+ DB/FC)` su casi reali.
 
 ---
 
