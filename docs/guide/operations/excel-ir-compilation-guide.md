@@ -3,8 +3,7 @@
 Obiettivo: compilare un Excel leggibile per generare `IR JSON` e XML TIA (`FB/DB/FC`) senza passare da AWL.
 
 Template consigliato:
-- `docs/templates/ir_excel_template_single_page.xlsx`
-- `docs/templates/ir_excel_template_single_page_with_support_fc.xlsx` (con foglio `support_fc` gia' pronto)
+- `docs/templates/ir_excel_template_single_page_with_support_fc.xlsx` (pagina FC completa: `support_fc` obbligatoria)
 
 Output:
 1. `<Sequence>_ir.json`
@@ -87,54 +86,72 @@ Per input Excel, il generatore usa `operands` come catalogo strict:
 
 Se una transizione usa operandi non presenti nel catalogo, il report analysis segnala warning dedicati.
 
-## 6) Foglio `support_fc` (obbligatorio)
-Usa questo foglio quando vuoi controllare direttamente cosa compare nelle FC/DB di supporto (`io`, `output`, `diag`, `hmi`, `aux`, `transitions`, `mode`) invece di usare l'inferenza automatica.
+## 6) Compilazione FC (Unico Blocco)
+Tutto cio' che riguarda le FC e' concentrato in due fogli:
+1. `support_fc` (obbligatorio): definisce i segnali da usare in DB/FC di supporto.
+2. `support_fc_logic` (opzionale): definisce la logica LAD interna delle FC.
 
-Colonne:
-- `category`: categoria supporto. Valori: `io`, `output`, `diag`, `hmi`, `aux`, `transitions`, `mode`.
-- `member_name`: nome variabile da inserire nel DB supporto e nella FC supporto collegata.
-- `comment`: commento opzionale.
+Categorie FC supportate:
+- `io`
+- `output`
+- `diag`
+- `hmi`
+- `aux`
+- `transitions`
+- `mode`
 
-Regole:
-- se una categoria e' presente in `support_fc`, per quella categoria il generatore usa i member del foglio.
-- se una categoria non e' presente, resta l'inferenza automatica standard.
-- `support_fc` puo' convivere con `operands`: `operands` continua a governare topologia/strict DB, `support_fc` governa i support artifacts.
+### 6.1 Foglio `support_fc` (obbligatorio)
+Colonne minime:
+- `category`
+- `member_name`
+- `comment`
 
-Esempi rapidi (`support_fc`):
+Regole pratiche:
+- una riga = un segnale della categoria.
+- se compili una categoria qui, il generatore usa questi member invece dell'inferenza automatica.
+- `operands` resta comunque obbligatorio e continua a governare il catalogo strict DB.
+
+Formato riga consigliato:
+`category | member_name | comment`
+
+Esempi:
 - `io | I_START_BTN | Pulsante start`
+- `io | I_STOP_BTN | Pulsante stop`
 - `output | Q_MOTOR_CMD | Comando motore`
-- `diag | ALM_OVERTEMP | Allarme temperatura`
-- `hmi | HMI_CMD_START | Comando da pannello`
 - `aux | M_CYCLE_ACTIVE | Memoria ciclo`
-- `transitions | T_INTERLOCK_OK | Segnale interlock`
-- `mode | MODE_MANUAL_ACTIVE | Modo manuale attivo`
 
-## 7) Foglio `support_fc_logic` (opzionale, avanzato)
-Usa questo foglio per definire la logica LAD interna delle FC supporto direttamente da Excel.
-
+### 6.2 Foglio `support_fc_logic` (opzionale)
 Colonne:
-- `category`: categoria FC (`io`, `output`, `diag`, `hmi`, `aux`, `transitions`, `mode`).
-- `result_member`: variabile bobina da scrivere nel DB supporto.
-- `condition_expression`: espressione booleana (es. `I_START_BTN AND NOT I_STOP_BTN`).
-- `condition_operands`: elenco operandi separati da `;` (fallback e tracciabilita').
-- `comment`: commento network.
-- `network`: numero rete (semplice) a cui la riga appartiene.
+- `category`
+- `result_member`
+- `condition_expression`
+- `condition_operands`
+- `comment`
+- `network`
 
-Regole:
-- se per una categoria compili `support_fc_logic`, la FC di quella categoria usa la logica custom;
-- per definire piu' network nella stessa FC, compila piu' righe con `network` diverso (`1`, `2`, `3`, ...);
-- i `result_member` e gli operandi usati in `condition_operands` vengono aggiunti automaticamente ai member DB di supporto (se mancanti);
-- OR/AND/NOT sono supportati in `condition_expression`;
-- se lasci vuota `condition_expression` ma compili `condition_operands`, il generatore crea una condizione `AND` tra gli operandi;
-- se lasci entrambe vuote, la rete risulta sempre vera (`TRUE`).
-- `network_index` resta accettato come alias legacy, ma il formato consigliato e' `network`.
+Regole pratiche:
+- una riga = una network LAD della FC della categoria.
+- `network` e' il numero rete (1, 2, 3, ...): usa questo campo per ordinare e separare le reti.
+- se compili `support_fc_logic` per una categoria, la FC di quella categoria usa la logica scritta qui.
+- i segnali in `result_member` e `condition_operands` vengono aggiunti automaticamente ai member DB supporto se mancanti.
+- se `condition_expression` e' vuota ma `condition_operands` e' compilata, il generatore crea una `AND`.
+- se entrambe sono vuote, la rete risulta `TRUE`.
 
-Esempi rapidi (`support_fc_logic`):
+Formato riga consigliato:
+`category | result_member | condition_expression | condition_operands | comment | network`
+
+Esempi:
 - `io | RUN_ENABLE | I_START_BTN AND NOT I_STOP_BTN | I_START_BTN;I_STOP_BTN | Rete start/stop | 1`
 - `output | Q_MOTOR_CMD | RUN_ENABLE AND SAFETY_OK | RUN_ENABLE;SAFETY_OK | Comando motore | 1`
-- `aux | AUX_READY | AUX_IN_1 OR AUX_IN_2 | AUX_IN_1;AUX_IN_2 | Logica ausiliaria | 2 |`
+- `aux | AUX_READY | AUX_IN_1 OR AUX_IN_2 | AUX_IN_1;AUX_IN_2 | Logica ausiliaria | 2`
 
-## 8) Paralleli
+Checklist compilazione manuale FC:
+1. Compila sempre `support_fc` (almeno una riga valida).
+2. Inserisci solo categorie reali (`io/output/diag/hmi/aux/transitions/mode`).
+3. Se vuoi logica custom, compila `support_fc_logic` con `network` numerato.
+4. Mantieni nomi coerenti tra `member_name`, `result_member` e `condition_operands`.
+
+## 7) Paralleli
 Per modellare un parallelo reale:
 1. split: stesso `from_step`, target diversi, `flow_type=parallel`.
 2. join: source diversi, stesso `to_step`, `flow_type=parallel`.
@@ -144,7 +161,7 @@ Il generatore emette:
 - `SimBegin` per split
 - `SimEnd` per join
 
-## 9) Esempio minimo
+## 8) Esempio minimo
 `sequence`:
 - `Init | 1 | T1 | Init | Dosaggio | M_START | M_START | alternative |`
 - `Dosaggio | 2 | T2 | Dosaggio | Fine | M_DONE | M_DONE | alternative |`
@@ -154,17 +171,12 @@ Il generatore emette:
 - `M_DONE | aux | | | | | consenso fine`
 - `ALM_TEMP | alarm | | | | | allarme temperatura`
 
-## 10) Generazione
+## 9) Generazione
 ```bash
 make generate-excel-ir EXCEL_FILE="docs/templates/ir_excel_template_single_page_with_support_fc.xlsx"
 ```
 
-Alternativa (template base senza foglio precompilato `support_fc`):
-```bash
-make generate-excel-ir EXCEL_FILE="docs/templates/ir_excel_template_single_page.xlsx"
-```
-
-## 11) Import in TIA
+## 10) Import in TIA
 ```bash
 make import-generated \
   PROJECT_PATH="C:\\Users\\Admin\\Desktop\\prova_connessione_openness\\prova_connessione_openness.ap20" \

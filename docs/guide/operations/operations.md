@@ -173,13 +173,12 @@ Guida completa compilazione Excel:
 - `docs/guide/operations/excel-ir-compilation-guide.md`
 
 Template pronto:
-- `docs/templates/ir_excel_template_single_page.xlsx` (formato consigliato)
-- `docs/templates/ir_excel_template_single_page_with_support_fc.xlsx` (con fogli `support_fc` e `support_fc_logic` di esempio)
+- `docs/templates/ir_excel_template_single_page_with_support_fc.xlsx` (pagina FC completa: `support_fc` obbligatoria, `support_fc_logic` opzionale)
 
 Comando:
 
 ```bash
-make generate-excel-ir EXCEL_FILE="docs/templates/ir_excel_template_single_page.xlsx"
+make generate-excel-ir EXCEL_FILE="docs/templates/ir_excel_template_single_page_with_support_fc.xlsx"
 ```
 
 Output nel bundle:
