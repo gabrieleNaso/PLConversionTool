@@ -174,7 +174,7 @@ Guida completa compilazione Excel:
 
 Template pronto:
 - `docs/templates/ir_excel_template_single_page.xlsx` (formato consigliato)
-- `docs/templates/ir_excel_template_single_page_with_support_fc.xlsx` (con foglio `support_fc` di esempio)
+- `docs/templates/ir_excel_template_single_page_with_support_fc.xlsx` (con fogli `support_fc` e `support_fc_logic` di esempio)
 
 Comando:
 
@@ -191,12 +191,14 @@ Fogli Excel consigliati:
 - `meta`: chiavi libere `key/value` (`sequence_name`, `source_name`, `assumptions`)
 - `sequence`: `step_name`, `numero_step`, `transition_id`, `from_step`, `to_step`, `condition_expression`, `operands_used_in_condition`, `flow_type`, `parallel_group`, `jump_labels_used`
 - `operands`: `operand`, `category`, `write_action`, `timer_instruction_kind`, `timer_preset_value`, `trigger_operands`, `note`
-- `support_fc` (opzionale): `category`, `member_name`, `comment`, `network_index`, `network_title`
+- `support_fc` (obbligatorio): `category`, `member_name`, `comment`, `network_index`, `network_title`
+- `support_fc_logic` (opzionale): `category`, `result_member`, `condition_expression`, `condition_operands`, `comment`, `network_index`, `network_title`
 
 Regole Excel importanti:
 - l'inizio sequenza e' il passo con `numero_step=1` (non dal nome del passo);
 - i nomi passo sono liberi (`Init`, `StartCiclo`, ecc.);
 - in modalita' Excel, il catalogo `operands` guida la dichiarazione variabili DB (niente inferenze casuali).
+- `operands` e `support_fc` sono obbligatori: se manca uno dei due (o e' vuoto), `generate-excel-ir` termina con errore.
 
 Compatibilita':
 - lo script accetta anche vecchi alias di colonna, ma per nuovi file usare i nomi espliciti sopra.

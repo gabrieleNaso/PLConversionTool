@@ -302,6 +302,7 @@ def _ir_from_payload(
         strict_operand_catalog=bool(ir_payload.get("strict_operand_catalog", False)),
         operand_catalog=sorted(set(_as_str_list(ir_payload.get("operand_catalog")))),
         support_members=_as_dict_list(ir_payload.get("support_members")),
+        support_logic=_as_dict_list(ir_payload.get("support_logic")),
         assumptions=_as_str_list(ir_payload.get("assumptions"))
         or [
             "IR caricato da JSON esterno (es. Excel): verificare coerenza semantica delle guardie prima dell'import TIA."
@@ -1750,7 +1751,9 @@ def _build_artifact_manifest(previews: list[ArtifactPreview]) -> dict[str, list[
 def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
     previews: list[ArtifactPreview] = []
 
+    io_logic = _excel_support_logic_rows(ir, "io")
     io_members = _excel_support_members(ir, "io") or _collect_io_support_members(ir)
+    io_members = _merge_support_members_with_logic(io_members, io_logic)
     if io_members:
         (
             io_db_name,
@@ -1782,13 +1785,16 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     title=f"{ir.sequence_name} IO LAD",
                     db_name=io_db_name,
                     members=[name for name, _ in io_members],
+                    logic_rows=io_logic,
                     number_seed=f"{ir.sequence_name}_IO_FC",
                     number_base=io_fc_base,
                 ),
             )
         )
 
+    diag_logic = _excel_support_logic_rows(ir, "diag")
     diag_members = _excel_support_members(ir, "diag") or _collect_diag_support_members(ir)
+    diag_members = _merge_support_members_with_logic(diag_members, diag_logic)
     if diag_members:
         (
             diag_db_name,
@@ -1820,13 +1826,16 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     title=f"{ir.sequence_name} Diag LAD",
                     db_name=diag_db_name,
                     members=[name for name, _ in diag_members],
+                    logic_rows=diag_logic,
                     number_seed=f"{ir.sequence_name}_DIAG_FC",
                     number_base=diag_fc_base,
                 ),
             )
         )
 
+    mode_logic = _excel_support_logic_rows(ir, "mode")
     mode_members = _excel_support_members(ir, "mode") or _collect_mode_support_members(ir)
+    mode_members = _merge_support_members_with_logic(mode_members, mode_logic)
     if mode_members:
         (
             mode_db_name,
@@ -1858,6 +1867,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     title=f"{ir.sequence_name} Mode LAD",
                     db_name=mode_db_name,
                     members=[name for name, _ in mode_members],
+                    logic_rows=mode_logic,
                     number_seed=f"{ir.sequence_name}_MODE_FC",
                     number_base=mode_fc_base,
                 ),
@@ -1868,6 +1878,8 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
     if not network_specs and len(ir.networks) <= 5:
         network_specs = _collect_network_support_specs(ir)
     for network_no, network_title, members in network_specs:
+        network_logic = _excel_support_logic_rows(ir, "network", network_index=network_no)
+        members = _merge_support_members_with_logic(members, network_logic)
         suffix = _network_support_suffix(network_no, network_title)
         (
             network_db_name,
@@ -1899,15 +1911,18 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     title=f"{ir.sequence_name} Network {network_no} LAD ({network_title})",
                     db_name=network_db_name,
                     members=[name for name, _ in members],
+                    logic_rows=network_logic,
                     number_seed=f"{ir.sequence_name}_{suffix}_FC",
                     number_base=network_fc_base,
                 ),
             )
         )
 
+    transitions_logic = _excel_support_logic_rows(ir, "transitions")
     transitions_members = _excel_support_members(ir, "transitions") or _collect_transitions_support_members(
         ir, network_specs
     )
+    transitions_members = _merge_support_members_with_logic(transitions_members, transitions_logic)
     if transitions_members:
         (
             tr_db_name,
@@ -1939,13 +1954,16 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     title=f"{ir.sequence_name} Transitions LAD",
                     db_name=tr_db_name,
                     members=[name for name, _ in transitions_members],
+                    logic_rows=transitions_logic,
                     number_seed=f"{ir.sequence_name}_TRANSITIONS_FC",
                     number_base=tr_fc_base,
                 ),
             )
         )
 
+    output_logic = _excel_support_logic_rows(ir, "output")
     output_members = _excel_support_members(ir, "output") or _collect_output_family_members(ir)
+    output_members = _merge_support_members_with_logic(output_members, output_logic)
     if output_members:
         (
             out_db_name,
@@ -1977,13 +1995,16 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     title=f"{ir.sequence_name} Output LAD",
                     db_name=out_db_name,
                     members=[name for name, _ in output_members],
+                    logic_rows=output_logic,
                     number_seed=f"{ir.sequence_name}_OUTPUT_FC",
                     number_base=out_fc_base,
                 ),
             )
         )
 
+    hmi_logic = _excel_support_logic_rows(ir, "hmi")
     hmi_members = _excel_support_members(ir, "hmi") or _collect_hmi_support_members(ir)
+    hmi_members = _merge_support_members_with_logic(hmi_members, hmi_logic)
     if hmi_members:
         (
             hmi_db_name,
@@ -2015,13 +2036,16 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     title=f"{ir.sequence_name} HMI LAD",
                     db_name=hmi_db_name,
                     members=[name for name, _ in hmi_members],
+                    logic_rows=hmi_logic,
                     number_seed=f"{ir.sequence_name}_HMI_FC",
                     number_base=hmi_fc_base,
                 ),
             )
         )
 
+    aux_logic = _excel_support_logic_rows(ir, "aux")
     aux_members = _excel_support_members(ir, "aux") or _collect_aux_support_members(ir)
+    aux_members = _merge_support_members_with_logic(aux_members, aux_logic)
     if aux_members:
         (
             aux_db_name,
@@ -2053,6 +2077,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     title=f"{ir.sequence_name} Aux LAD",
                     db_name=aux_db_name,
                     members=[name for name, _ in aux_members],
+                    logic_rows=aux_logic,
                     number_seed=f"{ir.sequence_name}_AUX_FC",
                     number_base=aux_fc_base,
                 ),
@@ -2439,6 +2464,7 @@ def _build_support_lad_fc_xml(
     db_name: str,
     members: list[str],
     number_seed: str,
+    logic_rows: list[dict[str, object]] | None = None,
     number_base: int = 600,
     number_span: int = 200,
 ) -> str:
@@ -2449,7 +2475,11 @@ def _build_support_lad_fc_xml(
     )
     if not temp_members:
         temp_members = '    <Member Name="PACKET_READY" Datatype="Bool" />'
-    compile_units = _build_support_lad_compile_units(db_name=db_name, members=members)
+    compile_units = _build_support_lad_compile_units(
+        db_name=db_name,
+        members=members,
+        logic_rows=logic_rows or [],
+    )
     return (
         '<?xml version="1.0" encoding="utf-8"?>\n'
         '<Document>\n'
@@ -2731,8 +2761,59 @@ def _build_lad_compile_units(ir: AwlIR, graph_topology: GraphTopology) -> str:
     return "\n".join(units)
 
 
-def _build_support_lad_compile_units(db_name: str, members: list[str]) -> str:
+def _build_support_lad_compile_units(
+    db_name: str,
+    members: list[str],
+    logic_rows: list[dict[str, object]] | None = None,
+) -> str:
     units: list[str] = []
+    if logic_rows:
+        base_id = 3
+        for index, logic_row in enumerate(logic_rows):
+            result_member = str(logic_row.get("result_member") or "").strip()
+            if not result_member:
+                continue
+            condition_expression = str(logic_row.get("condition_expression") or "TRUE")
+            condition_operands = _as_str_list(logic_row.get("condition_operands"))
+            comment = str(logic_row.get("comment") or "").strip() or f"{result_member} custom logic"
+            unit_id = format(base_id + (index * 3), "X")
+            comment_id = format(base_id + (index * 3) + 1, "X")
+            comment_item_id = format(base_id + (index * 3) + 2, "X")
+            flgnet_xml = _build_support_logic_flgnet(
+                db_name=db_name,
+                result_member=result_member,
+                condition_expression=condition_expression,
+                condition_operands=condition_operands,
+            )
+            units.append(
+                '      <SW.Blocks.CompileUnit ID="'
+                + unit_id
+                + '" CompositionName="CompileUnits">\n'
+                '        <AttributeList>\n'
+                f"{flgnet_xml}\n"
+                '          <ProgrammingLanguage>LAD</ProgrammingLanguage>\n'
+                '        </AttributeList>\n'
+                '        <ObjectList>\n'
+                '          <MultilingualText ID="'
+                + comment_id
+                + '" CompositionName="Comment">\n'
+                '            <ObjectList>\n'
+                '              <MultilingualTextItem ID="'
+                + comment_item_id
+                + '" CompositionName="Items">\n'
+                '                <AttributeList>\n'
+                '                  <Culture>en-US</Culture>\n'
+                f'                  <Text>{escape(comment)}</Text>\n'
+                '                </AttributeList>\n'
+                '              </MultilingualTextItem>\n'
+                '            </ObjectList>\n'
+                '          </MultilingualText>\n'
+                '        </ObjectList>\n'
+                '      </SW.Blocks.CompileUnit>'
+            )
+        if units:
+            return "\n".join(units)
+
     unique_members = list(dict.fromkeys(member for member in members if member))
     if not unique_members:
         unique_members = ["PACKET_READY"]
@@ -2774,6 +2855,165 @@ def _build_support_lad_compile_units(db_name: str, members: list[str]) -> str:
             '      </SW.Blocks.CompileUnit>'
         )
     return "\n".join(units)
+
+
+def _build_support_logic_flgnet(
+    db_name: str,
+    result_member: str,
+    condition_expression: str,
+    condition_operands: list[str],
+) -> str:
+    next_uid = 21
+
+    def alloc_uid() -> int:
+        nonlocal next_uid
+        current = next_uid
+        next_uid += 1
+        return current
+
+    normalized_result = _support_member_name(result_member, "", strict_excel_mode=True)
+    guard_clauses = _parse_guard_clauses(condition_expression, condition_operands)
+    clause_contact_uids: list[list[int]] = []
+    parts_lines: list[str] = []
+    wires_lines: list[str] = []
+
+    for clause in guard_clauses:
+        contact_uids: list[int] = []
+        for operand, negated in clause:
+            normalized_operand = _support_member_name(operand, "", strict_excel_mode=True)
+            access_uid = alloc_uid()
+            contact_uid = alloc_uid()
+            parts_lines.extend(
+                [
+                    f'    <Access Scope="GlobalVariable" UId="{access_uid}">\n',
+                    "      <Symbol>\n",
+                    f'        <Component Name="{escape(db_name)}" />\n',
+                    f'        <Component Name="{escape(normalized_operand)}" />\n',
+                    "      </Symbol>\n",
+                    "    </Access>\n",
+                ]
+            )
+            if negated:
+                parts_lines.extend(
+                    [
+                        f'    <Part Name="Contact" UId="{contact_uid}">\n',
+                        '      <Negated Name="operand" />\n',
+                        "    </Part>\n",
+                    ]
+                )
+            else:
+                parts_lines.append(f'    <Part Name="Contact" UId="{contact_uid}" />\n')
+
+            wire_uid = alloc_uid()
+            wires_lines.extend(
+                [
+                    f'    <Wire UId="{wire_uid}">\n',
+                    f'      <IdentCon UId="{access_uid}" />\n',
+                    f'      <NameCon UId="{contact_uid}" Name="operand" />\n',
+                    "    </Wire>\n",
+                ]
+            )
+            contact_uids.append(contact_uid)
+        if contact_uids:
+            clause_contact_uids.append(contact_uids)
+
+    coil_access_uid = alloc_uid()
+    coil_uid = alloc_uid()
+    parts_lines.extend(
+        [
+            f'    <Access Scope="GlobalVariable" UId="{coil_access_uid}">\n',
+            "      <Symbol>\n",
+            f'        <Component Name="{escape(db_name)}" />\n',
+            f'        <Component Name="{escape(normalized_result)}" />\n',
+            "      </Symbol>\n",
+            "    </Access>\n",
+            f'    <Part Name="Coil" UId="{coil_uid}" />\n',
+        ]
+    )
+    coil_operand_wire_uid = alloc_uid()
+    wires_lines.extend(
+        [
+            f'    <Wire UId="{coil_operand_wire_uid}">\n',
+            f'      <IdentCon UId="{coil_access_uid}" />\n',
+            f'      <NameCon UId="{coil_uid}" Name="operand" />\n',
+            "    </Wire>\n",
+        ]
+    )
+
+    clause_outs: list[int] = []
+    for branch in clause_contact_uids:
+        for prev_uid, next_contact_uid in zip(branch, branch[1:]):
+            serial_wire_uid = alloc_uid()
+            wires_lines.extend(
+                [
+                    f'    <Wire UId="{serial_wire_uid}">\n',
+                    f'      <NameCon UId="{prev_uid}" Name="out" />\n',
+                    f'      <NameCon UId="{next_contact_uid}" Name="in" />\n',
+                    "    </Wire>\n",
+                ]
+            )
+        if branch:
+            clause_outs.append(branch[-1])
+
+    if len(clause_outs) > 1:
+        or_uid = alloc_uid()
+        parts_lines.extend(
+            [
+                f'    <Part Name="O" UId="{or_uid}">\n',
+                f'      <TemplateValue Name="Card" Type="Cardinality">{len(clause_outs)}</TemplateValue>\n',
+                "    </Part>\n",
+            ]
+        )
+        for index, out_uid in enumerate(clause_outs, start=1):
+            in_wire_uid = alloc_uid()
+            wires_lines.extend(
+                [
+                    f'    <Wire UId="{in_wire_uid}">\n',
+                    f'      <NameCon UId="{out_uid}" Name="out" />\n',
+                    f'      <NameCon UId="{or_uid}" Name="in{index}" />\n',
+                    "    </Wire>\n",
+                ]
+            )
+        out_wire_uid = alloc_uid()
+        wires_lines.extend(
+            [
+                f'    <Wire UId="{out_wire_uid}">\n',
+                f'      <NameCon UId="{or_uid}" Name="out" />\n',
+                f'      <NameCon UId="{coil_uid}" Name="in" />\n',
+                "    </Wire>\n",
+            ]
+        )
+    elif clause_outs:
+        final_wire_uid = alloc_uid()
+        wires_lines.extend(
+            [
+                f'    <Wire UId="{final_wire_uid}">\n',
+                f'      <NameCon UId="{clause_outs[0]}" Name="out" />\n',
+                f'      <NameCon UId="{coil_uid}" Name="in" />\n',
+                "    </Wire>\n",
+            ]
+        )
+    else:
+        true_wire_uid = alloc_uid()
+        wires_lines.extend(
+            [
+                f'    <Wire UId="{true_wire_uid}">\n',
+                "      <Powerrail />\n",
+                f'      <NameCon UId="{coil_uid}" Name="in" />\n',
+                "    </Wire>\n",
+            ]
+        )
+
+    return (
+        '          <NetworkSource><FlgNet xmlns="http://www.siemens.com/automation/Openness/SW/NetworkSource/FlgNet/v5">\n'
+        "  <Parts>\n"
+        f'{"".join(parts_lines)}'
+        "  </Parts>\n"
+        "  <Wires>\n"
+        f'{"".join(wires_lines)}'
+        "  </Wires>\n"
+        "</FlgNet></NetworkSource>"
+    )
 
 
 _LAD_PATTERN_LIBRARY = {"guard_chain", "single_contact_coil"}
@@ -2901,6 +3141,73 @@ def _excel_support_members(ir: AwlIR, category: str) -> list[tuple[str, str]]:
         comment = str(item.get("comment") or "").strip()
         members.append((member_name, comment or f"Excel override ({normalized_category})"))
     return _dedupe_named_members(members)
+
+
+def _excel_support_logic_rows(
+    ir: AwlIR,
+    category: str,
+    network_index: int | None = None,
+) -> list[dict[str, object]]:
+    normalized_category = str(category or "").strip().lower()
+    if not normalized_category:
+        return []
+
+    rows: list[dict[str, object]] = []
+    for item in ir.support_logic:
+        raw_category = str(item.get("category") or "").strip().lower()
+        if raw_category != normalized_category:
+            continue
+
+        item_network = _as_positive_int(item.get("network_index"))
+        if network_index is not None and item_network not in {None, network_index}:
+            continue
+
+        result_raw = str(item.get("result_member") or "").strip()
+        if not result_raw:
+            continue
+        result_member = _support_member_name(result_raw, "", strict_excel_mode=True)
+
+        operands = [
+            _support_member_name(str(token).strip(), "", strict_excel_mode=True)
+            for token in _as_str_list(item.get("condition_operands"))
+            if str(token).strip()
+        ]
+
+        condition_expression = str(item.get("condition_expression") or "").strip()
+        if not condition_expression and operands:
+            condition_expression = " AND ".join(operands)
+        if not condition_expression:
+            condition_expression = "TRUE"
+
+        rows.append(
+            {
+                "result_member": result_member,
+                "condition_expression": condition_expression,
+                "condition_operands": operands,
+                "comment": str(item.get("comment") or "").strip(),
+                "network_index": item_network,
+            }
+        )
+    return rows
+
+
+def _merge_support_members_with_logic(
+    members: list[tuple[str, str]],
+    logic_rows: list[dict[str, object]],
+) -> list[tuple[str, str]]:
+    merged = list(members)
+    existing = {name for name, _ in merged}
+    for row in logic_rows:
+        result_member = str(row.get("result_member") or "").strip()
+        if result_member and result_member not in existing:
+            merged.append((result_member, "Result member from support_fc_logic"))
+            existing.add(result_member)
+        for operand in _as_str_list(row.get("condition_operands")):
+            token = str(operand or "").strip()
+            if token and token not in existing:
+                merged.append((token, "Condition operand from support_fc_logic"))
+                existing.add(token)
+    return _dedupe_named_members(merged)
 
 
 def _excel_network_support_specs(ir: AwlIR) -> list[tuple[int, str, list[tuple[str, str]]]]:

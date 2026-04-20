@@ -176,6 +176,58 @@ def _read_support_members(path: Path) -> list[dict[str, object]]:
     return support_members
 
 
+def _read_support_logic_rows(path: Path) -> list[dict[str, object]]:
+    rows: list[dict[str, object]] = []
+    for sheet_name in ("support_fc_logic", "fc_logic_support", "fc_logic"):
+        rows.extend(_read_sheet_rows(path, sheet_name))
+
+    logic_rows: list[dict[str, object]] = []
+    for row in rows:
+        category = _normalize_support_category(
+            _pick(row, "category", "categoria", "support_category", "fc_category")
+        )
+        result_member = _cell_text(
+            _pick(row, "result_member", "coil_member", "target_member", "member_name", "output_member")
+        )
+        if not category or not result_member:
+            continue
+        condition_expression = _cell_text(
+            _pick(row, "condition_expression", "guard_expression", "expression", "condition")
+        )
+        condition_operands = _split_list(
+            _pick(row, "condition_operands", "guard_operands", "operands", "input_operands")
+        )
+        if not condition_expression and condition_operands:
+            condition_expression = " AND ".join(condition_operands)
+        logic_rows.append(
+            {
+                "category": category,
+                "network_index": _int_or_none(_pick(row, "network_index", "network", "network_no", "rete")),
+                "network_title": _cell_text(_pick(row, "network_title", "title", "network_name")),
+                "result_member": result_member,
+                "condition_expression": condition_expression or "TRUE",
+                "condition_operands": condition_operands,
+                "comment": _cell_text(_pick(row, "comment", "note", "notes", "description", "descrizione")),
+            }
+        )
+    return logic_rows
+
+
+def _ensure_required_excel_sections(
+    *,
+    operand_rows: list[dict[str, object]],
+    support_members: list[dict[str, object]],
+) -> None:
+    if not operand_rows:
+        raise SystemExit(
+            "Excel non valido: il foglio 'operands' e' obbligatorio e deve contenere almeno una riga compilata."
+        )
+    if not support_members:
+        raise SystemExit(
+            "Excel non valido: il foglio 'support_fc' (o alias 'fc_support') e' obbligatorio e deve contenere almeno una riga compilata."
+        )
+
+
 def _dedupe_dict_rows(items: list[dict[str, object]], keys: tuple[str, ...]) -> list[dict[str, object]]:
     seen: set[tuple[str, ...]] = set()
     deduped: list[dict[str, object]] = []
@@ -465,10 +517,15 @@ def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[s
     auto_logic_networks = _split_int_list(meta.get("auto_logic_networks"))
     external_refs = _split_list(meta.get("external_refs"))
     support_members = _read_support_members(path)
+    support_logic = _read_support_logic_rows(path)
 
     # New readable format: optional operand catalog that classifies signals
     # used in LAD transition logic by function (alarm/aux/hmi/output/timer/...).
     operand_rows = _read_sheet_rows(path, "operands")
+    _ensure_required_excel_sections(
+        operand_rows=operand_rows,
+        support_members=support_members,
+    )
     operand_catalog: list[str] = []
     for idx, row in enumerate(operand_rows, start=1):
         operand = _cell_text(_pick(row, "operand", "name", "tag"))
@@ -653,6 +710,7 @@ def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[s
         "strict_operand_catalog": True,
         "operand_catalog": operand_catalog,
         "support_members": support_members,
+        "support_logic": support_logic,
         "assumptions": _split_list(meta.get("assumptions")),
     }
     return normalized_sequence, source_name, ir_payload
