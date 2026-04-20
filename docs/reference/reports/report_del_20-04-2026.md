@@ -286,7 +286,7 @@ Riferimenti osservati:
 - i paralleli si modellano con `SimBegin` e `SimEnd`;
 - i rami di allarme devono chiudersi correttamente.
 - per gli import, `targetPath` parte sempre da `Program blocks/`; per sottocartelle usare `Program blocks/generati da tool/<nome>`.
-- la numerazione step in GRAPH deve rispettare il suffisso dello step (`S29` -> numero 29).
+- la numerazione step in GRAPH deve seguire il `step_number` dell'IR; il nome step e' una label logica.
 
 ### 8.6 Stato di stabilita' generatore
 
@@ -658,17 +658,17 @@ Per ogni traduzione AWL vanno considerati presenti e stabili i seguenti DB ester
 
 Questi blocchi non sono da reinventare caso per caso, ma da trattare come riferimenti fissi del modello di conversione quando la sequenza AWL li usa o li presuppone.
 
-### 32.4 Ossatura iniziale fissa del GRAPH
+### 32.4 Regola di ingresso e ossatura del GRAPH
 
-La parte iniziale del GRAPH costituita dagli step `S1`, `S32`, `S30`, `S29` va considerata strutturalmente fissa per ogni sequenza AWL tradotta.
+La topologia iniziale del GRAPH non deve dipendere dal nome testuale del passo.
 
-Significato operativo della regola:
+Regola operativa:
 
-- il generatore non deve modificare questa ossatura;
-- gli step iniziali di emergenza, fault e manuale non devono essere reinterpretati ogni volta a partire dall'AWL;
-- la logica variabile della sequenza deve innestarsi sulla struttura fissa, non sostituirla.
+- lo step iniziale e' quello con `step_number=1`;
+- il nome passo e' libero (`Init`, `StartCycle`, `S1`, ...);
+- eventuali ruoli strutturali (manuale/fault/emergenza) possono essere modellati con numeri convenzionali o naming di progetto, ma non devono essere imposti con rinomina forzata.
 
-Questa scelta riduce la variabilità topologica del GRAPH e rende il convertitore più deterministico, più leggibile e più coerente con il target manutentivo del progetto.
+Questa scelta riduce regressioni di import, mantiene coerenza con l'Excel manuale e rende il builder piu' deterministico.
 
 
 ### 32.5 Regola architetturale sul formato reale della traduzione
@@ -790,6 +790,16 @@ Regola di validazione:
 - il builder deve verificare per ogni simbolo globale il triplo vincolo `DB corretto + path corretto + naming corretto`;
 - se uno dei tre elementi manca, la variabile va marcata come non risolta e non considerata valida per l'emissione finale.
 
+### 32.9B Regola Excel strict sul popolamento DB
+
+Quando la sorgente IR arriva da Excel con catalogo `operands`, il popolamento dei DB deve seguire una regola strict:
+
+- la logica LAD delle transizioni GRAPH resta completa;
+- i member DB vengono dichiarati solo se presenti nel catalogo `operands` o nelle categorie derivate (`alarm`, `aux`, `hmi`, `output`, `timer`, ...);
+- non e' ammesso aggiungere member DB per inferenza opportunistica da testo AWL o parsing guard non catalogato.
+
+Se una transizione usa operandi non presenti nel catalogo, il validator deve segnalarlo come warning di coerenza.
+
 ### 32.10 Regola di normalizzazione delle memorie e dei timer
 
 I timer AWL `Txx`, i preset `S5T`, i bit di appoggio pulsati e le memorie tecniche non devono restare nel DB sequenza monolitico.
@@ -802,18 +812,15 @@ Devono essere convertiti in:
 
 La `FC 03 Aux` ha quindi il ruolo di ricostruire in forma leggibile e importabile la parte di AWL che nel sorgente faceva da appoggio tecnico alla sequenza.
 
-### 32.11 Regola sul backbone fisso della sequenza
+### 32.11 Regola sul backbone della sequenza
 
-I passi `S1`, `S29`, `S30`, `S32` non vanno inferiti ex novo in ogni conversione.
+Il backbone non va inferito con rinomina forzata dei nomi passo.
 
-Essi costituiscono il backbone fisso del modello target:
+Regola consolidata:
 
-- `S1` = init / rientro alla sequenza;
-- `S29` = manuale;
-- `S30` = fault;
-- `S32` = emergenza.
-
-Il parser AWL deve riconoscere la logica che porta a questi stati, ma il builder GRAPH deve innestarla nella struttura fissa del template di sequenza.
+- l'ingresso sequenza e' `step_number=1`;
+- manuale/fault/emergenza restano ruoli semantici da riconoscere nell'IR;
+- il builder GRAPH puo' usare numbering convenzionale quando richiesto dal caso, ma senza imporre nomi hard-coded.
 
 ### 32.12 Regola sulle uscite macchina
 
@@ -849,7 +856,7 @@ La regola corretta è:
 
 - mantenere i DB allarme fissi del progetto come sorgenti o sink stabili;
 - costruire cumulativi semantici di `Fault` ed `Emergency` nel modello base;
-- collegare tali cumulativi al backbone fisso `S30/S32` del GRAPH;
+- collegare tali cumulativi ai nodi semantici di fault/emergenza del GRAPH;
 - mantenere separata la diagnostica dettagliata dalla topologia del sequenziatore.
 
 ### 32.15 Regola sul naming dei passi GRAPH
@@ -955,7 +962,7 @@ Alla data del 10-04-2026 la baseline consolidata del progetto è la seguente.
 - blocco `FB` da generare come elemento autosufficiente;
 - supporto a operandi locali o referenziati simbolicamente nei DB applicativi del pacchetto;
 - forte distinzione fra topologia GRAPH e logica OR nel LAD delle transition;
-- parte iniziale del GRAPH con `S1`, `S32`, `S30`, `S29` da considerare fissa e non modificabile dal generatore.
+- ingresso GRAPH governato dal numero passo (`step_number=1`) e non dal nome; eventuali nodi speciali restano policy di modello.
 
 ### 38.2 Sul `GlobalDB`
 
@@ -1018,7 +1025,7 @@ I prossimi passi più utili sono:
 4. estendere i test reali su più tipologie di blocchi XML, mantenendo il target finale sempre in `V2`;
 5. collegare la generazione AWL -> XML alla pipeline TIA già funzionante;
 6. introdurre una matrice di regressione formale su golden sample importati con successo;
-7. formalizzare nel generatore l'ossatura iniziale fissa `S1/S32/S30/S29` come regola hard e non come euristica;
+7. formalizzare nel generatore la regola hard di ingresso (`step_number=1`) e la policy esplicita sui nodi speciali di sicurezza;
 8. fissare in codice una policy esplicita di naming dei passi GRAPH separata dalla numerazione storica AWL.
 
 ---
@@ -1137,11 +1144,11 @@ Da tale cumulativo derivano:
 
 - salto o mantenimento in `S32`;
 - gestione del fault/backbone di sicurezza;
-- regole di rientro verso `S01` da `S29` e `S32` quando le condizioni tornano valide.
+- regole di rientro verso il passo iniziale (numero `1`) dai rami manuale/emergenza quando le condizioni tornano valide.
 
 Regola consolidata:
 
-> il convertitore deve distinguere i dettagli diagnostici dai loro effetti sequenziali. I DB fissi di allarme restano il livello di dettaglio; la sequenza GRAPH deve consumare cumulativi semantici di `Fault` ed `Emergency` agganciati al backbone fisso `S29/S30/S32`.
+> il convertitore deve distinguere i dettagli diagnostici dai loro effetti sequenziali. I DB fissi di allarme restano il livello di dettaglio; la sequenza GRAPH deve consumare cumulativi semantici di `Fault` ed `Emergency` agganciati ai rami di sicurezza del modello.
 
 ## 49. Regola sulla policy di naming e sul passo finale del ciclo
 

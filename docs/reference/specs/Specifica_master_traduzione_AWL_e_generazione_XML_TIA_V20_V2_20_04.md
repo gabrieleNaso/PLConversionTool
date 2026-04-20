@@ -105,25 +105,17 @@ Il target di emissione è chiuso su:
 
 Ogni campione legacy di altra famiglia runtime va usato solo come riferimento semantico e non come pattern finale da emettere.
 
-## 4. Regola di backbone fisso del sequenziatore
+## 4. Regola di ingresso e backbone del sequenziatore
 
-La struttura iniziale del sequenziatore è fissa e non va ridefinita caso per caso.
-
-I passi strutturalmente fissi sono:
-
-- `S1`;
-- `S29`;
-- `S30`;
-- `S32`.
+La struttura iniziale del sequenziatore non deve dipendere dal nome testuale del passo.
 
 Interpretazione operativa:
 
-- `S1` = init / rientro alla sequenza;
-- `S29` = manuale;
-- `S30` = fault;
-- `S32` = emergenza.
+- lo step iniziale e' quello con `step_number=1`;
+- il nome passo e' libero (`Init`, `Start`, `S1`, ...);
+- i ruoli manuale/fault/emergenza vanno riconosciuti semanticamente nell'IR e modellati nel GRAPH secondo la policy di progetto, senza rinomina forzata dei nomi.
 
-Il parser AWL deve riconoscere la logica che porta a questi stati; il builder GRAPH deve innestarla sul backbone fisso del progetto.
+Il parser AWL deve riconoscere la logica che porta a questi stati; il builder GRAPH deve preservare topologia e semantica senza imporre nomi hard-coded.
 
 # Parte II - Regole di analisi del sorgente AWL
 
@@ -579,7 +571,8 @@ Il GRAPH non deve contenere tutta la complessità storica dell'AWL in forma grez
 
 Deve contenere:
 
-- backbone fisso;
+- backbone coerente con il modello IR;
+- ingresso sequenza deterministico (`step_number=1`);
 - passi automatici espliciti;
 - transizioni già normalizzate;
 - runtime interno `..._V2`;
@@ -594,8 +587,8 @@ Fault ed emergenza devono essere trattati su due livelli distinti:
 
 Il livello sintetico è quello che guida:
 
-- `S30` fault;
-- `S32` emergenza;
+- i rami semantici di fault;
+- i rami semantici di emergenza;
 - reset;
 - rientro alla sequenza.
 
@@ -640,7 +633,7 @@ Una traduzione va considerata corretta solo se soddisfa contemporaneamente:
 - coerenza architetturale col target;
 - importabilità in TIA;
 - leggibilità manutentiva;
-- compatibilità col backbone fisso del progetto.
+- compatibilità col backbone semantico del progetto.
 
 ## 37. Sintesi finale
 
@@ -794,6 +787,12 @@ Estensione obbligatoria della regola:
 - la coerenza cross-blocco non riguarda solo `GRAPH <-> GlobalDB`;
 - vale anche per `GRAPH <-> FC`, `FC <-> GlobalDB` e, più in generale, per ogni coppia di blocchi del pacchetto che si referenziano fra loro;
 - non è ammesso che un blocco del pacchetto compili soltanto assumendo naming o member che gli altri blocchi non emettono realmente.
+
+Regola aggiuntiva per IR da Excel (modalita' strict):
+
+- la logica transizioni GRAPH deve mantenere gli operandi della condizione;
+- la dichiarazione member nei `GlobalDB` deve usare il catalogo `operands` dell'Excel (piu' categorie derivate);
+- non e' ammesso introdurre member DB non catalogati per inferenza non esplicita.
 
 ### Composizione canonica
 
@@ -1221,8 +1220,8 @@ la violazione "doppi ingressi Direct" e ridurre i rischi di crash in TIA.
 Nota operativa import/export: il `targetPath` dei job TIA parte sempre da
 `Program blocks/`. Per creare sottocartelle ordinare usare ad esempio
 `Program blocks/generati da tool/<nome>`.
-Nota sui numeri step: per step con nome `Sxx`, la numerazione GRAPH deve usare
-lo stesso valore `xx` (es. `S29` -> `Step Number="29"`), non un indice sequenziale.
+Nota sui numeri step: la numerazione GRAPH deve seguire il `step_number` dell'IR.
+Il nome del passo e' una label e non deve forzare la numerazione.
 
 ## 4. Serializer GRAPH
 
@@ -1624,11 +1623,11 @@ Il backend `FC 06 Output` è quindi un compilatore semantico di formule, non un 
 
 I dettagli dei fault e dei bit allarme devono rimanere nel livello diagnostico sorgente o nei DB fissi di progetto.
 
-La sequenza target deve consumare invece cumulativi semantici, ad esempio `Fault` ed `Emergency`, agganciati al backbone fisso `S29/S30/S32`.
+La sequenza target deve consumare invece cumulativi semantici, ad esempio `Fault` ed `Emergency`, agganciati ai rami di sicurezza del modello.
 
 ## A.6 Regola sul rientro da manuale ed emergenza
 
-La logica di rientro da `S29` e `S32` verso `S01` va trattata come regola strutturale del convertitore.
+La logica di rientro da manuale/emergenza verso il passo iniziale (numero `1`) va trattata come regola strutturale del convertitore.
 
 Non è una semplice transizione locale, ma parte del backbone fisso di sequenza.
 
