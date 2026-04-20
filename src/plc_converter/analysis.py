@@ -2116,7 +2116,8 @@ def _build_graph_fb_xml(profile, ir: AwlIR, graph_topology: GraphTopology) -> st
 
     steps_xml = "\n".join(_render_graph_step(step) for step in graph_topology.step_nodes)
     transitions_xml = "\n".join(
-        _render_graph_transition(transition) for transition in graph_topology.transition_nodes
+        _render_graph_transition(transition, strict_excel_mode=ir.strict_operand_catalog)
+        for transition in graph_topology.transition_nodes
     )
     branches_xml = "\n".join(_render_graph_branch(branch) for branch in graph_topology.branch_nodes)
     connections_xml = "\n".join(
@@ -3107,7 +3108,7 @@ def _render_graph_step(step: GraphStepNode) -> str:
     )
 
 
-def _render_graph_transition(transition: GraphTransitionNode) -> str:
+def _render_graph_transition(transition: GraphTransitionNode, *, strict_excel_mode: bool = False) -> str:
     next_uid = 21
 
     def alloc_uid() -> int:
@@ -3132,7 +3133,7 @@ def _render_graph_transition(transition: GraphTransitionNode) -> str:
                     f'            <Access Scope="GlobalVariable" UId="{access_uid}">\n',
                     '              <Symbol>\n',
                     f'                <Component Name="{escape(transition.db_block_name)}" />\n',
-                    f'                <Component Name="{escape(_guard_operand_db_member_name(operand))}" />\n',
+                    f'                <Component Name="{escape(_guard_operand_db_member_name(operand, strict_excel_mode=strict_excel_mode))}" />\n',
                     '              </Symbol>\n',
                     '            </Access>\n',
                 ]
