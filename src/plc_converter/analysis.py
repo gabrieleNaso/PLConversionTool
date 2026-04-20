@@ -1671,6 +1671,7 @@ def _build_artifact_previews(scaffold, ir: AwlIR, graph_topology: GraphTopology)
     profile = build_target_profile()
     graph_xml = _build_graph_fb_xml(profile, ir, graph_topology)
     db_xml = _build_global_db_xml(ir, graph_topology)
+    fc_xml = _build_lad_fc_xml(ir, graph_topology)
 
     previews = [
         ArtifactPreview(
@@ -1685,23 +1686,15 @@ def _build_artifact_previews(scaffold, ir: AwlIR, graph_topology: GraphTopology)
         ),
     ]
 
-    if not ir.strict_operand_catalog:
-        fc_xml = _build_lad_fc_xml(ir, graph_topology)
-        previews.append(
-            ArtifactPreview(
-                artifact_type="lad_fc",
-                file_name=scaffold.artifact_plan.lad_fc_name,
-                content=fc_xml,
-            )
+    previews.append(
+        ArtifactPreview(
+            artifact_type="lad_fc",
+            file_name=scaffold.artifact_plan.lad_fc_name,
+            content=fc_xml,
         )
+    )
 
     previews.extend(_build_support_artifact_previews(ir))
-    if ir.strict_operand_catalog:
-        previews = [
-            item
-            for item in previews
-            if item.artifact_type != "lad_fc" and not item.artifact_type.startswith("support_lad_fc_")
-        ]
     return previews
 
 
