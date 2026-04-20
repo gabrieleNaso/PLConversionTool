@@ -8,7 +8,7 @@ Template consigliato:
 Output:
 1. `<Sequence>_ir.json`
 2. `<Sequence>_analysis.json`
-3. bundle XML TIA in `data/output/generated/<sequence_name>/` (solo `FB + DB`, nessuna `FC`)
+3. bundle XML TIA in `data/output/generated/<sequence_name>/` (`FB + DB + FC`)
 
 Compatibilita':
 - il parser legge anche il formato legacy (`steps`, `transitions`, `timers`, `memories`, `faults`, `outputs`), ma per nuovi file usare il formato singola pagina.
@@ -17,6 +17,7 @@ Compatibilita':
 - `meta`: metadati generali.
 - `sequence`: topologia step/transizioni.
 - `operands`: catalogo operandi e categoria funzionale.
+- `support_fc` (opzionale): override espliciti dei member nelle FC/DB di supporto.
 
 Regola base:
 - non compilare `network_index`: viene assegnato dal generatore.
@@ -82,7 +83,22 @@ Per input Excel, il generatore usa `operands` come catalogo strict:
 
 Se una transizione usa operandi non presenti nel catalogo, il report analysis segnala warning dedicati.
 
-## 6) Paralleli
+## 6) Foglio `support_fc` (opzionale, consigliato)
+Usa questo foglio quando vuoi controllare direttamente cosa compare nelle FC/DB di supporto (`io`, `output`, `diag`, `hmi`, `aux`, `transitions`, `mode`, `network`) invece di usare l'inferenza automatica.
+
+Colonne:
+- `category`: categoria supporto. Valori: `io`, `output`, `diag`, `hmi`, `aux`, `transitions`, `mode`, `network`.
+- `member_name`: nome variabile da inserire nel DB supporto e nella FC supporto collegata.
+- `comment`: commento opzionale.
+- `network_index`: usato solo con `category=network` per decidere in quale DB/FC rete mettere il member.
+- `network_title`: opzionale per `category=network`.
+
+Regole:
+- se una categoria e' presente in `support_fc`, per quella categoria il generatore usa i member del foglio.
+- se una categoria non e' presente, resta l'inferenza automatica standard.
+- `support_fc` puo' convivere con `operands`: `operands` continua a governare topologia/strict DB, `support_fc` governa i support artifacts.
+
+## 7) Paralleli
 Per modellare un parallelo reale:
 1. split: stesso `from_step`, target diversi, `flow_type=parallel`.
 2. join: source diversi, stesso `to_step`, `flow_type=parallel`.
@@ -92,7 +108,7 @@ Il generatore emette:
 - `SimBegin` per split
 - `SimEnd` per join
 
-## 7) Esempio minimo
+## 8) Esempio minimo
 `sequence`:
 - `Init | 1 | T1 | Init | Dosaggio | M_START | M_START | alternative |`
 - `Dosaggio | 2 | T2 | Dosaggio | Fine | M_DONE | M_DONE | alternative |`
@@ -102,12 +118,12 @@ Il generatore emette:
 - `M_DONE | aux | | | | | consenso fine`
 - `ALM_TEMP | alarm | | | | | allarme temperatura`
 
-## 8) Generazione
+## 9) Generazione
 ```bash
 make generate-excel-ir EXCEL_FILE="docs/templates/ir_excel_template_single_page.xlsx"
 ```
 
-## 9) Import in TIA
+## 10) Import in TIA
 ```bash
 make import-generated \
   PROJECT_PATH="C:\\Users\\Admin\\Desktop\\prova_connessione_openness\\prova_connessione_openness.ap20" \

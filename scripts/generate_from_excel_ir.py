@@ -127,6 +127,55 @@ def _normalize_operand_category(value: object) -> str:
     return aliases.get(raw, raw or "aux")
 
 
+def _normalize_support_category(value: object) -> str:
+    raw = _cell_text(value).strip().lower()
+    aliases = {
+        "io": "io",
+        "ingressi": "io",
+        "inputs": "io",
+        "diag": "diag",
+        "diagnostica": "diag",
+        "mode": "mode",
+        "modalita": "mode",
+        "modalità": "mode",
+        "transitions": "transitions",
+        "transition": "transitions",
+        "transizioni": "transitions",
+        "output": "output",
+        "uscite": "output",
+        "hmi": "hmi",
+        "aux": "aux",
+        "network": "network",
+        "networks": "network",
+    }
+    return aliases.get(raw, "")
+
+
+def _read_support_members(path: Path) -> list[dict[str, object]]:
+    rows: list[dict[str, object]] = []
+    for sheet_name in ("support_fc", "fc_support"):
+        rows.extend(_read_sheet_rows(path, sheet_name))
+
+    support_members: list[dict[str, object]] = []
+    for row in rows:
+        category = _normalize_support_category(
+            _pick(row, "category", "categoria", "support_category", "fc_category")
+        )
+        member_name = _cell_text(_pick(row, "member_name", "name", "operand", "tag", "variabile"))
+        if not category or not member_name:
+            continue
+        support_members.append(
+            {
+                "category": category,
+                "member_name": member_name,
+                "comment": _cell_text(_pick(row, "comment", "note", "notes", "description", "descrizione")),
+                "network_index": _int_or_none(_pick(row, "network_index", "network", "network_no", "rete")),
+                "network_title": _cell_text(_pick(row, "network_title", "title", "network_name")),
+            }
+        )
+    return support_members
+
+
 def _dedupe_dict_rows(items: list[dict[str, object]], keys: tuple[str, ...]) -> list[dict[str, object]]:
     seen: set[tuple[str, ...]] = set()
     deduped: list[dict[str, object]] = []
@@ -415,6 +464,7 @@ def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[s
     manual_logic_networks = _split_int_list(meta.get("manual_logic_networks"))
     auto_logic_networks = _split_int_list(meta.get("auto_logic_networks"))
     external_refs = _split_list(meta.get("external_refs"))
+    support_members = _read_support_members(path)
 
     # New readable format: optional operand catalog that classifies signals
     # used in LAD transition logic by function (alarm/aux/hmi/output/timer/...).
@@ -602,6 +652,7 @@ def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[s
         "external_refs": external_refs,
         "strict_operand_catalog": True,
         "operand_catalog": operand_catalog,
+        "support_members": support_members,
         "assumptions": _split_list(meta.get("assumptions")),
     }
     return normalized_sequence, source_name, ir_payload

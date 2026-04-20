@@ -301,6 +301,7 @@ def _ir_from_payload(
         external_refs=sorted(set(_as_str_list(ir_payload.get("external_refs")))),
         strict_operand_catalog=bool(ir_payload.get("strict_operand_catalog", False)),
         operand_catalog=sorted(set(_as_str_list(ir_payload.get("operand_catalog")))),
+        support_members=_as_dict_list(ir_payload.get("support_members")),
         assumptions=_as_str_list(ir_payload.get("assumptions"))
         or [
             "IR caricato da JSON esterno (es. Excel): verificare coerenza semantica delle guardie prima dell'import TIA."
@@ -517,6 +518,16 @@ def _as_int_list(value: object) -> list[int]:
 def _as_positive_int(value: object) -> int | None:
     parsed = _as_int(value, 0)
     return parsed if parsed > 0 else None
+
+
+def _as_dict_list(value: object) -> list[dict[str, object]]:
+    if not isinstance(value, list):
+        return []
+    items: list[dict[str, object]] = []
+    for element in value:
+        if isinstance(element, dict):
+            items.append(dict(element))
+    return items
 
 
 def _normalize_awl_source(awl_source: str) -> str:
@@ -1739,7 +1750,7 @@ def _build_artifact_manifest(previews: list[ArtifactPreview]) -> dict[str, list[
 def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
     previews: list[ArtifactPreview] = []
 
-    io_members = _collect_io_support_members(ir)
+    io_members = _excel_support_members(ir, "io") or _collect_io_support_members(ir)
     if io_members:
         (
             io_db_name,
@@ -1777,7 +1788,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
             )
         )
 
-    diag_members = _collect_diag_support_members(ir)
+    diag_members = _excel_support_members(ir, "diag") or _collect_diag_support_members(ir)
     if diag_members:
         (
             diag_db_name,
@@ -1815,7 +1826,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
             )
         )
 
-    mode_members = _collect_mode_support_members(ir)
+    mode_members = _excel_support_members(ir, "mode") or _collect_mode_support_members(ir)
     if mode_members:
         (
             mode_db_name,
@@ -1853,8 +1864,8 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
             )
         )
 
-    network_specs: list[tuple[int, str, list[tuple[str, str]]]] = []
-    if len(ir.networks) <= 5:
+    network_specs = _excel_network_support_specs(ir)
+    if not network_specs and len(ir.networks) <= 5:
         network_specs = _collect_network_support_specs(ir)
     for network_no, network_title, members in network_specs:
         suffix = _network_support_suffix(network_no, network_title)
@@ -1894,7 +1905,9 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
             )
         )
 
-    transitions_members = _collect_transitions_support_members(ir, network_specs)
+    transitions_members = _excel_support_members(ir, "transitions") or _collect_transitions_support_members(
+        ir, network_specs
+    )
     if transitions_members:
         (
             tr_db_name,
@@ -1932,7 +1945,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
             )
         )
 
-    output_members = _collect_output_family_members(ir)
+    output_members = _excel_support_members(ir, "output") or _collect_output_family_members(ir)
     if output_members:
         (
             out_db_name,
@@ -1970,7 +1983,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
             )
         )
 
-    hmi_members = _collect_hmi_support_members(ir)
+    hmi_members = _excel_support_members(ir, "hmi") or _collect_hmi_support_members(ir)
     if hmi_members:
         (
             hmi_db_name,
@@ -2008,7 +2021,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
             )
         )
 
-    aux_members = _collect_aux_support_members(ir)
+    aux_members = _excel_support_members(ir, "aux") or _collect_aux_support_members(ir)
     if aux_members:
         (
             aux_db_name,
@@ -2870,6 +2883,49 @@ def _build_lad_pattern(
         '  </Wires>\n'
         '</FlgNet></NetworkSource>'
     )
+
+
+def _excel_support_members(ir: AwlIR, category: str) -> list[tuple[str, str]]:
+    normalized_category = str(category or "").strip().lower()
+    if not normalized_category:
+        return []
+    members: list[tuple[str, str]] = []
+    for item in ir.support_members:
+        raw_category = str(item.get("category") or "").strip().lower()
+        if raw_category != normalized_category:
+            continue
+        raw_name = str(item.get("member_name") or "").strip()
+        if not raw_name:
+            continue
+        member_name = _support_member_name(raw_name, "", strict_excel_mode=True)
+        comment = str(item.get("comment") or "").strip()
+        members.append((member_name, comment or f"Excel override ({normalized_category})"))
+    return _dedupe_named_members(members)
+
+
+def _excel_network_support_specs(ir: AwlIR) -> list[tuple[int, str, list[tuple[str, str]]]]:
+    grouped: dict[int, tuple[str, list[tuple[str, str]]]] = {}
+    for item in ir.support_members:
+        raw_category = str(item.get("category") or "").strip().lower()
+        if raw_category != "network":
+            continue
+        member_name_raw = str(item.get("member_name") or "").strip()
+        if not member_name_raw:
+            continue
+        network_index = _as_positive_int(item.get("network_index")) or 1
+        network_title = str(item.get("network_title") or "").strip() or f"Excel_Network_{network_index}"
+        member_name = _support_member_name(member_name_raw, "", strict_excel_mode=True)
+        comment = str(item.get("comment") or "").strip() or f"Excel override network {network_index}"
+        title, members = grouped.setdefault(network_index, (network_title, []))
+        members.append((member_name, comment))
+        if title != network_title:
+            grouped[network_index] = (title, members)
+
+    specs: list[tuple[int, str, list[tuple[str, str]]]] = []
+    for network_index in sorted(grouped):
+        network_title, members = grouped[network_index]
+        specs.append((network_index, network_title, _dedupe_named_members(members)))
+    return specs
 
 
 def _collect_io_support_members(ir: AwlIR) -> list[tuple[str, str]]:

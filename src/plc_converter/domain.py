@@ -183,6 +183,7 @@ class AwlIR:
     external_refs: list[str] = field(default_factory=list)
     strict_operand_catalog: bool = False
     operand_catalog: list[str] = field(default_factory=list)
+    support_members: list[dict[str, object]] = field(default_factory=list)
     assumptions: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
