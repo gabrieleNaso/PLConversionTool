@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import re
-import hashlib
 from xml.sax.saxutils import escape
 
 from .domain import (
@@ -70,24 +69,32 @@ FC_FAMILY_PREFIX = {
 
 DB_FAMILY_NUMBER_BASE = {
     "base": 1100,
-    "sequence": 1200,
+    "hmi": 1200,
+    "aux": 1300,
+    "transitions": 1400,
+    "graph": 1500,
+    "sequence": 1600,
     "ext": 1800,
-    "aux": 1900,
-    "hmi": 1700,
+    "output": 1900,
 }
 
 FC_FAMILY_NUMBER_BASE = {
-    "hmi": 200,
-    "aux": 300,
-    "transitions": 400,
-    "output": 600,
+    "base": 1100,
+    "hmi": 1200,
+    "aux": 1300,
+    "transitions": 1400,
+    "sequence": 1600,
+    "output": 1900,
 }
 
 SUPPORT_FAMILY_OVERRIDES = {
+    "diag": {"db_family": "base", "fc_family": "base"},
+    "io": {"db_family": "sequence", "fc_family": "sequence"},
+    "mode": {"db_family": "sequence", "fc_family": "sequence"},
     "hmi": {"db_family": "hmi", "fc_family": "hmi"},
     "aux": {"db_family": "aux", "fc_family": "aux"},
-    "transitions": {"db_family": "sequence", "fc_family": "transitions"},
-    "output": {"db_family": "sequence", "fc_family": "output"},
+    "transitions": {"db_family": "transitions", "fc_family": "transitions"},
+    "output": {"db_family": "output", "fc_family": "output"},
 }
 
 TIA_MEMBER_NAME_MAX_LEN = 96
@@ -1672,11 +1679,14 @@ def _validate_operand_coherence(ir: AwlIR) -> list[ValidationIssue]:
 
 
 def _stable_block_number(seed: str, base: int, span: int) -> int:
-    if span <= 0:
-        return base
-    digest = hashlib.sha1(seed.encode("utf-8")).hexdigest()
-    value = int(digest[:8], 16)
-    return base + (value % span)
+    _ = span
+    suffix = _block_type_suffix(seed)
+    return base + suffix
+
+
+def _block_type_suffix(seed: str) -> int:
+    _ = seed
+    return 3
 
 
 def _build_artifact_previews(scaffold, ir: AwlIR, graph_topology: GraphTopology) -> list[ArtifactPreview]:
@@ -1750,6 +1760,7 @@ def _build_artifact_manifest(previews: list[ArtifactPreview]) -> dict[str, list[
 
 def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
     previews: list[ArtifactPreview] = []
+    symbol_home_db_map = _build_support_symbol_home_db_map(ir)
 
     io_logic = _excel_support_logic_rows(ir, "io")
     io_members = _excel_support_members(ir, "io") or _collect_io_support_members(ir)
@@ -1787,7 +1798,9 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     db_name=io_db_name,
                     support_members=io_fc_members,
                     db_members=[name for name, _ in io_db_members],
+                    symbol_home_db_map=symbol_home_db_map,
                     logic_rows=io_logic,
+                    allow_member_fallback=False,
                     number_seed=f"{ir.sequence_name}_IO_FC",
                     number_base=io_fc_base,
                 ),
@@ -1830,7 +1843,9 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     db_name=diag_db_name,
                     support_members=diag_fc_members,
                     db_members=[name for name, _ in diag_db_members],
+                    symbol_home_db_map=symbol_home_db_map,
                     logic_rows=diag_logic,
+                    allow_member_fallback=False,
                     number_seed=f"{ir.sequence_name}_DIAG_FC",
                     number_base=diag_fc_base,
                 ),
@@ -1873,7 +1888,9 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     db_name=mode_db_name,
                     support_members=mode_fc_members,
                     db_members=[name for name, _ in mode_db_members],
+                    symbol_home_db_map=symbol_home_db_map,
                     logic_rows=mode_logic,
+                    allow_member_fallback=False,
                     number_seed=f"{ir.sequence_name}_MODE_FC",
                     number_base=mode_fc_base,
                 ),
@@ -1916,6 +1933,8 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     db_name=network_db_name,
                     support_members=[name for name, _ in members],
                     db_members=[name for name, _ in members],
+                    symbol_home_db_map=symbol_home_db_map,
+                    allow_member_fallback=False,
                     number_seed=f"{ir.sequence_name}_{suffix}_FC",
                     number_base=network_fc_base,
                 ),
@@ -1960,7 +1979,10 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     db_name=tr_db_name,
                     support_members=transitions_fc_members,
                     db_members=[name for name, _ in transitions_db_members],
+                    symbol_home_db_map=symbol_home_db_map,
                     logic_rows=transitions_logic,
+                    allow_member_fallback=True,
+                    prefer_current_db_for_unmapped=True,
                     number_seed=f"{ir.sequence_name}_TRANSITIONS_FC",
                     number_base=tr_fc_base,
                 ),
@@ -2003,7 +2025,9 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     db_name=out_db_name,
                     support_members=output_fc_members,
                     db_members=[name for name, _ in output_db_members],
+                    symbol_home_db_map=symbol_home_db_map,
                     logic_rows=output_logic,
+                    allow_member_fallback=False,
                     number_seed=f"{ir.sequence_name}_OUTPUT_FC",
                     number_base=out_fc_base,
                 ),
@@ -2046,7 +2070,9 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     db_name=hmi_db_name,
                     support_members=hmi_fc_members,
                     db_members=[name for name, _ in hmi_db_members],
+                    symbol_home_db_map=symbol_home_db_map,
                     logic_rows=hmi_logic,
+                    allow_member_fallback=False,
                     number_seed=f"{ir.sequence_name}_HMI_FC",
                     number_base=hmi_fc_base,
                 ),
@@ -2089,7 +2115,9 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     db_name=aux_db_name,
                     support_members=aux_fc_members,
                     db_members=[name for name, _ in aux_db_members],
+                    symbol_home_db_map=symbol_home_db_map,
                     logic_rows=aux_logic,
+                    allow_member_fallback=False,
                     number_seed=f"{ir.sequence_name}_AUX_FC",
                     number_base=aux_fc_base,
                 ),
@@ -2100,7 +2128,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
 
 
 def _build_graph_fb_xml(profile, ir: AwlIR, graph_topology: GraphTopology) -> str:
-    fb_number = _stable_block_number(f"{ir.sequence_name}_FB", base=100, span=100)
+    fb_number = _stable_block_number(f"{ir.sequence_name}_FB", base=DB_FAMILY_NUMBER_BASE["graph"], span=100)
     static_members = [
         '    <Member Name="RT_DATA" Datatype="G7_RTDataPlus_V2" Version="1.0" />'
     ]
@@ -2476,8 +2504,11 @@ def _build_support_lad_fc_xml(
     db_name: str,
     support_members: list[str],
     db_members: list[str],
+    symbol_home_db_map: dict[str, str] | None,
     number_seed: str,
     logic_rows: list[dict[str, object]] | None = None,
+    allow_member_fallback: bool = True,
+    prefer_current_db_for_unmapped: bool = False,
     number_base: int = 600,
     number_span: int = 200,
 ) -> str:
@@ -2492,7 +2523,10 @@ def _build_support_lad_fc_xml(
         db_name=db_name,
         support_members=support_members,
         db_members=db_members,
+        symbol_home_db_map=symbol_home_db_map or {},
         logic_rows=logic_rows or [],
+        allow_member_fallback=allow_member_fallback,
+        prefer_current_db_for_unmapped=prefer_current_db_for_unmapped,
     )
     return (
         '<?xml version="1.0" encoding="utf-8"?>\n'
@@ -2779,7 +2813,10 @@ def _build_support_lad_compile_units(
     db_name: str,
     support_members: list[str],
     db_members: list[str],
+    symbol_home_db_map: dict[str, str],
     logic_rows: list[dict[str, object]] | None = None,
+    allow_member_fallback: bool = True,
+    prefer_current_db_for_unmapped: bool = False,
 ) -> str:
     db_member_set = set(db_members)
     units: list[str] = []
@@ -2802,6 +2839,8 @@ def _build_support_lad_compile_units(
                 condition_expression=condition_expression,
                 condition_operands=condition_operands,
                 db_members=db_member_set,
+                symbol_home_db_map=symbol_home_db_map,
+                prefer_current_db_for_unmapped=prefer_current_db_for_unmapped,
             )
             units.append(
                 '      <SW.Blocks.CompileUnit ID="'
@@ -2832,6 +2871,9 @@ def _build_support_lad_compile_units(
         if units:
             return "\n".join(units)
 
+    if not allow_member_fallback:
+        return ""
+
     unique_members = list(dict.fromkeys(member for member in support_members if member))
     if not unique_members:
         unique_members = ["PACKET_READY"]
@@ -2846,6 +2888,8 @@ def _build_support_lad_compile_units(
             condition_expression=member_name,
             condition_operands=[member_name],
             db_members=db_member_set,
+            symbol_home_db_map=symbol_home_db_map,
+            prefer_current_db_for_unmapped=prefer_current_db_for_unmapped,
         )
         units.append(
             '      <SW.Blocks.CompileUnit ID="'
@@ -2882,6 +2926,8 @@ def _build_support_logic_flgnet(
     condition_expression: str,
     condition_operands: list[str],
     db_members: set[str],
+    symbol_home_db_map: dict[str, str],
+    prefer_current_db_for_unmapped: bool = False,
 ) -> str:
     next_uid = 21
 
@@ -2898,11 +2944,21 @@ def _build_support_logic_flgnet(
     wires_lines: list[str] = []
 
     def _render_access(symbol_name: str, access_uid: int) -> list[str]:
+        target_db_name = db_name
         if symbol_name in db_members:
+            target_db_name = db_name
+        elif symbol_name in symbol_home_db_map:
+            target_db_name = symbol_home_db_map[symbol_name]
+        elif prefer_current_db_for_unmapped:
+            target_db_name = db_name
+        else:
+            target_db_name = ""
+
+        if target_db_name:
             return [
                 f'    <Access Scope="GlobalVariable" UId="{access_uid}">\n',
                 "      <Symbol>\n",
-                f'        <Component Name="{escape(db_name)}" />\n',
+                f'        <Component Name="{escape(target_db_name)}" />\n',
                 f'        <Component Name="{escape(symbol_name)}" />\n',
                 "      </Symbol>\n",
                 "    </Access>\n",
@@ -2961,6 +3017,19 @@ def _build_support_logic_flgnet(
     )
 
     clause_outs: list[int] = []
+    if clause_contact_uids:
+        powerrail_wire_uid = alloc_uid()
+        wires_lines.extend(
+            [
+                f'    <Wire UId="{powerrail_wire_uid}">\n',
+                "      <Powerrail />\n",
+            ]
+        )
+        for branch in clause_contact_uids:
+            if branch:
+                wires_lines.append(f'      <NameCon UId="{branch[0]}" Name="in" />\n')
+        wires_lines.append("    </Wire>\n")
+
     for branch in clause_contact_uids:
         for prev_uid, next_contact_uid in zip(branch, branch[1:]):
             serial_wire_uid = alloc_uid()
@@ -3230,6 +3299,16 @@ def _merge_support_members_with_logic(
             if token and token not in existing:
                 merged.append((token, "Condition operand from support_fc_logic"))
                 existing.add(token)
+        # Make variables usable across FC categories even when the user
+        # writes only the boolean expression and leaves condition_operands empty.
+        expression = str(row.get("condition_expression") or "").strip()
+        for token in re.findall(r"[A-Za-z_]\w*(?:\.\w+)*", expression):
+            if token.upper() in {"AND", "OR", "NOT", "TRUE", "FALSE"}:
+                continue
+            normalized = _support_member_name(token, "", strict_excel_mode=True)
+            if normalized and normalized not in existing:
+                merged.append((normalized, "Condition token from support_fc expression"))
+                existing.add(normalized)
     return _dedupe_named_members(merged)
 
 
@@ -3252,13 +3331,34 @@ def _prepare_support_members(
 ) -> tuple[list[tuple[str, str]], list[str]]:
     merged = _merge_support_members_with_logic(members, logic_rows)
     merged_names = [name for name, _ in merged if str(name or "").strip()]
-    allowed = _strict_support_db_catalog(ir)
-    if allowed is None:
-        return merged, list(dict.fromkeys(merged_names))
-
-    db_members = [(name, comment) for name, comment in merged if name in allowed]
+    db_members = _prepare_support_db_members(ir, members)
     fc_members = list(dict.fromkeys(merged_names))
     return _dedupe_named_members(db_members), fc_members
+
+
+def _prepare_support_db_members(ir: AwlIR, members: list[tuple[str, str]]) -> list[tuple[str, str]]:
+    allowed = _strict_support_db_catalog(ir)
+    if allowed is None:
+        return _dedupe_named_members(members)
+    return _dedupe_named_members([(name, comment) for name, comment in members if name in allowed])
+
+
+def _build_support_symbol_home_db_map(ir: AwlIR) -> dict[str, str]:
+    category_sources: list[tuple[str, list[tuple[str, str]]]] = [
+        ("io", _excel_support_members(ir, "io") or _collect_io_support_members(ir)),
+        ("diag", _excel_support_members(ir, "diag") or _collect_diag_support_members(ir)),
+        ("mode", _excel_support_members(ir, "mode") or _collect_mode_support_members(ir)),
+        ("transitions", _excel_support_members(ir, "transitions") or _collect_transitions_support_members(ir, [])),
+        ("output", _excel_support_members(ir, "output") or _collect_output_family_members(ir)),
+        ("hmi", _excel_support_members(ir, "hmi") or _collect_hmi_support_members(ir)),
+        ("aux", _excel_support_members(ir, "aux") or _collect_aux_support_members(ir)),
+    ]
+    mapping: dict[str, str] = {}
+    for category, members in category_sources:
+        db_name, _, _, _, _, _ = _support_block_names(ir.sequence_name, category)
+        for name, _ in _prepare_support_db_members(ir, members):
+            mapping.setdefault(name, db_name)
+    return mapping
 
 
 def _collect_io_support_members(ir: AwlIR) -> list[tuple[str, str]]:
@@ -3424,8 +3524,8 @@ def _support_block_names(
     fc_family = family_override.get("fc_family")
     db_prefix = DB_FAMILY_PREFIX.get(db_family) if db_family else None
     fc_prefix = FC_FAMILY_PREFIX.get(fc_family) if fc_family else None
-    db_number_base = DB_FAMILY_NUMBER_BASE.get(db_family, 400)
-    fc_number_base = FC_FAMILY_NUMBER_BASE.get(fc_family, 600)
+    db_number_base = DB_FAMILY_NUMBER_BASE.get(db_family, DB_FAMILY_NUMBER_BASE["sequence"])
+    fc_number_base = FC_FAMILY_NUMBER_BASE.get(fc_family, FC_FAMILY_NUMBER_BASE["sequence"])
 
     if suffix:
         block_token = _normalize_symbol_name(suffix, suffix)

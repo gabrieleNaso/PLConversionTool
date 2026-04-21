@@ -100,10 +100,12 @@ Il confronto tra i documenti normativi aggiornati e i file XML reali oggi dispon
 
 - I tipici reali confermano in modo forte la cardinalita' architetturale del pacchetto target: `1 x FB GRAPH + N x GlobalDB + M x FC LAD`. Questo e' da considerare requisito strutturale del generatore e non convenzione descrittiva.
 - Il pacchetto `T1-A ARUNC` resta un riferimento molto utile per naming, topologia dei path globali, separazione per responsabilita' e pattern LAD di supporto, ma non puo' essere assunto come template serializer finale, perche' il suo blocco sequenziale osservato e' ancora su runtime `V6`.
-- La famiglia di DB `11../12../18../19..` va considerata normativa per il convertitore e per il backend target del progetto; non va invece interpretata come fotografia obbligatoria di ogni tipico legacy presente nel corpus.
+- La numerazione blocchi del convertitore va considerata normativa in formato `XXGG`: `XX` identifica la famiglia, `GG` il gruppo comune della traduzione (`03` e' solo esempio, non valore fisso).
 - Il modello HMI va esplicitato su due livelli: condizioni elementari nel path `Conditions.<gruppo>.Conditions.nX` e metadati/stati di gruppo nello stesso owner DB HMI, con campi del tipo `PopUpNumber`, `ConditionOK`, `Visible`, `FO` o equivalenti previsti dal modello finale.
 - I DB esterni fissi di integrazione, quando presenti, costituiscono un contratto rigido di naming. In particolare i pattern `Pnnn` e `Lnnn` osservati in `DB81-OPIN` e `DB82-OPOUT` non devono essere rinominati liberamente dal generatore.
 - I casi legacy come `T1-A ARUNC LEV2` confermano che nel corpus storico esistono sequenze e strutture dati utili per il reverse engineering semantico, ma non necessariamente allineate alla partizione target chiusa del nuovo convertitore.
+- Mappa famiglie consolidata al 21-04-2026 (forma `XXGG`): `11GG` alarms/diag, `12GG` hmi, `13GG` aux, `14GG` transitions, `15GG` graph, `16GG` sequenza, `18GG` external, `19GG` output.
+- Nel flusso Excel l'ownership DB e' determinata da `operands`: uso cross-FC ammesso ma senza migrazione del DB owner della variabile.
 
 ## 3. Target tecnico consolidato
 
@@ -661,10 +663,11 @@ Per la traduzione AWL -> GRAPH il progetto adotta ora una convenzione fissa di n
 
 Regola generale:
 
-- le ultime due cifre del numero blocco derivano dalle ultime due cifre della sequenza AWL di origine;
-- le prime due cifre identificano la famiglia funzionale del blocco.
+- il numero blocco reale e' il valore XML `<Number>`;
+- il formato e' `XXGG`, dove `XX` identifica la famiglia e `GG` e' il gruppo comune della traduzione;
+- `03` e' un esempio operativo di `GG`, non un valore fisso.
 
-Esempio: per una sequenza AWL `102`, tutti i blocchi della traduzione devono terminare con `02`.
+Mappa famiglie consolidata: `11GG` alarms/diag, `12GG` hmi, `13GG` aux, `14GG` transitions, `15GG` graph, `16GG` sequenza, `18GG` external, `19GG` output.
 
 Questa convenzione è normativa per il convertitore, anche se alcuni campioni legacy caricati mostrano distribuzioni storiche diverse dei numeri blocco.
 
@@ -672,11 +675,13 @@ Questa convenzione è normativa per il convertitore, anche se alcuni campioni le
 
 Nella baseline corrente la partizione dei DB di una sequenza tradotta va considerata fissa.
 
-- `11..` = DB base della sequenza, contenente memorie, merker applicativi e strutture dati generali del sequenziatore;
-- `12..` = DB della sequenza in sé;
-- `18..` = DB `EXT`, dedicato a tutte le variabili che arrivano dall'esterno della sequenza;
-- `19..` = DB ausiliare, dedicato a timer, contatori e strutture di appoggio non appartenenti al runtime interno del GRAPH;
-- DB HMI = DB creato ex novo dal generatore e dedicato ai popup, alle strutture di supporto HMI e alle condizioni visualizzate.
+- `11..` = DB alarms/diag;
+- `12..` = DB HMI;
+- `13..` = DB ausiliare (timer, contatori, appoggi tecnici);
+- `14..` = DB transitions;
+- `16..` = DB sequenza;
+- `18..` = DB `EXT`;
+- `19..` = DB output.
 
 Questa distribuzione deve essere rispettata dal modello IR e dai serializer, evitando accorpamenti opportunistici fra aree con ruolo diverso.
 
@@ -712,9 +717,12 @@ La forma corretta dell'output è un insieme coordinato di artefatti:
 
 - `FB GRAPH` per la macchina a stati esplicita;
 - `DB 11..` per memorie, transizioni semantiche e stato leggibile del sequenziatore;
-- `DB 12..` per il contenitore della sequenza secondo il modello scelto;
+- `DB 12..` per dati HMI;
+- `DB 13..` per supporti ausiliari (timer, contatori, appoggi tecnici);
+- `DB 14..` per transitions;
+- `DB 16..` per il contenitore della sequenza secondo il modello scelto;
 - `DB 18..` per variabili esterne alla sequenza;
-- `DB 19..` per timer, contatori e appoggi tecnici;
+- `DB 19..` per output;
 - `DB HMI` per popup, condizioni visualizzate e strutture HMI;
 - `FC 02` HMI;
 - `FC 03` Aux;
@@ -766,10 +774,10 @@ Un DB AWL unico non deve essere replicato nel target.
 
 La regola corretta è separare i dati in base al ruolo:
 
-- bit semantici di avanzamento -> `Transitions` nel DB base `11..`;
+- bit semantici di avanzamento -> `Transitions` nel DB `14..`;
 - memorie di processo, consensi cumulativi e stati fisici -> `Memory` nel DB base `11..`;
 - stato leggibile della sequenza, step attuale e storico -> `Seq Status` nel DB base `11..`;
-- timer e contatori AWL -> `DB 19..` con tipi IEC e supporto `FC 03 Aux`;
+- timer e contatori AWL -> `DB 13..` con tipi IEC e supporto `FC 03 Aux`;
 - variabili esterne alla sequenza -> `DB 18.. EXT`;
 - informazioni HMI e popup -> DB HMI.
 
@@ -806,8 +814,9 @@ Conseguenze pratiche da considerare fissate:
 
 - nel DB tipo OPIN i comandi e i preset devono restare nella famiglia `Pxxx`;
 - nel DB tipo OPOUT uscite, lampade e stati comandati devono restare nella famiglia `Lxxx`;
-- nel DB base `11..` le variabili del sequenziatore devono restare nei rami `Transitions`, `Memory`, `Seq Status`;
-- nel `DB 19.. AUX` i supporti tecnici devono restare nella famiglia ausiliaria e non migrare con naming libero in altri DB;
+- nel DB `14..` le variabili di transizione devono restare nel ramo `Transitions`;
+- nel DB base `11..` le variabili di stato/memoria devono restare nei rami `Memory`, `Seq Status`;
+- nel `DB 13.. AUX` i supporti tecnici devono restare nella famiglia ausiliaria e non migrare con naming libero in altri DB;
 - nel DB HMI popup e condizioni devono mantenere il path HMI coerente al gruppo di appartenenza.
 
 Non è quindi ammesso che il generatore produca variabili globali con nomi neutri o incompleti quando il target richiede naming specifico.
@@ -839,7 +848,7 @@ I timer AWL `Txx`, i preset `S5T`, i bit di appoggio pulsati e le memorie tecnic
 
 Devono essere convertiti in:
 
-- istanze IEC nel `DB 19..`;
+- istanze IEC nel `DB 13..`;
 - reti LAD nella `FC 03 Aux`;
 - eventuali memorie semantiche derivate nel DB base `11..`.
 
@@ -1025,7 +1034,7 @@ Alla data del 21-04-2026 la baseline consolidata del progetto è la seguente.
 - selezione dei pattern validati;
 - serializer dedicati per backend;
 - regressione su casi importati davvero in TIA;
-- numbering dei blocchi vincolato: ultime due cifre derivate dalla sequenza AWL, prime due cifre derivate dalla tipologia del blocco;
+- numbering dei blocchi vincolato in formato `XXGG` (famiglia + gruppo comune, con `03` solo esempio operativo);
 - distinzione netta fra vincoli strutturali del target `V2` e soli riferimenti semantici ricavati da campioni legacy;
 - scomposizione obbligatoria dell'AWL in famiglie logiche prima della traduzione;
 - ricostruzione della macchina a stati a partire dagli edge estratti e non dal solo ordine dei segmenti;
@@ -1053,7 +1062,7 @@ Alla data del 21-04-2026 la baseline consolidata del progetto è la seguente.
 
 I prossimi passi più utili sono:
 
-1. formalizzare un IR unico di progetto per sequenza, dati e reti, già coerente con la partizione fissa `11../12../18../19..`;
+1. formalizzare un IR unico di progetto per sequenza, dati e reti, gia' coerente con la mappa famiglie `11/12/13/14/15/16/18/19` in formato `XXGG`;
 2. costruire una libreria di pattern GRAPH e FC esplicitamente convalidati;
 3. implementare validator e linter come parte obbligatoria della pipeline;
 4. estendere i test reali su più tipologie di blocchi XML, mantenendo il target finale sempre in `V2`;

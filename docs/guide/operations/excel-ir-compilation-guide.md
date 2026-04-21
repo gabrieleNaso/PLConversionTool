@@ -166,3 +166,21 @@ make import-generated \
   TARGET_PATH="Program blocks/generati da tool/<nome_bundle>" \
   IMPORT_BUNDLE="<nome_bundle>"
 ```
+
+Regole consolidate (21-04-2026):
+- `import-generated` esegue polling automatico sia del job import sia del job compile (`AutoCompileJobId`).
+- i numeri blocco sono il valore reale XML `<Number>` (non il prefisso nel nome file).
+- il suffisso finale e' il numero comune di gruppo (`GG`): `03` e' un esempio, non un valore obbligatorio.
+- mappa gruppi numerici blocchi (forma `XXGG`, esempio con `GG=03`):
+  - `11GG` (es. `1103`) -> alarms/diag
+  - `12GG` (es. `1203`) -> hmi
+  - `13GG` (es. `1303`) -> aux
+  - `14GG` (es. `1403`) -> transitions
+  - `15GG` (es. `1503`) -> graph (FB)
+  - `16GG` (es. `1603`) -> sequenza
+  - `18GG` (es. `1803`) -> external
+  - `19GG` (es. `1903`) -> output
+- le variabili usate nelle FC possono essere cross-categoria, ma il DB owner non cambia:
+  - il DB owner e' determinato dal catalogo `operands`;
+  - se una variabile e' usata in un'altra FC, resta referenziata nel DB owner originale;
+  - eccezione di robustezza per `FC transitions`: se una variabile non ha owner risolto, fallback sul DB transitions per evitare import error.

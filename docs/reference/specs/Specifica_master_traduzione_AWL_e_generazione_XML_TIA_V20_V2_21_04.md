@@ -75,9 +75,12 @@ Il generatore deve poter emettere almeno le seguenti famiglie architetturali:
 
 - `1 x FB GRAPH` della sequenza;
 - `DB 11..` base;
-- `DB 12..` sequenza;
+- `DB 12..` HMI;
+- `DB 13..` AUX;
+- `DB 14..` transitions;
+- `DB 16..` sequenza;
 - `DB 18.. EXT`;
-- `DB 19.. AUX`;
+- `DB 19..` output;
 - `DB HMI`;
 - `FC 02 HMI`;
 - `FC 03 Aux`;
@@ -326,7 +329,7 @@ Ogni timer nell'IR deve contenere almeno:
 - tipo target IEC proposto;
 - trigger di attivazione;
 - output derivati;
-- area target proposta nel `DB 19..`.
+- area target proposta nel `DB 13..`.
 
 ## 18. Regola di rappresentazione delle uscite
 
@@ -358,24 +361,37 @@ Per ognuna devono esistere almeno:
 
 La convenzione fissa del progetto è:
 
-- le ultime due cifre del numero blocco derivano dalle ultime due cifre della sequenza AWL;
-- le prime due cifre dipendono dalla famiglia del blocco.
+- il numero blocco reale e' il valore XML `<Number>`;
+- il formato e' `XXGG`:
+  - `XX` identifica la famiglia funzionale del blocco;
+  - `GG` e' il numero comune di gruppo della traduzione;
+- `GG` non e' fisso: `03` e' un esempio operativo, non un vincolo semantico.
 
-Esempio: sequenza `102` -> suffisso `02` per tutti i blocchi della traduzione.
+Mappa famiglie consolidata:
+- `11GG` -> alarms/diag;
+- `12GG` -> HMI;
+- `13GG` -> AUX;
+- `14GG` -> transitions;
+- `15GG` -> GRAPH (FB);
+- `16GG` -> sequenza;
+- `18GG` -> external;
+- `19GG` -> output.
 
 ## 21. Regola sui DB di progetto
 
 La distribuzione corretta dei dati è:
 
-- `11..` = DB base della sequenza;
-- `12..` = DB della sequenza;
-- `18..` = DB `EXT`;
-- `19..` = DB ausiliare di timer e contatori;
-- DB HMI = DB creato ex novo.
+- `11GG` = DB allarmi/diagnostica;
+- `12GG` = DB HMI;
+- `13GG` = DB AUX;
+- `14GG` = DB transitions;
+- `16GG` = DB sequenza;
+- `18GG` = DB `EXT`;
+- `19GG` = DB output.
 
 ## 21-bis. Regola di natura normativa della partizione target
 
-La partizione `11../12../18../19..` definita in questa specifica e' una regola del convertitore target e del serializer finale.
+La partizione per famiglie `11GG/12GG/13GG/14GG/15GG/16GG/18GG/19GG` definita in questa specifica e' una regola del convertitore target e del serializer finale.
 
 Non deve essere letta come vincolo retroattivo sui tipici legacy del corpus.
 
@@ -396,9 +412,9 @@ Nel DB base devono confluire almeno:
 
 Il `DB 11..` è il contenitore leggibile dell'applicazione, non il runtime interno del GRAPH.
 
-## 23. Regola di allocazione nel `DB 12..`
+## 23. Regola di allocazione nel `DB 16..`
 
-Il `DB 12..` rappresenta il contenitore della sequenza in sé, secondo il modello di progetto adottato.
+Il `DB 16..` rappresenta il contenitore della sequenza in se', secondo il modello di progetto adottato.
 
 Non deve essere usato come replica del vecchio DB AWL unico se questo conteneva ruoli misti.
 
@@ -411,15 +427,24 @@ Nel `DB 18..` devono finire tutte le variabili che arrivano dall'esterno della s
 - segnali provenienti da altri blocchi o altre sezioni impianto;
 - riferimenti fissi di progetto esposti al sequenziatore.
 
-## 25. Regola di allocazione nel `DB 19.. AUX`
+## 25. Regola di allocazione nel `DB 13.. AUX`
 
-Nel `DB 19..` devono finire:
+Nel `DB 13..` devono finire:
 
 - timer IEC;
 - contatori IEC;
 - one-shot;
 - appoggi tecnici;
 - supporti necessari alle reti della `FC 03 Aux`.
+
+## 25-bis. Regola hard di ownership DB da Excel (`operands`)
+
+Quando la sorgente e' Excel:
+
+- il DB owner di ogni variabile e' determinato dal catalogo `operands`;
+- l'uso cross-categoria nelle FC e' ammesso, ma non deve spostare il DB owner della variabile;
+- i riferimenti LAD devono puntare al DB owner reale, anche se la variabile e' usata in una FC di categoria diversa;
+- eccezione di robustezza su `FC transitions`: se un owner non e' risolto, fallback sul DB transitions per evitare import error.
 
 ## 26. Regola di allocazione HMI
 
@@ -485,7 +510,7 @@ Il mapping seguente va considerato normativo.
 - Condizioni HMI elementari -> DB HMI, ramo `Conditions.<gruppo>.Conditions.nX`. Non e' ammesso saltare il ramo intermedio `Conditions` del gruppo. Questa regola vale per le condizioni elementari del popup e non esaurisce la struttura del gruppo HMI.
 - Strutture HMI operative -> DB HMI, ramo `HMI.*` secondo la struttura del blocco HMI generato.
 - Metadati e stati di gruppo HMI -> DB HMI, all'interno del gruppo `Conditions.<gruppo>` oppure in rami equivalenti del modello HMI finale, con campi come `PopUpNumber`, `ConditionOK`, `Visible`, `FO` o equivalenti. Non e' ammesso ridurre tutto il modello HMI al solo vettore `nX`.
-- Timer, one-shot e supporti tecnici -> DB `19.. AUX`, rami coerenti con il modello ausiliario, ad esempio `AUX.TIMER[...]`, `AUX.OS[...]`, `AUX_MEMORY.*`.
+- Timer, one-shot e supporti tecnici -> DB `13.. AUX`, rami coerenti con il modello ausiliario, ad esempio `AUX.TIMER[...]`, `AUX.OS[...]`, `AUX_MEMORY.*`.
 - Segnali I/O fisici modellati in DB dedicato -> DB I-O, rami `DI.*` o `DO.*`.
 
 ### 26-bis.4 Come deve essere scritto il riferimento XML
@@ -1762,4 +1787,3 @@ Per ogni gruppo HMI il convertitore deve poter rappresentare almeno due livelli:
 - campi di stato o metadati di gruppo, come numero popup, visibilita', esito aggregato delle condizioni, first-out o equivalenti del modello adottato.
 
 Questa distinzione e' obbligatoria sia nell'IR sia nel serializer dei DB e delle FC di supporto.
-
