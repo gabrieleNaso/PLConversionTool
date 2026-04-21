@@ -188,14 +188,15 @@ Output nel bundle:
 
 Fogli Excel consigliati:
 - `meta`: chiavi libere `key/value` (`sequence_name`, `source_name`, `assumptions`)
-- `sequence`: `step_name`, `numero_step`, `transition_id`, `from_step`, `to_step`, `condition_expression`, `operands_used_in_condition`, `flow_type`, `parallel_group`, `jump_labels_used`
-- `operands`: `operand`, `category`, `write_action`, `timer_instruction_kind`, `timer_preset_value`, `trigger_operands`, `note`
+- `sequence`: `step_name`, `numero_step`, `transition_id`, `from_step`, `to_step`, `condition_expression`, `operands_used_in_condition`, `flow_type`, `parallel_group`
+- `operands`: `operand`, `category`, `timer_instruction_kind`, `timer_preset_value`, `trigger_operands`, `note`
 - `support_fc` (obbligatorio, pagina unica FC): `category`, `member_name`, `result_member`, `condition_expression`, `condition_operands`, `comment`, `network`
 
 Regole Excel importanti:
 - l'inizio sequenza e' il passo con `numero_step=1` (non dal nome del passo);
 - i nomi passo sono liberi (`Init`, `StartCiclo`, ecc.);
 - in modalita' Excel, il catalogo `operands` guida la dichiarazione variabili DB (niente inferenze casuali).
+- variabili FC non presenti in `operands` non vengono dichiarate nei DB supporto, ma restano utilizzabili nella logica FC come simboli globali non agganciati a DB.
 - `operands` e `support_fc` sono obbligatori: se manca uno dei due (o e' vuoto), `generate-excel-ir` termina con errore.
 
 Compatibilita':

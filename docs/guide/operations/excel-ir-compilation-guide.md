@@ -47,7 +47,6 @@ Colonne:
 - `operands_used_in_condition`: operandi separati da `;`.
 - `flow_type`: `alternative` oppure `parallel`.
 - `parallel_group`: gruppo parallelo (obbligatorio quando `flow_type=parallel`).
-- `jump_labels_used`: opzionale.
 
 Regole importanti:
 - i nomi passo sono liberi: il generatore non impone nomi fissi.
@@ -60,8 +59,7 @@ Questo foglio e' il catalogo ufficiale dei segnali usati dal caso Excel.
 Colonne:
 - `operand`: nome operando (es. `M10.0`, `Q4.0`, `ALM_OVERTEMP`, `DB81.DBX0.0`).
 - `category`: categoria funzionale.
-- `write_action`: per output (`=`, `S`, `R`), opzionale.
-- `timer_instruction_kind`: per timer (`SD`, `SE`, `SP`, `SS`, `SF`), opzionale.
+- `timer_instruction_kind`: per timer (`t_on`, `t_off`, `t_p`), opzionale.
 - `timer_preset_value`: preset timer, opzionale.
 - `trigger_operands`: trigger timer separati da `;`, opzionale.
 - `note`: testo libero.
@@ -116,7 +114,8 @@ Regole pratiche:
 - una riga logica = una network LAD della FC della categoria.
 - `network` e' il numero rete (1, 2, 3, ...): usa questo campo per ordinare e separare le reti.
 - se compili `result_member`/condizione, la FC della categoria usa la logica scritta qui.
-- i segnali in `result_member` e `condition_operands` vengono aggiunti automaticamente ai member DB supporto se mancanti.
+- i segnali presenti in `operands` vengono collegati ai DB supporto.
+- i segnali NON presenti in `operands` restano comunque usabili nella logica FC come variabili globali non agganciate a DB.
 - se `condition_expression` e' vuota ma `condition_operands` e' compilata, il generatore crea una `AND`.
 - se entrambe sono vuote, la rete risulta `TRUE`.
 

@@ -127,6 +127,26 @@ def _normalize_operand_category(value: object) -> str:
     return aliases.get(raw, raw or "aux")
 
 
+def _normalize_timer_kind(value: object) -> str:
+    raw = _cell_text(value).strip().lower()
+    if not raw:
+        return "t_on"
+    aliases = {
+        "t_on": "t_on",
+        "ton": "t_on",
+        "sd": "t_on",
+        "t_off": "t_off",
+        "tof": "t_off",
+        "sf": "t_off",
+        "t_p": "t_p",
+        "tp": "t_p",
+        "se": "t_p",
+        "sp": "t_p",
+        "ss": "t_p",
+    }
+    return aliases.get(raw, "t_on")
+
+
 def _normalize_support_category(value: object) -> str:
     raw = _cell_text(value).strip().lower()
     aliases = {
@@ -361,7 +381,6 @@ def _build_transitions_from_rows(rows: list[dict[str, object]]) -> list[dict[str
                 "network_index": network_index,
                 "guard_expression": guard_expression,
                 "guard_operands": guard_operands,
-                "jump_labels": _split_list(_pick(row, "jump_labels_used", "jump_labels")),
                 "flow_type": _normalize_flow_type(
                     _pick(row, "flow_type", "branch_mode", "parallel_mode")
                 ),
@@ -442,9 +461,7 @@ def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[s
             {
                 "source_timer": source_timer,
                 "network_index": inferred_network or idx,
-                "kind": (
-                    _cell_text(_pick(row, "timer_instruction_kind", "kind")) or "SD"
-                ).upper(),
+                "kind": _normalize_timer_kind(_pick(row, "timer_instruction_kind", "kind")),
                 "preset": _cell_text(
                     _pick(row, "timer_preset_value", "preset")
                 ) or None,
@@ -510,7 +527,7 @@ def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[s
             {
                 "name": name,
                 "network_index": inferred_network or idx,
-                "action": _cell_text(_pick(row, "write_action", "action")) or "=",
+                "action": "=",
             }
         )
 
@@ -553,7 +570,7 @@ def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[s
                 {
                     "name": operand,
                     "network_index": network_index,
-                    "action": _cell_text(_pick(row, "write_action", "action")) or "=",
+                    "action": "=",
                 }
             )
             continue
@@ -562,7 +579,7 @@ def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[s
                 {
                     "source_timer": operand,
                     "network_index": network_index,
-                    "kind": (_cell_text(_pick(row, "timer_instruction_kind", "kind")) or "SD").upper(),
+                    "kind": _normalize_timer_kind(_pick(row, "timer_instruction_kind", "kind")),
                     "preset": _cell_text(_pick(row, "timer_preset_value", "preset")) or None,
                     "trigger_operands": _split_list(_pick(row, "trigger_operands", "timer_trigger_operands")),
                 }
