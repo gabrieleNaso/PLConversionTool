@@ -55,11 +55,18 @@ L'IR del progetto non va più considerato legato esclusivamente al parser AWL.
 
 - Excel strutturato per passi, transizioni, operandi e mapping dati;
 - catalogo `operands` come sorgente vincolante per il popolamento strict dei `GlobalDB`;
+- pagina FC unica `support_fc` come sorgente strutturata per member e logica LAD delle FC di supporto;
 - convergenza obbligatoria sullo stesso IR usato dal flusso AWL.
 
 Conseguenza architetturale da considerare fissata:
 
 `AWL parser` oppure `Excel strutturato` -> `IR comune` -> `builder GRAPH / GlobalDB / FC` -> `serializer XML`.
+
+Regola operativa consolidata al 20-04-2026 per il flusso Excel:
+
+- `operands` e `support_fc` sono fogli obbligatori;
+- nel foglio `support_fc` devono convivere sia la definizione member (`member_name`) sia la logica FC (`result_member`, `condition_expression`, `condition_operands`, `network`);
+- non e' piu' previsto un secondo foglio dedicato separato per la logica FC nel formato corrente.
 
 ### 2.3 Automazione con TIA Portal Openness
 

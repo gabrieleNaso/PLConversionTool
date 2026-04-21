@@ -130,6 +130,31 @@ Non è ammesso introdurre un backend XML separato che trasformi direttamente l'E
 
 L'Excel va quindi trattato come sorgente alternativa di modellazione e catalogazione, non come formato finale di emissione.
 
+### 4-ter. Contratto fogli Excel (formato consolidato 20-04-2026)
+
+Per il percorso Excel del convertitore, il contratto minimo dei fogli e' da considerare hard:
+
+- `operands` obbligatorio;
+- `support_fc` obbligatorio;
+- `support_fc` e' pagina unica FC e contiene sia dati member sia logica LAD.
+
+Colonne canoniche di `support_fc`:
+
+- `category`
+- `member_name`
+- `result_member`
+- `condition_expression`
+- `condition_operands`
+- `comment`
+- `network`
+
+Regole hard:
+
+- almeno una riga valida in `support_fc` con `member_name` e/o `result_member`;
+- `network` e' il numero rete della FC per ordinare le compile unit;
+- `network_index` resta solo alias legacy in input e non cambia il contratto canonico;
+- non e' ammesso introdurre una pipeline separata che dipenda da un foglio FC logico dedicato diverso da `support_fc`.
+
 # Parte II - Regole di analisi del sorgente AWL
 
 ## 5. Regola di segmentazione primaria
@@ -811,6 +836,7 @@ Regola aggiuntiva per IR da Excel (modalita' strict):
 - la logica transizioni GRAPH deve mantenere gli operandi della condizione;
 - la dichiarazione member nei `GlobalDB` deve usare il catalogo `operands` dell'Excel (piu' categorie derivate);
 - non e' ammesso introdurre member DB non catalogati per inferenza non esplicita.
+- per le FC di supporto, member e logica devono essere letti dal foglio unico `support_fc` secondo il contratto di cui alla sezione 4-ter.
 
 ### Composizione canonica
 
