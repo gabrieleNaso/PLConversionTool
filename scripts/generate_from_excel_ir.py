@@ -163,6 +163,9 @@ def _normalize_support_category(value: object) -> str:
         "transizioni": "transitions",
         "output": "output",
         "uscite": "output",
+        "external": "external",
+        "ext": "external",
+        "esterno": "external",
         "hmi": "hmi",
         "aux": "aux",
     }

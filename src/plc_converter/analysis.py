@@ -43,9 +43,10 @@ JUMP_OPCODES = {"JC", "JCN", "JU"}
 TIMER_OPCODES = {"SD", "SE", "SP", "SS", "SF"}
 SUPPORT_BLOCK_SCHEMA = {
     "io": {"token": "IO", "file_token": "io"},
-    "diag": {"token": "DIAG", "file_token": "diag"},
+    "diag": {"token": "ALARMS", "file_token": "alarms"},
     "mode": {"token": "MODE", "file_token": "mode"},
     "network": {"token": "N", "file_token": "n"},
+    "external": {"token": "EXT", "file_token": "ext"},
     "hmi": {"token": "HMI", "file_token": "hmi"},
     "aux": {"token": "AUX", "file_token": "aux"},
     "transitions": {"token": "TRANSITIONS", "file_token": "transitions"},
@@ -94,6 +95,7 @@ SUPPORT_FAMILY_OVERRIDES = {
     "diag": {"db_family": "base", "fc_family": "base"},
     "io": {"db_family": "sequence", "fc_family": "sequence"},
     "mode": {"db_family": "sequence", "fc_family": "sequence"},
+    "external": {"db_family": "ext"},
     "hmi": {"db_family": "hmi", "fc_family": "hmi"},
     "aux": {"db_family": "aux", "fc_family": "aux"},
     "transitions": {"db_family": "transitions", "fc_family": "transitions"},
@@ -431,7 +433,7 @@ def _build_ir_scaffold(ir: AwlIR) -> ConversionScaffold:
         ),
         artifact_plan=ArtifactPlan(
             graph_fb_name=f"FB_{ir.sequence_name}_GRAPH_auto.xml",
-            global_db_name=f"DB12_{ir.sequence_name}_seq_global_auto.xml",
+            global_db_name=f"DB16_{ir.sequence_name}_seq_db_auto.xml",
             lad_fc_name=f"FC04_{ir.sequence_name}_transitions_lad_auto.xml",
             output_directory="data/output/",
             naming_notes=[
@@ -1736,6 +1738,7 @@ def _build_artifact_manifest(previews: list[ArtifactPreview]) -> dict[str, list[
         "support_diag": [],
         "support_mode": [],
         "support_network": [],
+        "support_external": [],
         "support_transitions": [],
         "support_output": [],
         "support_hmi": [],
@@ -1754,6 +1757,8 @@ def _build_artifact_manifest(previews: list[ArtifactPreview]) -> dict[str, list[
             manifest["support_mode"].append(item)
         elif preview.artifact_type in {"support_global_db_network", "support_lad_fc_network"}:
             manifest["support_network"].append(item)
+        elif preview.artifact_type in {"support_global_db_external"}:
+            manifest["support_external"].append(item)
         elif preview.artifact_type in {"support_global_db_transitions", "support_lad_fc_transitions"}:
             manifest["support_transitions"].append(item)
         elif preview.artifact_type in {"support_global_db_output", "support_lad_fc_output"}:
@@ -1771,9 +1776,29 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
     previews: list[ArtifactPreview] = []
     symbol_home_db_map = _build_support_symbol_home_db_map(ir)
 
+    external_members = _excel_support_members(ir, "external") or _collect_external_support_members(ir)
+    external_db_members = _prepare_support_db_members(ir, "external", external_members)
+    if external_db_members:
+        external_db_name, _, external_db_file, _, external_db_base, _ = _support_block_names(
+            ir.sequence_name, "external"
+        )
+        previews.append(
+            ArtifactPreview(
+                artifact_type="support_global_db_external",
+                file_name=external_db_file,
+                content=_build_support_global_db_xml(
+                    block_name=external_db_name,
+                    title=f"{ir.sequence_name} External DB",
+                    members=external_db_members,
+                    number_seed=f"{ir.sequence_name}_EXTERNAL_DB",
+                    number_base=external_db_base,
+                ),
+            )
+        )
+
     io_logic = _excel_support_logic_rows(ir, "io")
     io_members = _excel_support_members(ir, "io") or _collect_io_support_members(ir)
-    io_db_members, io_fc_members = _prepare_support_members(ir, io_members, io_logic)
+    io_db_members, io_fc_members = _prepare_support_members(ir, "io", io_members, io_logic)
     if io_db_members or io_fc_members or io_logic:
         (
             io_db_name,
@@ -1790,7 +1815,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     file_name=io_db_file,
                     content=_build_support_global_db_xml(
                         block_name=io_db_name,
-                        title=f"{ir.sequence_name} IO Global",
+                        title=f"{ir.sequence_name} IO DB",
                         members=io_db_members,
                         number_seed=f"{ir.sequence_name}_IO_DB",
                         number_base=io_db_base,
@@ -1818,7 +1843,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
 
     diag_logic = _excel_support_logic_rows(ir, "diag")
     diag_members = _excel_support_members(ir, "diag") or _collect_diag_support_members(ir)
-    diag_db_members, diag_fc_members = _prepare_support_members(ir, diag_members, diag_logic)
+    diag_db_members, diag_fc_members = _prepare_support_members(ir, "diag", diag_members, diag_logic)
     if diag_db_members or diag_fc_members or diag_logic:
         (
             diag_db_name,
@@ -1835,7 +1860,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     file_name=diag_db_file,
                     content=_build_support_global_db_xml(
                         block_name=diag_db_name,
-                        title=f"{ir.sequence_name} Diag Global",
+                        title=f"{ir.sequence_name} Alarms DB",
                         members=diag_db_members,
                         number_seed=f"{ir.sequence_name}_DIAG_DB",
                         number_base=diag_db_base,
@@ -1863,7 +1888,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
 
     mode_logic = _excel_support_logic_rows(ir, "mode")
     mode_members = _excel_support_members(ir, "mode") or _collect_mode_support_members(ir)
-    mode_db_members, mode_fc_members = _prepare_support_members(ir, mode_members, mode_logic)
+    mode_db_members, mode_fc_members = _prepare_support_members(ir, "mode", mode_members, mode_logic)
     if mode_db_members or mode_fc_members or mode_logic:
         (
             mode_db_name,
@@ -1880,7 +1905,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     file_name=mode_db_file,
                     content=_build_support_global_db_xml(
                         block_name=mode_db_name,
-                        title=f"{ir.sequence_name} Mode Global",
+                        title=f"{ir.sequence_name} Mode DB",
                         members=mode_db_members,
                         number_seed=f"{ir.sequence_name}_MODE_DB",
                         number_base=mode_db_base,
@@ -1925,7 +1950,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                 file_name=network_db_file,
                 content=_build_support_global_db_xml(
                     block_name=network_db_name,
-                    title=f"{ir.sequence_name} Network {network_no} Global",
+                    title=f"{ir.sequence_name} Network {network_no} DB",
                     members=members,
                     number_seed=f"{ir.sequence_name}_{suffix}_DB",
                     number_base=network_db_base,
@@ -1973,7 +1998,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     file_name=tr_db_file,
                     content=_build_support_global_db_xml(
                         block_name=tr_db_name,
-                        title=f"{ir.sequence_name} Transitions Global",
+                        title=f"{ir.sequence_name} Transitions DB",
                         members=transitions_db_members,
                         number_seed=f"{ir.sequence_name}_TRANSITIONS_DB",
                         number_base=tr_db_base,
@@ -2002,7 +2027,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
 
     output_logic = _excel_support_logic_rows(ir, "output")
     output_members = _excel_support_members(ir, "output") or _collect_output_family_members(ir)
-    output_db_members, output_fc_members = _prepare_support_members(ir, output_members, output_logic)
+    output_db_members, output_fc_members = _prepare_support_members(ir, "output", output_members, output_logic)
     if output_db_members or output_fc_members or output_logic:
         (
             out_db_name,
@@ -2019,7 +2044,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     file_name=out_db_file,
                     content=_build_support_global_db_xml(
                         block_name=out_db_name,
-                        title=f"{ir.sequence_name} Output Global",
+                        title=f"{ir.sequence_name} Output DB",
                         members=output_db_members,
                         number_seed=f"{ir.sequence_name}_OUTPUT_DB",
                         number_base=out_db_base,
@@ -2047,7 +2072,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
 
     hmi_logic = _excel_support_logic_rows(ir, "hmi")
     hmi_members = _excel_support_members(ir, "hmi") or _collect_hmi_support_members(ir)
-    hmi_db_members, hmi_fc_members = _prepare_support_members(ir, hmi_members, hmi_logic)
+    hmi_db_members, hmi_fc_members = _prepare_support_members(ir, "hmi", hmi_members, hmi_logic)
     if hmi_db_members or hmi_fc_members or hmi_logic:
         (
             hmi_db_name,
@@ -2064,7 +2089,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     file_name=hmi_db_file,
                     content=_build_support_global_db_xml(
                         block_name=hmi_db_name,
-                        title=f"{ir.sequence_name} HMI Global",
+                        title=f"{ir.sequence_name} HMI DB",
                         members=hmi_db_members,
                         number_seed=f"{ir.sequence_name}_HMI_DB",
                         number_base=hmi_db_base,
@@ -2092,7 +2117,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
 
     aux_logic = _excel_support_logic_rows(ir, "aux")
     aux_members = _excel_support_members(ir, "aux") or _collect_aux_support_members(ir)
-    aux_db_members, aux_fc_members = _prepare_support_members(ir, aux_members, aux_logic)
+    aux_db_members, aux_fc_members = _prepare_support_members(ir, "aux", aux_members, aux_logic)
     if aux_db_members or aux_fc_members or aux_logic:
         (
             aux_db_name,
@@ -2109,7 +2134,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     file_name=aux_db_file,
                     content=_build_support_global_db_xml(
                         block_name=aux_db_name,
-                        title=f"{ir.sequence_name} Aux Global",
+                        title=f"{ir.sequence_name} Aux DB",
                         members=aux_db_members,
                         number_seed=f"{ir.sequence_name}_AUX_DB",
                         number_base=aux_db_base,
@@ -3346,38 +3371,65 @@ def _strict_support_db_catalog(ir: AwlIR) -> set[str] | None:
 
 def _prepare_support_members(
     ir: AwlIR,
+    category: str,
     members: list[tuple[str, str]],
     logic_rows: list[dict[str, object]],
 ) -> tuple[list[tuple[str, str]], list[str]]:
     merged = _merge_support_members_with_logic(members, logic_rows)
     merged_names = [name for name, _ in merged if str(name or "").strip()]
-    db_members = _prepare_support_db_members(ir, members)
+    db_members = _prepare_support_db_members(ir, category, members)
     fc_members = list(dict.fromkeys(merged_names))
     return _dedupe_named_members(db_members), fc_members
 
 
-def _prepare_support_db_members(ir: AwlIR, members: list[tuple[str, str]]) -> list[tuple[str, str]]:
+def _prepare_support_db_members(
+    ir: AwlIR,
+    category: str,
+    members: list[tuple[str, str]],
+) -> list[tuple[str, str]]:
     allowed = _strict_support_db_catalog(ir)
+    current_db_name, _, _, _, _, _ = _support_block_names(ir.sequence_name, category)
+    owner_db_map = _build_support_symbol_home_db_map(ir)
     if allowed is None:
-        return _dedupe_named_members(members)
-    return _dedupe_named_members([(name, comment) for name, comment in members if name in allowed])
+        return _dedupe_named_members(
+            [
+                (name, comment)
+                for name, comment in members
+                if owner_db_map.get(name, current_db_name) == current_db_name
+            ]
+        )
+    return _dedupe_named_members(
+        [
+            (name, comment)
+            for name, comment in members
+            if name in allowed and owner_db_map.get(name, current_db_name) == current_db_name
+        ]
+    )
 
 
 def _build_support_symbol_home_db_map(ir: AwlIR) -> dict[str, str]:
     category_sources: list[tuple[str, list[tuple[str, str]]]] = [
-        ("io", _excel_support_members(ir, "io") or _collect_io_support_members(ir)),
-        ("diag", _excel_support_members(ir, "diag") or _collect_diag_support_members(ir)),
-        ("mode", _excel_support_members(ir, "mode") or _collect_mode_support_members(ir)),
-        ("transitions", _excel_support_members(ir, "transitions") or _collect_transitions_support_members(ir, [])),
-        ("output", _excel_support_members(ir, "output") or _collect_output_family_members(ir)),
+        # Priority order matters: explicit/specialized families first.
         ("hmi", _excel_support_members(ir, "hmi") or _collect_hmi_support_members(ir)),
         ("aux", _excel_support_members(ir, "aux") or _collect_aux_support_members(ir)),
+        ("external", _excel_support_members(ir, "external") or _collect_external_support_members(ir)),
+        ("transitions", _excel_support_members(ir, "transitions") or _collect_transitions_support_members(ir, [])),
+        ("output", _excel_support_members(ir, "output") or _collect_output_family_members(ir)),
+        ("diag", _excel_support_members(ir, "diag") or _collect_diag_support_members(ir)),
+        ("io", _excel_support_members(ir, "io") or _collect_io_support_members(ir)),
+        ("mode", _excel_support_members(ir, "mode") or _collect_mode_support_members(ir)),
     ]
     mapping: dict[str, str] = {}
+    allowed = _strict_support_db_catalog(ir)
     for category, members in category_sources:
         db_name, _, _, _, _, _ = _support_block_names(ir.sequence_name, category)
-        for name, _ in _prepare_support_db_members(ir, members):
-            mapping.setdefault(name, db_name)
+        for name, _ in _dedupe_named_members(members):
+            token = str(name or "").strip()
+            if not token:
+                continue
+            if allowed is not None and token not in allowed:
+                continue
+            mapping.setdefault(token, db_name)
     return mapping
 
 
@@ -3390,6 +3442,11 @@ def _collect_io_support_members(ir: AwlIR) -> list[tuple[str, str]]:
                 f"Output mapping {output.name}",
             )
         )
+    return list(dict.fromkeys(members))
+
+
+def _collect_external_support_members(ir: AwlIR) -> list[tuple[str, str]]:
+    members: list[tuple[str, str]] = []
     for ext in ir.external_refs:
         if ext.startswith(("A", "Q")):
             continue
@@ -3555,11 +3612,11 @@ def _support_block_names(
         file_suffix = file_token
 
     if db_prefix:
-        db_name = f"{db_prefix}_{sequence_name}_{block_token}_Global"
-        db_file = f"{db_prefix}_{sequence_name}_{file_suffix}_global_auto.xml"
+        db_name = f"{db_prefix}_{sequence_name}_{block_token}_DB"
+        db_file = f"{db_prefix}_{sequence_name}_{file_suffix}_db_auto.xml"
     else:
-        db_name = f"{sequence_name}_{block_token}_Global"
-        db_file = f"DB_{sequence_name}_{file_suffix}_global_auto.xml"
+        db_name = f"{sequence_name}_{block_token}_DB"
+        db_file = f"DB_{sequence_name}_{file_suffix}_db_auto.xml"
 
     if fc_prefix:
         fc_name = f"{fc_prefix}_{sequence_name}_{block_token}_LAD"
@@ -3944,7 +4001,7 @@ def _guard_operand_db_member_name(operand: str, *, strict_excel_mode: bool = Fal
 
 
 def _global_db_block_name(ir: AwlIR) -> str:
-    return f"{DB_FAMILY_PREFIX['sequence']}_{ir.sequence_name}_SEQ_Global"
+    return f"{DB_FAMILY_PREFIX['sequence']}_{ir.sequence_name}_SEQ_DB"
 
 
 def _transitions_db_block_name(ir: AwlIR) -> str:
