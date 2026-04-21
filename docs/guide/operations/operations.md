@@ -173,7 +173,7 @@ Guida completa compilazione Excel:
 - `docs/guide/operations/excel-ir-compilation-guide.md`
 
 Template pronto:
-- `docs/templates/ir_excel_template_single_page_with_support_fc.xlsx` (pagina FC completa: `support_fc` obbligatoria, `support_fc_logic` opzionale)
+- `docs/templates/ir_excel_template_single_page_with_support_fc.xlsx` (pagina FC unica: `support_fc` obbligatoria)
 
 Comando:
 
@@ -190,8 +190,7 @@ Fogli Excel consigliati:
 - `meta`: chiavi libere `key/value` (`sequence_name`, `source_name`, `assumptions`)
 - `sequence`: `step_name`, `numero_step`, `transition_id`, `from_step`, `to_step`, `condition_expression`, `operands_used_in_condition`, `flow_type`, `parallel_group`, `jump_labels_used`
 - `operands`: `operand`, `category`, `write_action`, `timer_instruction_kind`, `timer_preset_value`, `trigger_operands`, `note`
-- `support_fc` (obbligatorio): `category`, `member_name`, `comment`
-- `support_fc_logic` (opzionale): `category`, `result_member`, `condition_expression`, `condition_operands`, `comment`, `network`
+- `support_fc` (obbligatorio, pagina unica FC): `category`, `member_name`, `result_member`, `condition_expression`, `condition_operands`, `comment`, `network`
 
 Regole Excel importanti:
 - l'inizio sequenza e' il passo con `numero_step=1` (non dal nome del passo);

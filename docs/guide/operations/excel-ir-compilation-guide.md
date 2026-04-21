@@ -18,8 +18,7 @@ Compatibilita':
 - `meta`: metadati generali.
 - `sequence`: topologia step/transizioni.
 - `operands`: catalogo operandi e categoria funzionale.
-- `support_fc`: override espliciti dei member nelle FC/DB di supporto.
-- `support_fc_logic` (opzionale): logica LAD interna delle FC di supporto.
+- `support_fc`: pagina unica FC (member + logica LAD).
 
 Regola base:
 - nei fogli supporto usa la colonna `network` (semplice); `network_index` resta solo alias legacy.
@@ -86,10 +85,8 @@ Per input Excel, il generatore usa `operands` come catalogo strict:
 
 Se una transizione usa operandi non presenti nel catalogo, il report analysis segnala warning dedicati.
 
-## 6) Compilazione FC (Unico Blocco)
-Tutto cio' che riguarda le FC e' concentrato in due fogli:
-1. `support_fc` (obbligatorio): definisce i segnali da usare in DB/FC di supporto.
-2. `support_fc_logic` (opzionale): definisce la logica LAD interna delle FC.
+## 6) Compilazione FC (Pagina Unica)
+Tutto cio' che riguarda le FC e' in un solo foglio: `support_fc` (obbligatorio).
 
 Categorie FC supportate:
 - `io`
@@ -100,29 +97,9 @@ Categorie FC supportate:
 - `transitions`
 - `mode`
 
-### 6.1 Foglio `support_fc` (obbligatorio)
-Colonne minime:
-- `category`
-- `member_name`
-- `comment`
-
-Regole pratiche:
-- una riga = un segnale della categoria.
-- se compili una categoria qui, il generatore usa questi member invece dell'inferenza automatica.
-- `operands` resta comunque obbligatorio e continua a governare il catalogo strict DB.
-
-Formato riga consigliato:
-`category | member_name | comment`
-
-Esempi:
-- `io | I_START_BTN | Pulsante start`
-- `io | I_STOP_BTN | Pulsante stop`
-- `output | Q_MOTOR_CMD | Comando motore`
-- `aux | M_CYCLE_ACTIVE | Memoria ciclo`
-
-### 6.2 Foglio `support_fc_logic` (opzionale)
 Colonne:
 - `category`
+- `member_name`
 - `result_member`
 - `condition_expression`
 - `condition_operands`
@@ -130,25 +107,32 @@ Colonne:
 - `network`
 
 Regole pratiche:
-- una riga = una network LAD della FC della categoria.
+- una riga puo' essere:
+  - riga member (compili `member_name`);
+  - riga logica (compili `result_member` + condizione);
+  - riga mista (member + logica insieme).
+- se compili una categoria qui, il generatore usa questi dati invece dell'inferenza automatica.
+- `operands` resta comunque obbligatorio e continua a governare il catalogo strict DB.
+- una riga logica = una network LAD della FC della categoria.
 - `network` e' il numero rete (1, 2, 3, ...): usa questo campo per ordinare e separare le reti.
-- se compili `support_fc_logic` per una categoria, la FC di quella categoria usa la logica scritta qui.
+- se compili `result_member`/condizione, la FC della categoria usa la logica scritta qui.
 - i segnali in `result_member` e `condition_operands` vengono aggiunti automaticamente ai member DB supporto se mancanti.
 - se `condition_expression` e' vuota ma `condition_operands` e' compilata, il generatore crea una `AND`.
 - se entrambe sono vuote, la rete risulta `TRUE`.
 
 Formato riga consigliato:
-`category | result_member | condition_expression | condition_operands | comment | network`
+`category | member_name | result_member | condition_expression | condition_operands | comment | network`
 
 Esempi:
-- `io | RUN_ENABLE | I_START_BTN AND NOT I_STOP_BTN | I_START_BTN;I_STOP_BTN | Rete start/stop | 1`
-- `output | Q_MOTOR_CMD | RUN_ENABLE AND SAFETY_OK | RUN_ENABLE;SAFETY_OK | Comando motore | 1`
-- `aux | AUX_READY | AUX_IN_1 OR AUX_IN_2 | AUX_IN_1;AUX_IN_2 | Logica ausiliaria | 2`
+- `io | I_START_BTN |  |  |  | Pulsante start |`
+- `io | I_STOP_BTN |  |  |  | Pulsante stop |`
+- `io |  | RUN_ENABLE | I_START_BTN AND NOT I_STOP_BTN | I_START_BTN;I_STOP_BTN | Rete start/stop | 1`
+- `output | Q_MOTOR_CMD | Q_MOTOR_CMD | RUN_ENABLE AND SAFETY_OK | RUN_ENABLE;SAFETY_OK | Comando motore | 1`
 
 Checklist compilazione manuale FC:
-1. Compila sempre `support_fc` (almeno una riga valida).
+1. Compila sempre `support_fc` (almeno una riga valida con `member_name` e/o `result_member`).
 2. Inserisci solo categorie reali (`io/output/diag/hmi/aux/transitions/mode`).
-3. Se vuoi logica custom, compila `support_fc_logic` con `network` numerato.
+3. Se vuoi logica custom, compila `result_member` + condizione con `network` numerato.
 4. Mantieni nomi coerenti tra `member_name`, `result_member` e `condition_operands`.
 
 ## 7) Paralleli

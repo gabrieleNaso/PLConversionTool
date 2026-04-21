@@ -176,7 +176,9 @@ def _read_support_members(path: Path) -> list[dict[str, object]]:
 
 def _read_support_logic_rows(path: Path) -> list[dict[str, object]]:
     rows: list[dict[str, object]] = []
-    for sheet_name in ("support_fc_logic", "fc_logic_support", "fc_logic"):
+    # Primary format: logic rows on the same support_fc sheet.
+    # Legacy aliases are still accepted for backward compatibility.
+    for sheet_name in ("support_fc", "fc_support", "support_fc_logic", "fc_logic_support", "fc_logic"):
         rows.extend(_read_sheet_rows(path, sheet_name))
 
     logic_rows: list[dict[str, object]] = []
@@ -215,14 +217,15 @@ def _ensure_required_excel_sections(
     *,
     operand_rows: list[dict[str, object]],
     support_members: list[dict[str, object]],
+    support_logic: list[dict[str, object]],
 ) -> None:
     if not operand_rows:
         raise SystemExit(
             "Excel non valido: il foglio 'operands' e' obbligatorio e deve contenere almeno una riga compilata."
         )
-    if not support_members:
+    if not support_members and not support_logic:
         raise SystemExit(
-            "Excel non valido: il foglio 'support_fc' (o alias 'fc_support') e' obbligatorio e deve contenere almeno una riga compilata."
+            "Excel non valido: il foglio 'support_fc' (o alias 'fc_support') e' obbligatorio e deve contenere almeno una riga compilata (member_name e/o result_member)."
         )
 
 
@@ -523,6 +526,7 @@ def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[s
     _ensure_required_excel_sections(
         operand_rows=operand_rows,
         support_members=support_members,
+        support_logic=support_logic,
     )
     operand_catalog: list[str] = []
     for idx, row in enumerate(operand_rows, start=1):
