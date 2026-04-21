@@ -54,10 +54,13 @@ SUPPORT_BLOCK_SCHEMA = {
 
 DB_FAMILY_PREFIX = {
     "base": "DB11",
-    "sequence": "DB12",
+    "hmi": "DB12",
+    "aux": "DB13",
+    "transitions": "DB14",
+    "graph": "DB15",
+    "sequence": "DB16",
     "ext": "DB18",
-    "aux": "DB19",
-    "hmi": "DB_HMI",
+    "output": "DB19",
 }
 
 FC_FAMILY_PREFIX = {
@@ -1082,11 +1085,17 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
             transition_no=index + 1,
             source_step=transition.source_step,
             target_step=transition.target_step,
-            guard_expression=transition.guard_expression,
-            guard_operands=transition.guard_operands,
+            guard_expression=_support_member_name(
+                transition.transition_id, "TR", strict_excel_mode=ir.strict_operand_catalog
+            ),
+            guard_operands=[
+                _support_member_name(transition.transition_id, "TR", strict_excel_mode=ir.strict_operand_catalog)
+            ],
             network_index=transition.network_index,
-            db_block_name=_global_db_block_name(ir),
-            db_member_name=_transition_db_member_name(transition),
+            db_block_name=_transitions_db_block_name(ir),
+            db_member_name=_support_member_name(
+                transition.transition_id, "TR", strict_excel_mode=ir.strict_operand_catalog
+            ),
         )
         for index, transition in enumerate(working_transitions)
     ]
@@ -1168,7 +1177,7 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
                     guard_expression="FALSE",
                     guard_operands=[],
                     network_index=next_synthetic_network,
-                    db_block_name=_global_db_block_name(ir),
+                    db_block_name=_transitions_db_block_name(ir),
                     db_member_name=_transition_db_member_name_from_values(transition_name, "FALSE"),
                 )
             )
@@ -1191,7 +1200,7 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
                     guard_expression="FALSE",
                     guard_operands=[],
                     network_index=next_synthetic_network,
-                    db_block_name=_global_db_block_name(ir),
+                    db_block_name=_transitions_db_block_name(ir),
                     db_member_name=_transition_db_member_name_from_values(transition_name, "FALSE"),
                 )
             )
@@ -1219,7 +1228,7 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
                 guard_expression="FALSE",
                 guard_operands=[],
                 network_index=next_synthetic_network,
-                db_block_name=_global_db_block_name(ir),
+                db_block_name=_transitions_db_block_name(ir),
                 db_member_name=_transition_db_member_name_from_values(transition_name, "FALSE"),
             )
         )
@@ -1576,7 +1585,7 @@ def _validate_ir(ir: AwlIR, graph_topology: GraphTopology) -> list[ValidationIss
 
 def _validate_package_coherence(ir: AwlIR, graph_topology: GraphTopology) -> list[ValidationIssue]:
     issues: list[ValidationIssue] = []
-    expected_db_name = _global_db_block_name(ir)
+    expected_db_name = _transitions_db_block_name(ir)
     transition_db_names = {item.db_block_name for item in graph_topology.transition_nodes}
     if transition_db_names and transition_db_names != {expected_db_name}:
         issues.append(
@@ -1584,13 +1593,13 @@ def _validate_package_coherence(ir: AwlIR, graph_topology: GraphTopology) -> lis
                 level="error",
                 code="PACKAGE_COHERENCE_ERROR",
                 message=(
-                    "Le transition GRAPH non referenziano tutte lo stesso GlobalDB del pacchetto."
+                    "Le transition GRAPH non referenziano tutte lo stesso DB transitions del pacchetto."
                 ),
                 context=", ".join(sorted(transition_db_names)),
             )
         )
 
-    db_members = _expected_global_db_member_names(ir, graph_topology)
+    db_members = _expected_transitions_db_member_names(graph_topology)
     referenced_members = {item.db_member_name for item in graph_topology.transition_nodes}
     missing_members = sorted(referenced_members - db_members)
     if missing_members:
@@ -1599,7 +1608,7 @@ def _validate_package_coherence(ir: AwlIR, graph_topology: GraphTopology) -> lis
                 level="error",
                 code="PACKAGE_COHERENCE_ERROR",
                 message=(
-                    "Il pacchetto referenzia member di guardia non dichiarati nel GlobalDB."
+                    "Il pacchetto referenzia member transizione non dichiarati nel DB transitions."
                 ),
                 context=", ".join(missing_members),
             )
@@ -1945,7 +1954,9 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
     transitions_members = _excel_support_members(ir, "transitions") or _collect_transitions_support_members(
         ir, network_specs
     )
-    transitions_db_members, transitions_fc_members = _prepare_support_members(ir, transitions_members, transitions_logic)
+    transitions_merged_members = _merge_support_members_with_logic(transitions_members, transitions_logic)
+    transitions_db_members = _dedupe_named_members(transitions_merged_members)
+    transitions_fc_members = list(dict.fromkeys(name for name, _ in transitions_merged_members if name))
     if transitions_db_members or transitions_fc_members or transitions_logic:
         (
             tr_db_name,
@@ -2634,6 +2645,11 @@ def _dedupe_member_irs(members: list[MemberIR]) -> list[MemberIR]:
 
 
 def _build_global_db_member_irs(ir: AwlIR, graph_topology: GraphTopology) -> list[MemberIR]:
+    # Excel strict mode: ownership is handled by dedicated support DB families.
+    # Keep sequence DB free from duplicated symbols.
+    if ir.strict_operand_catalog:
+        return [MemberIR(name="NoData", datatype="Bool")]
+
     members: list[MemberIR] = []
     allowed_guard_operands = _strict_allowed_guard_operands(ir)
 
@@ -2700,6 +2716,13 @@ def _expected_global_db_member_names(ir: AwlIR, graph_topology: GraphTopology) -
     return names
 
 
+def _expected_transitions_db_member_names(graph_topology: GraphTopology) -> set[str]:
+    names = {item.db_member_name for item in graph_topology.transition_nodes if item.db_member_name}
+    if not names:
+        names.add("NoData")
+    return names
+
+
 def _strict_allowed_guard_operands(ir: AwlIR) -> set[str] | None:
     if not ir.strict_operand_catalog:
         return None
@@ -2752,7 +2775,7 @@ def _build_lad_compile_units(ir: AwlIR, graph_topology: GraphTopology) -> str:
             target_step="S2",
             guard_expression="PACKET_READY",
             network_index=0,
-            db_block_name=_global_db_block_name(ir),
+            db_block_name=_transitions_db_block_name(ir),
             db_member_name=_transition_db_member_name_from_values("T1", "PACKET_READY"),
         )
     ]
@@ -2762,12 +2785,9 @@ def _build_lad_compile_units(ir: AwlIR, graph_topology: GraphTopology) -> str:
         comment_item_id = format(base_id + (index * 5) + 2, "X")
         title_id = format(base_id + (index * 5) + 3, "X")
         title_item_id = format(base_id + (index * 5) + 4, "X")
-        target_db_name = escape(_global_db_block_name(ir))
+        target_db_name = escape(transition.db_block_name or _transitions_db_block_name(ir))
         target_member_name = escape(transition.db_member_name)
-        aux_member = transition.db_member_name
-        if ir.memories:
-            aux_member = _db_member_name(ir.memories[0].name)
-        aux_member_name = escape(aux_member)
+        aux_member_name = escape(transition.db_member_name)
         flgnet_xml = _build_lad_pattern(
             pattern="guard_chain",
             db_name=target_db_name,
@@ -3925,6 +3945,11 @@ def _guard_operand_db_member_name(operand: str, *, strict_excel_mode: bool = Fal
 
 def _global_db_block_name(ir: AwlIR) -> str:
     return f"{DB_FAMILY_PREFIX['sequence']}_{ir.sequence_name}_SEQ_Global"
+
+
+def _transitions_db_block_name(ir: AwlIR) -> str:
+    db_name, _, _, _, _, _ = _support_block_names(ir.sequence_name, "transitions")
+    return db_name
 
 
 def _lad_fc_block_name(ir: AwlIR) -> str:
