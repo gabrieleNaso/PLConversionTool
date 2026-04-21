@@ -1,4 +1,4 @@
-Specifica master consolidata del 20-04-2026
+Specifica master consolidata del 21-04-2026
 per le regole di traduzione e generazione XML
 AWL / Excel -> IR -> GRAPH / GlobalDB / FC LAD per TIA Portal V20
 
@@ -130,7 +130,7 @@ Non è ammesso introdurre un backend XML separato che trasformi direttamente l'E
 
 L'Excel va quindi trattato come sorgente alternativa di modellazione e catalogazione, non come formato finale di emissione.
 
-### 4-ter. Contratto fogli Excel (formato consolidato 20-04-2026)
+### 4-ter. Contratto fogli Excel (formato consolidato 21-04-2026)
 
 Per il percorso Excel del convertitore, il contratto minimo dei fogli e' da considerare hard:
 
@@ -373,6 +373,18 @@ La distribuzione corretta dei dati è:
 - `19..` = DB ausiliare di timer e contatori;
 - DB HMI = DB creato ex novo.
 
+## 21-bis. Regola di natura normativa della partizione target
+
+La partizione `11../12../18../19..` definita in questa specifica e' una regola del convertitore target e del serializer finale.
+
+Non deve essere letta come vincolo retroattivo sui tipici legacy del corpus.
+
+Conseguenze operative:
+
+- i file legacy possono presentare strutture diverse, accorpate o storicamente ibride;
+- tali strutture restano utili per riconoscimento semantico, mapping e reverse engineering;
+- il backend finale del progetto deve comunque emettere la partizione target fissata dalla presente specifica quando non vi siano eccezioni progettuali deliberate e modellate nell'IR.
+
 ## 22. Regola di allocazione nel `DB 11..`
 
 Nel DB base devono confluire almeno:
@@ -470,8 +482,9 @@ Il mapping seguente va considerato normativo.
 - Stato leggibile della sequenza e storico -> DB base `11..`, ramo `Seq Status`. Forma target: `<DB11>.Seq Status.<campo>`.
 - Variabili esterne di comando/preset gia' appartenenti a DB fissi di comando tipo OPIN -> DB fisso esterno, leaf name obbligatorio della famiglia `Pnnn`. Non e' ammesso sostituire `P013` con un nome semantico libero come `Cmd_Up`.
 - Variabili esterne di uscita o stato comandato gia' appartenenti a DB fissi tipo OPOUT -> DB fisso esterno, leaf name obbligatorio della famiglia `Lnnn`. Non e' ammesso sostituire `L045` con un nome semantico libero come `ShakerCmd`.
-- Condizioni HMI elementari -> DB HMI, ramo `Conditions.<gruppo>.Conditions.nX`. Non e' ammesso saltare il ramo intermedio `Conditions` del gruppo.
+- Condizioni HMI elementari -> DB HMI, ramo `Conditions.<gruppo>.Conditions.nX`. Non e' ammesso saltare il ramo intermedio `Conditions` del gruppo. Questa regola vale per le condizioni elementari del popup e non esaurisce la struttura del gruppo HMI.
 - Strutture HMI operative -> DB HMI, ramo `HMI.*` secondo la struttura del blocco HMI generato.
+- Metadati e stati di gruppo HMI -> DB HMI, all'interno del gruppo `Conditions.<gruppo>` oppure in rami equivalenti del modello HMI finale, con campi come `PopUpNumber`, `ConditionOK`, `Visible`, `FO` o equivalenti. Non e' ammesso ridurre tutto il modello HMI al solo vettore `nX`.
 - Timer, one-shot e supporti tecnici -> DB `19.. AUX`, rami coerenti con il modello ausiliario, ad esempio `AUX.TIMER[...]`, `AUX.OS[...]`, `AUX_MEMORY.*`.
 - Segnali I/O fisici modellati in DB dedicato -> DB I-O, rami `DI.*` o `DO.*`.
 
@@ -1686,7 +1699,7 @@ Il naming finale dei passi GRAPH resta invece una policy del builder, che può:
 - introdurre step di chiusura o fine ciclo, purché il comportamento funzionale resti equivalente.
 
 
-# Appendice B - Integrazioni consolidate al 15-04-2026
+# Appendice B - Integrazioni consolidate al 21-04-2026
 
 ## B.1 Regola di prevalenza normativa
 In caso di conflitto tra una convenzione di repository, un'abitudine storica del team o una semplificazione implementativa del tool, prevale sempre la presente specifica.
@@ -1733,3 +1746,20 @@ Prima dell'import il bundle deve superare almeno i seguenti controlli:
 - naming globale completo e coerente;
 - topologia GRAPH valida;
 - separazione corretta fra semantica del corpus legacy e serializer finale target.
+
+## B.6 Regola di lettura del corpus reale rispetto al target
+I file XML reali del corpus devono essere letti su due livelli distinti:
+- come fonte di verita' per pattern di naming globale, path simbolici, organizzazione LAD e famiglie funzionali realmente usate;
+- come fonte non vincolante per il runtime GRAPH finale quando appartengono a famiglie legacy come `V6`.
+
+Il convertitore deve quindi imparare dal corpus reale senza riprodurne automaticamente gli elementi incompatibili con `TIA Portal V20 / GRAPH V2`.
+
+## B.7 Regola esplicita sul modello HMI
+Il modello HMI target non coincide con il solo insieme delle condizioni booleane elementari `nX`.
+
+Per ogni gruppo HMI il convertitore deve poter rappresentare almeno due livelli:
+- condizioni elementari serializzabili nel ramo `Conditions.<gruppo>.Conditions.nX`;
+- campi di stato o metadati di gruppo, come numero popup, visibilita', esito aggregato delle condizioni, first-out o equivalenti del modello adottato.
+
+Questa distinzione e' obbligatoria sia nell'IR sia nel serializer dei DB e delle FC di supporto.
+

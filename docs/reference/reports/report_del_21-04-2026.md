@@ -1,4 +1,4 @@
-# Report aggiornato del 20-04-2026
+# Report aggiornato del 21-04-2026
 
 ## Progetto
 Conversione di sequenziatori PLC da AWL a GRAPH in TIA Portal V20 tramite XML.
@@ -16,7 +16,7 @@ L'obiettivo di questa versione consolidata è:
 - mantenere una baseline unica, leggibile e riusabile;
 - integrare in un unico testo sia la parte di reverse engineering XML sia la parte operativa su TIA Portal Openness.
 
-Il documento va quindi usato come riferimento tecnico corrente del progetto alla data del 20-04-2026.
+Il documento va quindi usato come riferimento tecnico corrente del progetto alla data del 21-04-2026.
 
 ---
 
@@ -62,7 +62,7 @@ Conseguenza architetturale da considerare fissata:
 
 `AWL parser` oppure `Excel strutturato` -> `IR comune` -> `builder GRAPH / GlobalDB / FC` -> `serializer XML`.
 
-Regola operativa consolidata al 20-04-2026 per il flusso Excel:
+Regola operativa consolidata al 21-04-2026 per il flusso Excel:
 
 - `operands` e `support_fc` sono fogli obbligatori;
 - nel foglio `support_fc` devono convivere sia la definizione member (`member_name`) sia la logica FC (`result_member`, `condition_expression`, `condition_operands`, `network`);
@@ -82,7 +82,7 @@ Il progetto include ora anche il livello operativo di orchestrazione TIA, con ob
 ---
 
 
-## 2-bis. Chiarimenti documentali e operativi consolidati al 20-04-2026
+## 2-bis. Chiarimenti documentali e operativi consolidati al 21-04-2026
 
 A valle del confronto tra i documenti operativi, i report consolidati e i tipici XML del caso `T1-A ARUNC`, i seguenti punti sono da considerare fissati.
 
@@ -93,6 +93,17 @@ A valle del confronto tra i documenti operativi, i report consolidati e i tipici
 - L'IR comune del progetto puo' ora essere alimentato sia da parsing AWL sia da Excel strutturato, pur restando invariati i contratti semantici richiesti dai backend.
 - I tipici legacy importabili ma basati su runtime `V6` restano utili per reverse engineering semantico e topologico, ma non sono pattern validi per il serializer finale `V20 / GRAPH V2`.
 - La segmentazione reale dell'AWL deve tenere conto delle famiglie funzionali ricorrenti osservate nel caso `FC102 / AWL Romania`: allarmi, memorie/ausiliari, sequenza, manuale/automatico, emergenza/fault, uscite.
+
+## 2-ter. Integrazioni consolidate dal confronto puntuale con i tipici XML del corpus
+
+Il confronto tra i documenti normativi aggiornati e i file XML reali oggi disponibili nel corpus (`T1-A ARUNC`, `DB81-OPIN`, `DB82-OPOUT`, `LEV2`, `HMI`, `I-O`, `AUX`, `PARAMETERS`) ha permesso di fissare con maggiore precisione i seguenti punti.
+
+- I tipici reali confermano in modo forte la cardinalita' architetturale del pacchetto target: `1 x FB GRAPH + N x GlobalDB + M x FC LAD`. Questo e' da considerare requisito strutturale del generatore e non convenzione descrittiva.
+- Il pacchetto `T1-A ARUNC` resta un riferimento molto utile per naming, topologia dei path globali, separazione per responsabilita' e pattern LAD di supporto, ma non puo' essere assunto come template serializer finale, perche' il suo blocco sequenziale osservato e' ancora su runtime `V6`.
+- La famiglia di DB `11../12../18../19..` va considerata normativa per il convertitore e per il backend target del progetto; non va invece interpretata come fotografia obbligatoria di ogni tipico legacy presente nel corpus.
+- Il modello HMI va esplicitato su due livelli: condizioni elementari nel path `Conditions.<gruppo>.Conditions.nX` e metadati/stati di gruppo nello stesso owner DB HMI, con campi del tipo `PopUpNumber`, `ConditionOK`, `Visible`, `FO` o equivalenti previsti dal modello finale.
+- I DB esterni fissi di integrazione, quando presenti, costituiscono un contratto rigido di naming. In particolare i pattern `Pnnn` e `Lnnn` osservati in `DB81-OPIN` e `DB82-OPOUT` non devono essere rinominati liberamente dal generatore.
+- I casi legacy come `T1-A ARUNC LEV2` confermano che nel corpus storico esistono sequenze e strutture dati utili per il reverse engineering semantico, ma non necessariamente allineate alla partizione target chiusa del nuovo convertitore.
 
 ## 3. Target tecnico consolidato
 
@@ -970,11 +981,11 @@ I prossimi step non sono più “far parlare il sistema con TIA”, ma:
 
 ---
 
-# PARTE F - BASELINE FINALE DEL PROGETTO AL 20-04-2026
+# PARTE F - BASELINE FINALE DEL PROGETTO AL 21-04-2026
 
 ## 38. Baseline consolidata
 
-Alla data del 20-04-2026 la baseline consolidata del progetto è la seguente.
+Alla data del 21-04-2026 la baseline consolidata del progetto è la seguente.
 
 ### 38.1 Sul GRAPH
 
@@ -1077,7 +1088,7 @@ Questa non è una regola organizzativa, ma un vincolo tecnico del progetto.
 
 ## 42. Sintesi finale
 
-Alla data del 20-04-2026 il progetto ha raggiunto una baseline forte su quattro livelli:
+Alla data del 21-04-2026 il progetto ha raggiunto una baseline forte su quattro livelli:
 
 1. reverse engineering strutturale del `GRAPH`;
 2. generazione stabile dei `GlobalDB` applicativi e di supporto;
