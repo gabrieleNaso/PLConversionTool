@@ -147,6 +147,22 @@ def _normalize_timer_kind(value: object) -> str:
     return aliases.get(raw, "t_on")
 
 
+def _normalize_timer_preset_value(value: object) -> str | None:
+    raw = _cell_text(value).strip()
+    if not raw:
+        return None
+    upper = raw.upper().replace(" ", "")
+    if upper.startswith("S5T#"):
+        return f"T#{upper[4:]}" if len(upper) > 4 else None
+    if upper.startswith("T#"):
+        return upper
+    match = re.fullmatch(r"(\d+)(MS|S|M|H)", upper)
+    if match:
+        amount, unit = match.groups()
+        return f"T#{amount}{unit}"
+    return raw
+
+
 def _normalize_plc_datatype(value: object) -> str:
     raw = _cell_text(value).strip().lower()
     if not raw:
@@ -488,12 +504,8 @@ def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[s
                 "source_timer": source_timer,
                 "network_index": inferred_network or idx,
                 "kind": _normalize_timer_kind(_pick(row, "timer_instruction_kind", "kind")),
-                "preset": _cell_text(
-                    _pick(row, "timer_preset_value", "preset")
-                ) or None,
-                "trigger_operands": _split_list(
-                    _pick(row, "timer_trigger_operands", "trigger_operands")
-                ),
+                "preset": _normalize_timer_preset_value(_pick(row, "timer_preset_value", "preset")),
+                "trigger_operands": [],
             }
         )
 
@@ -612,8 +624,8 @@ def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[s
                     "source_timer": operand,
                     "network_index": network_index,
                     "kind": _normalize_timer_kind(_pick(row, "timer_instruction_kind", "kind")),
-                    "preset": _cell_text(_pick(row, "timer_preset_value", "preset")) or None,
-                    "trigger_operands": _split_list(_pick(row, "trigger_operands", "timer_trigger_operands")),
+                    "preset": _normalize_timer_preset_value(_pick(row, "timer_preset_value", "preset")),
+                    "trigger_operands": [],
                 }
             )
             continue

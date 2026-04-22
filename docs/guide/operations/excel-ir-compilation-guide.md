@@ -64,9 +64,11 @@ Colonne:
 - `category`: categoria funzionale.
 - `datatype`: tipo variabile PLC (es. `Bool`, `Int`, `DInt`, `Real`, `Time`, `String`).
 - `timer_instruction_kind`: per timer (`t_on`, `t_off`, `t_p`), opzionale.
-- `timer_preset_value`: preset timer, opzionale.
-- `trigger_operands`: trigger timer separati da `;`, opzionale.
+- `timer_preset_value`: preset timer in formato semplice, opzionale (`5s`, `20ms`, `1m`, `2h`).
 - `note`: testo libero.
+
+Nota timer:
+- `trigger_operands` non e' piu' usato nel foglio `operands`; i trigger/consensi si modellano nella logica FC (`support_fc`).
 
 Categorie supportate:
 - `alarm` -> `faults`
@@ -84,6 +86,7 @@ Per input Excel, il generatore usa `operands` come catalogo strict:
 - la logica LAD delle transizioni GRAPH resta completa (non viene semplificata);
 - i member DB vengono dichiarati solo se coerenti col catalogo `operands` e con le categorie derivate;
 - il tipo del member DB segue `operands.datatype` quando presente (default `Bool`);
+- per i timer, `timer_preset_value` viene normalizzato automaticamente in formato TIA (`T#...`);
 - variabili non catalogate non vengono aggiunte "a caso" nei DB.
 
 Se una transizione usa operandi non presenti nel catalogo, il report analysis segnala warning dedicati.
