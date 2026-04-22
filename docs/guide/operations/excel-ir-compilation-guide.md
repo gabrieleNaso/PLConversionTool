@@ -124,6 +124,9 @@ Regole pratiche:
 - se compili `result_member`/condizione, la FC della categoria usa la logica scritta qui.
 - i segnali presenti in `operands` vengono collegati ai DB supporto.
 - i segnali NON presenti in `operands` restano comunque usabili nella logica FC come variabili globali non agganciate a DB.
+- se in una rete FC compare un timer catalogato (categoria `timer` in `operands`), il generatore inserisce il blocco completo `TON/TOF/TP` (istanza timer + `PT` da `timer_preset_value` + collegamenti `IN/Q/ET`) invece del semplice contatto.
+- il comportamento blocco timer si attiva anche se la variabile in `operands` ha `datatype=IEC_TIMER` (anche quando la categoria non e' `timer`).
+- se vuoi referenziare campi specifici del timer (es. `.Q`, `.ET`) in una logica senza blocco timer automatico, scrivili esplicitamente in `condition_expression`/`condition_operands`.
 - se `condition_expression` e' vuota ma `condition_operands` e' compilata, il generatore crea una `AND`.
 - se entrambe sono vuote, la rete risulta `TRUE`.
 

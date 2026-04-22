@@ -314,6 +314,7 @@ def _ir_from_payload(
         strict_operand_catalog=bool(ir_payload.get("strict_operand_catalog", False)),
         operand_catalog=sorted(set(_as_str_list(ir_payload.get("operand_catalog")))),
         operand_datatypes=_as_str_dict(ir_payload.get("operand_datatypes")),
+        operand_timer_settings=_as_str_dict_dict(ir_payload.get("operand_timer_settings")),
         support_members=_as_dict_list(ir_payload.get("support_members")),
         support_logic=_as_dict_list(ir_payload.get("support_logic")),
         assumptions=_as_str_list(ir_payload.get("assumptions"))
@@ -555,6 +556,25 @@ def _as_str_dict(value: object) -> dict[str, str]:
             continue
         items[key_text] = raw_text
     return items
+
+
+def _as_str_dict_dict(value: object) -> dict[str, dict[str, str]]:
+    if not isinstance(value, dict):
+        return {}
+    out: dict[str, dict[str, str]] = {}
+    for key, raw in value.items():
+        key_text = str(key or "").strip()
+        if not key_text or not isinstance(raw, dict):
+            continue
+        item: dict[str, str] = {}
+        for sub_key, sub_raw in raw.items():
+            sub_key_text = str(sub_key or "").strip()
+            sub_raw_text = str(sub_raw or "").strip()
+            if sub_key_text and sub_raw_text:
+                item[sub_key_text] = sub_raw_text
+        if item:
+            out[key_text] = item
+    return out
 
 
 def _normalize_awl_source(awl_source: str) -> str:
@@ -1784,6 +1804,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
     previews: list[ArtifactPreview] = []
     symbol_home_db_map = _build_support_symbol_home_db_map(ir)
     member_datatypes = _support_operand_datatypes(ir)
+    timer_configs = _support_timer_configs(ir)
 
     external_members = _excel_support_members(ir, "external") or _collect_external_support_members(ir)
     external_db_members = _prepare_support_db_members(ir, "external", external_members)
@@ -1844,6 +1865,8 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     support_members=io_fc_members,
                     db_members=[name for name, _ in io_db_members],
                     symbol_home_db_map=symbol_home_db_map,
+                    member_datatypes=member_datatypes,
+                    timer_configs=timer_configs,
                     logic_rows=io_logic,
                     allow_member_fallback=False,
                     number_seed=f"{ir.sequence_name}_IO_FC",
@@ -1890,6 +1913,8 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     support_members=diag_fc_members,
                     db_members=[name for name, _ in diag_db_members],
                     symbol_home_db_map=symbol_home_db_map,
+                    member_datatypes=member_datatypes,
+                    timer_configs=timer_configs,
                     logic_rows=diag_logic,
                     allow_member_fallback=False,
                     number_seed=f"{ir.sequence_name}_DIAG_FC",
@@ -1936,6 +1961,8 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     support_members=mode_fc_members,
                     db_members=[name for name, _ in mode_db_members],
                     symbol_home_db_map=symbol_home_db_map,
+                    member_datatypes=member_datatypes,
+                    timer_configs=timer_configs,
                     logic_rows=mode_logic,
                     allow_member_fallback=False,
                     number_seed=f"{ir.sequence_name}_MODE_FC",
@@ -1982,6 +2009,8 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     support_members=[name for name, _ in members],
                     db_members=[name for name, _ in members],
                     symbol_home_db_map=symbol_home_db_map,
+                    member_datatypes=member_datatypes,
+                    timer_configs=timer_configs,
                     allow_member_fallback=False,
                     number_seed=f"{ir.sequence_name}_{suffix}_FC",
                     number_base=network_fc_base,
@@ -2031,6 +2060,8 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     support_members=transitions_fc_members,
                     db_members=[name for name, _ in transitions_db_members],
                     symbol_home_db_map=symbol_home_db_map,
+                    member_datatypes=member_datatypes,
+                    timer_configs=timer_configs,
                     logic_rows=transitions_logic,
                     allow_member_fallback=True,
                     prefer_current_db_for_unmapped=True,
@@ -2078,6 +2109,8 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     support_members=output_fc_members,
                     db_members=[name for name, _ in output_db_members],
                     symbol_home_db_map=symbol_home_db_map,
+                    member_datatypes=member_datatypes,
+                    timer_configs=timer_configs,
                     logic_rows=output_logic,
                     allow_member_fallback=False,
                     number_seed=f"{ir.sequence_name}_OUTPUT_FC",
@@ -2124,6 +2157,8 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     support_members=hmi_fc_members,
                     db_members=[name for name, _ in hmi_db_members],
                     symbol_home_db_map=symbol_home_db_map,
+                    member_datatypes=member_datatypes,
+                    timer_configs=timer_configs,
                     logic_rows=hmi_logic,
                     allow_member_fallback=False,
                     number_seed=f"{ir.sequence_name}_HMI_FC",
@@ -2170,6 +2205,8 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     support_members=aux_fc_members,
                     db_members=[name for name, _ in aux_db_members],
                     symbol_home_db_map=symbol_home_db_map,
+                    member_datatypes=member_datatypes,
+                    timer_configs=timer_configs,
                     logic_rows=aux_logic,
                     allow_member_fallback=False,
                     number_seed=f"{ir.sequence_name}_AUX_FC",
@@ -2565,6 +2602,8 @@ def _build_support_lad_fc_xml(
     support_members: list[str],
     db_members: list[str],
     symbol_home_db_map: dict[str, str] | None,
+    member_datatypes: dict[str, str] | None,
+    timer_configs: dict[str, dict[str, str]] | None,
     number_seed: str,
     logic_rows: list[dict[str, object]] | None = None,
     allow_member_fallback: bool = True,
@@ -2584,6 +2623,8 @@ def _build_support_lad_fc_xml(
         support_members=support_members,
         db_members=db_members,
         symbol_home_db_map=symbol_home_db_map or {},
+        member_datatypes=member_datatypes or {},
+        timer_configs=timer_configs or {},
         logic_rows=logic_rows or [],
         allow_member_fallback=allow_member_fallback,
         prefer_current_db_for_unmapped=prefer_current_db_for_unmapped,
@@ -2823,6 +2864,67 @@ def _support_operand_datatypes(ir: AwlIR) -> dict[str, str]:
     return mapping
 
 
+def _timer_part_name(timer_kind: str) -> str:
+    raw = str(timer_kind or "").strip().lower()
+    if raw in {"t_off", "tof"}:
+        return "TOF"
+    if raw in {"t_p", "tp"}:
+        return "TP"
+    return "TON"
+
+
+def _support_timer_configs(ir: AwlIR) -> dict[str, dict[str, str]]:
+    configs: dict[str, dict[str, str]] = {}
+    for raw_name, settings in ir.operand_timer_settings.items():
+        normalized_name = _support_member_name(raw_name, "", strict_excel_mode=True)
+        if not normalized_name:
+            continue
+        kind = str(settings.get("kind") or "").strip()
+        preset = str(settings.get("preset") or "").strip() or "T#1S"
+        if not preset.upper().startswith("T#"):
+            preset = f"T#{preset}"
+        configs[normalized_name] = {
+            "part_name": _timer_part_name(kind),
+            "preset": preset.upper(),
+        }
+    for timer in ir.timers:
+        normalized_name = _support_member_name(timer.source_timer, "", strict_excel_mode=True)
+        if not normalized_name:
+            continue
+        if normalized_name in configs:
+            continue
+        preset = str(timer.preset or "").strip() or "T#1S"
+        if not preset.upper().startswith("T#"):
+            preset = f"T#{preset}"
+        configs[normalized_name] = {
+            "part_name": _timer_part_name(timer.kind),
+            "preset": preset.upper(),
+        }
+    return configs
+
+
+def _resolve_logic_symbol_path(
+    operand: str,
+    member_datatypes: dict[str, str],
+) -> tuple[str, list[str]]:
+    token = str(operand or "").strip()
+    if not token:
+        return "", []
+    raw_parts = [part for part in token.split(".") if part]
+    if not raw_parts:
+        return "", []
+
+    base_name = _support_member_name(raw_parts[0], "", strict_excel_mode=True)
+    if not base_name:
+        return "", []
+
+    if len(raw_parts) > 1:
+        return base_name, [base_name, *raw_parts[1:]]
+
+    _ = member_datatypes
+    return base_name, [base_name]
+
+
 def _is_allowed_guard_operand(operand: str, allowed: set[str] | None) -> bool:
     if allowed is None:
         return True
@@ -2916,6 +3018,8 @@ def _build_support_lad_compile_units(
     support_members: list[str],
     db_members: list[str],
     symbol_home_db_map: dict[str, str],
+    member_datatypes: dict[str, str],
+    timer_configs: dict[str, dict[str, str]],
     logic_rows: list[dict[str, object]] | None = None,
     allow_member_fallback: bool = True,
     prefer_current_db_for_unmapped: bool = False,
@@ -2942,6 +3046,8 @@ def _build_support_lad_compile_units(
                 condition_operands=condition_operands,
                 db_members=db_member_set,
                 symbol_home_db_map=symbol_home_db_map,
+                member_datatypes=member_datatypes,
+                timer_configs=timer_configs,
                 prefer_current_db_for_unmapped=prefer_current_db_for_unmapped,
             )
             units.append(
@@ -2991,6 +3097,8 @@ def _build_support_lad_compile_units(
             condition_operands=[member_name],
             db_members=db_member_set,
             symbol_home_db_map=symbol_home_db_map,
+            member_datatypes=member_datatypes,
+            timer_configs=timer_configs,
             prefer_current_db_for_unmapped=prefer_current_db_for_unmapped,
         )
         units.append(
@@ -3029,6 +3137,8 @@ def _build_support_logic_flgnet(
     condition_operands: list[str],
     db_members: set[str],
     symbol_home_db_map: dict[str, str],
+    member_datatypes: dict[str, str],
+    timer_configs: dict[str, dict[str, str]],
     prefer_current_db_for_unmapped: bool = False,
 ) -> str:
     next_uid = 21
@@ -3045,30 +3155,61 @@ def _build_support_logic_flgnet(
     parts_lines: list[str] = []
     wires_lines: list[str] = []
 
-    def _render_access(symbol_name: str, access_uid: int) -> list[str]:
-        target_db_name = db_name
+    def _owner_db_name(symbol_name: str) -> str:
         if symbol_name in db_members:
-            target_db_name = db_name
-        elif symbol_name in symbol_home_db_map:
-            target_db_name = symbol_home_db_map[symbol_name]
-        elif prefer_current_db_for_unmapped:
-            target_db_name = db_name
-        else:
-            target_db_name = ""
+            return db_name
+        if symbol_name in symbol_home_db_map:
+            return symbol_home_db_map[symbol_name]
+        if prefer_current_db_for_unmapped:
+            return db_name
+        return ""
+
+    def _timer_candidate_for_operand(operand: str, negated: bool) -> tuple[str, str, str] | None:
+        if negated:
+            return None
+        normalized_operand, operand_path = _resolve_logic_symbol_path(operand, member_datatypes)
+        if not normalized_operand:
+            return None
+        if len(operand_path) != 1:
+            return None
+        cfg = timer_configs.get(normalized_operand) or {}
+        datatype = _normalize_plc_datatype(member_datatypes.get(normalized_operand, ""))
+        if not cfg and datatype != "IEC_TIMER" and datatype != "IEC_COUNTER" and "COUNTER" not in datatype.upper():
+            return None
+        part_name = cfg.get("part_name") or "TON"
+        preset = cfg.get("preset") or "T#1S"
+        return normalized_operand, part_name, preset
+
+    active_timer_name = ""
+    active_timer_part = ""
+    active_timer_preset = ""
+    for clause in guard_clauses:
+        for operand, negated in clause:
+            candidate = _timer_candidate_for_operand(operand, negated)
+            if candidate:
+                active_timer_name = candidate[0]
+                active_timer_part = candidate[1]
+                active_timer_preset = candidate[2]
+                break
+        if active_timer_name:
+            break
+
+    def _render_access(symbol_name: str, symbol_path: list[str], access_uid: int) -> list[str]:
+        target_db_name = _owner_db_name(symbol_name)
 
         if target_db_name:
             return [
                 f'    <Access Scope="GlobalVariable" UId="{access_uid}">\n',
                 "      <Symbol>\n",
                 f'        <Component Name="{escape(target_db_name)}" />\n',
-                f'        <Component Name="{escape(symbol_name)}" />\n',
+                "".join(f'        <Component Name="{escape(component)}" />\n' for component in symbol_path),
                 "      </Symbol>\n",
                 "    </Access>\n",
             ]
         return [
             f'    <Access Scope="GlobalVariable" UId="{access_uid}">\n',
             "      <Symbol>\n",
-            f'        <Component Name="{escape(symbol_name)}" />\n',
+            "".join(f'        <Component Name="{escape(component)}" />\n' for component in symbol_path),
             "      </Symbol>\n",
             "    </Access>\n",
         ]
@@ -3076,10 +3217,14 @@ def _build_support_logic_flgnet(
     for clause in guard_clauses:
         contact_uids: list[int] = []
         for operand, negated in clause:
-            normalized_operand = _support_member_name(operand, "", strict_excel_mode=True)
+            normalized_operand, operand_path = _resolve_logic_symbol_path(operand, member_datatypes)
+            if not normalized_operand:
+                continue
+            if active_timer_name and normalized_operand == active_timer_name and len(operand_path) == 1:
+                continue
             access_uid = alloc_uid()
             contact_uid = alloc_uid()
-            parts_lines.extend(_render_access(normalized_operand, access_uid))
+            parts_lines.extend(_render_access(normalized_operand, operand_path, access_uid))
             if negated:
                 parts_lines.extend(
                     [
@@ -3106,7 +3251,7 @@ def _build_support_logic_flgnet(
 
     coil_access_uid = alloc_uid()
     coil_uid = alloc_uid()
-    parts_lines.extend(_render_access(normalized_result, coil_access_uid))
+    parts_lines.extend(_render_access(normalized_result, [normalized_result], coil_access_uid))
     parts_lines.append(f'    <Part Name="Coil" UId="{coil_uid}" />\n')
     coil_operand_wire_uid = alloc_uid()
     wires_lines.extend(
@@ -3146,6 +3291,7 @@ def _build_support_logic_flgnet(
         if branch:
             clause_outs.append(branch[-1])
 
+    logic_output_uid: int | None = None
     if len(clause_outs) > 1:
         or_uid = alloc_uid()
         parts_lines.extend(
@@ -3165,21 +3311,99 @@ def _build_support_logic_flgnet(
                     "    </Wire>\n",
                 ]
             )
-        out_wire_uid = alloc_uid()
+        logic_output_uid = or_uid
+    elif clause_outs:
+        logic_output_uid = clause_outs[0]
+
+    if active_timer_name:
+        preset_access_uid = alloc_uid()
+        timer_uid = alloc_uid()
+        timer_instance_uid = alloc_uid()
+        open_con_uid = alloc_uid()
+
+        parts_lines.extend(
+            [
+                f'    <Access Scope="TypedConstant" UId="{preset_access_uid}">\n',
+                "      <Constant>\n",
+                f'        <ConstantValue>{escape(active_timer_preset or "T#1S")}</ConstantValue>\n',
+                "      </Constant>\n",
+                "    </Access>\n",
+            ]
+        )
+
+        instance_components: list[str] = []
+        owner_db = _owner_db_name(active_timer_name)
+        if owner_db:
+            instance_components.append(owner_db)
+        instance_components.append(active_timer_name)
+
+        parts_lines.extend(
+            [
+                f'    <Part Name="{escape(active_timer_part or "TON")}" Version="1.0" UId="{timer_uid}">\n',
+                f'      <Instance Scope="GlobalVariable" UId="{timer_instance_uid}">\n',
+                *[f'        <Component Name="{escape(component)}" />\n' for component in instance_components],
+                "      </Instance>\n",
+                '      <TemplateValue Name="time_type" Type="Type">Time</TemplateValue>\n',
+                "    </Part>\n",
+            ]
+        )
+
+        if logic_output_uid is not None:
+            in_wire_uid = alloc_uid()
+            wires_lines.extend(
+                [
+                    f'    <Wire UId="{in_wire_uid}">\n',
+                    f'      <NameCon UId="{logic_output_uid}" Name="out" />\n',
+                    f'      <NameCon UId="{timer_uid}" Name="IN" />\n',
+                    "    </Wire>\n",
+                ]
+            )
+        else:
+            timer_true_wire_uid = alloc_uid()
+            wires_lines.extend(
+                [
+                    f'    <Wire UId="{timer_true_wire_uid}">\n',
+                    "      <Powerrail />\n",
+                    f'      <NameCon UId="{timer_uid}" Name="IN" />\n',
+                    "    </Wire>\n",
+                ]
+            )
+
+        pt_wire_uid = alloc_uid()
         wires_lines.extend(
             [
-                f'    <Wire UId="{out_wire_uid}">\n',
-                f'      <NameCon UId="{or_uid}" Name="out" />\n',
+                f'    <Wire UId="{pt_wire_uid}">\n',
+                f'      <IdentCon UId="{preset_access_uid}" />\n',
+                f'      <NameCon UId="{timer_uid}" Name="PT" />\n',
+                "    </Wire>\n",
+            ]
+        )
+
+        q_wire_uid = alloc_uid()
+        wires_lines.extend(
+            [
+                f'    <Wire UId="{q_wire_uid}">\n',
+                f'      <NameCon UId="{timer_uid}" Name="Q" />\n',
                 f'      <NameCon UId="{coil_uid}" Name="in" />\n',
                 "    </Wire>\n",
             ]
         )
-    elif clause_outs:
+
+        et_wire_uid = alloc_uid()
+        wires_lines.extend(
+            [
+                f'    <Wire UId="{et_wire_uid}">\n',
+                f'      <NameCon UId="{timer_uid}" Name="ET" />\n',
+                f'      <OpenCon UId="{open_con_uid}" />\n',
+                "    </Wire>\n",
+            ]
+        )
+    elif logic_output_uid is not None:
         final_wire_uid = alloc_uid()
         wires_lines.extend(
             [
                 f'    <Wire UId="{final_wire_uid}">\n',
-                f'      <NameCon UId="{clause_outs[0]}" Name="out" />\n',
+                f'      <NameCon UId="{logic_output_uid}" Name="out" />\n',
                 f'      <NameCon UId="{coil_uid}" Name="in" />\n',
                 "    </Wire>\n",
             ]

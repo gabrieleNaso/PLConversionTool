@@ -585,6 +585,7 @@ def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[s
     )
     operand_catalog: list[str] = []
     operand_datatypes: dict[str, str] = {}
+    operand_timer_settings: dict[str, dict[str, str]] = {}
     for idx, row in enumerate(operand_rows, start=1):
         operand = _cell_text(_pick(row, "operand", "name", "tag"))
         if not operand:
@@ -596,6 +597,16 @@ def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[s
         )
         if operand not in operand_datatypes:
             operand_datatypes[operand] = datatype
+        timer_kind = _normalize_timer_kind(_pick(row, "timer_instruction_kind", "kind"))
+        timer_preset = _normalize_timer_preset_value(_pick(row, "timer_preset_value", "preset"))
+        if datatype == "IEC_TIMER" or timer_preset:
+            operand_timer_settings.setdefault(
+                operand,
+                {
+                    "kind": timer_kind,
+                    "preset": timer_preset or "T#1S",
+                },
+            )
         category = _normalize_operand_category(_pick(row, "category", "type", "group"))
         network_index = _infer_network_index_for_operand(operand, transitions, idx)
         note = _cell_text(_pick(row, "note", "notes", "evidence"))
@@ -773,6 +784,7 @@ def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[s
         "strict_operand_catalog": True,
         "operand_catalog": operand_catalog,
         "operand_datatypes": operand_datatypes,
+        "operand_timer_settings": operand_timer_settings,
         "support_members": support_members,
         "support_logic": support_logic,
         "assumptions": _split_list(meta.get("assumptions")),
