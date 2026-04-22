@@ -83,12 +83,12 @@ Categorie supportate:
 - `aux` -> `memories` (aux)
 - `hmi` -> `memories` (hmi) + ref esterni
 - `output` -> `outputs`
-- `timer` -> `timers`
-- `counter` -> catalogo contatori (FC block logic)
 - `memory` -> `memories` (mappata come `aux`)
 - `external` -> `external_refs`
-- `manual_mode` -> `manual_logic_networks`
-- `auto_mode` -> `auto_logic_networks`
+
+Nota importante:
+- `timer`, `counter`, `manual_mode`, `auto_mode` non sono categorie valide nel foglio `operands`.
+- timer/contatori si definiscono tramite `datatype` (`IEC_TIMER`/`IEC_COUNTER`) + `control_kind` + `control_value`.
 
 ## 5) Regola Strict DB (Excel)
 Per input Excel, il generatore usa `operands` come catalogo strict:

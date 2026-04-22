@@ -101,6 +101,8 @@ def _normalize_parallel_group(value: object) -> str:
 
 def _normalize_operand_category(value: object) -> str:
     raw = _cell_text(value).strip().lower()
+    # Excel category now models functional DB ownership only.
+    # Legacy control/mode categories are normalized to AUX.
     aliases = {
         "allarme": "alarm",
         "allarmi": "alarm",
@@ -113,18 +115,18 @@ def _normalize_operand_category(value: object) -> str:
         "operatore": "hmi",
         "output": "output",
         "uscita": "output",
-        "timer": "timer",
-        "counter": "counter",
-        "contatore": "counter",
-        "tempo": "timer",
+        "timer": "aux",
+        "counter": "aux",
+        "contatore": "aux",
+        "tempo": "aux",
         "memory": "memory",
         "memoria": "memory",
         "external": "external",
         "esterno": "external",
-        "manual_mode": "manual_mode",
-        "manual": "manual_mode",
-        "auto_mode": "auto_mode",
-        "auto": "auto_mode",
+        "manual_mode": "aux",
+        "manual": "aux",
+        "auto_mode": "aux",
+        "auto": "aux",
     }
     return aliases.get(raw, raw or "aux")
 
@@ -725,25 +727,6 @@ def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[s
                 }
             )
             continue
-        if category == "timer":
-            try:
-                timer_kind = _normalize_timer_kind(
-                    _pick(row, "control_kind", "block_kind", "instruction_kind", "timer_instruction_kind", "kind")
-                )
-            except ValueError as exc:
-                raise SystemExit(f"Excel non valido (operands): {operand}: {exc}") from exc
-            timers.append(
-                {
-                    "source_timer": operand,
-                    "network_index": network_index,
-                    "kind": timer_kind,
-                    "preset": _normalize_timer_preset_value(
-                        _pick(row, "control_value", "block_value", "setpoint_value", "timer_preset_value", "preset")
-                    ),
-                    "trigger_operands": [],
-                }
-            )
-            continue
         if category == "hmi":
             external_refs.append(operand)
             memories.append(
@@ -756,14 +739,6 @@ def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[s
             continue
         if category == "external":
             external_refs.append(operand)
-            continue
-        if category == "manual_mode":
-            if network_index not in manual_logic_networks:
-                manual_logic_networks.append(network_index)
-            continue
-        if category == "auto_mode":
-            if network_index not in auto_logic_networks:
-                auto_logic_networks.append(network_index)
             continue
 
         # Default mapping for aux/memory/other custom categories.
