@@ -147,6 +147,29 @@ def _normalize_timer_kind(value: object) -> str:
     return aliases.get(raw, "t_on")
 
 
+def _normalize_plc_datatype(value: object) -> str:
+    raw = _cell_text(value).strip().lower()
+    if not raw:
+        return "Bool"
+    aliases = {
+        "bool": "Bool",
+        "boolean": "Bool",
+        "int": "Int",
+        "integer": "Int",
+        "dint": "DInt",
+        "udint": "UDInt",
+        "real": "Real",
+        "byte": "Byte",
+        "word": "Word",
+        "dword": "DWord",
+        "time": "Time",
+        "timer": "IEC_TIMER",
+        "iec_timer": "IEC_TIMER",
+        "string": "String",
+    }
+    return aliases.get(raw, _cell_text(value).strip() or "Bool")
+
+
 def _normalize_support_category(value: object) -> str:
     raw = _cell_text(value).strip().lower()
     aliases = {
@@ -549,12 +572,18 @@ def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[s
         support_logic=support_logic,
     )
     operand_catalog: list[str] = []
+    operand_datatypes: dict[str, str] = {}
     for idx, row in enumerate(operand_rows, start=1):
         operand = _cell_text(_pick(row, "operand", "name", "tag"))
         if not operand:
             continue
         if operand not in operand_catalog:
             operand_catalog.append(operand)
+        datatype = _normalize_plc_datatype(
+            _pick(row, "datatype", "data_type", "plc_datatype", "plc_type", "tipo_dato")
+        )
+        if operand not in operand_datatypes:
+            operand_datatypes[operand] = datatype
         category = _normalize_operand_category(_pick(row, "category", "type", "group"))
         network_index = _infer_network_index_for_operand(operand, transitions, idx)
         note = _cell_text(_pick(row, "note", "notes", "evidence"))
@@ -731,6 +760,7 @@ def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[s
         "external_refs": external_refs,
         "strict_operand_catalog": True,
         "operand_catalog": operand_catalog,
+        "operand_datatypes": operand_datatypes,
         "support_members": support_members,
         "support_logic": support_logic,
         "assumptions": _split_list(meta.get("assumptions")),

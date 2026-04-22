@@ -183,6 +183,7 @@ class AwlIR:
     external_refs: list[str] = field(default_factory=list)
     strict_operand_catalog: bool = False
     operand_catalog: list[str] = field(default_factory=list)
+    operand_datatypes: dict[str, str] = field(default_factory=dict)
     support_members: list[dict[str, object]] = field(default_factory=list)
     support_logic: list[dict[str, object]] = field(default_factory=list)
     assumptions: list[str] = field(default_factory=list)

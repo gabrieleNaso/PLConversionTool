@@ -5,6 +5,9 @@ Obiettivo: compilare un Excel leggibile per generare `IR JSON` e XML TIA (`FB/DB
 Template consigliato:
 - `docs/templates/ir_excel_template_single_page_with_support_fc.xlsx` (pagina FC completa: `support_fc` obbligatoria)
 
+Regola di allineamento:
+- ogni modifica alla struttura dei fogli Excel (colonne, nomi, vincoli) deve aggiornare nello stesso commit anche il template d'esempio in `docs/templates/`.
+
 Output:
 1. `<Sequence>_ir.json`
 2. `<Sequence>_analysis.json`
@@ -59,6 +62,7 @@ Questo foglio e' il catalogo ufficiale dei segnali usati dal caso Excel.
 Colonne:
 - `operand`: nome operando (es. `M10.0`, `Q4.0`, `ALM_OVERTEMP`, `DB81.DBX0.0`).
 - `category`: categoria funzionale.
+- `datatype`: tipo variabile PLC (es. `Bool`, `Int`, `DInt`, `Real`, `Time`, `String`).
 - `timer_instruction_kind`: per timer (`t_on`, `t_off`, `t_p`), opzionale.
 - `timer_preset_value`: preset timer, opzionale.
 - `trigger_operands`: trigger timer separati da `;`, opzionale.
@@ -79,6 +83,7 @@ Categorie supportate:
 Per input Excel, il generatore usa `operands` come catalogo strict:
 - la logica LAD delle transizioni GRAPH resta completa (non viene semplificata);
 - i member DB vengono dichiarati solo se coerenti col catalogo `operands` e con le categorie derivate;
+- il tipo del member DB segue `operands.datatype` quando presente (default `Bool`);
 - variabili non catalogate non vengono aggiunte "a caso" nei DB.
 
 Se una transizione usa operandi non presenti nel catalogo, il report analysis segnala warning dedicati.

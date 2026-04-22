@@ -313,6 +313,7 @@ def _ir_from_payload(
         external_refs=sorted(set(_as_str_list(ir_payload.get("external_refs")))),
         strict_operand_catalog=bool(ir_payload.get("strict_operand_catalog", False)),
         operand_catalog=sorted(set(_as_str_list(ir_payload.get("operand_catalog")))),
+        operand_datatypes=_as_str_dict(ir_payload.get("operand_datatypes")),
         support_members=_as_dict_list(ir_payload.get("support_members")),
         support_logic=_as_dict_list(ir_payload.get("support_logic")),
         assumptions=_as_str_list(ir_payload.get("assumptions"))
@@ -433,7 +434,7 @@ def _build_ir_scaffold(ir: AwlIR) -> ConversionScaffold:
         ),
         artifact_plan=ArtifactPlan(
             graph_fb_name=f"FB_{ir.sequence_name}_GRAPH_auto.xml",
-            global_db_name=f"DB16_{ir.sequence_name}_seq_db_auto.xml",
+            global_db_name="",
             lad_fc_name=f"FC04_{ir.sequence_name}_transitions_lad_auto.xml",
             output_directory="data/output/",
             naming_notes=[
@@ -540,6 +541,19 @@ def _as_dict_list(value: object) -> list[dict[str, object]]:
     for element in value:
         if isinstance(element, dict):
             items.append(dict(element))
+    return items
+
+
+def _as_str_dict(value: object) -> dict[str, str]:
+    if not isinstance(value, dict):
+        return {}
+    items: dict[str, str] = {}
+    for key, raw in value.items():
+        key_text = str(key or "").strip()
+        raw_text = str(raw or "").strip()
+        if not key_text or not raw_text:
+            continue
+        items[key_text] = raw_text
     return items
 
 
@@ -1703,7 +1717,6 @@ def _block_type_suffix(seed: str) -> int:
 def _build_artifact_previews(scaffold, ir: AwlIR, graph_topology: GraphTopology) -> list[ArtifactPreview]:
     profile = build_target_profile()
     graph_xml = _build_graph_fb_xml(profile, ir, graph_topology)
-    db_xml = _build_global_db_xml(ir, graph_topology)
     fc_xml = _build_lad_fc_xml(ir, graph_topology)
 
     previews = [
@@ -1711,11 +1724,6 @@ def _build_artifact_previews(scaffold, ir: AwlIR, graph_topology: GraphTopology)
             artifact_type="graph_fb",
             file_name=scaffold.artifact_plan.graph_fb_name,
             content=graph_xml,
-        ),
-        ArtifactPreview(
-            artifact_type="global_db",
-            file_name=scaffold.artifact_plan.global_db_name,
-            content=db_xml,
         ),
     ]
 
@@ -1747,7 +1755,7 @@ def _build_artifact_manifest(previews: list[ArtifactPreview]) -> dict[str, list[
     }
     for preview in previews:
         item = {"artifactType": preview.artifact_type, "fileName": preview.file_name}
-        if preview.artifact_type in {"graph_fb", "global_db", "lad_fc"}:
+        if preview.artifact_type in {"graph_fb", "lad_fc"}:
             manifest["baseline"].append(item)
         elif preview.artifact_type in {"support_global_db_io", "support_lad_fc_io"}:
             manifest["support_io"].append(item)
@@ -1775,6 +1783,7 @@ def _build_artifact_manifest(previews: list[ArtifactPreview]) -> dict[str, list[
 def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
     previews: list[ArtifactPreview] = []
     symbol_home_db_map = _build_support_symbol_home_db_map(ir)
+    member_datatypes = _support_operand_datatypes(ir)
 
     external_members = _excel_support_members(ir, "external") or _collect_external_support_members(ir)
     external_db_members = _prepare_support_db_members(ir, "external", external_members)
@@ -1790,6 +1799,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     block_name=external_db_name,
                     title=f"{ir.sequence_name} External DB",
                     members=external_db_members,
+                    member_datatypes=member_datatypes,
                     number_seed=f"{ir.sequence_name}_EXTERNAL_DB",
                     number_base=external_db_base,
                 ),
@@ -1817,6 +1827,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                         block_name=io_db_name,
                         title=f"{ir.sequence_name} IO DB",
                         members=io_db_members,
+                        member_datatypes=member_datatypes,
                         number_seed=f"{ir.sequence_name}_IO_DB",
                         number_base=io_db_base,
                     ),
@@ -1862,6 +1873,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                         block_name=diag_db_name,
                         title=f"{ir.sequence_name} Alarms DB",
                         members=diag_db_members,
+                        member_datatypes=member_datatypes,
                         number_seed=f"{ir.sequence_name}_DIAG_DB",
                         number_base=diag_db_base,
                     ),
@@ -1907,6 +1919,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                         block_name=mode_db_name,
                         title=f"{ir.sequence_name} Mode DB",
                         members=mode_db_members,
+                        member_datatypes=member_datatypes,
                         number_seed=f"{ir.sequence_name}_MODE_DB",
                         number_base=mode_db_base,
                     ),
@@ -1952,6 +1965,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     block_name=network_db_name,
                     title=f"{ir.sequence_name} Network {network_no} DB",
                     members=members,
+                    member_datatypes=member_datatypes,
                     number_seed=f"{ir.sequence_name}_{suffix}_DB",
                     number_base=network_db_base,
                 ),
@@ -2000,6 +2014,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                         block_name=tr_db_name,
                         title=f"{ir.sequence_name} Transitions DB",
                         members=transitions_db_members,
+                        member_datatypes=member_datatypes,
                         number_seed=f"{ir.sequence_name}_TRANSITIONS_DB",
                         number_base=tr_db_base,
                     ),
@@ -2046,6 +2061,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                         block_name=out_db_name,
                         title=f"{ir.sequence_name} Output DB",
                         members=output_db_members,
+                        member_datatypes=member_datatypes,
                         number_seed=f"{ir.sequence_name}_OUTPUT_DB",
                         number_base=out_db_base,
                     ),
@@ -2091,6 +2107,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                         block_name=hmi_db_name,
                         title=f"{ir.sequence_name} HMI DB",
                         members=hmi_db_members,
+                        member_datatypes=member_datatypes,
                         number_seed=f"{ir.sequence_name}_HMI_DB",
                         number_base=hmi_db_base,
                     ),
@@ -2136,6 +2153,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                         block_name=aux_db_name,
                         title=f"{ir.sequence_name} Aux DB",
                         members=aux_db_members,
+                        member_datatypes=member_datatypes,
                         number_seed=f"{ir.sequence_name}_AUX_DB",
                         number_base=aux_db_base,
                     ),
@@ -2425,13 +2443,19 @@ def _build_support_global_db_xml(
     title: str,
     members: list[tuple[str, str]],
     number_seed: str,
+    member_datatypes: dict[str, str] | None = None,
     number_base: int = 400,
     number_span: int = 200,
 ) -> str:
     db_number = _stable_block_number(number_seed, base=number_base, span=number_span)
     unique_members = _dedupe_named_members(members)
+    datatype_map = member_datatypes or {}
     member_irs = [
-        MemberIR(name=member_name, datatype="Bool", comment=member_comment)
+        MemberIR(
+            name=member_name,
+            datatype=datatype_map.get(member_name, "Bool"),
+            comment=member_comment,
+        )
         for member_name, member_comment in unique_members
     ]
     if not member_irs:
@@ -2764,6 +2788,39 @@ def _strict_allowed_guard_operands(ir: AwlIR) -> set[str] | None:
         allowed.add(token.upper())
         allowed.add(_normalize_symbol_name(token, token).upper())
     return allowed
+
+
+def _normalize_plc_datatype(datatype: str) -> str:
+    raw = str(datatype or "").strip().lower()
+    aliases = {
+        "bool": "Bool",
+        "boolean": "Bool",
+        "int": "Int",
+        "integer": "Int",
+        "dint": "DInt",
+        "udint": "UDInt",
+        "real": "Real",
+        "byte": "Byte",
+        "word": "Word",
+        "dword": "DWord",
+        "time": "Time",
+        "timer": "IEC_TIMER",
+        "iec_timer": "IEC_TIMER",
+        "string": "String",
+    }
+    if not raw:
+        return "Bool"
+    return aliases.get(raw, str(datatype).strip() or "Bool")
+
+
+def _support_operand_datatypes(ir: AwlIR) -> dict[str, str]:
+    mapping: dict[str, str] = {}
+    for raw_name, raw_datatype in ir.operand_datatypes.items():
+        normalized_name = _support_member_name(raw_name, "", strict_excel_mode=True)
+        if not normalized_name:
+            continue
+        mapping[normalized_name] = _normalize_plc_datatype(raw_datatype)
+    return mapping
 
 
 def _is_allowed_guard_operand(operand: str, allowed: set[str] | None) -> bool:

@@ -52,7 +52,7 @@ def build_conversion_scaffold(
 
     artifact_plan = ArtifactPlan(
         graph_fb_name=f"FB_{normalized_name}_GRAPH_auto.xml",
-        global_db_name=f"DB12_{normalized_name}_seq_global_auto.xml",
+        global_db_name="",
         lad_fc_name=f"FC04_{normalized_name}_transitions_lad_auto.xml",
         output_directory="data/output/",
         naming_notes=[
