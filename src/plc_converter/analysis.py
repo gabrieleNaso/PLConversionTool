@@ -44,9 +44,10 @@ TIMER_OPCODES = {"SD", "SE", "SP", "SS", "SF"}
 SUPPORT_BLOCK_SCHEMA = {
     "io": {"token": "IO", "file_token": "io"},
     "diag": {"token": "ALARMS", "file_token": "alarms"},
-    "mode": {"token": "MODE", "file_token": "mode"},
+    "mode": {"token": "LEV2", "file_token": "lev2"},
     "network": {"token": "N", "file_token": "n"},
     "external": {"token": "EXT", "file_token": "ext"},
+    "parameters": {"token": "PARAMETERS", "file_token": "parameters"},
     "hmi": {"token": "HMI", "file_token": "hmi"},
     "aux": {"token": "AUX", "file_token": "aux"},
     "transitions": {"token": "TRANSITIONS", "file_token": "transitions"},
@@ -60,6 +61,7 @@ DB_FAMILY_PREFIX = {
     "transitions": "DB14",
     "graph": "DB15",
     "sequence": "DB16",
+    "lev2": "DB17",
     "ext": "DB18",
     "output": "DB19",
 }
@@ -70,6 +72,7 @@ FC_FAMILY_PREFIX = {
     "aux": "FC13",
     "transitions": "FC14",
     "sequence": "FC16",
+    "lev2": "FC17",
     "ext": "FC18",
     "output": "FC19",
 }
@@ -81,6 +84,7 @@ DB_FAMILY_NUMBER_BASE = {
     "transitions": 1400,
     "graph": 1500,
     "sequence": 1600,
+    "lev2": 1700,
     "ext": 1800,
     "output": 1900,
 }
@@ -91,18 +95,20 @@ FC_FAMILY_NUMBER_BASE = {
     "aux": 1300,
     "transitions": 1400,
     "sequence": 1600,
+    "lev2": 1700,
     "output": 1900,
 }
 
 SUPPORT_FAMILY_OVERRIDES = {
     "diag": {"db_family": "base", "fc_family": "base"},
     "io": {"db_family": "sequence", "fc_family": "sequence"},
-    "mode": {"db_family": "sequence", "fc_family": "sequence"},
+    "mode": {"db_family": "lev2", "fc_family": "lev2"},
     "external": {"db_family": "ext"},
+    "parameters": {"db_family": "aux"},
     "hmi": {"db_family": "hmi", "fc_family": "hmi"},
-    "aux": {"db_family": "aux", "fc_family": "aux"},
+    "aux": {"db_family": "output", "fc_family": "aux"},
     "transitions": {"db_family": "transitions", "fc_family": "transitions"},
-    "output": {"db_family": "output", "fc_family": "output"},
+    "output": {"db_family": "output", "fc_family": "sequence"},
 }
 
 TIA_MEMBER_NAME_MAX_LEN = 96
@@ -1858,26 +1864,6 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     ),
                 )
             )
-        previews.append(
-            ArtifactPreview(
-                artifact_type="support_lad_fc_io",
-                file_name=io_fc_file,
-                content=_build_support_lad_fc_xml(
-                    fc_name=io_fc_name,
-                    title=f"{ir.sequence_name} IO LAD",
-                    db_name=io_db_name,
-                    support_members=io_fc_members,
-                    db_members=[name for name, _ in io_db_members],
-                    symbol_home_db_map=symbol_home_db_map,
-                    member_datatypes=member_datatypes,
-                    timer_configs=timer_configs,
-                    logic_rows=io_logic,
-                    allow_member_fallback=False,
-                    number_seed=f"{ir.sequence_name}_IO_FC",
-                    number_base=io_fc_base,
-                ),
-            )
-        )
 
     diag_logic = _excel_support_logic_rows(ir, "diag")
     diag_members = _excel_support_members(ir, "diag") or _collect_diag_support_members(ir)
@@ -1927,6 +1913,32 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
             )
         )
 
+    parameters_members = _collect_parameters_support_members(ir)
+    parameters_db_members = _prepare_support_db_members(ir, "parameters", parameters_members)
+    if parameters_db_members:
+        (
+            par_db_name,
+            _,
+            par_db_file,
+            _,
+            par_db_base,
+            _,
+        ) = _support_block_names(ir.sequence_name, "parameters")
+        previews.append(
+            ArtifactPreview(
+                artifact_type="support_global_db_aux",
+                file_name=par_db_file,
+                content=_build_support_global_db_xml(
+                    block_name=par_db_name,
+                    title=f"{ir.sequence_name} Parameters DB",
+                    members=parameters_db_members,
+                    member_datatypes=member_datatypes,
+                    number_seed=f"{ir.sequence_name}_PARAMETERS_DB",
+                    number_base=par_db_base,
+                ),
+            )
+        )
+
     mode_logic = _excel_support_logic_rows(ir, "mode")
     mode_members = _excel_support_members(ir, "mode") or _collect_mode_support_members(ir)
     mode_db_members, mode_fc_members = _prepare_support_members(ir, "mode", mode_members, mode_logic)
@@ -1946,7 +1958,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     file_name=mode_db_file,
                     content=_build_support_global_db_xml(
                         block_name=mode_db_name,
-                        title=f"{ir.sequence_name} Mode DB",
+                        title=f"{ir.sequence_name} LEV2 DB",
                         members=mode_db_members,
                         member_datatypes=member_datatypes,
                         number_seed=f"{ir.sequence_name}_MODE_DB",
@@ -1960,7 +1972,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                 file_name=mode_fc_file,
                 content=_build_support_lad_fc_xml(
                     fc_name=mode_fc_name,
-                    title=f"{ir.sequence_name} Mode LAD",
+                    title=f"{ir.sequence_name} LEV2 LAD",
                     db_name=mode_db_name,
                     support_members=mode_fc_members,
                     db_members=[name for name, _ in mode_db_members],
@@ -1974,53 +1986,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                 ),
             )
         )
-
     network_specs: list[tuple[int, str, list[tuple[str, str]]]] = []
-    if len(ir.networks) <= 5:
-        network_specs = _collect_network_support_specs(ir)
-    for network_no, network_title, members in network_specs:
-        suffix = _network_support_suffix(network_no, network_title)
-        (
-            network_db_name,
-            network_fc_name,
-            network_db_file,
-            network_fc_file,
-            network_db_base,
-            network_fc_base,
-        ) = _support_block_names(ir.sequence_name, "network", suffix=suffix)
-        previews.append(
-            ArtifactPreview(
-                artifact_type="support_global_db_network",
-                file_name=network_db_file,
-                content=_build_support_global_db_xml(
-                    block_name=network_db_name,
-                    title=f"{ir.sequence_name} Network {network_no} DB",
-                    members=members,
-                    member_datatypes=member_datatypes,
-                    number_seed=f"{ir.sequence_name}_{suffix}_DB",
-                    number_base=network_db_base,
-                ),
-            )
-        )
-        previews.append(
-            ArtifactPreview(
-                artifact_type="support_lad_fc_network",
-                file_name=network_fc_file,
-                content=_build_support_lad_fc_xml(
-                    fc_name=network_fc_name,
-                    title=f"{ir.sequence_name} Network {network_no} LAD ({network_title})",
-                    db_name=network_db_name,
-                    support_members=[name for name, _ in members],
-                    db_members=[name for name, _ in members],
-                    symbol_home_db_map=symbol_home_db_map,
-                    member_datatypes=member_datatypes,
-                    timer_configs=timer_configs,
-                    allow_member_fallback=False,
-                    number_seed=f"{ir.sequence_name}_{suffix}_FC",
-                    number_base=network_fc_base,
-                ),
-            )
-        )
 
     transitions_logic = _excel_support_logic_rows(ir, "transitions")
     transitions_members = _excel_support_members(ir, "transitions") or _collect_transitions_support_members(
@@ -2038,21 +2004,6 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
             tr_db_base,
             tr_fc_base,
         ) = _support_block_names(ir.sequence_name, "transitions")
-        if transitions_db_members:
-            previews.append(
-                ArtifactPreview(
-                    artifact_type="support_global_db_transitions",
-                    file_name=tr_db_file,
-                    content=_build_support_global_db_xml(
-                        block_name=tr_db_name,
-                        title=f"{ir.sequence_name} Transitions DB",
-                        members=transitions_db_members,
-                        member_datatypes=member_datatypes,
-                        number_seed=f"{ir.sequence_name}_TRANSITIONS_DB",
-                        number_base=tr_db_base,
-                    ),
-                )
-            )
         previews.append(
             ArtifactPreview(
                 artifact_type="support_lad_fc_transitions",
@@ -2060,7 +2011,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                 content=_build_support_lad_fc_xml(
                     fc_name=tr_fc_name,
                     title=f"{ir.sequence_name} Transitions LAD",
-                    db_name=tr_db_name,
+                    db_name=_support_block_names(ir.sequence_name, "diag")[0],
                     support_members=transitions_fc_members,
                     db_members=[name for name, _ in transitions_db_members],
                     symbol_home_db_map=symbol_home_db_map,
@@ -2087,21 +2038,6 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
             out_db_base,
             out_fc_base,
         ) = _support_block_names(ir.sequence_name, "output")
-        if output_db_members:
-            previews.append(
-                ArtifactPreview(
-                    artifact_type="support_global_db_output",
-                    file_name=out_db_file,
-                    content=_build_support_global_db_xml(
-                        block_name=out_db_name,
-                        title=f"{ir.sequence_name} Output DB",
-                        members=output_db_members,
-                        member_datatypes=member_datatypes,
-                        number_seed=f"{ir.sequence_name}_OUTPUT_DB",
-                        number_base=out_db_base,
-                    ),
-                )
-            )
         previews.append(
             ArtifactPreview(
                 artifact_type="support_lad_fc_output",
@@ -2109,7 +2045,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                 content=_build_support_lad_fc_xml(
                     fc_name=out_fc_name,
                     title=f"{ir.sequence_name} Output LAD",
-                    db_name=out_db_name,
+                    db_name=_support_block_names(ir.sequence_name, "io")[0],
                     support_members=output_fc_members,
                     db_members=[name for name, _ in output_db_members],
                     symbol_home_db_map=symbol_home_db_map,

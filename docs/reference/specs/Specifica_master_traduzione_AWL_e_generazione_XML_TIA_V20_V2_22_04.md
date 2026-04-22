@@ -383,6 +383,7 @@ Mappa famiglie consolidata:
 Nota operativa vincolante:
 - `DB15GG SEQ` e' il DB istanza FB GRAPH creato da TIA in fase import/runtime;
 - il convertitore non deve emettere `DB15GG` come DB custom applicativo.
+- profilo blocchi correntemente adottato (modo corretto): FC `11/12/13/14/16/17`, FB `15`, DB custom `11/12/13/16/17/18/19` con `DB15` riservato alla sola istanza TIA.
 
 ## 21. Regola sui DB di progetto
 

@@ -200,6 +200,11 @@ Regole consolidate (22-04-2026):
 - nota importante su `15GG`:
   - `FB15GG` e' il blocco GRAPH;
   - `DB15GG SEQ` e' il DB istanza generato automaticamente da TIA per la FB GRAPH, non va emesso dal tool come DB custom.
+- profilo blocchi target corretto (con `GG` variabile):
+  - FC: `FC11` Alarms, `FC12` HMI, `FC13` Aux, `FC14` Transitions, `FC16` Output, `FC17` LEV2
+  - FB: `FB15` Sequence (GRAPH)
+  - DB custom: `DB11` base/alarms, `DB12` HMI, `DB13` PARAMETERS, `DB16` I/O, `DB17` LEV2, `DB18` external, `DB19` AUX
+  - DB istanza TIA: `DB15` SEQ (auto-creato da TIA, non serializzato dal tool)
 - le variabili usate nelle FC possono essere cross-categoria, ma il DB owner non cambia:
   - il DB owner e' determinato dal catalogo `operands`;
   - se una variabile e' usata in un'altra FC, resta referenziata nel DB owner originale;
