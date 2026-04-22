@@ -181,6 +181,12 @@ Comando:
 make generate-excel-ir EXCEL_FILE="docs/templates/ir_excel_template_single_page_with_support_fc.xlsx"
 ```
 
+Shortcut (usa il template default configurato in `Makefile`):
+
+```bash
+make generate-excel
+```
+
 Output nel bundle:
 - `<Name>_ir.json` (IR estratto dall'Excel)
 - `<Name>_analysis.json` (analisi completa usata per generare XML)
@@ -196,10 +202,14 @@ Regole Excel importanti:
 - i nomi passo sono liberi (`Init`, `StartCiclo`, ecc.);
 - in modalita' Excel, il catalogo `operands` guida la dichiarazione variabili DB (niente inferenze casuali).
 - in `operands.category` usa solo categorie funzionali (`alarm`, `aux`, `hmi`, `output`, `memory`, `external`, `lv2`/`lev2`, `transition`/`transitions`).
+- `mode` non e' una categoria valida lato Excel: per LEV2 usa sempre `lv2` (oppure alias `lev2`).
 - variabili FC non presenti in `operands` non vengono dichiarate nei DB supporto, ma restano utilizzabili nella logica FC come simboli globali non agganciati a DB.
 - timer/contatori definiti in `operands` e usati in `support_fc` vengono emessi come blocchi LAD completi, con preset da `control_value`.
 - `operands` e `support_fc` sono obbligatori: se manca uno dei due (o e' vuoto), `generate-excel-ir` termina con errore.
 - nelle espressioni logiche (`condition_expression` / `guard_expression`) sono supportate parentesi e precedenza booleana.
+- nel GRAPH, le transition usano la logica reale dell'Excel (`condition_expression`) e non vengono ridotte a marker tipo `T1/T2`.
+- i riferimenti variabile nelle transition GRAPH sono cross-DB: ogni simbolo punta al DB owner derivato dal catalogo `operands`.
+- i blocchi supporto vengono sempre emessi anche se vuoti (placeholder `NoData`), incluso `DB14 ... transitions`.
 
 Compatibilita':
 - lo script accetta anche vecchi alias di colonna, ma per nuovi file usare i nomi espliciti sopra.

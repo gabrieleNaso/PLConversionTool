@@ -161,6 +161,42 @@ Regole hard:
 - `network_index` resta solo alias legacy in input e non cambia il contratto canonico;
 - non e' ammesso introdurre una pipeline separata che dipenda da un foglio FC logico dedicato diverso da `support_fc`.
 
+### 4-quater. Categorie Excel e ownership DB (consolidato 22-04-2026)
+
+Nel foglio `operands` le categorie funzionali ammesse sono:
+
+- `alarm`
+- `aux`
+- `hmi`
+- `output`
+- `memory`
+- `external`
+- `lv2` (alias `lev2`)
+- `transition` (alias `transitions`)
+
+Regole hard:
+
+- `mode` non e' categoria valida lato input Excel `operands`; per LEV2 va usato `lv2`/`lev2`;
+- l'owner DB dei simboli e' determinato dal catalogo `operands` e non puo' migrare per effetto della FC o della rete che li usa.
+
+### 4-quinquies. Regole hard transition GRAPH da input Excel
+
+Per transition generate da sorgente Excel:
+
+- il `FlgNet` della transition deve riflettere la formula booleana reale (`condition_expression`) con precedenza e parentesi preservate;
+- non e' ammessa la riduzione della condizione a placeholder semplificati non semantici (`T1`, `T2`, ...);
+- i contatti della transition possono leggere simboli da DB diversi nella stessa rete, con risoluzione per owner DB dal catalogo `operands`;
+- il DB transitions (`DB14GG`) resta il contenitore dei member transizione di servizio, ma non monopolizza i simboli di condizione quando questi appartengono ad altri owner DB.
+
+### 4-sexies. Completezza emissione blocchi supporto
+
+Nel percorso Excel il pacchetto supporto deve essere sempre completo per famiglie previste dal profilo, anche quando una famiglia non contiene member effettivi.
+
+Regole hard:
+
+- il blocco va comunque emesso con placeholder valido (`NoData`) per mantenere coerenza di import e struttura bundle;
+- il requisito include il DB transitions (`DB14GG`) e le altre famiglie DB/FC di supporto previste dal profilo corrente.
+
 # Parte II - Regole di analisi del sorgente AWL
 
 ## 5. Regola di segmentazione primaria

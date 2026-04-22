@@ -109,6 +109,17 @@ Il confronto tra i documenti normativi aggiornati e i file XML reali oggi dispon
 - Profilo operativo corretto: `FC11/12/13/14/16/17`, `FB15`, DB custom `11/12/13/16/17/18/19` + `DB15` solo istanza TIA.
 - Nel flusso Excel l'ownership DB e' determinata da `operands`: uso cross-FC ammesso ma senza migrazione del DB owner della variabile.
 
+## 2-quater. Integrazioni finali flusso Excel/GRAPH (22-04-2026)
+
+Sono da considerare fissate anche le seguenti regole operative finali del percorso Excel:
+
+- categorie `operands` consolidate: `alarm`, `aux`, `hmi`, `output`, `memory`, `external`, `lv2`/`lev2`, `transition`/`transitions`;
+- `mode` non e' categoria di input valida nel foglio `operands` (per LEV2 si usa `lv2`/`lev2`);
+- le transition nel GRAPH mantengono la formula booleana reale dell'Excel (`condition_expression`) e non devono degradare in marker semplificati (`T1`, `T2`, ...);
+- nelle transition GRAPH i riferimenti variabile sono cross-DB e devono puntare al DB owner corretto determinato dal catalogo `operands`;
+- il pacchetto supporto va emesso completo anche in assenza di contenuto logico/dati per alcune famiglie, con placeholder validi (`NoData`) per preservare importabilita' e struttura attesa;
+- in particolare il DB transitions (`DB14GG`) deve essere sempre presente nel bundle quando il pacchetto Excel include la famiglia transitions.
+
 ## 3. Target tecnico consolidato
 
 Il target validato del progetto è:

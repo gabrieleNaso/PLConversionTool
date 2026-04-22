@@ -5,6 +5,9 @@ Obiettivo: compilare un Excel leggibile per generare `IR JSON` e XML TIA (`FB/DB
 Aggiornato al `22-04-2026`:
 - timer e contatori in `support_fc` vengono generati come blocchi LAD completi (non come contatti semplici);
 - il preset usa sempre `operands.control_value` (`PT` per timer, `PV` per contatori).
+- nelle transition GRAPH viene mantenuta la logica booleana reale dell'Excel (non fallback su marker `T1/T2`);
+- nelle transition GRAPH ogni variabile e' risolta sul DB owner corretto dal catalogo `operands` (cross-DB);
+- i blocchi supporto vengono creati sempre anche se vuoti (placeholder `NoData`), incluso `DB14 ... transitions`.
 
 Template consigliato:
 - `docs/templates/ir_excel_template_single_page_with_support_fc.xlsx` (pagina FC completa: `support_fc` obbligatoria)
@@ -79,6 +82,7 @@ Categorie supportate:
 
 Nota importante:
 - `timer`, `counter`, `manual_mode`, `auto_mode` non sono categorie valide nel foglio `operands`.
+- `mode` non e' una categoria valida in input Excel: usa `lv2` (o `lev2`).
 - timer/contatori si definiscono tramite `datatype` (`IEC_TIMER`/`IEC_COUNTER`) + `control_kind` + `control_value`.
 
 ## 4) Regola Strict DB (Excel)
@@ -124,6 +128,7 @@ Regole pratiche:
 - se compili `result_member`/condizione, la FC della categoria usa la logica scritta qui.
 - i segnali presenti in `operands` vengono collegati ai DB supporto.
 - i segnali NON presenti in `operands` restano comunque usabili nella logica FC come variabili globali non agganciate a DB.
+- nelle transition GRAPH i simboli sono risolti per owner DB: una condizione puo' leggere variabili da DB diversi nella stessa rete.
 - se in una rete FC compare una variabile catalogata come controllo:
   - `datatype=IEC_TIMER` -> blocco completo `TON/TOF/TP` con `PT` da `control_value`;
   - `datatype=IEC_COUNTER` -> blocco completo `CTU/CTD/CTUD` con `PV` da `control_value`.
@@ -207,6 +212,7 @@ Regole consolidate (22-04-2026):
   - FB: `FB15` Sequence (GRAPH)
   - DB custom: `DB11` base/alarms, `DB12` HMI, `DB13` PARAMETERS, `DB16` I/O, `DB17` LEV2, `DB18` external, `DB19` AUX
   - DB istanza TIA: `DB15` SEQ (auto-creato da TIA, non serializzato dal tool)
+- anche quando una famiglia DB/FC non ha member valorizzati dall'Excel, il blocco viene comunque emesso con placeholder per mantenere il pacchetto completo.
 - le variabili usate nelle FC possono essere cross-categoria, ma il DB owner non cambia:
   - il DB owner e' determinato dal catalogo `operands`;
   - se una variabile e' usata in un'altra FC, resta referenziata nel DB owner originale;
