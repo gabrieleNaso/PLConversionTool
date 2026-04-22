@@ -1,4 +1,4 @@
-Specifica master consolidata del 21-04-2026
+Specifica master consolidata del 22-04-2026
 per le regole di traduzione e generazione XML
 AWL / Excel -> IR -> GRAPH / GlobalDB / FC LAD per TIA Portal V20
 
@@ -75,13 +75,12 @@ Il generatore deve poter emettere almeno le seguenti famiglie architetturali:
 
 - `1 x FB GRAPH` della sequenza;
 - `DB 11..` base;
-- `DB 12..` HMI;
+- `DB 12..` HMI (`12GG` = DB HMI);
 - `DB 13..` AUX;
 - `DB 14..` transitions;
 - `DB 16..` sequenza;
 - `DB 18.. EXT`;
 - `DB 19..` output;
-- `DB HMI`;
 - `FC 02 HMI`;
 - `FC 03 Aux`;
 - `FC 04 Transitions`;
@@ -133,7 +132,7 @@ Non è ammesso introdurre un backend XML separato che trasformi direttamente l'E
 
 L'Excel va quindi trattato come sorgente alternativa di modellazione e catalogazione, non come formato finale di emissione.
 
-### 4-ter. Contratto fogli Excel (formato consolidato 21-04-2026)
+### 4-ter. Contratto fogli Excel (formato consolidato 22-04-2026)
 
 Per il percorso Excel del convertitore, il contratto minimo dei fogli e' da considerare hard:
 
@@ -369,7 +368,7 @@ La convenzione fissa del progetto è:
 
 Mappa famiglie consolidata:
 - `11GG` -> alarms/diag;
-- `12GG` -> HMI;
+- `12GG` -> HMI (`12GG` = DB HMI);
 - `13GG` -> AUX;
 - `14GG` -> transitions;
 - `15GG` -> GRAPH (FB);
@@ -1730,7 +1729,7 @@ Il naming finale dei passi GRAPH resta invece una policy del builder, che può:
 - introdurre step di chiusura o fine ciclo, purché il comportamento funzionale resti equivalente.
 
 
-# Appendice B - Integrazioni consolidate al 21-04-2026
+# Appendice B - Integrazioni consolidate al 22-04-2026
 
 ## B.1 Regola di prevalenza normativa
 In caso di conflitto tra una convenzione di repository, un'abitudine storica del team o una semplificazione implementativa del tool, prevale sempre la presente specifica.

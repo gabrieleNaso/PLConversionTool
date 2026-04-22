@@ -1,4 +1,4 @@
-# Report aggiornato del 21-04-2026
+# Report aggiornato del 22-04-2026
 
 ## Progetto
 Conversione di sequenziatori PLC da AWL a GRAPH in TIA Portal V20 tramite XML.
@@ -16,7 +16,7 @@ L'obiettivo di questa versione consolidata è:
 - mantenere una baseline unica, leggibile e riusabile;
 - integrare in un unico testo sia la parte di reverse engineering XML sia la parte operativa su TIA Portal Openness.
 
-Il documento va quindi usato come riferimento tecnico corrente del progetto alla data del 21-04-2026.
+Il documento va quindi usato come riferimento tecnico corrente del progetto alla data del 22-04-2026.
 
 ---
 
@@ -62,7 +62,7 @@ Conseguenza architetturale da considerare fissata:
 
 `AWL parser` oppure `Excel strutturato` -> `IR comune` -> `builder GRAPH / GlobalDB / FC` -> `serializer XML`.
 
-Regola operativa consolidata al 21-04-2026 per il flusso Excel:
+Regola operativa consolidata al 22-04-2026 per il flusso Excel:
 
 - `operands` e `support_fc` sono fogli obbligatori;
 - nel foglio `support_fc` devono convivere sia la definizione member (`member_name`) sia la logica FC (`result_member`, `condition_expression`, `condition_operands`, `network`);
@@ -82,7 +82,7 @@ Il progetto include ora anche il livello operativo di orchestrazione TIA, con ob
 ---
 
 
-## 2-bis. Chiarimenti documentali e operativi consolidati al 21-04-2026
+## 2-bis. Chiarimenti documentali e operativi consolidati al 22-04-2026
 
 A valle del confronto tra i documenti operativi, i report consolidati e i tipici XML del caso `T1-A ARUNC`, i seguenti punti sono da considerare fissati.
 
@@ -104,7 +104,7 @@ Il confronto tra i documenti normativi aggiornati e i file XML reali oggi dispon
 - Il modello HMI va esplicitato su due livelli: condizioni elementari nel path `Conditions.<gruppo>.Conditions.nX` e metadati/stati di gruppo nello stesso owner DB HMI, con campi del tipo `PopUpNumber`, `ConditionOK`, `Visible`, `FO` o equivalenti previsti dal modello finale.
 - I DB esterni fissi di integrazione, quando presenti, costituiscono un contratto rigido di naming. In particolare i pattern `Pnnn` e `Lnnn` osservati in `DB81-OPIN` e `DB82-OPOUT` non devono essere rinominati liberamente dal generatore.
 - I casi legacy come `T1-A ARUNC LEV2` confermano che nel corpus storico esistono sequenze e strutture dati utili per il reverse engineering semantico, ma non necessariamente allineate alla partizione target chiusa del nuovo convertitore.
-- Mappa famiglie consolidata al 21-04-2026 (forma `XXGG`): `11GG` alarms/diag, `12GG` hmi, `13GG` aux, `14GG` transitions, `15GG` graph, `16GG` sequenza, `18GG` external, `19GG` output.
+- Mappa famiglie consolidata al 22-04-2026 (forma `XXGG`): `11GG` alarms/diag, `12GG` hmi (`12GG` = DB HMI), `13GG` aux, `14GG` transitions, `15GG` graph, `16GG` sequenza, `18GG` external, `19GG` output.
 - Nel flusso Excel l'ownership DB e' determinata da `operands`: uso cross-FC ammesso ma senza migrazione del DB owner della variabile.
 
 ## 3. Target tecnico consolidato
@@ -667,7 +667,7 @@ Regola generale:
 - il formato e' `XXGG`, dove `XX` identifica la famiglia e `GG` e' il gruppo comune della traduzione;
 - `03` e' un esempio operativo di `GG`, non un valore fisso.
 
-Mappa famiglie consolidata: `11GG` alarms/diag, `12GG` hmi, `13GG` aux, `14GG` transitions, `15GG` graph, `16GG` sequenza, `18GG` external, `19GG` output.
+Mappa famiglie consolidata: `11GG` alarms/diag, `12GG` hmi (`12GG` = DB HMI), `13GG` aux, `14GG` transitions, `15GG` graph, `16GG` sequenza, `18GG` external, `19GG` output.
 
 Questa convenzione è normativa per il convertitore, anche se alcuni campioni legacy caricati mostrano distribuzioni storiche diverse dei numeri blocco.
 
@@ -717,13 +717,12 @@ La forma corretta dell'output è un insieme coordinato di artefatti:
 
 - `FB GRAPH` per la macchina a stati esplicita;
 - `DB 11..` per memorie, transizioni semantiche e stato leggibile del sequenziatore;
-- `DB 12..` per dati HMI;
+- `DB 12..` per dati HMI, popup, condizioni visualizzate e strutture HMI (`12GG` = DB HMI);
 - `DB 13..` per supporti ausiliari (timer, contatori, appoggi tecnici);
 - `DB 14..` per transitions;
 - `DB 16..` per il contenitore della sequenza secondo il modello scelto;
 - `DB 18..` per variabili esterne alla sequenza;
 - `DB 19..` per output;
-- `DB HMI` per popup, condizioni visualizzate e strutture HMI;
 - `FC 02` HMI;
 - `FC 03` Aux;
 - `FC 04` Transitions;
@@ -990,11 +989,11 @@ I prossimi step non sono più “far parlare il sistema con TIA”, ma:
 
 ---
 
-# PARTE F - BASELINE FINALE DEL PROGETTO AL 21-04-2026
+# PARTE F - BASELINE FINALE DEL PROGETTO AL 22-04-2026
 
 ## 38. Baseline consolidata
 
-Alla data del 21-04-2026 la baseline consolidata del progetto è la seguente.
+Alla data del 22-04-2026 la baseline consolidata del progetto è la seguente.
 
 ### 38.1 Sul GRAPH
 
@@ -1103,7 +1102,7 @@ Questa non è una regola organizzativa, ma un vincolo tecnico del progetto.
 
 ## 42. Sintesi finale
 
-Alla data del 21-04-2026 il progetto ha raggiunto una baseline forte su quattro livelli:
+Alla data del 22-04-2026 il progetto ha raggiunto una baseline forte su quattro livelli:
 
 1. reverse engineering strutturale del `GRAPH`;
 2. generazione stabile dei `GlobalDB` applicativi e di supporto;
