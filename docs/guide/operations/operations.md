@@ -200,6 +200,7 @@ Regole Excel importanti:
 - variabili FC non presenti in `operands` non vengono dichiarate nei DB supporto, ma restano utilizzabili nella logica FC come simboli globali non agganciati a DB.
 - timer/contatori definiti in `operands` e usati in `support_fc` vengono emessi come blocchi LAD completi, con preset da `control_value`.
 - `operands` e `support_fc` sono obbligatori: se manca uno dei due (o e' vuoto), `generate-excel-ir` termina con errore.
+- nelle espressioni logiche (`condition_expression` / `guard_expression`) sono supportate parentesi e precedenza booleana.
 
 Compatibilita':
 - lo script accetta anche vecchi alias di colonna, ma per nuovi file usare i nomi espliciti sopra.

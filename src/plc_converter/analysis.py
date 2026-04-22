@@ -4200,39 +4200,186 @@ def _parse_guard_clauses(guard_expression: str, guard_operands: list[str]) -> li
     text = (guard_expression or "").strip()
     if not text or text.upper() == "TRUE":
         return []
-
-    or_clauses = _split_top_level_boolean(text, operator="OR")
-    if not or_clauses:
-        or_clauses = [text]
-
-    parsed: list[list[tuple[str, bool]]] = []
-    for clause in or_clauses:
-        and_terms = _split_top_level_boolean(clause, operator="AND")
-        if not and_terms:
-            and_terms = [clause]
-        terms: list[tuple[str, bool]] = []
-        for raw_term in and_terms:
-            token = raw_term.strip()
-            if not token:
-                continue
-            negated = False
-            upper = token.upper()
-            if upper.startswith("NOT "):
-                negated = True
-                token = token[4:].strip()
-            token = token.strip("() ")
-            if not token or token.upper() in {"TRUE", "FALSE"}:
-                continue
-            terms.append((token, negated))
-        if terms:
-            parsed.append(terms)
-
-    if parsed:
+    parsed = _parse_boolean_guard_to_dnf(text)
+    if parsed is not None:
         return parsed
 
     if guard_operands:
         return [[(item, False) for item in guard_operands if item]]
     return []
+
+
+def _parse_boolean_guard_to_dnf(expression: str) -> list[list[tuple[str, bool]]] | None:
+    tokens = _tokenize_boolean_expression(expression)
+    if tokens is None:
+        return None
+    if not tokens:
+        return []
+    node, index = _parse_boolean_or(tokens, 0)
+    if node is None:
+        return None
+    if index != len(tokens):
+        return None
+    nnf = _boolean_to_nnf(node)
+    clauses = _boolean_nnf_to_dnf(nnf)
+    return _normalize_boolean_clauses(clauses)
+
+
+def _tokenize_boolean_expression(expression: str) -> list[tuple[str, str]] | None:
+    # Tokens: operators (AND/OR/NOT), parentheses, and operands.
+    token_re = re.compile(
+        r"\s*("
+        r"\("                           # open paren
+        r"|\)"                          # close paren
+        r"|AND\b|OR\b|NOT\b"            # operators
+        r"|[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z0-9_]+)*"  # operand
+        r")",
+        flags=re.IGNORECASE,
+    )
+    tokens: list[tuple[str, str]] = []
+    pos = 0
+    while pos < len(expression):
+        match = token_re.match(expression, pos)
+        if not match:
+            return None
+        raw = match.group(1)
+        upper = raw.upper()
+        if raw == "(":
+            kind = "LPAREN"
+        elif raw == ")":
+            kind = "RPAREN"
+        elif upper in {"AND", "OR", "NOT"}:
+            kind = upper
+        else:
+            kind = "IDENT"
+        tokens.append((kind, raw))
+        pos = match.end()
+    return tokens
+
+
+def _parse_boolean_or(tokens: list[tuple[str, str]], index: int) -> tuple[tuple | None, int]:
+    left, index = _parse_boolean_and(tokens, index)
+    if left is None:
+        return None, index
+    while index < len(tokens) and tokens[index][0] == "OR":
+        index += 1
+        right, index = _parse_boolean_and(tokens, index)
+        if right is None:
+            return None, index
+        left = ("or", left, right)
+    return left, index
+
+
+def _parse_boolean_and(tokens: list[tuple[str, str]], index: int) -> tuple[tuple | None, int]:
+    left, index = _parse_boolean_unary(tokens, index)
+    if left is None:
+        return None, index
+    while index < len(tokens) and tokens[index][0] == "AND":
+        index += 1
+        right, index = _parse_boolean_unary(tokens, index)
+        if right is None:
+            return None, index
+        left = ("and", left, right)
+    return left, index
+
+
+def _parse_boolean_unary(tokens: list[tuple[str, str]], index: int) -> tuple[tuple | None, int]:
+    if index >= len(tokens):
+        return None, index
+    kind, raw = tokens[index]
+    if kind == "NOT":
+        node, next_index = _parse_boolean_unary(tokens, index + 1)
+        if node is None:
+            return None, next_index
+        return ("not", node), next_index
+    if kind == "LPAREN":
+        node, next_index = _parse_boolean_or(tokens, index + 1)
+        if node is None:
+            return None, next_index
+        if next_index >= len(tokens) or tokens[next_index][0] != "RPAREN":
+            return None, next_index
+        return node, next_index + 1
+    if kind == "IDENT":
+        upper = raw.upper()
+        if upper == "TRUE":
+            return ("true",), index + 1
+        if upper == "FALSE":
+            return ("false",), index + 1
+        return ("lit", raw), index + 1
+    return None, index
+
+
+def _boolean_to_nnf(node: tuple, negated: bool = False) -> tuple:
+    kind = node[0]
+    if kind == "lit":
+        return ("lit", node[1], negated)
+    if kind == "true":
+        return ("false",) if negated else ("true",)
+    if kind == "false":
+        return ("true",) if negated else ("false",)
+    if kind == "not":
+        return _boolean_to_nnf(node[1], not negated)
+    if kind == "and":
+        left = _boolean_to_nnf(node[1], negated)
+        right = _boolean_to_nnf(node[2], negated)
+        return ("or", left, right) if negated else ("and", left, right)
+    if kind == "or":
+        left = _boolean_to_nnf(node[1], negated)
+        right = _boolean_to_nnf(node[2], negated)
+        return ("and", left, right) if negated else ("or", left, right)
+    return ("false",)
+
+
+def _boolean_nnf_to_dnf(node: tuple) -> list[list[tuple[str, bool]]]:
+    kind = node[0]
+    if kind == "true":
+        return [[]]
+    if kind == "false":
+        return []
+    if kind == "lit":
+        return [[(str(node[1]), bool(node[2]))]]
+    if kind == "or":
+        return _boolean_nnf_to_dnf(node[1]) + _boolean_nnf_to_dnf(node[2])
+    if kind == "and":
+        left = _boolean_nnf_to_dnf(node[1])
+        right = _boolean_nnf_to_dnf(node[2])
+        if not left or not right:
+            return []
+        combined: list[list[tuple[str, bool]]] = []
+        for left_clause in left:
+            for right_clause in right:
+                combined.append(left_clause + right_clause)
+        return combined
+    return []
+
+
+def _normalize_boolean_clauses(
+    clauses: list[list[tuple[str, bool]]],
+) -> list[list[tuple[str, bool]]]:
+    normalized: list[list[tuple[str, bool]]] = []
+    seen: set[tuple[tuple[str, bool], ...]] = set()
+    for clause in clauses:
+        per_symbol: dict[str, bool] = {}
+        contradictory = False
+        for token, negated in clause:
+            symbol = str(token or "").strip()
+            if not symbol:
+                continue
+            previous = per_symbol.get(symbol)
+            if previous is None:
+                per_symbol[symbol] = bool(negated)
+                continue
+            if previous != bool(negated):
+                contradictory = True
+                break
+        if contradictory:
+            continue
+        ordered_clause = tuple(sorted(per_symbol.items(), key=lambda item: item[0]))
+        if ordered_clause in seen:
+            continue
+        seen.add(ordered_clause)
+        normalized.append([(token, negated) for token, negated in ordered_clause])
+    return normalized
 
 
 def _split_top_level_boolean(expression: str, operator: str) -> list[str]:

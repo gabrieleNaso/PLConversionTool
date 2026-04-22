@@ -141,6 +141,10 @@ Regole pratiche:
 - se vuoi referenziare campi specifici del timer (es. `.Q`, `.ET`) in una logica senza blocco timer automatico, scrivili esplicitamente in `condition_expression`/`condition_operands`.
 - se `condition_expression` e' vuota ma `condition_operands` e' compilata, il generatore crea una `AND`.
 - se entrambe sono vuote, la rete risulta `TRUE`.
+- `condition_expression` supporta parentesi e precedenza logica (`NOT` > `AND` > `OR`) sia per `support_fc` sia per le transizioni.
+- esempi validi con semantica diversa:
+  - `M1 AND (NOT M2 OR M3)`
+  - `(M1 AND NOT M2) OR M3`
 
 Formato riga consigliato:
 `category | member_name | result_member | condition_expression | condition_operands | comment | network`
