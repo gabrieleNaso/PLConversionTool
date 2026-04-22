@@ -142,6 +142,7 @@ Regole pratiche:
 - se `condition_expression` e' vuota ma `condition_operands` e' compilata, il generatore crea una `AND`.
 - se entrambe sono vuote, la rete risulta `TRUE`.
 - `condition_expression` supporta parentesi e precedenza logica (`NOT` > `AND` > `OR`) sia per `support_fc` sia per le transizioni.
+- quando mischi `OR` e `AND` nello stesso livello, usa sempre parentesi esplicite per evitare ambiguita' di lettura LAD.
 - esempi validi con semantica diversa:
   - `M1 AND (NOT M2 OR M3)`
   - `(M1 AND NOT M2) OR M3`

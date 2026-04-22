@@ -3193,6 +3193,7 @@ def _build_support_logic_flgnet(
 
     normalized_result = _support_member_name(result_member, "", strict_excel_mode=True)
     guard_clauses = _parse_guard_clauses(condition_expression, condition_operands)
+    guard_clauses, common_terms = _factor_common_guard_terms(guard_clauses)
     clause_contact_uids: list[list[int]] = []
     parts_lines: list[str] = []
     wires_lines: list[str] = []
@@ -3231,7 +3232,8 @@ def _build_support_logic_flgnet(
     active_timer_part = ""
     active_timer_preset = ""
     active_timer_family = ""
-    for clause in guard_clauses:
+    scan_terms = [common_terms, *guard_clauses]
+    for clause in scan_terms:
         for operand, negated in clause:
             candidate = _timer_candidate_for_operand(operand, negated)
             if candidate:
@@ -3263,7 +3265,10 @@ def _build_support_logic_flgnet(
             "    </Access>\n",
         ]
 
+    has_true_clause = any(not clause for clause in guard_clauses)
     for clause in guard_clauses:
+        if not clause:
+            continue
         contact_uids: list[int] = []
         for operand, negated in clause:
             normalized_operand, operand_path = _resolve_logic_symbol_path(operand, member_datatypes)
@@ -3313,7 +3318,7 @@ def _build_support_logic_flgnet(
     )
 
     clause_outs: list[int] = []
-    if clause_contact_uids:
+    if clause_contact_uids and not has_true_clause:
         powerrail_wire_uid = alloc_uid()
         wires_lines.extend(
             [
@@ -3363,6 +3368,57 @@ def _build_support_logic_flgnet(
         logic_output_uid = or_uid
     elif clause_outs:
         logic_output_uid = clause_outs[0]
+
+    for operand, negated in common_terms:
+        normalized_operand, operand_path = _resolve_logic_symbol_path(operand, member_datatypes)
+        if not normalized_operand:
+            continue
+        if active_timer_name and normalized_operand == active_timer_name and len(operand_path) == 1:
+            continue
+        access_uid = alloc_uid()
+        contact_uid = alloc_uid()
+        parts_lines.extend(_render_access(normalized_operand, operand_path, access_uid))
+        if negated:
+            parts_lines.extend(
+                [
+                    f'    <Part Name="Contact" UId="{contact_uid}">\n',
+                    '      <Negated Name="operand" />\n',
+                    "    </Part>\n",
+                ]
+            )
+        else:
+            parts_lines.append(f'    <Part Name="Contact" UId="{contact_uid}" />\n')
+
+        operand_wire_uid = alloc_uid()
+        wires_lines.extend(
+            [
+                f'    <Wire UId="{operand_wire_uid}">\n',
+                f'      <IdentCon UId="{access_uid}" />\n',
+                f'      <NameCon UId="{contact_uid}" Name="operand" />\n',
+                "    </Wire>\n",
+            ]
+        )
+
+        in_wire_uid = alloc_uid()
+        if logic_output_uid is None:
+            wires_lines.extend(
+                [
+                    f'    <Wire UId="{in_wire_uid}">\n',
+                    "      <Powerrail />\n",
+                    f'      <NameCon UId="{contact_uid}" Name="in" />\n',
+                    "    </Wire>\n",
+                ]
+            )
+        else:
+            wires_lines.extend(
+                [
+                    f'    <Wire UId="{in_wire_uid}">\n',
+                    f'      <NameCon UId="{logic_output_uid}" Name="out" />\n',
+                    f'      <NameCon UId="{contact_uid}" Name="in" />\n',
+                    "    </Wire>\n",
+                ]
+            )
+        logic_output_uid = contact_uid
 
     if active_timer_name:
         preset_access_uid = alloc_uid()
@@ -4061,9 +4117,13 @@ def _render_graph_transition(transition: GraphTransitionNode, *, strict_excel_mo
     wires_lines: list[str] = []
 
     guard_clauses = _parse_guard_clauses(transition.guard_expression, transition.guard_operands)
+    guard_clauses, common_terms = _factor_common_guard_terms(guard_clauses)
     clause_contact_uids: list[list[int]] = []
+    has_true_clause = any(not clause for clause in guard_clauses)
 
     for clause in guard_clauses:
+        if not clause:
+            continue
         contact_uids: list[int] = []
         for operand, negated in clause:
             access_uid = alloc_uid()
@@ -4100,12 +4160,14 @@ def _render_graph_transition(transition: GraphTransitionNode, *, strict_excel_mo
             )
             contact_uids.append(contact_uid)
 
-        clause_contact_uids.append(contact_uids)
+        if contact_uids:
+            clause_contact_uids.append(contact_uids)
 
     trcoil_uid = alloc_uid()
     parts_lines.append(f'            <Part Name="TrCoil" UId="{trcoil_uid}" />\n')
 
-    if clause_contact_uids:
+    logic_output_uid: int | None = None
+    if clause_contact_uids and not has_true_clause:
         # Powerrail feeds all OR branches (one branch per clause).
         powerrail_wire_uid = alloc_uid()
         wires_lines.append(f'            <Wire UId="{powerrail_wire_uid}">\n')
@@ -4150,32 +4212,82 @@ def _render_graph_transition(transition: GraphTransitionNode, *, strict_excel_mo
                         '            </Wire>\n',
                     ]
                 )
-            out_wire_uid = alloc_uid()
-            wires_lines.extend(
-                [
-                    f'            <Wire UId="{out_wire_uid}">\n',
-                    f'              <NameCon UId="{or_uid}" Name="out" />\n',
-                    f'              <NameCon UId="{trcoil_uid}" Name="in" />\n',
-                    '            </Wire>\n',
-                ]
-            )
+            logic_output_uid = or_uid
         elif clause_outs:
-            final_wire_uid = alloc_uid()
+            logic_output_uid = clause_outs[0]
+
+    if common_terms:
+        for operand, negated in common_terms:
+            access_uid = alloc_uid()
+            contact_uid = alloc_uid()
+            parts_lines.extend(
+                [
+                    f'            <Access Scope="GlobalVariable" UId="{access_uid}">\n',
+                    '              <Symbol>\n',
+                    f'                <Component Name="{escape(transition.db_block_name)}" />\n',
+                    f'                <Component Name="{escape(_guard_operand_db_member_name(operand, strict_excel_mode=strict_excel_mode))}" />\n',
+                    '              </Symbol>\n',
+                    '            </Access>\n',
+                ]
+            )
+            if negated:
+                parts_lines.extend(
+                    [
+                        f'            <Part Name="Contact" UId="{contact_uid}">\n',
+                        '              <Negated Name="operand" />\n',
+                        '            </Part>\n',
+                    ]
+                )
+            else:
+                parts_lines.append(f'            <Part Name="Contact" UId="{contact_uid}" />\n')
+
+            operand_wire_uid = alloc_uid()
             wires_lines.extend(
                 [
-                    f'            <Wire UId="{final_wire_uid}">\n',
-                    f'              <NameCon UId="{clause_outs[0]}" Name="out" />\n',
-                    f'              <NameCon UId="{trcoil_uid}" Name="in" />\n',
+                    f'            <Wire UId="{operand_wire_uid}">\n',
+                    f'              <IdentCon UId="{access_uid}" />\n',
+                    f'              <NameCon UId="{contact_uid}" Name="operand" />\n',
                     '            </Wire>\n',
                 ]
             )
-    else:
+
+            in_wire_uid = alloc_uid()
+            if logic_output_uid is None:
+                wires_lines.extend(
+                    [
+                        f'            <Wire UId="{in_wire_uid}">\n',
+                        '              <Powerrail />\n',
+                        f'              <NameCon UId="{contact_uid}" Name="in" />\n',
+                        '            </Wire>\n',
+                    ]
+                )
+            else:
+                wires_lines.extend(
+                    [
+                        f'            <Wire UId="{in_wire_uid}">\n',
+                        f'              <NameCon UId="{logic_output_uid}" Name="out" />\n',
+                        f'              <NameCon UId="{contact_uid}" Name="in" />\n',
+                        '            </Wire>\n',
+                    ]
+                )
+            logic_output_uid = contact_uid
+
+    final_wire_uid = alloc_uid()
+    if logic_output_uid is None:
         # TRUE / empty condition: direct powerrail to transition coil.
-        true_wire_uid = alloc_uid()
         wires_lines.extend(
             [
-                f'            <Wire UId="{true_wire_uid}">\n',
+                f'            <Wire UId="{final_wire_uid}">\n',
                 '              <Powerrail />\n',
+                f'              <NameCon UId="{trcoil_uid}" Name="in" />\n',
+                '            </Wire>\n',
+            ]
+        )
+    else:
+        wires_lines.extend(
+            [
+                f'            <Wire UId="{final_wire_uid}">\n',
+                f'              <NameCon UId="{logic_output_uid}" Name="out" />\n',
                 f'              <NameCon UId="{trcoil_uid}" Name="in" />\n',
                 '            </Wire>\n',
             ]
@@ -4207,6 +4319,35 @@ def _parse_guard_clauses(guard_expression: str, guard_operands: list[str]) -> li
     if guard_operands:
         return [[(item, False) for item in guard_operands if item]]
     return []
+
+
+def _factor_common_guard_terms(
+    clauses: list[list[tuple[str, bool]]],
+) -> tuple[list[list[tuple[str, bool]]], list[tuple[str, bool]]]:
+    if not clauses:
+        return [], []
+    non_empty = [clause for clause in clauses if clause]
+    if not non_empty:
+        return clauses, []
+
+    common_candidates = set(non_empty[0])
+    for clause in non_empty[1:]:
+        common_candidates &= set(clause)
+    if not common_candidates:
+        return clauses, []
+
+    ordered_common: list[tuple[str, bool]] = []
+    seen_common: set[tuple[str, bool]] = set()
+    for token, negated in non_empty[0]:
+        item = (token, negated)
+        if item in common_candidates and item not in seen_common:
+            ordered_common.append(item)
+            seen_common.add(item)
+
+    reduced: list[list[tuple[str, bool]]] = []
+    for clause in clauses:
+        reduced.append([item for item in clause if item not in seen_common])
+    return reduced, ordered_common
 
 
 def _parse_boolean_guard_to_dnf(expression: str) -> list[list[tuple[str, bool]]] | None:
