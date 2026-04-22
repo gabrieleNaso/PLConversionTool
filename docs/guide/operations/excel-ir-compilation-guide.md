@@ -74,6 +74,8 @@ Categorie supportate:
 - `output` -> `outputs`
 - `memory` -> `memories` (mappata come `aux`)
 - `external` -> `external_refs`
+- `lv2`/`lev2`/`mode` -> owner DB LEV2
+- `transition`/`transitions` -> owner DB TRANSITIONS
 
 Nota importante:
 - `timer`, `counter`, `manual_mode`, `auto_mode` non sono categorie valide nel foglio `operands`.

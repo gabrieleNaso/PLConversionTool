@@ -1,7 +1,8 @@
-.PHONY: help doctor build pull up logs shell-backend shell-frontend shell-tia run-backend run-tia test-backend lint-backend fmt-backend generate-input generate-excel-ir import-generated generate-and-import generate-import clean down
+.PHONY: help doctor build pull up logs shell-backend shell-frontend shell-tia run-backend run-tia test-backend lint-backend fmt-backend generate-input generate-excel-ir generate-excel import-generated generate-and-import generate-import clean down
 
 PROJECT_NAME := plconversiontool
 COMPOSE := docker compose -p $(PROJECT_NAME) -f compose.dev.yml
+EXCEL_FILE ?= docs/templates/ir_excel_template_single_page_with_support_fc.xlsx
 
 help:
 	@printf "%s\n" \
@@ -21,6 +22,7 @@ help:
 	"  lint-backend   - lint backend (ruff)" \
 	"  generate-input - generate XML (use INPUT_FILE/INPUT_PREFIX filters)" \
 	"  generate-excel-ir - generate XML from Excel IR template (use EXCEL_FILE)" \
+	"  generate-excel - alias of generate-excel-ir" \
 	"  import-generated - import bundles into TIA (use IMPORT_BUNDLE/IMPORT_PREFIX)" \
 	"  generate-and-import - generate-input + import-generated" \
 	"  generate-import - alias of generate-and-import" \
@@ -73,6 +75,8 @@ generate-input:
 
 generate-excel-ir:
 	@python3 scripts/generate_from_excel_ir.py --excel "$(EXCEL_FILE)" --output-root data/output/generated --sequence-name "$(SEQUENCE_NAME)"
+
+generate-excel: generate-excel-ir
 
 import-generated:
 	@python3 scripts/import_generated_to_tia.py --output-root data/output/generated --project-path "$(PROJECT_PATH)" --target-path "$(TARGET_PATH)" --prefix "$(IMPORT_PREFIX)" --bundle "$(IMPORT_BUNDLE)"

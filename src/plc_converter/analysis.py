@@ -1131,12 +1131,8 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
             transition_no=index + 1,
             source_step=transition.source_step,
             target_step=transition.target_step,
-            guard_expression=_support_member_name(
-                transition.transition_id, "TR", strict_excel_mode=ir.strict_operand_catalog
-            ),
-            guard_operands=[
-                _support_member_name(transition.transition_id, "TR", strict_excel_mode=ir.strict_operand_catalog)
-            ],
+            guard_expression=transition.guard_expression or "TRUE",
+            guard_operands=list(transition.guard_operands or []),
             network_index=transition.network_index,
             db_block_name=_transitions_db_block_name(ir),
             db_member_name=_support_member_name(
@@ -1815,345 +1811,300 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
     symbol_home_db_map = _build_support_symbol_home_db_map(ir)
     member_datatypes = _support_operand_datatypes(ir)
     timer_configs = _support_timer_configs(ir)
-
-    external_members = _excel_support_members(ir, "external") or _collect_external_support_members(ir)
-    external_db_members = _prepare_support_db_members(ir, "external", external_members)
-    if external_db_members:
-        external_db_name, _, external_db_file, _, external_db_base, _ = _support_block_names(
-            ir.sequence_name, "external"
-        )
-        previews.append(
-            ArtifactPreview(
-                artifact_type="support_global_db_external",
-                file_name=external_db_file,
-                content=_build_support_global_db_xml(
-                    block_name=external_db_name,
-                    title=f"{ir.sequence_name} External DB",
-                    members=external_db_members,
-                    member_datatypes=member_datatypes,
-                    number_seed=f"{ir.sequence_name}_EXTERNAL_DB",
-                    number_base=external_db_base,
-                ),
-            )
-        )
-
-    io_logic = _excel_support_logic_rows(ir, "io")
-    io_members = _excel_support_members(ir, "io") or _collect_io_support_members(ir)
-    io_db_members, io_fc_members = _prepare_support_members(ir, "io", io_members, io_logic)
-    if io_db_members or io_fc_members or io_logic:
-        (
-            io_db_name,
-            io_fc_name,
-            io_db_file,
-            io_fc_file,
-            io_db_base,
-            io_fc_base,
-        ) = _support_block_names(ir.sequence_name, "io")
-        if io_db_members:
-            previews.append(
-                ArtifactPreview(
-                    artifact_type="support_global_db_io",
-                    file_name=io_db_file,
-                    content=_build_support_global_db_xml(
-                        block_name=io_db_name,
-                        title=f"{ir.sequence_name} IO DB",
-                        members=io_db_members,
-                        member_datatypes=member_datatypes,
-                        number_seed=f"{ir.sequence_name}_IO_DB",
-                        number_base=io_db_base,
-                    ),
-                )
-            )
+    diag_db_name, diag_fc_name, diag_db_file, diag_fc_file, diag_db_base, diag_fc_base = _support_block_names(
+        ir.sequence_name, "diag"
+    )
+    hmi_db_name, hmi_fc_name, hmi_db_file, hmi_fc_file, hmi_db_base, hmi_fc_base = _support_block_names(
+        ir.sequence_name, "hmi"
+    )
+    aux_db_name, aux_fc_name, aux_db_file, aux_fc_file, aux_db_base, aux_fc_base = _support_block_names(
+        ir.sequence_name, "aux"
+    )
+    tr_db_name, tr_fc_name, tr_db_file, tr_fc_file, tr_db_base, tr_fc_base = _support_block_names(
+        ir.sequence_name, "transitions"
+    )
+    io_db_name, io_fc_name, io_db_file, io_fc_file, io_db_base, io_fc_base = _support_block_names(
+        ir.sequence_name, "io"
+    )
+    mode_db_name, mode_fc_name, mode_db_file, mode_fc_file, mode_db_base, mode_fc_base = _support_block_names(
+        ir.sequence_name, "mode"
+    )
+    ext_db_name, _, ext_db_file, _, ext_db_base, _ = _support_block_names(ir.sequence_name, "external")
+    par_db_name, _, par_db_file, _, par_db_base, _ = _support_block_names(ir.sequence_name, "parameters")
 
     diag_logic = _excel_support_logic_rows(ir, "diag")
     diag_members = _excel_support_members(ir, "diag") or _collect_diag_support_members(ir)
     diag_db_members, diag_fc_members = _prepare_support_members(ir, "diag", diag_members, diag_logic)
-    if diag_db_members or diag_fc_members or diag_logic:
-        (
-            diag_db_name,
-            diag_fc_name,
-            diag_db_file,
-            diag_fc_file,
-            diag_db_base,
-            diag_fc_base,
-        ) = _support_block_names(ir.sequence_name, "diag")
-        if diag_db_members:
-            previews.append(
-                ArtifactPreview(
-                    artifact_type="support_global_db_diag",
-                    file_name=diag_db_file,
-                    content=_build_support_global_db_xml(
-                        block_name=diag_db_name,
-                        title=f"{ir.sequence_name} Alarms DB",
-                        members=diag_db_members,
-                        member_datatypes=member_datatypes,
-                        number_seed=f"{ir.sequence_name}_DIAG_DB",
-                        number_base=diag_db_base,
-                    ),
-                )
-            )
-        previews.append(
-            ArtifactPreview(
-                artifact_type="support_lad_fc_diag",
-                file_name=diag_fc_file,
-                content=_build_support_lad_fc_xml(
-                    fc_name=diag_fc_name,
-                    title=f"{ir.sequence_name} Diag LAD",
-                    db_name=diag_db_name,
-                    support_members=diag_fc_members,
-                    db_members=[name for name, _ in diag_db_members],
-                    symbol_home_db_map=symbol_home_db_map,
-                    member_datatypes=member_datatypes,
-                    timer_configs=timer_configs,
-                    logic_rows=diag_logic,
-                    allow_member_fallback=False,
-                    number_seed=f"{ir.sequence_name}_DIAG_FC",
-                    number_base=diag_fc_base,
-                ),
-            )
-        )
-
-    parameters_members = _collect_parameters_support_members(ir)
-    parameters_db_members = _prepare_support_db_members(ir, "parameters", parameters_members)
-    if parameters_db_members:
-        (
-            par_db_name,
-            _,
-            par_db_file,
-            _,
-            par_db_base,
-            _,
-        ) = _support_block_names(ir.sequence_name, "parameters")
-        previews.append(
-            ArtifactPreview(
-                artifact_type="support_global_db_aux",
-                file_name=par_db_file,
-                content=_build_support_global_db_xml(
-                    block_name=par_db_name,
-                    title=f"{ir.sequence_name} Parameters DB",
-                    members=parameters_db_members,
-                    member_datatypes=member_datatypes,
-                    number_seed=f"{ir.sequence_name}_PARAMETERS_DB",
-                    number_base=par_db_base,
-                ),
-            )
-        )
-
-    mode_logic = _excel_support_logic_rows(ir, "mode")
-    mode_members = _excel_support_members(ir, "mode") or _collect_mode_support_members(ir)
-    mode_db_members, mode_fc_members = _prepare_support_members(ir, "mode", mode_members, mode_logic)
-    if mode_db_members or mode_fc_members or mode_logic:
-        (
-            mode_db_name,
-            mode_fc_name,
-            mode_db_file,
-            mode_fc_file,
-            mode_db_base,
-            mode_fc_base,
-        ) = _support_block_names(ir.sequence_name, "mode")
-        if mode_db_members:
-            previews.append(
-                ArtifactPreview(
-                    artifact_type="support_global_db_mode",
-                    file_name=mode_db_file,
-                    content=_build_support_global_db_xml(
-                        block_name=mode_db_name,
-                        title=f"{ir.sequence_name} LEV2 DB",
-                        members=mode_db_members,
-                        member_datatypes=member_datatypes,
-                        number_seed=f"{ir.sequence_name}_MODE_DB",
-                        number_base=mode_db_base,
-                    ),
-                )
-            )
-        previews.append(
-            ArtifactPreview(
-                artifact_type="support_lad_fc_mode",
-                file_name=mode_fc_file,
-                content=_build_support_lad_fc_xml(
-                    fc_name=mode_fc_name,
-                    title=f"{ir.sequence_name} LEV2 LAD",
-                    db_name=mode_db_name,
-                    support_members=mode_fc_members,
-                    db_members=[name for name, _ in mode_db_members],
-                    symbol_home_db_map=symbol_home_db_map,
-                    member_datatypes=member_datatypes,
-                    timer_configs=timer_configs,
-                    logic_rows=mode_logic,
-                    allow_member_fallback=False,
-                    number_seed=f"{ir.sequence_name}_MODE_FC",
-                    number_base=mode_fc_base,
-                ),
-            )
-        )
-    network_specs: list[tuple[int, str, list[tuple[str, str]]]] = []
-
-    transitions_logic = _excel_support_logic_rows(ir, "transitions")
-    transitions_members = _excel_support_members(ir, "transitions") or _collect_transitions_support_members(
-        ir, network_specs
-    )
-    transitions_merged_members = _merge_support_members_with_logic(transitions_members, transitions_logic)
-    transitions_db_members = _dedupe_named_members(transitions_merged_members)
-    transitions_fc_members = list(dict.fromkeys(name for name, _ in transitions_merged_members if name))
-    if transitions_db_members or transitions_fc_members or transitions_logic:
-        (
-            tr_db_name,
-            tr_fc_name,
-            tr_db_file,
-            tr_fc_file,
-            tr_db_base,
-            tr_fc_base,
-        ) = _support_block_names(ir.sequence_name, "transitions")
-        previews.append(
-            ArtifactPreview(
-                artifact_type="support_lad_fc_transitions",
-                file_name=tr_fc_file,
-                content=_build_support_lad_fc_xml(
-                    fc_name=tr_fc_name,
-                    title=f"{ir.sequence_name} Transitions LAD",
-                    db_name=_support_block_names(ir.sequence_name, "diag")[0],
-                    support_members=transitions_fc_members,
-                    db_members=[name for name, _ in transitions_db_members],
-                    symbol_home_db_map=symbol_home_db_map,
-                    member_datatypes=member_datatypes,
-                    timer_configs=timer_configs,
-                    logic_rows=transitions_logic,
-                    allow_member_fallback=True,
-                    prefer_current_db_for_unmapped=True,
-                    number_seed=f"{ir.sequence_name}_TRANSITIONS_FC",
-                    number_base=tr_fc_base,
-                ),
-            )
-        )
-
-    output_logic = _excel_support_logic_rows(ir, "output")
-    output_members = _excel_support_members(ir, "output") or _collect_output_family_members(ir)
-    output_db_members, output_fc_members = _prepare_support_members(ir, "output", output_members, output_logic)
-    if output_db_members or output_fc_members or output_logic:
-        (
-            out_db_name,
-            out_fc_name,
-            out_db_file,
-            out_fc_file,
-            out_db_base,
-            out_fc_base,
-        ) = _support_block_names(ir.sequence_name, "output")
-        previews.append(
-            ArtifactPreview(
-                artifact_type="support_lad_fc_output",
-                file_name=out_fc_file,
-                content=_build_support_lad_fc_xml(
-                    fc_name=out_fc_name,
-                    title=f"{ir.sequence_name} Output LAD",
-                    db_name=_support_block_names(ir.sequence_name, "io")[0],
-                    support_members=output_fc_members,
-                    db_members=[name for name, _ in output_db_members],
-                    symbol_home_db_map=symbol_home_db_map,
-                    member_datatypes=member_datatypes,
-                    timer_configs=timer_configs,
-                    logic_rows=output_logic,
-                    allow_member_fallback=False,
-                    number_seed=f"{ir.sequence_name}_OUTPUT_FC",
-                    number_base=out_fc_base,
-                ),
-            )
-        )
 
     hmi_logic = _excel_support_logic_rows(ir, "hmi")
     hmi_members = _excel_support_members(ir, "hmi") or _collect_hmi_support_members(ir)
     hmi_db_members, hmi_fc_members = _prepare_support_members(ir, "hmi", hmi_members, hmi_logic)
-    if hmi_db_members or hmi_fc_members or hmi_logic:
-        (
-            hmi_db_name,
-            hmi_fc_name,
-            hmi_db_file,
-            hmi_fc_file,
-            hmi_db_base,
-            hmi_fc_base,
-        ) = _support_block_names(ir.sequence_name, "hmi")
-        if hmi_db_members:
-            previews.append(
-                ArtifactPreview(
-                    artifact_type="support_global_db_hmi",
-                    file_name=hmi_db_file,
-                    content=_build_support_global_db_xml(
-                        block_name=hmi_db_name,
-                        title=f"{ir.sequence_name} HMI DB",
-                        members=hmi_db_members,
-                        member_datatypes=member_datatypes,
-                        number_seed=f"{ir.sequence_name}_HMI_DB",
-                        number_base=hmi_db_base,
-                    ),
-                )
-            )
-        previews.append(
-            ArtifactPreview(
-                artifact_type="support_lad_fc_hmi",
-                file_name=hmi_fc_file,
-                content=_build_support_lad_fc_xml(
-                    fc_name=hmi_fc_name,
-                    title=f"{ir.sequence_name} HMI LAD",
-                    db_name=hmi_db_name,
-                    support_members=hmi_fc_members,
-                    db_members=[name for name, _ in hmi_db_members],
-                    symbol_home_db_map=symbol_home_db_map,
-                    member_datatypes=member_datatypes,
-                    timer_configs=timer_configs,
-                    logic_rows=hmi_logic,
-                    allow_member_fallback=False,
-                    number_seed=f"{ir.sequence_name}_HMI_FC",
-                    number_base=hmi_fc_base,
-                ),
-            )
-        )
 
     aux_logic = _excel_support_logic_rows(ir, "aux")
     aux_members = _excel_support_members(ir, "aux") or _collect_aux_support_members(ir)
     aux_db_members, aux_fc_members = _prepare_support_members(ir, "aux", aux_members, aux_logic)
-    if aux_db_members or aux_fc_members or aux_logic:
-        (
-            aux_db_name,
-            aux_fc_name,
-            aux_db_file,
-            aux_fc_file,
-            aux_db_base,
-            aux_fc_base,
-        ) = _support_block_names(ir.sequence_name, "aux")
-        if aux_db_members:
-            previews.append(
-                ArtifactPreview(
-                    artifact_type="support_global_db_aux",
-                    file_name=aux_db_file,
-                    content=_build_support_global_db_xml(
-                        block_name=aux_db_name,
-                        title=f"{ir.sequence_name} Aux DB",
-                        members=aux_db_members,
-                        member_datatypes=member_datatypes,
-                        number_seed=f"{ir.sequence_name}_AUX_DB",
-                        number_base=aux_db_base,
-                    ),
-                )
-            )
-        previews.append(
-            ArtifactPreview(
-                artifact_type="support_lad_fc_aux",
-                file_name=aux_fc_file,
-                content=_build_support_lad_fc_xml(
-                    fc_name=aux_fc_name,
-                    title=f"{ir.sequence_name} Aux LAD",
-                    db_name=aux_db_name,
-                    support_members=aux_fc_members,
-                    db_members=[name for name, _ in aux_db_members],
-                    symbol_home_db_map=symbol_home_db_map,
-                    member_datatypes=member_datatypes,
-                    timer_configs=timer_configs,
-                    logic_rows=aux_logic,
-                    allow_member_fallback=False,
-                    number_seed=f"{ir.sequence_name}_AUX_FC",
-                    number_base=aux_fc_base,
-                ),
-            )
+
+    transitions_logic = _excel_support_logic_rows(ir, "transitions")
+    transitions_members = _excel_support_members(ir, "transitions") or _collect_transitions_support_members(ir, [])
+    transitions_merged_members = _merge_support_members_with_logic(transitions_members, transitions_logic)
+    transitions_db_members = _dedupe_named_members(transitions_merged_members)
+    transitions_fc_members = list(dict.fromkeys(name for name, _ in transitions_merged_members if name))
+
+    output_logic = _excel_support_logic_rows(ir, "output")
+    output_members = _excel_support_members(ir, "output") or _collect_output_family_members(ir)
+    output_db_members, output_fc_members = _prepare_support_members(ir, "output", output_members, output_logic)
+
+    mode_logic = _excel_support_logic_rows(ir, "mode")
+    mode_members = _excel_support_members(ir, "mode") or _collect_mode_support_members(ir)
+    mode_db_members, mode_fc_members = _prepare_support_members(ir, "mode", mode_members, mode_logic)
+
+    external_members = _excel_support_members(ir, "external") or _collect_external_support_members(ir)
+    external_db_members = _prepare_support_db_members(ir, "external", external_members)
+
+    parameters_members = _collect_parameters_support_members(ir)
+    parameters_db_members = _prepare_support_db_members(ir, "parameters", parameters_members)
+
+    # Always create the full expected block set, even when empty.
+    previews.append(
+        ArtifactPreview(
+            artifact_type="support_global_db_diag",
+            file_name=diag_db_file,
+            content=_build_support_global_db_xml(
+                block_name=diag_db_name,
+                title=f"{ir.sequence_name} Alarms DB",
+                members=diag_db_members,
+                member_datatypes=member_datatypes,
+                number_seed=f"{ir.sequence_name}_DIAG_DB",
+                number_base=diag_db_base,
+            ),
         )
+    )
+    previews.append(
+        ArtifactPreview(
+            artifact_type="support_lad_fc_diag",
+            file_name=diag_fc_file,
+            content=_build_support_lad_fc_xml(
+                fc_name=diag_fc_name,
+                title=f"{ir.sequence_name} Diag LAD",
+                db_name=diag_db_name,
+                support_members=diag_fc_members,
+                db_members=[name for name, _ in diag_db_members],
+                symbol_home_db_map=symbol_home_db_map,
+                member_datatypes=member_datatypes,
+                timer_configs=timer_configs,
+                logic_rows=diag_logic,
+                allow_member_fallback=True,
+                number_seed=f"{ir.sequence_name}_DIAG_FC",
+                number_base=diag_fc_base,
+            ),
+        )
+    )
+
+    previews.append(
+        ArtifactPreview(
+            artifact_type="support_global_db_hmi",
+            file_name=hmi_db_file,
+            content=_build_support_global_db_xml(
+                block_name=hmi_db_name,
+                title=f"{ir.sequence_name} HMI DB",
+                members=hmi_db_members,
+                member_datatypes=member_datatypes,
+                number_seed=f"{ir.sequence_name}_HMI_DB",
+                number_base=hmi_db_base,
+            ),
+        )
+    )
+    previews.append(
+        ArtifactPreview(
+            artifact_type="support_lad_fc_hmi",
+            file_name=hmi_fc_file,
+            content=_build_support_lad_fc_xml(
+                fc_name=hmi_fc_name,
+                title=f"{ir.sequence_name} HMI LAD",
+                db_name=hmi_db_name,
+                support_members=hmi_fc_members,
+                db_members=[name for name, _ in hmi_db_members],
+                symbol_home_db_map=symbol_home_db_map,
+                member_datatypes=member_datatypes,
+                timer_configs=timer_configs,
+                logic_rows=hmi_logic,
+                allow_member_fallback=True,
+                number_seed=f"{ir.sequence_name}_HMI_FC",
+                number_base=hmi_fc_base,
+            ),
+        )
+    )
+
+    previews.append(
+        ArtifactPreview(
+            artifact_type="support_global_db_aux",
+            file_name=aux_db_file,
+            content=_build_support_global_db_xml(
+                block_name=aux_db_name,
+                title=f"{ir.sequence_name} Aux DB",
+                members=aux_db_members,
+                member_datatypes=member_datatypes,
+                number_seed=f"{ir.sequence_name}_AUX_DB",
+                number_base=aux_db_base,
+            ),
+        )
+    )
+    previews.append(
+        ArtifactPreview(
+            artifact_type="support_lad_fc_aux",
+            file_name=aux_fc_file,
+            content=_build_support_lad_fc_xml(
+                fc_name=aux_fc_name,
+                title=f"{ir.sequence_name} Aux LAD",
+                db_name=aux_db_name,
+                support_members=aux_fc_members,
+                db_members=[name for name, _ in aux_db_members],
+                symbol_home_db_map=symbol_home_db_map,
+                member_datatypes=member_datatypes,
+                timer_configs=timer_configs,
+                logic_rows=aux_logic,
+                allow_member_fallback=True,
+                number_seed=f"{ir.sequence_name}_AUX_FC",
+                number_base=aux_fc_base,
+            ),
+        )
+    )
+
+    previews.append(
+        ArtifactPreview(
+            artifact_type="support_global_db_transitions",
+            file_name=tr_db_file,
+            content=_build_support_global_db_xml(
+                block_name=tr_db_name,
+                title=f"{ir.sequence_name} Transitions DB",
+                members=transitions_db_members,
+                member_datatypes=member_datatypes,
+                number_seed=f"{ir.sequence_name}_TRANSITIONS_DB",
+                number_base=tr_db_base,
+            ),
+        )
+    )
+    previews.append(
+        ArtifactPreview(
+            artifact_type="support_lad_fc_transitions",
+            file_name=tr_fc_file,
+            content=_build_support_lad_fc_xml(
+                fc_name=tr_fc_name,
+                title=f"{ir.sequence_name} Transitions LAD",
+                db_name=tr_db_name,
+                support_members=transitions_fc_members,
+                db_members=[name for name, _ in transitions_db_members],
+                symbol_home_db_map=symbol_home_db_map,
+                member_datatypes=member_datatypes,
+                timer_configs=timer_configs,
+                logic_rows=transitions_logic,
+                allow_member_fallback=True,
+                prefer_current_db_for_unmapped=True,
+                number_seed=f"{ir.sequence_name}_TRANSITIONS_FC",
+                number_base=tr_fc_base,
+            ),
+        )
+    )
+
+    previews.append(
+        ArtifactPreview(
+            artifact_type="support_global_db_io",
+            file_name=io_db_file,
+            content=_build_support_global_db_xml(
+                block_name=io_db_name,
+                title=f"{ir.sequence_name} IO DB",
+                members=output_db_members,
+                member_datatypes=member_datatypes,
+                number_seed=f"{ir.sequence_name}_IO_DB",
+                number_base=io_db_base,
+            ),
+        )
+    )
+    previews.append(
+        ArtifactPreview(
+            artifact_type="support_lad_fc_output",
+            file_name=io_fc_file,
+            content=_build_support_lad_fc_xml(
+                fc_name=io_fc_name,
+                title=f"{ir.sequence_name} Output LAD",
+                db_name=io_db_name,
+                support_members=output_fc_members,
+                db_members=[name for name, _ in output_db_members],
+                symbol_home_db_map=symbol_home_db_map,
+                member_datatypes=member_datatypes,
+                timer_configs=timer_configs,
+                logic_rows=output_logic,
+                allow_member_fallback=True,
+                number_seed=f"{ir.sequence_name}_OUTPUT_FC",
+                number_base=io_fc_base,
+            ),
+        )
+    )
+
+    previews.append(
+        ArtifactPreview(
+            artifact_type="support_global_db_mode",
+            file_name=mode_db_file,
+            content=_build_support_global_db_xml(
+                block_name=mode_db_name,
+                title=f"{ir.sequence_name} LEV2 DB",
+                members=mode_db_members,
+                member_datatypes=member_datatypes,
+                number_seed=f"{ir.sequence_name}_MODE_DB",
+                number_base=mode_db_base,
+            ),
+        )
+    )
+    previews.append(
+        ArtifactPreview(
+            artifact_type="support_lad_fc_mode",
+            file_name=mode_fc_file,
+            content=_build_support_lad_fc_xml(
+                fc_name=mode_fc_name,
+                title=f"{ir.sequence_name} LEV2 LAD",
+                db_name=mode_db_name,
+                support_members=mode_fc_members,
+                db_members=[name for name, _ in mode_db_members],
+                symbol_home_db_map=symbol_home_db_map,
+                member_datatypes=member_datatypes,
+                timer_configs=timer_configs,
+                logic_rows=mode_logic,
+                allow_member_fallback=True,
+                number_seed=f"{ir.sequence_name}_MODE_FC",
+                number_base=mode_fc_base,
+            ),
+        )
+    )
+
+    previews.append(
+        ArtifactPreview(
+            artifact_type="support_global_db_external",
+            file_name=ext_db_file,
+            content=_build_support_global_db_xml(
+                block_name=ext_db_name,
+                title=f"{ir.sequence_name} External DB",
+                members=external_db_members,
+                member_datatypes=member_datatypes,
+                number_seed=f"{ir.sequence_name}_EXTERNAL_DB",
+                number_base=ext_db_base,
+            ),
+        )
+    )
+
+    previews.append(
+        ArtifactPreview(
+            artifact_type="support_global_db_parameters",
+            file_name=par_db_file,
+            content=_build_support_global_db_xml(
+                block_name=par_db_name,
+                title=f"{ir.sequence_name} Parameters DB",
+                members=parameters_db_members,
+                member_datatypes=member_datatypes,
+                number_seed=f"{ir.sequence_name}_PARAMETERS_DB",
+                number_base=par_db_base,
+            ),
+        )
+    )
 
     return previews
 
@@ -2217,8 +2168,13 @@ def _build_graph_fb_xml(profile, ir: AwlIR, graph_topology: GraphTopology) -> st
         temp_members = ""
 
     steps_xml = "\n".join(_render_graph_step(step) for step in graph_topology.step_nodes)
+    symbol_home_db_map = _build_support_symbol_home_db_map(ir)
     transitions_xml = "\n".join(
-        _render_graph_transition(transition, strict_excel_mode=ir.strict_operand_catalog)
+        _render_graph_transition(
+            transition,
+            strict_excel_mode=ir.strict_operand_catalog,
+            symbol_home_db_map=symbol_home_db_map,
+        )
         for transition in graph_topology.transition_nodes
     )
     branches_xml = "\n".join(_render_graph_branch(branch) for branch in graph_topology.branch_nodes)
@@ -3927,6 +3883,26 @@ def _collect_aux_support_members(ir: AwlIR) -> list[tuple[str, str]]:
     return list(dict.fromkeys(members))
 
 
+def _collect_parameters_support_members(ir: AwlIR) -> list[tuple[str, str]]:
+    # PARAMETERS DB: keep control-like operands (timers/counters and non-bool process values)
+    # in a stable place without inventing ad-hoc symbols.
+    members: list[tuple[str, str]] = []
+    datatype_map = _support_operand_datatypes(ir)
+    for operand in ir.operand_catalog:
+        token = str(operand or "").strip()
+        if not token:
+            continue
+        datatype = _normalize_plc_datatype(datatype_map.get(token, ""))
+        if datatype in {"IEC_TIMER", "IEC_COUNTER"}:
+            member = _support_member_name(token, "PAR", strict_excel_mode=ir.strict_operand_catalog)
+            members.append((member, f"Parameter/control operand {token} ({datatype})"))
+            continue
+        if datatype not in {"", "Bool"}:
+            member = _support_member_name(token, "PAR", strict_excel_mode=ir.strict_operand_catalog)
+            members.append((member, f"Parameter operand {token} ({datatype})"))
+    return list(dict.fromkeys(members))
+
+
 def _collect_network_support_specs(ir: AwlIR) -> list[tuple[int, str, list[tuple[str, str]]]]:
     specs: list[tuple[int, str, list[tuple[str, str]]]] = []
     for network in ir.networks:
@@ -4047,7 +4023,12 @@ def _render_graph_step(step: GraphStepNode) -> str:
     )
 
 
-def _render_graph_transition(transition: GraphTransitionNode, *, strict_excel_mode: bool = False) -> str:
+def _render_graph_transition(
+    transition: GraphTransitionNode,
+    *,
+    strict_excel_mode: bool = False,
+    symbol_home_db_map: dict[str, str] | None = None,
+) -> str:
     next_uid = 21
 
     def alloc_uid() -> int:
@@ -4058,6 +4039,24 @@ def _render_graph_transition(transition: GraphTransitionNode, *, strict_excel_mo
 
     parts_lines: list[str] = []
     wires_lines: list[str] = []
+    owner_db_map = symbol_home_db_map or {}
+
+    def _operand_owner_db(operand: str) -> str:
+        raw = str(operand or "").strip()
+        if not raw:
+            return transition.db_block_name
+        member_name = _guard_operand_db_member_name(raw, strict_excel_mode=strict_excel_mode)
+        # Try direct + normalized spellings to honor Excel strict names and
+        # compatibility aliases produced by support member collectors.
+        candidate_keys = [
+            member_name,
+            _support_member_name(raw, "", strict_excel_mode=True),
+            raw,
+        ]
+        for key in candidate_keys:
+            if key in owner_db_map:
+                return owner_db_map[key]
+        return transition.db_block_name
 
     guard_clauses = _parse_guard_clauses(transition.guard_expression, transition.guard_operands)
     guard_clauses, common_terms = _factor_common_guard_terms(guard_clauses)
@@ -4075,7 +4074,7 @@ def _render_graph_transition(transition: GraphTransitionNode, *, strict_excel_mo
                 [
                     f'            <Access Scope="GlobalVariable" UId="{access_uid}">\n',
                     '              <Symbol>\n',
-                    f'                <Component Name="{escape(transition.db_block_name)}" />\n',
+                    f'                <Component Name="{escape(_operand_owner_db(operand))}" />\n',
                     f'                <Component Name="{escape(_guard_operand_db_member_name(operand, strict_excel_mode=strict_excel_mode))}" />\n',
                     '              </Symbol>\n',
                     '            </Access>\n',
@@ -4167,7 +4166,7 @@ def _render_graph_transition(transition: GraphTransitionNode, *, strict_excel_mo
                 [
                     f'            <Access Scope="GlobalVariable" UId="{access_uid}">\n',
                     '              <Symbol>\n',
-                    f'                <Component Name="{escape(transition.db_block_name)}" />\n',
+                    f'                <Component Name="{escape(_operand_owner_db(operand))}" />\n',
                     f'                <Component Name="{escape(_guard_operand_db_member_name(operand, strict_excel_mode=strict_excel_mode))}" />\n',
                     '              </Symbol>\n',
                     '            </Access>\n',

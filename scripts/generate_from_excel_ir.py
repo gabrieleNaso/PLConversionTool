@@ -123,6 +123,13 @@ def _normalize_operand_category(value: object) -> str:
         "memoria": "memory",
         "external": "external",
         "esterno": "external",
+        "lev2": "mode",
+        "lv2": "mode",
+        "mode": "mode",
+        "transition": "transitions",
+        "transitions": "transitions",
+        "transizione": "transitions",
+        "transizioni": "transitions",
         "manual_mode": "aux",
         "manual": "aux",
         "auto_mode": "aux",
@@ -740,6 +747,24 @@ def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[s
             continue
         if category == "external":
             external_refs.append(operand)
+            continue
+        if category in {"mode", "transitions"}:
+            support_members.append(
+                {
+                    "category": category,
+                    "member_name": operand,
+                    "comment": note or f"Derived from operands ({category})",
+                    "network_index": network_index,
+                    "network_title": "",
+                }
+            )
+            memories.append(
+                {
+                    "name": operand,
+                    "role": category,
+                    "network_index": network_index,
+                }
+            )
             continue
 
         # Default mapping for aux/memory/other custom categories.
