@@ -158,7 +158,7 @@ Regole hard:
 
 - almeno una riga valida in `support_fc` con `member_name` e/o `result_member`;
 - `network` e' il numero rete della FC per ordinare le compile unit;
-- `network_index` resta solo alias legacy in input e non cambia il contratto canonico;
+- il parser Excel supporta solo fogli e colonne canoniche del formato corrente (nessun alias legacy di foglio/colonna);
 - non e' ammesso introdurre una pipeline separata che dipenda da un foglio FC logico dedicato diverso da `support_fc`.
 
 ### 4-quater. Categorie Excel e ownership DB (consolidato 22-04-2026)

@@ -21,8 +21,8 @@ Output:
 3. bundle XML TIA in `data/output/generated/<sequence_name>/` (`FB + DB + FC`)
 
 Compatibilita':
-- il parser legge anche il formato legacy (`steps`, `transitions`, `timers`, `memories`, `faults`, `outputs`), ma per nuovi file usare il formato singola pagina.
-- il foglio per override FC puo' chiamarsi `support_fc` (consigliato) o `fc_support` (alias compatibile).
+- il parser supporta solo il formato corrente a pagina singola (`sequence`, `operands`, `support_fc`).
+- fogli legacy (`steps`, `transitions`, `timers`, `memories`, `faults`, `outputs`) e alias (`fc_support`, `support_fc_logic`, ...) non sono piu' accettati.
 
 ## 1) Struttura workbook
 - `sequence`: topologia step/transizioni.
@@ -30,7 +30,7 @@ Compatibilita':
 - `support_fc`: pagina unica FC (member + logica LAD).
 
 Regola base:
-- nei fogli supporto usa la colonna `network` (semplice); `network_index` resta solo alias legacy.
+- nei fogli supporto usa la colonna `network` (semplice).
 - per il flusso Excel, `operands` e `support_fc` sono obbligatori e devono contenere almeno una riga valida.
 
 ## 2) Foglio `sequence`

@@ -212,7 +212,8 @@ Regole Excel importanti:
 - i blocchi supporto vengono sempre emessi anche se vuoti (placeholder `NoData`), incluso `DB14 ... transitions`.
 
 Compatibilita':
-- lo script accetta anche vecchi alias di colonna, ma per nuovi file usare i nomi espliciti sopra.
+- lo script accetta solo il formato Excel corrente (`sequence`, `operands`, `support_fc`) con colonne canoniche.
+- alias legacy di fogli/colonne non sono supportati.
 
 ### Import via API backend (inoltro al bridge)
 

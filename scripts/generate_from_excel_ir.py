@@ -275,67 +275,104 @@ def _normalize_support_category(value: object) -> str:
 
 
 def _read_support_members(path: Path) -> list[dict[str, object]]:
-    rows: list[dict[str, object]] = []
-    for sheet_name in ("support_fc", "fc_support"):
-        rows.extend(_read_sheet_rows(path, sheet_name))
+    rows = _read_sheet_rows(path, "support_fc")
 
     support_members: list[dict[str, object]] = []
     for row in rows:
-        category = _normalize_support_category(
-            _pick(row, "category", "categoria", "support_category", "fc_category")
-        )
-        member_name = _cell_text(_pick(row, "member_name", "name", "operand", "tag", "variabile"))
+        category = _normalize_support_category(row.get("category"))
+        member_name = _cell_text(row.get("member_name"))
         if not category or not member_name:
             continue
         support_members.append(
             {
                 "category": category,
                 "member_name": member_name,
-                "comment": _cell_text(_pick(row, "comment", "note", "notes", "description", "descrizione")),
-                "network_index": _int_or_none(_pick(row, "network", "network_index", "network_no", "rete")),
-                "network_title": _cell_text(_pick(row, "network_title", "title", "network_name")),
+                "comment": _cell_text(row.get("comment")),
+                "network_index": _int_or_none(row.get("network")),
+                "network_title": "",
             }
         )
     return support_members
 
 
 def _read_support_logic_rows(path: Path) -> list[dict[str, object]]:
-    rows: list[dict[str, object]] = []
-    # Primary format: logic rows on the same support_fc sheet.
-    # Legacy aliases are still accepted for backward compatibility.
-    for sheet_name in ("support_fc", "fc_support", "support_fc_logic", "fc_logic_support", "fc_logic"):
-        rows.extend(_read_sheet_rows(path, sheet_name))
+    rows = _read_sheet_rows(path, "support_fc")
 
     logic_rows: list[dict[str, object]] = []
     for row in rows:
-        category = _normalize_support_category(
-            _pick(row, "category", "categoria", "support_category", "fc_category")
-        )
-        result_member = _cell_text(
-            _pick(row, "result_member", "coil_member", "target_member", "member_name", "output_member")
-        )
+        category = _normalize_support_category(row.get("category"))
+        result_member = _cell_text(row.get("result_member"))
         if not category or not result_member:
             continue
-        condition_expression = _cell_text(
-            _pick(row, "condition_expression", "guard_expression", "expression", "condition")
-        )
-        condition_operands = _split_list(
-            _pick(row, "condition_operands", "guard_operands", "operands", "input_operands")
-        )
+        condition_expression = _cell_text(row.get("condition_expression"))
+        condition_operands = _split_list(row.get("condition_operands"))
         if not condition_expression and condition_operands:
             condition_expression = " AND ".join(condition_operands)
         logic_rows.append(
             {
                 "category": category,
-                "network_index": _int_or_none(_pick(row, "network", "network_index", "network_no", "rete")),
-                "network_title": _cell_text(_pick(row, "network_title", "title", "network_name")),
+                "network_index": _int_or_none(row.get("network")),
+                "network_title": "",
                 "result_member": result_member,
                 "condition_expression": condition_expression or "TRUE",
                 "condition_operands": condition_operands,
-                "comment": _cell_text(_pick(row, "comment", "note", "notes", "description", "descrizione")),
+                "comment": _cell_text(row.get("comment")),
             }
         )
     return logic_rows
+
+
+def _ensure_required_excel_format(path: Path) -> None:
+    workbook = load_workbook(path, data_only=True)
+    required_sheets = {"sequence", "operands", "support_fc"}
+    missing_sheets = sorted(required_sheets - set(workbook.sheetnames))
+    if missing_sheets:
+        raise SystemExit(
+            "Excel non valido: mancano i fogli obbligatori del formato corrente: "
+            + ", ".join(missing_sheets)
+        )
+
+    required_columns: dict[str, set[str]] = {
+        "sequence": {
+            "step_name",
+            "numero_step",
+            "transition_id",
+            "from_step",
+            "to_step",
+            "condition_expression",
+            "operands_used_in_condition",
+            "flow_type",
+            "parallel_group",
+        },
+        "operands": {
+            "operand",
+            "category",
+            "datatype",
+            "control_kind",
+            "control_value",
+            "note",
+        },
+        "support_fc": {
+            "category",
+            "member_name",
+            "result_member",
+            "condition_expression",
+            "condition_operands",
+            "comment",
+            "network",
+        },
+    }
+
+    for sheet_name, expected in required_columns.items():
+        sheet = workbook[sheet_name]
+        first_row = next(sheet.iter_rows(min_row=1, max_row=1, values_only=True), ())
+        headers = {_cell_text(value) for value in first_row if _cell_text(value)}
+        missing = sorted(expected - headers)
+        if missing:
+            raise SystemExit(
+                f"Excel non valido: nel foglio '{sheet_name}' mancano colonne obbligatorie: "
+                + ", ".join(missing)
+            )
 
 
 def _ensure_required_excel_sections(
@@ -350,7 +387,7 @@ def _ensure_required_excel_sections(
         )
     if not support_members and not support_logic:
         raise SystemExit(
-            "Excel non valido: il foglio 'support_fc' (o alias 'fc_support') e' obbligatorio e deve contenere almeno una riga compilata (member_name e/o result_member)."
+            "Excel non valido: il foglio 'support_fc' e' obbligatorio e deve contenere almeno una riga compilata (member_name e/o result_member)."
         )
 
 
@@ -411,8 +448,8 @@ def _read_meta(path: Path) -> dict[str, str]:
 def _build_steps_from_sequence_rows(rows: list[dict[str, object]]) -> list[dict[str, object]]:
     step_map: dict[str, dict[str, object]] = {}
     for row in rows:
-        explicit_name = _cell_text(_pick(row, "step_name", "name", "step"))
-        explicit_no = _int_or_none(_pick(row, "numero_step", "step_number", "step_no", "numero", "number"))
+        explicit_name = _cell_text(row.get("step_name"))
+        explicit_no = _int_or_none(row.get("numero_step"))
         if explicit_name:
             step_map.setdefault(
                 explicit_name,
@@ -427,8 +464,8 @@ def _build_steps_from_sequence_rows(rows: list[dict[str, object]]) -> list[dict[
             if step_map[explicit_name].get("step_number") is None and explicit_no is not None:
                 step_map[explicit_name]["step_number"] = explicit_no
 
-        from_name = _cell_text(_pick(row, "from_step", "source_step"))
-        from_no = _int_or_none(_pick(row, "from_step_number"))
+        from_name = _cell_text(row.get("from_step"))
+        from_no = None
         if from_name:
             step_map.setdefault(
                 from_name,
@@ -443,8 +480,8 @@ def _build_steps_from_sequence_rows(rows: list[dict[str, object]]) -> list[dict[
             if step_map[from_name].get("step_number") is None and from_no is not None:
                 step_map[from_name]["step_number"] = from_no
 
-        to_name = _cell_text(_pick(row, "to_step", "target_step"))
-        to_no = _int_or_none(_pick(row, "to_step_number"))
+        to_name = _cell_text(row.get("to_step"))
+        to_no = None
         if to_name:
             step_map.setdefault(
                 to_name,
@@ -464,14 +501,14 @@ def _build_steps_from_sequence_rows(rows: list[dict[str, object]]) -> list[dict[
 def _build_transitions_from_rows(rows: list[dict[str, object]]) -> list[dict[str, object]]:
     transitions: list[dict[str, object]] = []
     for idx, row in enumerate(rows, start=1):
-        source_step = _cell_text(_pick(row, "from_step", "source_step"))
-        target_step = _cell_text(_pick(row, "to_step", "target_step"))
+        source_step = _cell_text(row.get("from_step"))
+        target_step = _cell_text(row.get("to_step"))
         if not source_step or not target_step:
             continue
         # Network index is always auto-managed by generator.
         network_index = idx
-        guard_expression = _cell_text(_pick(row, "condition_expression", "guard_expression")) or "TRUE"
-        guard_operands = _split_list(_pick(row, "operands_used_in_condition", "guard_operands"))
+        guard_expression = _cell_text(row.get("condition_expression")) or "TRUE"
+        guard_operands = _split_list(row.get("operands_used_in_condition"))
         if not guard_operands and guard_expression and guard_expression.upper() != "TRUE":
             guard_operands = [
                 token
@@ -480,24 +517,21 @@ def _build_transitions_from_rows(rows: list[dict[str, object]]) -> list[dict[str
             ]
         transitions.append(
             {
-                "transition_id": _cell_text(_pick(row, "transition_id")) or f"T{idx}",
+                "transition_id": _cell_text(row.get("transition_id")) or f"T{idx}",
                 "source_step": source_step,
                 "target_step": target_step,
                 "network_index": network_index,
                 "guard_expression": guard_expression,
                 "guard_operands": guard_operands,
-                "flow_type": _normalize_flow_type(
-                    _pick(row, "flow_type", "branch_mode", "parallel_mode")
-                ),
-                "parallel_group": _normalize_parallel_group(
-                    _pick(row, "parallel_group", "parallel_id", "group_id")
-                ),
+                "flow_type": _normalize_flow_type(row.get("flow_type")),
+                "parallel_group": _normalize_parallel_group(row.get("parallel_group")),
             }
         )
     return transitions
 
 
 def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[str, str, dict]:
+    _ensure_required_excel_format(path)
     # Meta sheet is deprecated: sequence/source come from CLI and filename.
     # Legacy "meta" values are intentionally ignored.
     base_name = sequence_name or path.stem
@@ -509,137 +543,13 @@ def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[s
     # Keep list empty and synthesize it from transitions/operands.
 
     sequence_rows = _read_sheet_rows(path, "sequence")
-    if sequence_rows:
-        steps = _build_steps_from_sequence_rows(sequence_rows)
-        transitions = _build_transitions_from_rows(sequence_rows)
-    else:
-        steps = []
-        for row in _read_sheet_rows(path, "steps"):
-            name = _cell_text(_pick(row, "step_name", "name"))
-            if not name:
-                continue
-            steps.append(
-                {
-                    "name": name,
-                    "step_number": _int_or_none(
-                        _pick(row, "numero_step", "step_number", "step_no", "numero", "number")
-                    ),
-                    "source_networks": _split_int_list(
-                        _pick(
-                            row,
-                            "networks_where_step_is_read",
-                            "source_networks",
-                        )
-                    ),
-                    "activation_networks": _split_int_list(
-                        _pick(
-                            row,
-                            "networks_where_step_is_activated",
-                            "activation_networks",
-                        )
-                    ),
-                    "action_networks": _split_int_list(
-                        _pick(
-                            row,
-                            "networks_with_step_actions",
-                            "action_networks",
-                        )
-                    ),
-                }
-            )
-        transitions = _build_transitions_from_rows(_read_sheet_rows(path, "transitions"))
+    steps = _build_steps_from_sequence_rows(sequence_rows)
+    transitions = _build_transitions_from_rows(sequence_rows)
 
     timers: list[dict[str, object]] = []
-    timer_rows = _read_sheet_rows(path, "timers")
-    for idx, row in enumerate(timer_rows, start=1):
-        source_timer = _cell_text(_pick(row, "timer_name", "source_timer"))
-        if not source_timer:
-            continue
-        inferred_network = None
-        for transition in transitions:
-            if source_timer in transition.get("guard_operands", []):
-                inferred_network = int(transition.get("network_index", 0) or 0)
-                break
-            if _contains_token(str(transition.get("guard_expression", "")), source_timer):
-                inferred_network = int(transition.get("network_index", 0) or 0)
-                break
-        try:
-            timer_kind = _normalize_timer_kind(
-                _pick(row, "control_kind", "block_kind", "instruction_kind", "timer_instruction_kind", "kind")
-            )
-        except ValueError as exc:
-            raise SystemExit(f"Excel non valido (timers): {source_timer}: {exc}") from exc
-        timers.append(
-            {
-                "source_timer": source_timer,
-                "network_index": inferred_network or idx,
-                "kind": timer_kind,
-                "preset": _normalize_timer_preset_value(
-                    _pick(row, "control_value", "block_value", "setpoint_value", "timer_preset_value", "preset")
-                ),
-                "trigger_operands": [],
-            }
-        )
-
     memories: list[dict[str, object]] = []
-    memory_rows = _read_sheet_rows(path, "memories")
-    for idx, row in enumerate(memory_rows, start=1):
-        name = _cell_text(_pick(row, "memory_operand", "name"))
-        if not name:
-            continue
-        inferred_network = None
-        for transition in transitions:
-            if name in transition.get("guard_operands", []):
-                inferred_network = int(transition.get("network_index", 0) or 0)
-                break
-            if _contains_token(str(transition.get("guard_expression", "")), name):
-                inferred_network = int(transition.get("network_index", 0) or 0)
-                break
-        memories.append(
-            {
-                "name": name,
-                "role": _cell_text(_pick(row, "memory_role", "role")) or "aux",
-                "network_index": inferred_network or idx,
-            }
-        )
-
     faults: list[dict[str, object]] = []
-    fault_rows = _read_sheet_rows(path, "faults")
-    for idx, row in enumerate(fault_rows, start=1):
-        name = _cell_text(_pick(row, "fault_tag", "name"))
-        if not name:
-            continue
-        inferred_network = None
-        for transition in transitions:
-            if _contains_token(str(transition.get("guard_expression", "")), name):
-                inferred_network = int(transition.get("network_index", 0) or 0)
-                break
-        faults.append(
-            {
-                "name": name,
-                "network_index": inferred_network or idx,
-                "evidence": _cell_text(_pick(row, "fault_evidence", "evidence")),
-            }
-        )
-
     outputs: list[dict[str, object]] = []
-    output_rows = _read_sheet_rows(path, "outputs")
-    for idx, row in enumerate(output_rows, start=1):
-        name = _cell_text(_pick(row, "output_operand", "name"))
-        if not name:
-            continue
-        inferred_network = None
-        for transition in transitions:
-            if _contains_token(str(transition.get("guard_expression", "")), name):
-                inferred_network = int(transition.get("network_index", 0) or 0)
-                break
-        outputs.append(
-            {
-                "name": name,
-                "network_index": inferred_network or idx,
-                "action": "=",
-            }
-        )
 
     manual_logic_networks: list[int] = []
     auto_logic_networks: list[int] = []
@@ -660,35 +570,16 @@ def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[s
     operand_control_settings: dict[str, dict[str, str]] = {}
     operand_timer_settings: dict[str, dict[str, str]] = {}
     for idx, row in enumerate(operand_rows, start=1):
-        operand = _cell_text(_pick(row, "operand", "name", "tag"))
+        operand = _cell_text(row.get("operand"))
         if not operand:
             continue
         if operand not in operand_catalog:
             operand_catalog.append(operand)
-        datatype = _normalize_plc_datatype(
-            _pick(row, "datatype", "data_type", "plc_datatype", "plc_type", "tipo_dato")
-        )
+        datatype = _normalize_plc_datatype(row.get("datatype"))
         if operand not in operand_datatypes:
             operand_datatypes[operand] = datatype
-        control_kind_raw = _pick(
-            row,
-            "control_kind",
-            "block_kind",
-            "instruction_kind",
-            "timer_instruction_kind",
-            "counter_instruction_kind",
-            "kind",
-        )
-        control_value_raw = _pick(
-            row,
-            "control_value",
-            "block_value",
-            "setpoint_value",
-            "preset_value",
-            "timer_preset_value",
-            "counter_preset_value",
-            "preset",
-        )
+        control_kind_raw = row.get("control_kind")
+        control_value_raw = row.get("control_value")
         try:
             control_kind = _normalize_control_kind(datatype, control_kind_raw)
             control_value = _normalize_control_value(datatype, control_value_raw)
@@ -711,9 +602,9 @@ def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[s
                     "preset": control_value or "T#1S",
                 },
             )
-        category = _normalize_operand_category(_pick(row, "category", "type", "group"))
+        category = _normalize_operand_category(row.get("category"))
         network_index = _infer_network_index_for_operand(operand, transitions, idx)
-        note = _cell_text(_pick(row, "note", "notes", "evidence"))
+        note = _cell_text(row.get("note"))
 
         if category == "alarm":
             faults.append(
