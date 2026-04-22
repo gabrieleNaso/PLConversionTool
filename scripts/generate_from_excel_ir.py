@@ -493,10 +493,11 @@ def _build_transitions_from_rows(rows: list[dict[str, object]]) -> list[dict[str
 
 
 def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[str, str, dict]:
-    meta = _read_meta(path)
-    base_name = sequence_name or meta.get("sequence_name") or path.stem
+    # Meta sheet is deprecated: sequence/source come from CLI and filename.
+    # Legacy "meta" values are intentionally ignored.
+    base_name = sequence_name or path.stem
     normalized_sequence = _slugify(base_name)
-    source_name = meta.get("source_name") or path.name
+    source_name = path.name
 
     explicit_networks: list[dict[str, object]] = []
     # Excel input does not expose manual network modeling.
@@ -635,9 +636,9 @@ def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[s
             }
         )
 
-    manual_logic_networks = _split_int_list(meta.get("manual_logic_networks"))
-    auto_logic_networks = _split_int_list(meta.get("auto_logic_networks"))
-    external_refs = _split_list(meta.get("external_refs"))
+    manual_logic_networks: list[int] = []
+    auto_logic_networks: list[int] = []
+    external_refs: list[str] = []
     support_members = _read_support_members(path)
     support_logic = _read_support_logic_rows(path)
 
@@ -867,7 +868,7 @@ def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[s
         "operand_timer_settings": operand_timer_settings,
         "support_members": support_members,
         "support_logic": support_logic,
-        "assumptions": _split_list(meta.get("assumptions")),
+        "assumptions": [],
     }
     return normalized_sequence, source_name, ir_payload
 

@@ -187,7 +187,6 @@ Output nel bundle:
 - XML baseline e support per `GRAPH + DB + FC`
 
 Fogli Excel consigliati:
-- `meta`: chiavi libere `key/value` (`sequence_name`, `source_name`, `assumptions`)
 - `sequence`: `step_name`, `numero_step`, `transition_id`, `from_step`, `to_step`, `condition_expression`, `operands_used_in_condition`, `flow_type`, `parallel_group`
 - `operands`: `operand`, `category`, `datatype`, `control_kind`, `control_value`, `note`
 - `support_fc` (obbligatorio, pagina unica FC): `category`, `member_name`, `result_member`, `condition_expression`, `condition_operands`, `comment`, `network`

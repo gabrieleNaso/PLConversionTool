@@ -22,7 +22,6 @@ Compatibilita':
 - il foglio per override FC puo' chiamarsi `support_fc` (consigliato) o `fc_support` (alias compatibile).
 
 ## 1) Struttura workbook
-- `meta`: metadati generali.
 - `sequence`: topologia step/transizioni.
 - `operands`: catalogo operandi e categoria funzionale.
 - `support_fc`: pagina unica FC (member + logica LAD).
@@ -31,17 +30,7 @@ Regola base:
 - nei fogli supporto usa la colonna `network` (semplice); `network_index` resta solo alias legacy.
 - per il flusso Excel, `operands` e `support_fc` sono obbligatori e devono contenere almeno una riga valida.
 
-## 2) Foglio `meta`
-Colonne:
-- `key`
-- `value`
-
-Chiavi utili:
-- `sequence_name`: nome sequenza/bundle.
-- `source_name`: etichetta sorgente (es. nome file Excel).
-- `assumptions`: note separate da `;`.
-
-## 3) Foglio `sequence`
+## 2) Foglio `sequence`
 Ogni riga puo' descrivere uno step, una transizione, o entrambi.
 
 Colonne:
@@ -60,7 +49,7 @@ Regole importanti:
 - l'inizio sequenza e' determinato da `numero_step = 1`.
 - `from_step`/`to_step` possono usare alias tipo `S1`, `S2`: se in `steps` esiste un passo con `numero_step` corrispondente, l'alias viene risolto al nome reale.
 
-## 4) Foglio `operands`
+## 3) Foglio `operands`
 Questo foglio e' il catalogo ufficiale dei segnali usati dal caso Excel.
 
 Colonne:
@@ -90,7 +79,7 @@ Nota importante:
 - `timer`, `counter`, `manual_mode`, `auto_mode` non sono categorie valide nel foglio `operands`.
 - timer/contatori si definiscono tramite `datatype` (`IEC_TIMER`/`IEC_COUNTER`) + `control_kind` + `control_value`.
 
-## 5) Regola Strict DB (Excel)
+## 4) Regola Strict DB (Excel)
 Per input Excel, il generatore usa `operands` come catalogo strict:
 - la logica LAD delle transizioni GRAPH resta completa (non viene semplificata);
 - i member DB vengono dichiarati solo se coerenti col catalogo `operands` e con le categorie derivate;
@@ -100,7 +89,7 @@ Per input Excel, il generatore usa `operands` come catalogo strict:
 
 Se una transizione usa operandi non presenti nel catalogo, il report analysis segnala warning dedicati.
 
-## 6) Compilazione FC (Pagina Unica)
+## 5) Compilazione FC (Pagina Unica)
 Tutto cio' che riguarda le FC e' in un solo foglio: `support_fc` (obbligatorio).
 
 Categorie FC supportate:
@@ -162,7 +151,7 @@ Checklist compilazione manuale FC:
 3. Se vuoi logica custom, compila `result_member` + condizione con `network` numerato.
 4. Mantieni nomi coerenti tra `member_name`, `result_member` e `condition_operands`.
 
-## 7) Paralleli
+## 6) Paralleli
 Per modellare un parallelo reale:
 1. split: stesso `from_step`, target diversi, `flow_type=parallel`.
 2. join: source diversi, stesso `to_step`, `flow_type=parallel`.
@@ -172,7 +161,7 @@ Il generatore emette:
 - `SimBegin` per split
 - `SimEnd` per join
 
-## 8) Esempio minimo
+## 7) Esempio minimo
 `sequence`:
 - `Init | 1 | T1 | Init | Dosaggio | M_START | M_START | alternative |`
 - `Dosaggio | 2 | T2 | Dosaggio | Fine | M_DONE | M_DONE | alternative |`
@@ -182,12 +171,12 @@ Il generatore emette:
 - `M_DONE | aux | | | | | consenso fine`
 - `ALM_TEMP | alarm | | | | | allarme temperatura`
 
-## 9) Generazione
+## 8) Generazione
 ```bash
 make generate-excel-ir EXCEL_FILE="docs/templates/ir_excel_template_single_page_with_support_fc.xlsx"
 ```
 
-## 10) Import in TIA
+## 9) Import in TIA
 ```bash
 make import-generated \
   PROJECT_PATH="C:\\Users\\Admin\\Desktop\\prova_connessione_openness\\prova_connessione_openness.ap20" \
