@@ -208,6 +208,7 @@ Regole consolidate (22-04-2026):
   - `16GG` (es. `1603`) -> sequenza
   - `18GG` (es. `1803`) -> external
   - `19GG` (es. `1903`) -> output
+- la stessa famiglia `XX` vale sia per `DBXX...` sia per `FCXX...` (naming FC allineato ai DB).
 - le variabili usate nelle FC possono essere cross-categoria, ma il DB owner non cambia:
   - il DB owner e' determinato dal catalogo `operands`;
   - se una variabile e' usata in un'altra FC, resta referenziata nel DB owner originale;

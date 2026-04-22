@@ -245,6 +245,7 @@ curl -sS "http://127.0.0.1:8000/api/tia/jobs/<JOB_ID>"
   - sono riconosciute sia in formato `Axx(.x)` sia `Qxx(.x)` quando usate con `=`.
 - **targetPath**: deve partire da `Program blocks/`.
   - Se ometti il prefisso, TIA crea un gruppo con nome letterale (es. `generati da tool/xxx`).
+- **Naming famiglie blocchi**: le FC seguono la stessa famiglia numerica dei DB (`FC11/12/13/14/16/18/19` coerenti con `DB11/12/13/14/16/18/19`).
 
 ## Problemi comuni (e cosa fare)
 

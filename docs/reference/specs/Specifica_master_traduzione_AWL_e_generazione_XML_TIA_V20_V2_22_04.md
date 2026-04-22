@@ -81,10 +81,10 @@ Il generatore deve poter emettere almeno le seguenti famiglie architetturali:
 - `DB 16..` sequenza;
 - `DB 18.. EXT`;
 - `DB 19..` output;
-- `FC 02 HMI`;
-- `FC 03 Aux`;
-- `FC 04 Transitions`;
-- `FC 06 Output`;
+- `FC 12 HMI`;
+- `FC 13 Aux`;
+- `FC 14 Transitions`;
+- `FC 19 Output`;
 - eventuali blocchi addizionali di servizio coerenti col progetto.
 
 ### 2.4 Esempio verificativo sui file XML di riferimento
@@ -94,6 +94,10 @@ Nel pacchetto `T1-A ARUNC` il comportamento atteso del generatore è confermato 
 - un solo blocco sequenziale `05 T1-A ARUNC Sequence`;
 - più FC di supporto: `02 T1-A ARUNC HMI`, `03 T1-A ARUNC Aux`, `04 T1-A ARUNC Transitions`, `06 T1-A ARUNC Output`, `07 T1-A ARUNC LEV2`;
 - più DB applicativi e di integrazione: `T1-A ARUNC`, `T1-A ARUNC HMI`, `T1-A ARUNC I-O`, `T1-A ARUNC AUX`, `T1-A ARUNC PARAMETERS`, `T1-A ARUNC LEV2`, oltre a DB esterni come `DB81-OPIN` e `DB82-OPOUT`.
+
+Nota di allineamento naming convertitore:
+- la numerazione `02/03/04/06/07` e' quella osservata nei campioni storici;
+- nel convertitore corrente le famiglie FC sono allineate ai DB in formato `XXGG`: `FC12` HMI, `FC13` Aux, `FC14` Transitions, `FC19` Output (piu' eventuali FC di servizio coerenti alla famiglia prevista).
 
 Questo esempio va usato come verifica di cardinalità del pacchetto, non come eccezione.
 
@@ -434,7 +438,7 @@ Nel `DB 13..` devono finire:
 - contatori IEC;
 - one-shot;
 - appoggi tecnici;
-- supporti necessari alle reti della `FC 03 Aux`.
+- supporti necessari alle reti della `FC 13 Aux`.
 
 ## 25-bis. Regola hard di ownership DB da Excel (`operands`)
 
@@ -531,7 +535,7 @@ Forma corretta di principio:
 </Access>
 ```
 
-Questo vale per `GRAPH`, `FC 02`, `FC 03`, `FC 04`, `FC 06` e per ogni altro blocco consumer del pacchetto.
+Questo vale per `GRAPH`, `FC 12`, `FC 13`, `FC 14`, `FC 19` e per ogni altro blocco consumer del pacchetto.
 
 ### 26-bis.5 Esempi vincolanti ricavati dagli XML campione
 
@@ -595,9 +599,9 @@ La variabile e' valida solo se il triplo vincolo e' soddisfatto e se tutti i con
 
 # Parte V - Regole di costruzione dei backend target
 
-## 27. Regola sul backend `FC 04 Transitions`
+## 27. Regola sul backend `FC 14 Transitions`
 
-La `FC 04` deve calcolare le condizioni di avanzamento semantiche.
+La `FC 14` deve calcolare le condizioni di avanzamento semantiche.
 
 Non deve limitarsi a copiare l'AWL.
 
@@ -607,9 +611,9 @@ Deve:
 - raccogliere logiche comuni riusabili da GRAPH e HMI;
 - separare il calcolo della condizione dalla topologia della sequenza.
 
-## 28. Regola sul backend `FC 03 Aux`
+## 28. Regola sul backend `FC 13 Aux`
 
-La `FC 03 Aux` deve ricostruire in LAD la parte tecnica del sorgente AWL:
+La `FC 13 Aux` deve ricostruire in LAD la parte tecnica del sorgente AWL:
 
 - timer;
 - appoggi;
@@ -617,9 +621,9 @@ La `FC 03 Aux` deve ricostruire in LAD la parte tecnica del sorgente AWL:
 - riconoscimento stabile di sensori o stati fisici;
 - comandi tecnici derivati.
 
-## 29. Regola sul backend `FC 06 Output`
+## 29. Regola sul backend `FC 19 Output`
 
-La `FC 06 Output` deve generare i comandi finali macchina a partire da segnali semantici già puliti.
+La `FC 19 Output` deve generare i comandi finali macchina a partire da segnali semantici già puliti.
 
 Le uscite devono nascere dalla composizione di:
 
@@ -629,9 +633,9 @@ Le uscite devono nascere dalla composizione di:
 - consensi permanenti;
 - condizioni macchina normalizzate.
 
-## 30. Regola sul backend `FC 02 HMI`
+## 30. Regola sul backend `FC 12 HMI`
 
-La `FC 02 HMI` deve trattare la HMI come consumer del modello semantico.
+La `FC 12 HMI` deve trattare la HMI come consumer del modello semantico.
 
 Deve quindi usare preferenzialmente:
 
@@ -1704,7 +1708,7 @@ La formula di una uscita target deve essere costruita come combinazione di:
 - lock o fault;
 - eventuali stati fisici già elaborati.
 
-Il backend `FC 06 Output` è quindi un compilatore semantico di formule, non un trascrittore diretto di bobine sorgenti.
+Il backend `FC 19 Output` è quindi un compilatore semantico di formule, non un trascrittore diretto di bobine sorgenti.
 
 ## A.5 Regola sui fault e sull'emergenza
 

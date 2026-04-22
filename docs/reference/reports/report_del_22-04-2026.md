@@ -197,6 +197,7 @@ Il modello corretto, osservato sia nell'analisi AWL sia negli XML di riferimento
 In pratica, il GRAPH resta l'artefatto unico che formalizza la topologia sequenziale; i DB possono articolarsi in contenitori distinti come base, sequenza, HMI, AUX, I-O, parameters, EXT o altri DB coerenti col tipico; allo stesso modo le FC possono articolarsi in famiglie diverse come HMI, Aux, Transitions, Output, handshake, manuale o altri servizi additivi.
 
 L'esempio reale del pacchetto XML `T1-A ARUNC` rende il punto molto chiaro: si osserva un solo blocco sequenziale `05 T1-A ARUNC Sequence`, ma più FC di supporto (`02 T1-A ARUNC HMI`, `03 T1-A ARUNC Aux`, `04 T1-A ARUNC Transitions`, `06 T1-A ARUNC Output`, `07 T1-A ARUNC LEV2`) e più DB (`T1-A ARUNC`, `T1-A ARUNC HMI`, `T1-A ARUNC I-O`, `T1-A ARUNC AUX`, `T1-A ARUNC PARAMETERS`, `T1-A ARUNC LEV2`, oltre ai DB esterni `DB81-OPIN` e `DB82-OPOUT`).
+La numerazione `02/03/04/06/07` resta una evidenza del campione storico; nel convertitore corrente la naming FC e' allineata ai DB (`FC12/FC13/FC14/FC19` + eventuali FC di servizio).
 
 La conseguenza architetturale è che l'IR deve descrivere una sola topologia GRAPH per sequenza AWL, mentre i backend DB e FC devono restare variabili nella cardinalità e aderire alla partizione reale del caso tradotto.
 
@@ -723,11 +724,11 @@ La forma corretta dell'output è un insieme coordinato di artefatti:
 - `DB 16..` per il contenitore della sequenza secondo il modello scelto;
 - `DB 18..` per variabili esterne alla sequenza;
 - `DB 19..` per output;
-- `FC 02` HMI;
-- `FC 03` Aux;
-- `FC 04` Transitions;
-- `FC 06` Output;
-- eventuale `FC 07` o blocco equivalente per manuale, interfacce o servizi addizionali.
+- `FC 12` HMI;
+- `FC 13` Aux;
+- `FC 14` Transitions;
+- `FC 19` Output;
+- eventuale FC di servizio coerente alla famiglia numerica prevista (es. `FC16..` o equivalente).
 
 Il convertitore deve quindi ragionare in termini di ecosistema di blocchi e non in termini di singolo artefatto XML isolato.
 
@@ -776,7 +777,7 @@ La regola corretta è separare i dati in base al ruolo:
 - bit semantici di avanzamento -> `Transitions` nel DB `14..`;
 - memorie di processo, consensi cumulativi e stati fisici -> `Memory` nel DB base `11..`;
 - stato leggibile della sequenza, step attuale e storico -> `Seq Status` nel DB base `11..`;
-- timer e contatori AWL -> `DB 13..` con tipi IEC e supporto `FC 03 Aux`;
+- timer e contatori AWL -> `DB 13..` con tipi IEC e supporto `FC 13 Aux`;
 - variabili esterne alla sequenza -> `DB 18.. EXT`;
 - informazioni HMI e popup -> DB HMI.
 
@@ -786,13 +787,13 @@ Il runtime interno del GRAPH resta nel blocco GRAPH e non deve essere duplicato 
 
 Le condizioni di transizione AWL non vanno copiate direttamente come testo dentro il GRAPH.
 
-Prima devono essere normalizzate in booleani semantici nel DB base e calcolate in una `FC 04 Transitions`.
+Prima devono essere normalizzate in booleani semantici nel DB base e calcolate in una `FC 14 Transitions`.
 
 Il GRAPH e la HMI devono poi consumare questi booleani già normalizzati.
 
 Conseguenze:
 
-- la `FC 04` è un compilatore di condizioni;
+- la `FC 14` è un compilatore di condizioni;
 - il GRAPH usa transizioni semanticamente pulite;
 - la HMI usa la stessa base semantica per popup e diagnostica;
 - si evita di replicare più volte la stessa logica complessa in blocchi diversi.
@@ -806,7 +807,7 @@ Il confronto con i tipici reali mostra che molte variabili devono essere non sol
 Regola hard:
 
 - ogni variabile globale emessa dal tool deve avere un owner DB deterministico;
-- ogni riferimento usato in `GRAPH`, `FC 02`, `FC 03`, `FC 04`, `FC 06` e HMI deve puntare al path reale del member nel DB che la contiene;
+- ogni riferimento usato in `GRAPH`, `FC 12`, `FC 13`, `FC 14`, `FC 19` e HMI deve puntare al path reale del member nel DB che la contiene;
 - se il DB di destinazione impone una convenzione di naming con prefisso o suffisso, il generatore deve rispettarla integralmente e non può sostituirla con nomi generici.
 
 Conseguenze pratiche da considerare fissate:
@@ -848,10 +849,10 @@ I timer AWL `Txx`, i preset `S5T`, i bit di appoggio pulsati e le memorie tecnic
 Devono essere convertiti in:
 
 - istanze IEC nel `DB 13..`;
-- reti LAD nella `FC 03 Aux`;
+- reti LAD nella `FC 13 Aux`;
 - eventuali memorie semantiche derivate nel DB base `11..`.
 
-La `FC 03 Aux` ha quindi il ruolo di ricostruire in forma leggibile e importabile la parte di AWL che nel sorgente faceva da appoggio tecnico alla sequenza.
+La `FC 13 Aux` ha quindi il ruolo di ricostruire in forma leggibile e importabile la parte di AWL che nel sorgente faceva da appoggio tecnico alla sequenza.
 
 ### 32.11 Regola sul backbone della sequenza
 
@@ -875,7 +876,7 @@ Nel target TIA le uscite devono nascere dalla composizione di:
 - consensi permanenti;
 - condizioni macchina già normalizzate.
 
-La `FC 06 Output` è quindi un backend combinatorio separato che riceve segnali semantici dal DB base, dal GRAPH, dai DB fissi e dai DB I/O.
+La `FC 19 Output` è quindi un backend combinatorio separato che riceve segnali semantici dal DB base, dal GRAPH, dai DB fissi e dai DB I/O.
 
 ### 32.13 Regola sulla HMI
 
@@ -884,7 +885,7 @@ Le condizioni HMI non vanno costruite direttamente da segnali grezzi I/Q/T dell'
 Il target corretto è:
 
 - DB HMI con strutture popup e liste condizioni;
-- `FC 02 HMI` che popola popup, testi e bit visualizzati;
+- `FC 12 HMI` che popola popup, testi e bit visualizzati;
 - uso preferenziale di transizioni e memorie semantiche già calcolate.
 
 La HMI va quindi trattata come consumer del modello semantico e non come duplicazione indipendente della logica AWL.
@@ -1182,7 +1183,7 @@ Il nuovo AWL conferma che le uscite finali non derivano da una singola bobina so
 
 Regola consolidata:
 
-> il backend `FC 06 Output` deve essere un compilatore combinatorio di uscite, non un semplice serializer di bobine AWL.
+> il backend `FC 19 Output` deve essere un compilatore combinatorio di uscite, non un semplice serializer di bobine AWL.
 
 ## 48. Regola sui fault, l'emergenza e il rientro alla sequenza
 

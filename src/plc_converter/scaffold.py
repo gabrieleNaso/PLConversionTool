@@ -53,7 +53,7 @@ def build_conversion_scaffold(
     artifact_plan = ArtifactPlan(
         graph_fb_name=f"FB_{normalized_name}_GRAPH_auto.xml",
         global_db_name="",
-        lad_fc_name=f"FC04_{normalized_name}_transitions_lad_auto.xml",
+        lad_fc_name=f"FC14_{normalized_name}_transitions_lad_auto.xml",
         output_directory="data/output/",
         naming_notes=[
             "Il naming resta deterministico e allineato alle convenzioni di repository.",

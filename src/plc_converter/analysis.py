@@ -65,10 +65,13 @@ DB_FAMILY_PREFIX = {
 }
 
 FC_FAMILY_PREFIX = {
-    "hmi": "FC02",
-    "aux": "FC03",
-    "transitions": "FC04",
-    "output": "FC06",
+    "base": "FC11",
+    "hmi": "FC12",
+    "aux": "FC13",
+    "transitions": "FC14",
+    "sequence": "FC16",
+    "ext": "FC18",
+    "output": "FC19",
 }
 
 DB_FAMILY_NUMBER_BASE = {
@@ -437,7 +440,7 @@ def _build_ir_scaffold(ir: AwlIR) -> ConversionScaffold:
         artifact_plan=ArtifactPlan(
             graph_fb_name=f"FB_{ir.sequence_name}_GRAPH_auto.xml",
             global_db_name="",
-            lad_fc_name=f"FC04_{ir.sequence_name}_transitions_lad_auto.xml",
+            lad_fc_name=f"FC14_{ir.sequence_name}_transitions_lad_auto.xml",
             output_directory="data/output/",
             naming_notes=[
                 "Naming allineato al flusso standard AWL per mantenere import e diff consistenti.",
