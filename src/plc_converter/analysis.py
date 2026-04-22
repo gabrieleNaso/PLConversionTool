@@ -2431,6 +2431,8 @@ def _build_global_db_xml(ir: AwlIR, graph_topology: GraphTopology) -> str:
     db_number = _stable_block_number(
         f"{ir.sequence_name}_DB_SEQ", base=DB_FAMILY_NUMBER_BASE["sequence"], span=100
     )
+    if db_number // 100 == 15:
+        raise ValueError("DB15xx e' riservato al DB istanza GRAPH generato da TIA.")
     members = _build_global_db_member_irs(ir, graph_topology)
     members_xml = _render_member_irs(members)
     block_name = _global_db_block_name(ir)
@@ -2489,6 +2491,8 @@ def _build_support_global_db_xml(
     number_span: int = 200,
 ) -> str:
     db_number = _stable_block_number(number_seed, base=number_base, span=number_span)
+    if db_number // 100 == 15:
+        raise ValueError("DB15xx e' riservato al DB istanza GRAPH generato da TIA.")
     unique_members = _dedupe_named_members(members)
     datatype_map = member_datatypes or {}
     member_irs = [

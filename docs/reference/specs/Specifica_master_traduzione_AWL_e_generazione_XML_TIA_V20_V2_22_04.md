@@ -380,6 +380,10 @@ Mappa famiglie consolidata:
 - `18GG` -> external;
 - `19GG` -> output.
 
+Nota operativa vincolante:
+- `DB15GG SEQ` e' il DB istanza FB GRAPH creato da TIA in fase import/runtime;
+- il convertitore non deve emettere `DB15GG` come DB custom applicativo.
+
 ## 21. Regola sui DB di progetto
 
 La distribuzione corretta dei dati è:

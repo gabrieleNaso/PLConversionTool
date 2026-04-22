@@ -105,6 +105,7 @@ Il confronto tra i documenti normativi aggiornati e i file XML reali oggi dispon
 - I DB esterni fissi di integrazione, quando presenti, costituiscono un contratto rigido di naming. In particolare i pattern `Pnnn` e `Lnnn` osservati in `DB81-OPIN` e `DB82-OPOUT` non devono essere rinominati liberamente dal generatore.
 - I casi legacy come `T1-A ARUNC LEV2` confermano che nel corpus storico esistono sequenze e strutture dati utili per il reverse engineering semantico, ma non necessariamente allineate alla partizione target chiusa del nuovo convertitore.
 - Mappa famiglie consolidata al 22-04-2026 (forma `XXGG`): `11GG` alarms/diag, `12GG` hmi (`12GG` = DB HMI), `13GG` aux, `14GG` transitions, `15GG` graph, `16GG` sequenza, `18GG` external, `19GG` output.
+- `DB15GG SEQ` va considerato DB istanza del GRAPH generato da TIA: non deve essere emesso dal convertitore come DB custom.
 - Nel flusso Excel l'ownership DB e' determinata da `operands`: uso cross-FC ammesso ma senza migrazione del DB owner della variabile.
 
 ## 3. Target tecnico consolidato
@@ -669,6 +670,8 @@ Regola generale:
 - `03` e' un esempio operativo di `GG`, non un valore fisso.
 
 Mappa famiglie consolidata: `11GG` alarms/diag, `12GG` hmi (`12GG` = DB HMI), `13GG` aux, `14GG` transitions, `15GG` graph, `16GG` sequenza, `18GG` external, `19GG` output.
+
+Nota: `DB15GG SEQ` e' l'istanza FB GRAPH generata da TIA; il convertitore non deve serializzarla come DB applicativo.
 
 Questa convenzione è normativa per il convertitore, anche se alcuni campioni legacy caricati mostrano distribuzioni storiche diverse dei numeri blocco.
 

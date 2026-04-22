@@ -208,7 +208,9 @@ Regole consolidate (22-04-2026):
   - `16GG` (es. `1603`) -> sequenza
   - `18GG` (es. `1803`) -> external
   - `19GG` (es. `1903`) -> output
-- la stessa famiglia `XX` vale sia per `DBXX...` sia per `FCXX...` (naming FC allineato ai DB).
+- nota importante su `15GG`:
+  - `FB15GG` e' il blocco GRAPH;
+  - `DB15GG SEQ` e' il DB istanza generato automaticamente da TIA per la FB GRAPH, non va emesso dal tool come DB custom.
 - le variabili usate nelle FC possono essere cross-categoria, ma il DB owner non cambia:
   - il DB owner e' determinato dal catalogo `operands`;
   - se una variabile e' usata in un'altra FC, resta referenziata nel DB owner originale;
