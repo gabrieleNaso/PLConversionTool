@@ -74,7 +74,7 @@ Categorie supportate:
 - `output` -> `outputs`
 - `memory` -> `memories` (mappata come `aux`)
 - `external` -> `external_refs`
-- `lv2`/`lev2`/`mode` -> owner DB LEV2
+- `lv2`/`lev2` -> owner DB LEV2
 - `transition`/`transitions` -> owner DB TRANSITIONS
 
 Nota importante:
@@ -101,7 +101,7 @@ Categorie FC supportate:
 - `hmi`
 - `aux`
 - `transitions`
-- `mode`
+- `lv2`
 
 Colonne:
 - `category`
@@ -149,7 +149,7 @@ Esempi:
 
 Checklist compilazione manuale FC:
 1. Compila sempre `support_fc` (almeno una riga valida con `member_name` e/o `result_member`).
-2. Inserisci solo categorie reali (`io/output/diag/hmi/aux/transitions/mode`).
+2. Inserisci solo categorie reali (`io/output/diag/hmi/aux/transitions/lv2`).
 3. Se vuoi logica custom, compila `result_member` + condizione con `network` numerato.
 4. Mantieni nomi coerenti tra `member_name`, `result_member` e `condition_operands`.
 

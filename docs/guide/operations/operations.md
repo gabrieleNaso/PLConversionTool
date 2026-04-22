@@ -195,7 +195,7 @@ Regole Excel importanti:
 - l'inizio sequenza e' il passo con `numero_step=1` (non dal nome del passo);
 - i nomi passo sono liberi (`Init`, `StartCiclo`, ecc.);
 - in modalita' Excel, il catalogo `operands` guida la dichiarazione variabili DB (niente inferenze casuali).
-- in `operands.category` usa solo categorie funzionali (`alarm`, `aux`, `hmi`, `output`, `memory`, `external`, `lv2`/`lev2`/`mode`, `transition`/`transitions`).
+- in `operands.category` usa solo categorie funzionali (`alarm`, `aux`, `hmi`, `output`, `memory`, `external`, `lv2`/`lev2`, `transition`/`transitions`).
 - variabili FC non presenti in `operands` non vengono dichiarate nei DB supporto, ma restano utilizzabili nella logica FC come simboli globali non agganciati a DB.
 - timer/contatori definiti in `operands` e usati in `support_fc` vengono emessi come blocchi LAD completi, con preset da `control_value`.
 - `operands` e `support_fc` sono obbligatori: se manca uno dei due (o e' vuoto), `generate-excel-ir` termina con errore.

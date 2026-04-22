@@ -102,7 +102,7 @@ def _normalize_parallel_group(value: object) -> str:
 def _normalize_operand_category(value: object) -> str:
     raw = _cell_text(value).strip().lower()
     # Excel category now models functional DB ownership only.
-    # Legacy control/mode categories are normalized to AUX.
+    # Legacy control categories are normalized to AUX.
     aliases = {
         "allarme": "alarm",
         "allarmi": "alarm",
@@ -123,9 +123,8 @@ def _normalize_operand_category(value: object) -> str:
         "memoria": "memory",
         "external": "external",
         "esterno": "external",
-        "lev2": "mode",
-        "lv2": "mode",
-        "mode": "mode",
+        "lev2": "lv2",
+        "lv2": "lv2",
         "transition": "transitions",
         "transitions": "transitions",
         "transizione": "transitions",
@@ -259,9 +258,8 @@ def _normalize_support_category(value: object) -> str:
         "inputs": "io",
         "diag": "diag",
         "diagnostica": "diag",
-        "mode": "mode",
-        "modalita": "mode",
-        "modalità": "mode",
+        "lev2": "mode",
+        "lv2": "mode",
         "transitions": "transitions",
         "transition": "transitions",
         "transizioni": "transitions",
@@ -748,10 +746,10 @@ def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[s
         if category == "external":
             external_refs.append(operand)
             continue
-        if category in {"mode", "transitions"}:
+        if category in {"lv2", "transitions"}:
             support_members.append(
                 {
-                    "category": category,
+                    "category": "mode" if category == "lv2" else category,
                     "member_name": operand,
                     "comment": note or f"Derived from operands ({category})",
                     "network_index": network_index,
@@ -761,7 +759,7 @@ def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[s
             memories.append(
                 {
                     "name": operand,
-                    "role": category,
+                    "role": "mode" if category == "lv2" else category,
                     "network_index": network_index,
                 }
             )
