@@ -1640,8 +1640,14 @@ AWL
 
 Nota operativa di orchestrazione:
 
-- nel workflow mediato da `tia-bridge`, il job `import` deve essere seguito automaticamente da una `compile` post-import accodata dal bridge;
-- nel risultato dell'`import` il bridge può esporre l'identificativo del job di compile automatica (`AutoCompileJobId`) per il tracciamento end-to-end.
+- nel workflow mediato da `tia-bridge`, `import` e `compile` sono operazioni esplicite e separate;
+- il tracciamento end-to-end deve considerare i due `JobId` distinti (import e compile), senza dipendere da compile automatica post-import.
+
+Nota operativa Excel FC (consolidata al 22-04-2026):
+
+- i tag con `datatype=IEC_TIMER` e `control_kind` coerente (`t_on`, `t_off`, `t_p`) devono generare blocchi LAD timer completi con `PT` derivato da `control_value`;
+- i tag con `datatype=IEC_COUNTER` e `control_kind` coerente (`ctu`, `ctd`, `ctud`) devono generare blocchi LAD contatore completi con `PV` derivato da `control_value`;
+- i pin obbligatori non valorizzati nel foglio Excel devono essere cablati con default sicuro per garantire import robusto su TIA.
 
 ## 10. Regole finali da non violare
 

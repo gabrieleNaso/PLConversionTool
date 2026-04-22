@@ -2,6 +2,10 @@
 
 Obiettivo: compilare un Excel leggibile per generare `IR JSON` e XML TIA (`FB/DB/FC`) senza passare da AWL.
 
+Aggiornato al `22-04-2026`:
+- timer e contatori in `support_fc` vengono generati come blocchi LAD completi (non come contatti semplici);
+- il preset usa sempre `operands.control_value` (`PT` per timer, `PV` per contatori).
+
 Template consigliato:
 - `docs/templates/ir_excel_template_single_page_with_support_fc.xlsx` (pagina FC completa: `support_fc` obbligatoria)
 
@@ -132,6 +136,7 @@ Regole pratiche:
 - se in una rete FC compare una variabile catalogata come controllo:
   - `datatype=IEC_TIMER` -> blocco completo `TON/TOF/TP` con `PT` da `control_value`;
   - `datatype=IEC_COUNTER` -> blocco completo `CTU/CTD/CTUD` con `PV` da `control_value`.
+- nei contatori, i pin necessari non valorizzati in Excel vengono cablati con default sicuri (`FALSE`) per evitare errori di import TIA.
 - il generatore valida `control_kind/control_value` in base alla tipologia (`datatype`) e usa fallback sicuri solo quando i campi sono vuoti.
 - se vuoi referenziare campi specifici del timer (es. `.Q`, `.ET`) in una logica senza blocco timer automatico, scrivili esplicitamente in `condition_expression`/`condition_operands`.
 - se `condition_expression` e' vuota ma `condition_operands` e' compilata, il generatore crea una `AND`.
@@ -185,8 +190,8 @@ make import-generated \
   IMPORT_BUNDLE="<nome_bundle>"
 ```
 
-Regole consolidate (21-04-2026):
-- `import-generated` esegue polling automatico sia del job import sia del job compile (`AutoCompileJobId`).
+Regole consolidate (22-04-2026):
+- `import-generated` esegue polling automatico del job import.
 - i numeri blocco sono il valore reale XML `<Number>` (non il prefisso nel nome file).
 - il suffisso finale e' il numero comune di gruppo (`GG`): `03` e' un esempio, non un valore obbligatorio.
 - mappa gruppi numerici blocchi (forma `XXGG`, esempio con `GG=03`):

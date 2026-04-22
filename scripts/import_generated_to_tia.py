@@ -123,11 +123,10 @@ def _build_renamed_bundle(
     return target_dir
 
 
-def _queue_import_job(base_url: str, payload: dict) -> tuple[str | None, str | None]:
+def _queue_import_job(base_url: str, payload: dict) -> str | None:
     response = _http_json("POST", f"{base_url}/api/tia/jobs/import", payload, timeout=60.0)
     import_job_id = response.get("JobId") or response.get("jobId")
-    compile_job_id = response.get("AutoCompileJobId")
-    return import_job_id, compile_job_id
+    return import_job_id
 
 
 def main() -> int:
@@ -195,9 +194,9 @@ def main() -> int:
                 "saveProject": bool(args.save_project),
                 "notes": f"batch import {bundle_dir.name}",
             }
-            import_job_id, compile_job_id = _queue_import_job(args.backend_url, payload)
+            import_job_id = _queue_import_job(args.backend_url, payload)
             suffix_note = f" [retry {retry_index}]" if retry_index else ""
-            print(f"[QUEUED{suffix_note}] {current_bundle_dir.name} import={import_job_id} autoCompile={compile_job_id}")
+            print(f"[QUEUED{suffix_note}] {current_bundle_dir.name} import={import_job_id}")
 
             if not import_job_id:
                 break

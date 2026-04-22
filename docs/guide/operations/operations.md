@@ -92,7 +92,7 @@ make generate-input INPUT_FILE="AWL romania.md"
 make generate-input INPUT_PREFIX="romania_"
 ```
 
-## Import in TIA (via bridge) + compile automatica
+## Import in TIA (via bridge)
 
 ### Import batch di tutto `data/output/generated/`
 
@@ -116,7 +116,7 @@ Alternative:
 - `IMPORT_PREFIX`: importa solo cartelle che iniziano con quel prefisso
 
 Note operative:
-- per ogni import, il `tia-bridge` accoda automaticamente una compile
+- l'import non accoda compile automatiche
 - se un blocco con lo stesso nome esiste gia' in TIA, l'import viene rifiutato (name collision)
 - lo script `import-generated` effettua polling del job e, su collisione nome blocco, prova automaticamente suffissi numerici (`...1`, `...2`, ...).
 
@@ -197,6 +197,7 @@ Regole Excel importanti:
 - i nomi passo sono liberi (`Init`, `StartCiclo`, ecc.);
 - in modalita' Excel, il catalogo `operands` guida la dichiarazione variabili DB (niente inferenze casuali).
 - variabili FC non presenti in `operands` non vengono dichiarate nei DB supporto, ma restano utilizzabili nella logica FC come simboli globali non agganciati a DB.
+- timer/contatori definiti in `operands` e usati in `support_fc` vengono emessi come blocchi LAD completi, con preset da `control_value`.
 - `operands` e `support_fc` sono obbligatori: se manca uno dei due (o e' vuoto), `generate-excel-ir` termina con errore.
 
 Compatibilita':
@@ -219,7 +220,6 @@ curl -sS -X POST "http://127.0.0.1:8000/api/tia/jobs/import" \
 
 La risposta dell'import include:
 - `JobId` (import)
-- `AutoCompileJobId` (compile accodata automaticamente)
 
 ### Poll di un job
 
@@ -250,9 +250,8 @@ curl -sS "http://127.0.0.1:8000/api/tia/jobs/<JOB_ID>"
 - `import-generated` prova automaticamente rinomina con suffissi numerici.
 - se finisce i retry, rinomina sequenza/bundle oppure elimina blocchi duplicati in TIA.
 
-### Compile post-import in `blocked` con molti errori
-La compile post-import usa lo **stesso targetPath/targetName** dell'import.
-Se il target e' ampio (es. `Program blocks/generati da tool`), puo' includere errori di blocchi gia' presenti.
+### Compile in `blocked` con molti errori
+Se il target compile e' ampio (es. `Program blocks/generati da tool`), puo' includere errori di blocchi gia' presenti.
 
 Strategie:
 - usa un `targetPath` piu' specifico per bundle (es. `Program blocks/generati da tool/<nome_bundle>`)

@@ -17,7 +17,7 @@ Nel setup dev il container `tia-bridge`:
 - espone una API minima di health/status
 - monta `data/output/` e `data/tmp/` (creata on-demand) come aree condivise di scambio artefatti
 - prepara il punto di integrazione verso una VM Windows che ospita TIA Portal
-- dopo ogni job `import` accoda automaticamente un job `compile` usando lo stesso `targetPath/targetName`
+- inoltra i job `import`/`compile`/`export` senza accodare compile automatiche post-import
 
 ### Variabili di configurazione principali
 - `TIA_VMWARE_NETWORK_MODE`
@@ -26,11 +26,9 @@ Nel setup dev il container `tia-bridge`:
 - `TIA_WINDOWS_AGENT_PORT`
 - `TIA_WINDOWS_AGENT_URL`
 
-### Comportamento import -> compile
+### Comportamento import / compile
 - `POST /api/jobs/import` inoltra l'import all'agent Windows
-- se l'import viene accodato correttamente, il bridge accoda subito `POST /api/jobs/compile`
-- il job compile riusa `targetPath` e `targetName` dell'import
-- la risposta dell'import include `AutoCompileJobId` per tracciare entrambe le operazioni
+- `POST /api/jobs/compile` va richiesto esplicitamente quando serve la compilazione
 - il bridge deve essere pensato come orchestratore di **bundle**, non come semplice uploader di XML isolati
 
 ## Windows VM + Agent (`tia_windows_agent/`)
@@ -121,7 +119,6 @@ Campi principali:
 
 Note operative:
 - `targetPath` parte da `Program blocks/`
-- il bridge accoda automaticamente una `compile` post-import e restituisce `AutoCompileJobId`
 - l'agent processa i job in modo seriale (scelta prudente per il runtime TIA)
 - in modalita' `real` prova a caricare `Siemens.Engineering.dll` via reflection
 

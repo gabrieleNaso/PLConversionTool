@@ -3370,12 +3370,13 @@ def _build_support_logic_flgnet(
         timer_instance_uid = alloc_uid()
         open_con_uid = alloc_uid()
 
+        constant_scope = "LiteralConstant" if active_timer_family == "counter" else "TypedConstant"
         constant_lines: list[str] = [
-            f'    <Access Scope="TypedConstant" UId="{preset_access_uid}">\n',
+            f'    <Access Scope="{constant_scope}" UId="{preset_access_uid}">\n',
             "      <Constant>\n",
         ]
         if active_timer_family == "counter":
-            constant_lines.append("        <ConstantType>DInt</ConstantType>\n")
+            constant_lines.append("        <ConstantType>Int</ConstantType>\n")
         constant_lines.append(
             f'        <ConstantValue>{escape(active_timer_preset or ("1" if active_timer_family == "counter" else "T#1S"))}</ConstantValue>\n'
         )
@@ -3399,7 +3400,11 @@ def _build_support_logic_flgnet(
                 f'      <Instance Scope="GlobalVariable" UId="{timer_instance_uid}">\n',
                 *[f'        <Component Name="{escape(component)}" />\n' for component in instance_components],
                 "      </Instance>\n",
-                '      <TemplateValue Name="time_type" Type="Type">Time</TemplateValue>\n',
+                (
+                    '      <TemplateValue Name="value_type" Type="Type">Int</TemplateValue>\n'
+                    if active_timer_family == "counter"
+                    else '      <TemplateValue Name="time_type" Type="Type">Time</TemplateValue>\n'
+                ),
                 "    </Part>\n",
             ]
         )
@@ -3407,11 +3412,17 @@ def _build_support_logic_flgnet(
         control_input_pin = "IN"
         control_value_pin = "PT"
         control_aux_pin = "ET"
+        required_counter_pins: list[str] = []
         if active_timer_family == "counter":
             if (active_timer_part or "").upper() == "CTD":
                 control_input_pin = "CD"
+                required_counter_pins = ["LD"]
+            elif (active_timer_part or "").upper() == "CTUD":
+                control_input_pin = "CU"
+                required_counter_pins = ["R", "LD"]
             else:
                 control_input_pin = "CU"
+                required_counter_pins = ["R"]
             control_value_pin = "PV"
             control_aux_pin = "CV"
 
@@ -3465,6 +3476,28 @@ def _build_support_logic_flgnet(
                 "    </Wire>\n",
             ]
         )
+
+        if active_timer_family == "counter" and required_counter_pins:
+            for pin_name in required_counter_pins:
+                false_access_uid = alloc_uid()
+                parts_lines.extend(
+                    [
+                        f'    <Access Scope="LiteralConstant" UId="{false_access_uid}">\n',
+                        "      <Constant>\n",
+                        "        <ConstantValue>FALSE</ConstantValue>\n",
+                        "      </Constant>\n",
+                        "    </Access>\n",
+                    ]
+                )
+                pin_wire_uid = alloc_uid()
+                wires_lines.extend(
+                    [
+                        f'    <Wire UId="{pin_wire_uid}">\n',
+                        f'      <IdentCon UId="{false_access_uid}" />\n',
+                        f'      <NameCon UId="{timer_uid}" Name="{pin_name}" />\n',
+                        "    </Wire>\n",
+                    ]
+                )
     elif logic_output_uid is not None:
         final_wire_uid = alloc_uid()
         wires_lines.extend(

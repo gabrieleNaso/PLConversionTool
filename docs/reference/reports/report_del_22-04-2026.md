@@ -1051,10 +1051,16 @@ Alla data del 21-04-2026 la baseline consolidata del progetto è la seguente.
 
 ### 38.6 Aggiornamenti operativi successivi consolidati
 
-- nel `tia-bridge`, ogni `import` accoda automaticamente una `compile` post-import;
-- la risposta del job `import` espone anche `AutoCompileJobId` per tracciare l'esecuzione concatenata;
+- nel `tia-bridge`, l'import e la compile sono job distinti (nessuna compile automatica post-import);
+- il polling operativo traccia separatamente il `JobId` di import e l'eventuale `JobId` di compile richiesto esplicitamente;
 - il generatore allinea in modo deterministico `GRAPH`, `GlobalDB` e `FC` sulle stesse transizioni, includendo anche i member delle transizioni sintetiche (es. `T_HOLD_*`, `T_CHAIN_*`) nei `GlobalDB` quando usati dalle reti LAD/GRAPH;
 - la diagnostica compile lato `tia_windows_agent` è stata estesa con messaggi dettagliati, contesto e classificazione errori/warning.
+
+### 38.7 Aggiornamento del 22-04-2026 (Excel FC timer/contatori)
+
+- nel flusso Excel, timer e contatori usati in `support_fc` vengono emessi come blocchi LAD completi (`TON/TOF/TP`, `CTU/CTD/CTUD`);
+- il preset viene letto dal catalogo `operands.control_value` (`PT` per timer, `PV` per contatori);
+- i pin obbligatori dei contatori non valorizzati esplicitamente vengono cablati con default sicuro (`FALSE`) per prevenire errori di import TIA.
 
 ---
 
