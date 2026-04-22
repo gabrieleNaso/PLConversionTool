@@ -189,7 +189,7 @@ Output nel bundle:
 Fogli Excel consigliati:
 - `meta`: chiavi libere `key/value` (`sequence_name`, `source_name`, `assumptions`)
 - `sequence`: `step_name`, `numero_step`, `transition_id`, `from_step`, `to_step`, `condition_expression`, `operands_used_in_condition`, `flow_type`, `parallel_group`
-- `operands`: `operand`, `category`, `timer_instruction_kind`, `timer_preset_value`, `trigger_operands`, `note`
+- `operands`: `operand`, `category`, `datatype`, `control_kind`, `control_value`, `note`
 - `support_fc` (obbligatorio, pagina unica FC): `category`, `member_name`, `result_member`, `condition_expression`, `condition_operands`, `comment`, `network`
 
 Regole Excel importanti:

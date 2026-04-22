@@ -63,8 +63,12 @@ Colonne:
 - `operand`: nome operando (es. `M10.0`, `Q4.0`, `ALM_OVERTEMP`, `DB81.DBX0.0`).
 - `category`: categoria funzionale.
 - `datatype`: tipo variabile PLC (es. `Bool`, `Int`, `DInt`, `Real`, `Time`, `String`).
-- `timer_instruction_kind`: per timer (`t_on`, `t_off`, `t_p`), opzionale.
-- `timer_preset_value`: preset timer in formato semplice, opzionale (`5s`, `20ms`, `1m`, `2h`).
+- `control_kind`: tipo blocco controllo, opzionale:
+  - timer: `t_on`, `t_off`, `t_p`
+  - counter: `ctu`, `ctd`, `ctud`
+- `control_value`: valore blocco controllo, opzionale:
+  - timer: tempo in formato semplice (`5s`, `20ms`, `1m`, `2h`)
+  - counter: setpoint intero (`10`, `25`, ...)
 - `note`: testo libero.
 
 Nota timer:
@@ -76,6 +80,7 @@ Categorie supportate:
 - `hmi` -> `memories` (hmi) + ref esterni
 - `output` -> `outputs`
 - `timer` -> `timers`
+- `counter` -> catalogo contatori (FC block logic)
 - `memory` -> `memories` (mappata come `aux`)
 - `external` -> `external_refs`
 - `manual_mode` -> `manual_logic_networks`
@@ -86,7 +91,7 @@ Per input Excel, il generatore usa `operands` come catalogo strict:
 - la logica LAD delle transizioni GRAPH resta completa (non viene semplificata);
 - i member DB vengono dichiarati solo se coerenti col catalogo `operands` e con le categorie derivate;
 - il tipo del member DB segue `operands.datatype` quando presente (default `Bool`);
-- per i timer, `timer_preset_value` viene normalizzato automaticamente in formato TIA (`T#...`);
+- per i timer, `control_value` viene normalizzato automaticamente in formato TIA (`T#...`);
 - variabili non catalogate non vengono aggiunte "a caso" nei DB.
 
 Se una transizione usa operandi non presenti nel catalogo, il report analysis segnala warning dedicati.
@@ -124,8 +129,10 @@ Regole pratiche:
 - se compili `result_member`/condizione, la FC della categoria usa la logica scritta qui.
 - i segnali presenti in `operands` vengono collegati ai DB supporto.
 - i segnali NON presenti in `operands` restano comunque usabili nella logica FC come variabili globali non agganciate a DB.
-- se in una rete FC compare un timer catalogato (categoria `timer` in `operands`), il generatore inserisce il blocco completo `TON/TOF/TP` (istanza timer + `PT` da `timer_preset_value` + collegamenti `IN/Q/ET`) invece del semplice contatto.
-- il comportamento blocco timer si attiva anche se la variabile in `operands` ha `datatype=IEC_TIMER` (anche quando la categoria non e' `timer`).
+- se in una rete FC compare una variabile catalogata come controllo:
+  - `datatype=IEC_TIMER` -> blocco completo `TON/TOF/TP` con `PT` da `control_value`;
+  - `datatype=IEC_COUNTER` -> blocco completo `CTU/CTD/CTUD` con `PV` da `control_value`.
+- il generatore valida `control_kind/control_value` in base alla tipologia (`datatype`) e usa fallback sicuri solo quando i campi sono vuoti.
 - se vuoi referenziare campi specifici del timer (es. `.Q`, `.ET`) in una logica senza blocco timer automatico, scrivili esplicitamente in `condition_expression`/`condition_operands`.
 - se `condition_expression` e' vuota ma `condition_operands` e' compilata, il generatore crea una `AND`.
 - se entrambe sono vuote, la rete risulta `TRUE`.

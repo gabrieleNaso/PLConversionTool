@@ -114,6 +114,8 @@ def _normalize_operand_category(value: object) -> str:
         "output": "output",
         "uscita": "output",
         "timer": "timer",
+        "counter": "counter",
+        "contatore": "counter",
         "tempo": "timer",
         "memory": "memory",
         "memoria": "memory",
@@ -144,7 +146,28 @@ def _normalize_timer_kind(value: object) -> str:
         "sp": "t_p",
         "ss": "t_p",
     }
-    return aliases.get(raw, "t_on")
+    if raw not in aliases:
+        raise ValueError(f"kind non valido per timer: {raw}")
+    return aliases[raw]
+
+
+def _normalize_counter_kind(value: object) -> str:
+    raw = _cell_text(value).strip().lower()
+    if not raw:
+        return "ctu"
+    aliases = {
+        "ctu": "ctu",
+        "up": "ctu",
+        "count_up": "ctu",
+        "ctd": "ctd",
+        "down": "ctd",
+        "count_down": "ctd",
+        "ctud": "ctud",
+        "up_down": "ctud",
+    }
+    if raw not in aliases:
+        raise ValueError(f"kind non valido per counter: {raw}")
+    return aliases[raw]
 
 
 def _normalize_timer_preset_value(value: object) -> str | None:
@@ -161,6 +184,16 @@ def _normalize_timer_preset_value(value: object) -> str | None:
         amount, unit = match.groups()
         return f"T#{amount}{unit}"
     return raw
+
+
+def _normalize_counter_setpoint_value(value: object) -> str | None:
+    raw = _cell_text(value).strip()
+    if not raw:
+        return None
+    match = re.fullmatch(r"-?\d+", raw)
+    if not match:
+        raise ValueError(f"setpoint counter non valido: {raw}")
+    return str(int(raw))
 
 
 def _normalize_plc_datatype(value: object) -> str:
@@ -181,9 +214,32 @@ def _normalize_plc_datatype(value: object) -> str:
         "time": "Time",
         "timer": "IEC_TIMER",
         "iec_timer": "IEC_TIMER",
+        "counter": "IEC_COUNTER",
+        "iec_counter": "IEC_COUNTER",
+        "ctu": "IEC_COUNTER",
+        "ctd": "IEC_COUNTER",
+        "ctud": "IEC_COUNTER",
         "string": "String",
     }
     return aliases.get(raw, _cell_text(value).strip() or "Bool")
+
+
+def _normalize_control_kind(datatype: str, value: object) -> str:
+    normalized = _normalize_plc_datatype(datatype)
+    if normalized == "IEC_TIMER":
+        return _normalize_timer_kind(value)
+    if normalized == "IEC_COUNTER":
+        return _normalize_counter_kind(value)
+    return ""
+
+
+def _normalize_control_value(datatype: str, value: object) -> str | None:
+    normalized = _normalize_plc_datatype(datatype)
+    if normalized == "IEC_TIMER":
+        return _normalize_timer_preset_value(value)
+    if normalized == "IEC_COUNTER":
+        return _normalize_counter_setpoint_value(value)
+    return None
 
 
 def _normalize_support_category(value: object) -> str:
@@ -499,12 +555,20 @@ def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[s
             if _contains_token(str(transition.get("guard_expression", "")), source_timer):
                 inferred_network = int(transition.get("network_index", 0) or 0)
                 break
+        try:
+            timer_kind = _normalize_timer_kind(
+                _pick(row, "control_kind", "block_kind", "instruction_kind", "timer_instruction_kind", "kind")
+            )
+        except ValueError as exc:
+            raise SystemExit(f"Excel non valido (timers): {source_timer}: {exc}") from exc
         timers.append(
             {
                 "source_timer": source_timer,
                 "network_index": inferred_network or idx,
-                "kind": _normalize_timer_kind(_pick(row, "timer_instruction_kind", "kind")),
-                "preset": _normalize_timer_preset_value(_pick(row, "timer_preset_value", "preset")),
+                "kind": timer_kind,
+                "preset": _normalize_timer_preset_value(
+                    _pick(row, "control_value", "block_value", "setpoint_value", "timer_preset_value", "preset")
+                ),
                 "trigger_operands": [],
             }
         )
@@ -585,6 +649,7 @@ def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[s
     )
     operand_catalog: list[str] = []
     operand_datatypes: dict[str, str] = {}
+    operand_control_settings: dict[str, dict[str, str]] = {}
     operand_timer_settings: dict[str, dict[str, str]] = {}
     for idx, row in enumerate(operand_rows, start=1):
         operand = _cell_text(_pick(row, "operand", "name", "tag"))
@@ -597,14 +662,45 @@ def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[s
         )
         if operand not in operand_datatypes:
             operand_datatypes[operand] = datatype
-        timer_kind = _normalize_timer_kind(_pick(row, "timer_instruction_kind", "kind"))
-        timer_preset = _normalize_timer_preset_value(_pick(row, "timer_preset_value", "preset"))
-        if datatype == "IEC_TIMER" or timer_preset:
+        control_kind_raw = _pick(
+            row,
+            "control_kind",
+            "block_kind",
+            "instruction_kind",
+            "timer_instruction_kind",
+            "counter_instruction_kind",
+            "kind",
+        )
+        control_value_raw = _pick(
+            row,
+            "control_value",
+            "block_value",
+            "setpoint_value",
+            "preset_value",
+            "timer_preset_value",
+            "counter_preset_value",
+            "preset",
+        )
+        try:
+            control_kind = _normalize_control_kind(datatype, control_kind_raw)
+            control_value = _normalize_control_value(datatype, control_value_raw)
+        except ValueError as exc:
+            raise SystemExit(f"Excel non valido (operands): {operand}: {exc}") from exc
+        if datatype in {"IEC_TIMER", "IEC_COUNTER"}:
+            default_value = "T#1S" if datatype == "IEC_TIMER" else "1"
+            operand_control_settings.setdefault(
+                operand,
+                {
+                    "kind": control_kind,
+                    "value": control_value or default_value,
+                },
+            )
+        if datatype == "IEC_TIMER":
             operand_timer_settings.setdefault(
                 operand,
                 {
-                    "kind": timer_kind,
-                    "preset": timer_preset or "T#1S",
+                    "kind": control_kind,
+                    "preset": control_value or "T#1S",
                 },
             )
         category = _normalize_operand_category(_pick(row, "category", "type", "group"))
@@ -630,12 +726,20 @@ def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[s
             )
             continue
         if category == "timer":
+            try:
+                timer_kind = _normalize_timer_kind(
+                    _pick(row, "control_kind", "block_kind", "instruction_kind", "timer_instruction_kind", "kind")
+                )
+            except ValueError as exc:
+                raise SystemExit(f"Excel non valido (operands): {operand}: {exc}") from exc
             timers.append(
                 {
                     "source_timer": operand,
                     "network_index": network_index,
-                    "kind": _normalize_timer_kind(_pick(row, "timer_instruction_kind", "kind")),
-                    "preset": _normalize_timer_preset_value(_pick(row, "timer_preset_value", "preset")),
+                    "kind": timer_kind,
+                    "preset": _normalize_timer_preset_value(
+                        _pick(row, "control_value", "block_value", "setpoint_value", "timer_preset_value", "preset")
+                    ),
                     "trigger_operands": [],
                 }
             )
@@ -784,6 +888,7 @@ def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[s
         "strict_operand_catalog": True,
         "operand_catalog": operand_catalog,
         "operand_datatypes": operand_datatypes,
+        "operand_control_settings": operand_control_settings,
         "operand_timer_settings": operand_timer_settings,
         "support_members": support_members,
         "support_logic": support_logic,

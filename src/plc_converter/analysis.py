@@ -314,6 +314,7 @@ def _ir_from_payload(
         strict_operand_catalog=bool(ir_payload.get("strict_operand_catalog", False)),
         operand_catalog=sorted(set(_as_str_list(ir_payload.get("operand_catalog")))),
         operand_datatypes=_as_str_dict(ir_payload.get("operand_datatypes")),
+        operand_control_settings=_as_str_dict_dict(ir_payload.get("operand_control_settings")),
         operand_timer_settings=_as_str_dict_dict(ir_payload.get("operand_timer_settings")),
         support_members=_as_dict_list(ir_payload.get("support_members")),
         support_logic=_as_dict_list(ir_payload.get("support_logic")),
@@ -2847,6 +2848,11 @@ def _normalize_plc_datatype(datatype: str) -> str:
         "time": "Time",
         "timer": "IEC_TIMER",
         "iec_timer": "IEC_TIMER",
+        "counter": "IEC_COUNTER",
+        "iec_counter": "IEC_COUNTER",
+        "ctu": "IEC_COUNTER",
+        "ctd": "IEC_COUNTER",
+        "ctud": "IEC_COUNTER",
         "string": "String",
     }
     if not raw:
@@ -2873,11 +2879,45 @@ def _timer_part_name(timer_kind: str) -> str:
     return "TON"
 
 
+def _counter_part_name(counter_kind: str) -> str:
+    raw = str(counter_kind or "").strip().lower()
+    if raw in {"ctd", "down", "count_down"}:
+        return "CTD"
+    if raw in {"ctud", "up_down"}:
+        return "CTUD"
+    return "CTU"
+
+
 def _support_timer_configs(ir: AwlIR) -> dict[str, dict[str, str]]:
     configs: dict[str, dict[str, str]] = {}
+    for raw_name, settings in ir.operand_control_settings.items():
+        normalized_name = _support_member_name(raw_name, "", strict_excel_mode=True)
+        if not normalized_name:
+            continue
+        datatype = _normalize_plc_datatype(ir.operand_datatypes.get(raw_name, ""))
+        kind = str(settings.get("kind") or "").strip()
+        value = str(settings.get("value") or "").strip()
+        if datatype == "IEC_TIMER":
+            preset = value or "T#1S"
+            if not preset.upper().startswith("T#"):
+                preset = f"T#{preset}"
+            configs[normalized_name] = {
+                "part_name": _timer_part_name(kind),
+                "value": preset.upper(),
+                "control_family": "timer",
+            }
+        elif datatype == "IEC_COUNTER":
+            pv = value or "1"
+            configs[normalized_name] = {
+                "part_name": _counter_part_name(kind),
+                "value": pv,
+                "control_family": "counter",
+            }
     for raw_name, settings in ir.operand_timer_settings.items():
         normalized_name = _support_member_name(raw_name, "", strict_excel_mode=True)
         if not normalized_name:
+            continue
+        if normalized_name in configs:
             continue
         kind = str(settings.get("kind") or "").strip()
         preset = str(settings.get("preset") or "").strip() or "T#1S"
@@ -2885,7 +2925,8 @@ def _support_timer_configs(ir: AwlIR) -> dict[str, dict[str, str]]:
             preset = f"T#{preset}"
         configs[normalized_name] = {
             "part_name": _timer_part_name(kind),
-            "preset": preset.upper(),
+            "value": preset.upper(),
+            "control_family": "timer",
         }
     for timer in ir.timers:
         normalized_name = _support_member_name(timer.source_timer, "", strict_excel_mode=True)
@@ -2898,7 +2939,8 @@ def _support_timer_configs(ir: AwlIR) -> dict[str, dict[str, str]]:
             preset = f"T#{preset}"
         configs[normalized_name] = {
             "part_name": _timer_part_name(timer.kind),
-            "preset": preset.upper(),
+            "value": preset.upper(),
+            "control_family": "timer",
         }
     return configs
 
@@ -3164,7 +3206,7 @@ def _build_support_logic_flgnet(
             return db_name
         return ""
 
-    def _timer_candidate_for_operand(operand: str, negated: bool) -> tuple[str, str, str] | None:
+    def _timer_candidate_for_operand(operand: str, negated: bool) -> tuple[str, str, str, str] | None:
         if negated:
             return None
         normalized_operand, operand_path = _resolve_logic_symbol_path(operand, member_datatypes)
@@ -3176,13 +3218,19 @@ def _build_support_logic_flgnet(
         datatype = _normalize_plc_datatype(member_datatypes.get(normalized_operand, ""))
         if not cfg and datatype != "IEC_TIMER" and datatype != "IEC_COUNTER" and "COUNTER" not in datatype.upper():
             return None
-        part_name = cfg.get("part_name") or "TON"
-        preset = cfg.get("preset") or "T#1S"
-        return normalized_operand, part_name, preset
+        control_family = cfg.get("control_family") or ("counter" if "COUNTER" in datatype.upper() else "timer")
+        if control_family == "counter":
+            part_name = cfg.get("part_name") or "CTU"
+            value = cfg.get("value") or "1"
+        else:
+            part_name = cfg.get("part_name") or "TON"
+            value = cfg.get("value") or "T#1S"
+        return normalized_operand, part_name, value, control_family
 
     active_timer_name = ""
     active_timer_part = ""
     active_timer_preset = ""
+    active_timer_family = ""
     for clause in guard_clauses:
         for operand, negated in clause:
             candidate = _timer_candidate_for_operand(operand, negated)
@@ -3190,6 +3238,7 @@ def _build_support_logic_flgnet(
                 active_timer_name = candidate[0]
                 active_timer_part = candidate[1]
                 active_timer_preset = candidate[2]
+                active_timer_family = candidate[3]
                 break
         if active_timer_name:
             break
@@ -3321,15 +3370,22 @@ def _build_support_logic_flgnet(
         timer_instance_uid = alloc_uid()
         open_con_uid = alloc_uid()
 
-        parts_lines.extend(
+        constant_lines: list[str] = [
+            f'    <Access Scope="TypedConstant" UId="{preset_access_uid}">\n',
+            "      <Constant>\n",
+        ]
+        if active_timer_family == "counter":
+            constant_lines.append("        <ConstantType>DInt</ConstantType>\n")
+        constant_lines.append(
+            f'        <ConstantValue>{escape(active_timer_preset or ("1" if active_timer_family == "counter" else "T#1S"))}</ConstantValue>\n'
+        )
+        constant_lines.extend(
             [
-                f'    <Access Scope="TypedConstant" UId="{preset_access_uid}">\n',
-                "      <Constant>\n",
-                f'        <ConstantValue>{escape(active_timer_preset or "T#1S")}</ConstantValue>\n',
                 "      </Constant>\n",
                 "    </Access>\n",
             ]
         )
+        parts_lines.extend(constant_lines)
 
         instance_components: list[str] = []
         owner_db = _owner_db_name(active_timer_name)
@@ -3348,13 +3404,24 @@ def _build_support_logic_flgnet(
             ]
         )
 
+        control_input_pin = "IN"
+        control_value_pin = "PT"
+        control_aux_pin = "ET"
+        if active_timer_family == "counter":
+            if (active_timer_part or "").upper() == "CTD":
+                control_input_pin = "CD"
+            else:
+                control_input_pin = "CU"
+            control_value_pin = "PV"
+            control_aux_pin = "CV"
+
         if logic_output_uid is not None:
             in_wire_uid = alloc_uid()
             wires_lines.extend(
                 [
                     f'    <Wire UId="{in_wire_uid}">\n',
                     f'      <NameCon UId="{logic_output_uid}" Name="out" />\n',
-                    f'      <NameCon UId="{timer_uid}" Name="IN" />\n',
+                    f'      <NameCon UId="{timer_uid}" Name="{control_input_pin}" />\n',
                     "    </Wire>\n",
                 ]
             )
@@ -3364,7 +3431,7 @@ def _build_support_logic_flgnet(
                 [
                     f'    <Wire UId="{timer_true_wire_uid}">\n',
                     "      <Powerrail />\n",
-                    f'      <NameCon UId="{timer_uid}" Name="IN" />\n',
+                    f'      <NameCon UId="{timer_uid}" Name="{control_input_pin}" />\n',
                     "    </Wire>\n",
                 ]
             )
@@ -3374,7 +3441,7 @@ def _build_support_logic_flgnet(
             [
                 f'    <Wire UId="{pt_wire_uid}">\n',
                 f'      <IdentCon UId="{preset_access_uid}" />\n',
-                f'      <NameCon UId="{timer_uid}" Name="PT" />\n',
+                f'      <NameCon UId="{timer_uid}" Name="{control_value_pin}" />\n',
                 "    </Wire>\n",
             ]
         )
@@ -3393,7 +3460,7 @@ def _build_support_logic_flgnet(
         wires_lines.extend(
             [
                 f'    <Wire UId="{et_wire_uid}">\n',
-                f'      <NameCon UId="{timer_uid}" Name="ET" />\n',
+                f'      <NameCon UId="{timer_uid}" Name="{control_aux_pin}" />\n',
                 f'      <OpenCon UId="{open_con_uid}" />\n',
                 "    </Wire>\n",
             ]
