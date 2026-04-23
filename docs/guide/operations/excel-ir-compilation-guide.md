@@ -46,7 +46,6 @@ Colonne:
 - `from_step`: passo sorgente transizione.
 - `to_step`: passo destinazione transizione.
 - `condition_expression`: espressione LAD/booleana (default `TRUE`).
-- `operands_used_in_condition`: operandi separati da `;`.
 - `flow_type`: `alternative` oppure `parallel`.
 - `parallel_group`: gruppo parallelo (obbligatorio quando `flow_type=parallel`).
 
@@ -122,7 +121,6 @@ Colonne:
 - `member_name`
 - `result_member`
 - `condition_expression`
-- `condition_operands`
 - `comment`
 - `network`
 
@@ -145,9 +143,10 @@ Regole pratiche:
   - `datatype=IEC_COUNTER` -> blocco completo `CTU/CTD/CTUD` con `PV` da `control_value`.
 - nei contatori, i pin necessari non valorizzati in Excel vengono cablati con default sicuri (`FALSE`) per evitare errori di import TIA.
 - il generatore valida `control_kind/control_value` in base alla tipologia (`datatype`) e usa fallback sicuri solo quando i campi sono vuoti.
-- se vuoi referenziare campi specifici del timer (es. `.Q`, `.ET`) in una logica senza blocco timer automatico, scrivili esplicitamente in `condition_expression`/`condition_operands`.
-- se `condition_expression` e' vuota ma `condition_operands` e' compilata, il generatore crea una `AND`.
+- se vuoi referenziare campi specifici del timer (es. `.Q`, `.ET`) in una logica senza blocco timer automatico, scrivili esplicitamente in `condition_expression`.
 - se entrambe sono vuote, la rete risulta `TRUE`.
+- nello sheet `sequence`, gli operandi transizione vengono ricavati automaticamente da `condition_expression`.
+- nello sheet `support_fc`, gli operandi rete vengono ricavati automaticamente da `condition_expression`.
 - `condition_expression` supporta parentesi e precedenza logica (`NOT` > `AND` > `OR`) sia per `support_fc` sia per le transizioni.
 - quando mischi `OR` e `AND` nello stesso livello, usa sempre parentesi esplicite per evitare ambiguita' di lettura LAD.
 - esempi validi con semantica diversa:
@@ -155,7 +154,7 @@ Regole pratiche:
   - `(M1 AND NOT M2) OR M3`
 
 Formato riga consigliato:
-`category | member_name | result_member | condition_expression | condition_operands | comment | network`
+`category | member_name | result_member | condition_expression | comment | network`
 
 Esempi:
 - `io | I_START_BTN |  |  |  | Pulsante start |`
@@ -167,7 +166,7 @@ Checklist compilazione manuale FC:
 1. Compila sempre `support_fc` (almeno una riga valida con `member_name` e/o `result_member`).
 2. Inserisci solo categorie reali (`io/output/diag/hmi/aux/transitions/lv2`).
 3. Se vuoi logica custom, compila `result_member` + condizione con `network` numerato.
-4. Mantieni nomi coerenti tra `member_name`, `result_member` e `condition_operands`.
+4. Mantieni nomi coerenti tra `member_name`, `result_member` e variabili usate in `condition_expression`.
 
 ## 6) Paralleli
 Per modellare un parallelo reale:

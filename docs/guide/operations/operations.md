@@ -193,9 +193,9 @@ Output nel bundle:
 - XML baseline e support per `GRAPH + DB + FC`
 
 Fogli Excel consigliati:
-- `sequence`: `step_name`, `numero_step`, `transition_id`, `from_step`, `to_step`, `condition_expression`, `operands_used_in_condition`, `flow_type`, `parallel_group`
+- `sequence`: `step_name`, `numero_step`, `transition_id`, `from_step`, `to_step`, `condition_expression`, `flow_type`, `parallel_group`
 - `operands`: `operand`, `category`, `datatype`, `control_kind`, `control_value`, `note`
-- `support_fc` (obbligatorio, pagina unica FC): `category`, `member_name`, `result_member`, `condition_expression`, `condition_operands`, `comment`, `network`
+- `support_fc` (obbligatorio, pagina unica FC): `category`, `member_name`, `result_member`, `condition_expression`, `comment`, `network`
 
 Regole Excel importanti:
 - l'inizio sequenza e' il passo con `numero_step=1` (non dal nome del passo);
@@ -211,6 +211,7 @@ Regole Excel importanti:
 - ogni network FC deve avere un solo `Powerrail` LAD (vincolo import TIA).
 - `operands` e `support_fc` sono obbligatori: se manca uno dei due (o e' vuoto), `generate-excel-ir` termina con errore.
 - nelle espressioni logiche (`condition_expression` / `guard_expression`) sono supportate parentesi e precedenza booleana.
+- il generatore deduce automaticamente gli operandi da `condition_expression`/`guard_expression` (non servono colonne operandi dedicate nel formato corrente).
 - nel GRAPH, le transition usano la logica reale dell'Excel (`condition_expression`) e non vengono ridotte a marker tipo `T1/T2`.
 - i riferimenti variabile nelle transition GRAPH sono cross-DB: ogni simbolo punta al DB owner derivato dal catalogo `operands`.
 - i blocchi supporto vengono sempre emessi anche se vuoti (placeholder `NoData`), incluso `DB14 ... transitions`.

@@ -150,7 +150,6 @@ Colonne canoniche di `support_fc`:
 - `member_name`
 - `result_member`
 - `condition_expression`
-- `condition_operands`
 - `comment`
 - `network`
 

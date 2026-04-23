@@ -65,7 +65,7 @@ Conseguenza architetturale da considerare fissata:
 Regola operativa consolidata al 23-04-2026 per il flusso Excel:
 
 - `operands` e `support_fc` sono fogli obbligatori;
-- nel foglio `support_fc` devono convivere sia la definizione member (`member_name`) sia la logica FC (`result_member`, `condition_expression`, `condition_operands`, `network`);
+- nel foglio `support_fc` devono convivere sia la definizione member (`member_name`) sia la logica FC (`result_member`, `condition_expression`, `network`);
 - i commenti FC (`support_fc.comment`) restano nelle reti FC e non devono essere copiati nei tag DB;
 - in strict Excel i commenti DB devono derivare solo da commenti member espliciti e da `operands.note`;
 - se commenti e note non sono valorizzati, il commento DB deve restare vuoto (nessun testo automatico);

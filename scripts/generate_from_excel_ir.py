@@ -60,6 +60,21 @@ def _split_int_list(value: object) -> list[int]:
     return items
 
 
+def _infer_operands_from_expression(expression: str) -> list[str]:
+    if not expression:
+        return []
+    reserved = {"AND", "OR", "NOT", "TRUE", "FALSE"}
+    inferred: list[str] = []
+    for token in re.findall(r"[A-Za-z_]\w*(?:\.\w+)*", expression):
+        upper = token.upper()
+        if upper in reserved:
+            continue
+        if token in inferred:
+            continue
+        inferred.append(token)
+    return inferred
+
+
 def _int_or_default(value: object, default: int) -> int:
     text = _cell_text(value)
     if not text:
@@ -308,6 +323,8 @@ def _read_support_logic_rows(path: Path) -> list[dict[str, object]]:
         condition_operands = _split_list(row.get("condition_operands"))
         if not condition_expression and condition_operands:
             condition_expression = " AND ".join(condition_operands)
+        if not condition_operands and condition_expression and condition_expression.upper() != "TRUE":
+            condition_operands = _infer_operands_from_expression(condition_expression)
         logic_rows.append(
             {
                 "category": category,
@@ -340,7 +357,6 @@ def _ensure_required_excel_format(path: Path) -> None:
             "from_step",
             "to_step",
             "condition_expression",
-            "operands_used_in_condition",
             "flow_type",
             "parallel_group",
         },
@@ -357,7 +373,6 @@ def _ensure_required_excel_format(path: Path) -> None:
             "member_name",
             "result_member",
             "condition_expression",
-            "condition_operands",
             "comment",
             "network",
         },
@@ -510,11 +525,7 @@ def _build_transitions_from_rows(rows: list[dict[str, object]]) -> list[dict[str
         guard_expression = _cell_text(row.get("condition_expression")) or "TRUE"
         guard_operands = _split_list(row.get("operands_used_in_condition"))
         if not guard_operands and guard_expression and guard_expression.upper() != "TRUE":
-            guard_operands = [
-                token
-                for token in re.findall(r"[A-Za-z_]\w*(?:\.\w+)*", guard_expression)
-                if token.upper() not in {"AND", "OR", "NOT", "TRUE", "FALSE"}
-            ]
+            guard_operands = _infer_operands_from_expression(guard_expression)
         transitions.append(
             {
                 "transition_id": _cell_text(row.get("transition_id")) or f"T{idx}",
