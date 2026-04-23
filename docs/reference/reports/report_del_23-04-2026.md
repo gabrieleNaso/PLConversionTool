@@ -87,15 +87,15 @@ Il progetto include ora anche il livello operativo di orchestrazione TIA, con ob
 
 ## 2-bis. Chiarimenti documentali e operativi consolidati al 23-04-2026
 
-A valle del confronto tra i documenti operativi, i report consolidati e i tipici XML del caso `T1-A ARUNC`, i seguenti punti sono da considerare fissati.
+A valle del confronto tra i documenti operativi, i report consolidati e i tipici XML del caso `T1-A ARUNC`, emergono in modo ricorrente i seguenti punti.
 
-- La documentazione del progetto e' ora distinta in due livelli: **documenti normativi** (`report` + `specifica master`) e **documenti operativi derivati** (`flow`, `operations`, `tia-integration`, `workflow-checklists`, `conventions`, template).
-- In caso di conflitto tra una convenzione generica e una regola hard di traduzione o serializer, prevale sempre la specifica master del convertitore.
+- La documentazione del progetto e' ora distinta in due livelli: **specifica master normativa** e **documentazione operativa/descrittiva derivata** (`report`, `flow`, `operations`, `tia-integration`, `workflow-checklists`, `conventions`, template).
+- In caso di conflitto tra convenzioni generiche e regole di traduzione/serializer, il riferimento prevalente resta la specifica master del convertitore.
 - La regola corretta di cardinalita' resta: `1 sequenza AWL -> 1 x FB GRAPH + N x GlobalDB + M x FC LAD`.
 - Il naming globale non puo' essere ridotto a un semplice suffisso finale: owner DB, branch path e leaf name costituiscono un contratto bloccante tra IR, serializer e bundle XML.
 - L'IR comune del progetto puo' ora essere alimentato sia da parsing AWL sia da Excel strutturato, pur restando invariati i contratti semantici richiesti dai backend.
 - I tipici legacy importabili ma basati su runtime `V6` restano utili per reverse engineering semantico e topologico, ma non sono pattern validi per il serializer finale `V20 / GRAPH V2`.
-- La segmentazione reale dell'AWL deve tenere conto delle famiglie funzionali ricorrenti osservate nel caso `FC102 / AWL Romania`: allarmi, memorie/ausiliari, sequenza, manuale/automatico, emergenza/fault, uscite.
+- La segmentazione reale dell'AWL tiene conto delle famiglie funzionali ricorrenti osservate nel caso `FC102 / AWL Romania`: allarmi, memorie/ausiliari, sequenza, manuale/automatico, emergenza/fault, uscite.
 
 ## 2-ter. Integrazioni consolidate dal confronto puntuale con i tipici XML del corpus
 
@@ -115,11 +115,11 @@ Il confronto tra i documenti normativi aggiornati e i file XML reali oggi dispon
 
 ## 2-quater. Integrazioni finali flusso Excel/GRAPH (23-04-2026)
 
-Sono da considerare fissate anche le seguenti regole operative finali del percorso Excel:
+Nel percorso Excel risultano consolidate anche le seguenti regole operative:
 
 - categorie `operands` consolidate: `alarm`, `aux`, `hmi`, `output`, `memory`, `external`, `lv2`/`lev2`, `transition`/`transitions`;
-- `mode` non e' categoria di input valida nel foglio `operands` (per LEV2 si usa `lv2`/`lev2`);
-- le transition nel GRAPH mantengono la formula booleana reale dell'Excel (`condition_expression`) e non devono degradare in marker semplificati (`T1`, `T2`, ...);
+- in input `operands`, LEV2 usa `lv2`/`lev2`; `mode` non rappresenta la forma canonica di input;
+- le transition nel GRAPH mantengono la formula booleana reale dell'Excel (`condition_expression`) senza degradare in marker semplificati (`T1`, `T2`, ...);
 - nelle transition GRAPH i riferimenti variabile sono cross-DB e devono puntare al DB owner corretto determinato dal catalogo `operands`;
 - il pacchetto supporto va emesso completo anche in assenza di contenuto logico/dati per alcune famiglie, con placeholder validi (`NoData`) per preservare importabilita' e struttura attesa;
 - righe `support_fc` con stessa `category` + stesso `network` devono essere aggregate nella stessa rete FC;
@@ -197,9 +197,9 @@ Sono i dati che hanno senso in uno o più `GlobalDB` applicativi e di supporto, 
 - dati HMI;
 - strutture ausiliarie del sequenziatore.
 
-### 5.2 Regola da considerare fissata
+### 5.2 Evidenza consolidata
 
-La regola corretta è:
+La formulazione consolidata è:
 
 > il GRAPH mantiene i suoi statici runtime interni obbligatori e, in aggiunta, il progetto genera i blocchi dati e le FC di supporto necessari al caso reale.
 
@@ -589,7 +589,7 @@ Va anche distinto:
 
 Sono concetti diversi.
 
-## 26. Regola metodologica chiave del backend FC
+## 26. Metodo di validazione del backend FC
 
 La validazione del backend FC deve essere incrementale.
 
@@ -724,7 +724,7 @@ Per ogni traduzione AWL vanno considerati presenti e stabili i seguenti DB ester
 
 Questi blocchi non sono da reinventare caso per caso, ma da trattare come riferimenti fissi del modello di conversione quando la sequenza AWL li usa o li presuppone.
 
-### 32.4 Regola di ingresso e ossatura del GRAPH
+### 32.4 Ingresso e ossatura del GRAPH
 
 La topologia iniziale del GRAPH non deve dipendere dal nome testuale del passo.
 
@@ -737,7 +737,7 @@ Regola operativa:
 Questa scelta riduce regressioni di import, mantiene coerenza con l'Excel manuale e rende il builder piu' deterministico.
 
 
-### 32.5 Regola architetturale sul formato reale della traduzione
+### 32.5 Formato architetturale reale della traduzione
 
 La traduzione di una FC AWL di sequenza non va interpretata come generazione del solo GRAPH.
 
@@ -754,12 +754,12 @@ La forma corretta dell'output è un insieme coordinato di artefatti:
 - `FC 12` HMI;
 - `FC 13` Aux;
 - `FC 14` Transitions;
-- `FC 19` Output;
+- `FC 16` Output;
 - eventuale FC di servizio coerente alla famiglia numerica prevista (es. `FC16..` o equivalente).
 
-Il convertitore deve quindi ragionare in termini di ecosistema di blocchi e non in termini di singolo artefatto XML isolato.
+L'analisi porta a ragionare in termini di ecosistema di blocchi, non di singolo artefatto XML isolato.
 
-### 32.6 Regola di scomposizione della FC AWL in famiglie logiche
+### 32.6 Scomposizione della FC AWL in famiglie logiche
 
 L'AWL di sequenza va prima segmentato per famiglie logiche e solo dopo tradotto.
 
@@ -775,9 +775,9 @@ Le famiglie principali da riconoscere sono:
 8. uscite e comandi macchina;
 9. HMI e popup.
 
-Questa scomposizione è obbligatoria perché nell'AWL originario tali logiche convivono nello stesso blocco, mentre nel target TIA vanno separate in blocchi con responsabilità diverse.
+Questa scomposizione risulta necessaria perché nell'AWL originario tali logiche convivono nello stesso blocco, mentre nel target TIA vengono separate in blocchi con responsabilità diverse.
 
-### 32.7 Regola di identificazione dei passi e delle transizioni dall'AWL
+### 32.7 Identificazione di passi e transizioni dall'AWL
 
 Nel parser AWL va considerato un pattern forte e quasi deterministico il seguente schema:
 
@@ -787,7 +787,7 @@ Nel parser AWL va considerato un pattern forte e quasi deterministico il seguent
 - caricamento del numero di passo destinazione;
 - scrittura del numero nella variabile di transizione o richiesta passo.
 
-Quando questo schema viene riconosciuto, il convertitore deve estrarre:
+Quando questo schema viene riconosciuto, il convertitore estrae:
 
 - step sorgente;
 - condizione di avanzamento;
@@ -795,9 +795,9 @@ Quando questo schema viene riconosciuto, il convertitore deve estrarre:
 
 La macchina a stati va quindi ricostruita a partire da questi edge e non da una lettura puramente lessicale dell'ordine dei segmenti.
 
-### 32.8 Regola di separazione dei dati AWL nel nuovo modello
+### 32.8 Separazione dei dati AWL nel nuovo modello
 
-Un DB AWL unico non deve essere replicato nel target.
+Un DB AWL unico non viene replicato direttamente nel target.
 
 La regola corretta è separare i dati in base al ruolo:
 
@@ -810,7 +810,7 @@ La regola corretta è separare i dati in base al ruolo:
 
 Il runtime interno del GRAPH resta nel blocco GRAPH e non deve essere duplicato nel DB applicativo.
 
-### 32.9 Regola di normalizzazione delle transizioni
+### 32.9 Normalizzazione delle transizioni
 
 Le condizioni di transizione AWL non vanno copiate direttamente come testo dentro il GRAPH.
 
@@ -825,28 +825,28 @@ Conseguenze:
 - la HMI usa la stessa base semantica per popup e diagnostica;
 - si evita di replicare più volte la stessa logica complessa in blocchi diversi.
 
-### 32.9A Regola hard sul naming con suffisso e ownership dei DB
+### 32.9A Evidenza sul naming con suffisso e ownership dei DB
 
 La sola suddivisione dei dati per famiglie non è sufficiente.
 
 Il confronto con i tipici reali mostra che molte variabili devono essere non solo allocate nel DB corretto, ma anche nominate secondo la convenzione richiesta dal DB stesso; in caso contrario il blocco viene importato ma i riferimenti simbolici restano scollegati oppure incoerenti.
 
-Regola hard:
+Nella baseline corrente:
 
-- ogni variabile globale emessa dal tool deve avere un owner DB deterministico;
-- ogni riferimento usato in `GRAPH`, `FC 12`, `FC 13`, `FC 14`, `FC 19` e HMI deve puntare al path reale del member nel DB che la contiene;
-- se il DB di destinazione impone una convenzione di naming con prefisso o suffisso, il generatore deve rispettarla integralmente e non può sostituirla con nomi generici.
+- ogni variabile globale emessa dal tool ha un owner DB deterministico;
+- ogni riferimento usato in `GRAPH`, `FC 12`, `FC 13`, `FC 14`, `FC 16` e HMI punta al path reale del member nel DB che la contiene;
+- quando il DB di destinazione impone una convenzione di naming con prefisso o suffisso, il generatore la rispetta integralmente.
 
-Conseguenze pratiche da considerare fissate:
+Conseguenze pratiche osservate:
 
-- nel DB tipo OPIN i comandi e i preset devono restare nella famiglia `Pxxx`;
-- nel DB tipo OPOUT uscite, lampade e stati comandati devono restare nella famiglia `Lxxx`;
-- nel DB `14..` le variabili di transizione devono restare nel ramo `Transitions`;
-- nel DB base `11..` le variabili di stato/memoria devono restare nei rami `Memory`, `Seq Status`;
-- nel `DB 13.. AUX` i supporti tecnici devono restare nella famiglia ausiliaria e non migrare con naming libero in altri DB;
-- nel DB HMI popup e condizioni devono mantenere il path HMI coerente al gruppo di appartenenza.
+- nel DB tipo OPIN i comandi e i preset restano nella famiglia `Pxxx`;
+- nel DB tipo OPOUT uscite, lampade e stati comandati restano nella famiglia `Lxxx`;
+- nel DB `14..` le variabili di transizione restano nel ramo `Transitions`;
+- nel DB base `11..` le variabili di stato/memoria restano nei rami `Memory`, `Seq Status`;
+- nel `DB 13.. AUX` i supporti tecnici restano nella famiglia ausiliaria senza migrare con naming libero in altri DB;
+- nel DB HMI popup e condizioni mantengono un path coerente al gruppo di appartenenza.
 
-Non è quindi ammesso che il generatore produca variabili globali con nomi neutri o incompleti quando il target richiede naming specifico.
+Per questo motivo, nella baseline corrente, non vengono emesse variabili globali con nomi neutri o incompleti quando il target richiede naming specifico.
 
 Esempi da considerare errore di generazione:
 
@@ -854,28 +854,28 @@ Esempi da considerare errore di generazione:
 - referenziare da una FC un booleano globale senza il path del DB corretto;
 - creare member globali provvisori che non corrispondono a nessuna convenzione reale del progetto.
 
-Regola di validazione:
+Nelle validazioni:
 
-- il builder deve verificare per ogni simbolo globale il triplo vincolo `DB corretto + path corretto + naming corretto`;
-- se uno dei tre elementi manca, la variabile va marcata come non risolta e non considerata valida per l'emissione finale.
+- il builder verifica per ogni simbolo globale il triplo vincolo `DB corretto + path corretto + naming corretto`;
+- se uno dei tre elementi manca, la variabile viene marcata come non risolta e non valida per l'emissione finale.
 
-### 32.9B Regola Excel strict sul popolamento DB
+### 32.9B Modalita' Excel strict sul popolamento DB
 
-Quando la sorgente IR arriva da Excel con catalogo `operands`, il popolamento dei DB deve seguire una regola strict:
+Quando la sorgente IR arriva da Excel con catalogo `operands`, il popolamento dei DB segue una modalita' strict:
 
 - la logica LAD delle transizioni GRAPH resta completa;
 - i member DB vengono dichiarati solo se presenti nel catalogo `operands` o nelle categorie derivate (`alarm`, `aux`, `hmi`, `output`, `timer`, ...);
-- non e' ammesso aggiungere member DB per inferenza opportunistica da testo AWL o parsing guard non catalogato.
+- non vengono aggiunti member DB per inferenza opportunistica da testo AWL o parsing guard non catalogato.
 - i commenti dei member DB non devono essere presi da `support_fc.comment` (commento rete FC);
 - i commenti DB devono restare separati dalla semantica di rete FC.
 
-Se una transizione usa operandi non presenti nel catalogo, il validator deve segnalarlo come warning di coerenza.
+Se una transizione usa operandi non presenti nel catalogo, il validator lo segnala come warning di coerenza.
 
-### 32.10 Regola di normalizzazione delle memorie e dei timer
+### 32.10 Normalizzazione di memorie e timer
 
-I timer AWL `Txx`, i preset `S5T`, i bit di appoggio pulsati e le memorie tecniche non devono restare nel DB sequenza monolitico.
+I timer AWL `Txx`, i preset `S5T`, i bit di appoggio pulsati e le memorie tecniche non restano nel DB sequenza monolitico.
 
-Devono essere convertiti in:
+Nella pipeline corrente vengono convertiti in:
 
 - istanze IEC nel `DB 13..`;
 - reti LAD nella `FC 13 Aux`;
@@ -883,17 +883,17 @@ Devono essere convertiti in:
 
 La `FC 13 Aux` ha quindi il ruolo di ricostruire in forma leggibile e importabile la parte di AWL che nel sorgente faceva da appoggio tecnico alla sequenza.
 
-### 32.11 Regola sul backbone della sequenza
+### 32.11 Backbone della sequenza
 
 Il backbone non va inferito con rinomina forzata dei nomi passo.
 
-Regola consolidata:
+Sintesi consolidata:
 
 - l'ingresso sequenza e' `step_number=1`;
 - manuale/fault/emergenza restano ruoli semantici da riconoscere nell'IR;
 - il builder GRAPH puo' usare numbering convenzionale quando richiesto dal caso, ma senza imporre nomi hard-coded.
 
-### 32.12 Regola sulle uscite macchina
+### 32.12 Uscite macchina
 
 Le uscite finali non vanno generate direttamente dalle bobine AWL originali.
 
@@ -905,9 +905,9 @@ Nel target TIA le uscite devono nascere dalla composizione di:
 - consensi permanenti;
 - condizioni macchina già normalizzate.
 
-La `FC 19 Output` è quindi un backend combinatorio separato che riceve segnali semantici dal DB base, dal GRAPH, dai DB fissi e dai DB I/O.
+La `FC 16 Output` e' quindi un backend combinatorio separato che riceve segnali semantici dal DB base, dal GRAPH, dai DB fissi e dai DB I/O.
 
-### 32.13 Regola sulla HMI
+### 32.13 HMI
 
 Le condizioni HMI non vanno costruite direttamente da segnali grezzi I/Q/T dell'AWL se esiste già una forma semantica normalizzata.
 
@@ -919,18 +919,18 @@ Il target corretto è:
 
 La HMI va quindi trattata come consumer del modello semantico e non come duplicazione indipendente della logica AWL.
 
-### 32.14 Regola sui fault e sulle emergenze
+### 32.14 Fault ed emergenze
 
 I fault tecnologici e le emergenze non vanno tradotti come insieme casuale di bobine sparse.
 
-La regola corretta è:
+Nella baseline corrente:
 
 - mantenere i DB allarme fissi del progetto come sorgenti o sink stabili;
 - costruire cumulativi semantici di `Fault` ed `Emergency` nel modello base;
 - collegare tali cumulativi ai nodi semantici di fault/emergenza del GRAPH;
 - mantenere separata la diagnostica dettagliata dalla topologia del sequenziatore.
 
-### 32.15 Regola sul naming dei passi GRAPH
+### 32.15 Naming dei passi GRAPH
 
 La numerazione o il naming dei passi GRAPH non deve essere dedotto ciecamente dalla sola numerazione AWL storica.
 
@@ -1103,7 +1103,7 @@ I prossimi passi più utili sono:
 4. estendere i test reali su più tipologie di blocchi XML, mantenendo il target finale sempre in `V2`;
 5. collegare la generazione AWL / Excel -> XML alla pipeline TIA già funzionante;
 6. introdurre una matrice di regressione formale su golden sample importati con successo;
-7. formalizzare nel generatore la regola hard di ingresso (`step_number=1`) e la policy esplicita sui nodi speciali di sicurezza;
+7. formalizzare nel generatore la regola di ingresso (`step_number=1`) e la policy esplicita sui nodi speciali di sicurezza;
 8. fissare in codice una policy esplicita di naming dei passi GRAPH separata dalla numerazione storica AWL.
 
 ---
@@ -1120,13 +1120,13 @@ Questo documento va usato come:
 
 ---
 
-## 41. Regola operativa finale
+## 41. Chiusura operativa
 
-Da questo punto in avanti va considerata fissata una regola pratica:
+Da questo punto in avanti resta valida una pratica operativa:
 
 > prima di generare nuovi artefatti XML o modificare il tool, rileggere la baseline consolidata del progetto e verificare che il caso da emettere rientri nel sottoinsieme di pattern già validati oppure introduca una nuova regola in modo controllato.
 
-Questa non è una regola organizzativa, ma un vincolo tecnico del progetto.
+Questa indicazione non e' organizzativa: deriva dai vincoli tecnici osservati nel progetto.
 
 ---
 
@@ -1159,7 +1159,7 @@ Il file `AWL Romania` conferma in modo più leggibile la struttura reale della F
 
 Di conseguenza il parsing della sequenza può essere considerato più robusto se basato su segmentazione semantica dei segmenti del sorgente, invece che su semplice scansione lineare del listato.
 
-## 44. Regola sul backbone automatico ricorrente della FC102
+## 44. Backbone automatico ricorrente della FC102
 
 Nel caso FC102 il nuovo AWL rende leggibile una catena automatica ricorrente della forma:
 
@@ -1170,11 +1170,11 @@ con rami separati verso:
 - `S29` per il manuale;
 - `S32` per l'emergenza.
 
-Questa osservazione consolida una regola di progetto:
+Questa osservazione consolida una linea di progetto:
 
 > i passi iniziali `1, 2, 3, 4, 7` vanno trattati come pattern forte della sequenza sorgente AWL, presente in modo ricorrente e riconoscibile, anche se il naming finale del GRAPH può essere normalizzato dal builder.
 
-## 45. Regola di distinzione tra passi di sequenza e stati fisici
+## 45. Distinzione tra passi di sequenza e stati fisici
 
 Il nuovo AWL chiarisce che segnali come `UP`, `DOWN` e `STC` non sono passi della macchina a stati.
 
@@ -1184,22 +1184,22 @@ Essi rappresentano invece:
 - consensi di avvio o di processo;
 - memorie semantiche di stato macchina.
 
-Regola consolidata:
+Sintesi consolidata:
 
 > i feedback fisici stabilizzati non devono essere convertiti in step GRAPH; devono essere mappati nel modello target come memorie semantiche o condizioni di transizione, tipicamente nelle aree `Memory` e `Transitions` del `DB 11..`.
 
-## 46. Regola sulla doppia famiglia dei timeout
+## 46. Doppia famiglia dei timeout
 
 Il caso FC102 distingue chiaramente due famiglie diverse di temporizzazioni:
 
 1. timeout di dispositivo o di movimento, che generano fault o diagnostica;
 2. preset temporali di sequenza, che modificano il comportamento del passo attivo.
 
-Regola consolidata:
+Sintesi consolidata:
 
 > i timer di fault e i preset di sequenza non vanno fusi nello stesso ruolo semantico. I primi devono alimentare diagnostica, fault e rami di sicurezza; i secondi devono essere portati nel modello della sequenza e nei backend ausiliari secondo il ruolo effettivo.
 
-## 47. Regola sulle uscite macchina come compilazione semantica
+## 47. Uscite macchina come compilazione semantica
 
 Il nuovo AWL conferma che le uscite finali non derivano da una singola bobina sorgente, ma da formule miste che combinano:
 
@@ -1210,11 +1210,11 @@ Il nuovo AWL conferma che le uscite finali non derivano da una singola bobina so
 - segnali fisici di stato;
 - eventuali lock o fault.
 
-Regola consolidata:
+Sintesi consolidata:
 
-> il backend `FC 19 Output` deve essere un compilatore combinatorio di uscite, non un semplice serializer di bobine AWL.
+> il backend `FC 16 Output` e' un compilatore combinatorio di uscite, non un semplice serializer di bobine AWL.
 
-## 48. Regola sui fault, l'emergenza e il rientro alla sequenza
+## 48. Fault, emergenza e rientro alla sequenza
 
 Il nuovo AWL chiarisce che i fault elementari e i bit allarme fissi vengono prima cumulati semanticamente e solo dopo influenzano la sequenza tramite variabili come `EM`.
 
@@ -1224,11 +1224,11 @@ Da tale cumulativo derivano:
 - gestione del fault/backbone di sicurezza;
 - regole di rientro verso il passo iniziale (numero `1`) dai rami manuale/emergenza quando le condizioni tornano valide.
 
-Regola consolidata:
+Sintesi consolidata:
 
 > il convertitore deve distinguere i dettagli diagnostici dai loro effetti sequenziali. I DB fissi di allarme restano il livello di dettaglio; la sequenza GRAPH deve consumare cumulativi semantici di `Fault` ed `Emergency` agganciati ai rami di sicurezza del modello.
 
-## 49. Regola sulla policy di naming e sul passo finale del ciclo
+## 49. Policy di naming e passo finale del ciclo
 
 Il confronto tra AWL FC102 e controparte TIA mostra che la topologia logica può essere mantenuta anche quando il target GRAPH introduce:
 

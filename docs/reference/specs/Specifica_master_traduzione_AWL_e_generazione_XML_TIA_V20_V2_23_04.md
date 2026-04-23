@@ -84,7 +84,7 @@ Il generatore deve poter emettere almeno le seguenti famiglie architetturali:
 - `FC 12 HMI`;
 - `FC 13 Aux`;
 - `FC 14 Transitions`;
-- `FC 19 Output`;
+- `FC 16 Output`;
 - eventuali blocchi addizionali di servizio coerenti col progetto.
 
 ### 2.4 Esempio verificativo sui file XML di riferimento
@@ -583,7 +583,7 @@ Forma corretta di principio:
 </Access>
 ```
 
-Questo vale per `GRAPH`, `FC 12`, `FC 13`, `FC 14`, `FC 19` e per ogni altro blocco consumer del pacchetto.
+Questo vale per `GRAPH`, `FC 12`, `FC 13`, `FC 14`, `FC 16` e per ogni altro blocco consumer del pacchetto.
 
 ### 26-bis.5 Esempi vincolanti ricavati dagli XML campione
 
@@ -669,9 +669,9 @@ La `FC 13 Aux` deve ricostruire in LAD la parte tecnica del sorgente AWL:
 - riconoscimento stabile di sensori o stati fisici;
 - comandi tecnici derivati.
 
-## 29. Regola sul backend `FC 19 Output`
+## 29. Regola sul backend `FC 16 Output`
 
-La `FC 19 Output` deve generare i comandi finali macchina a partire da segnali semantici già puliti.
+La `FC 16 Output` deve generare i comandi finali macchina a partire da segnali semantici già puliti.
 
 Le uscite devono nascere dalla composizione di:
 
@@ -1761,7 +1761,7 @@ La formula di una uscita target deve essere costruita come combinazione di:
 - lock o fault;
 - eventuali stati fisici già elaborati.
 
-Il backend `FC 19 Output` è quindi un compilatore semantico di formule, non un trascrittore diretto di bobine sorgenti.
+Il backend `FC 16 Output` è quindi un compilatore semantico di formule, non un trascrittore diretto di bobine sorgenti.
 
 ## A.5 Regola sui fault e sull'emergenza
 
