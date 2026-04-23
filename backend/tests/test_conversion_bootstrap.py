@@ -950,3 +950,65 @@ def test_conversion_analyze_ir_groups_same_network_rows_into_single_fc_network()
     assert aux_fc.count("Powerrail") == 1
     assert '<Component Name="AUX_A" />' in aux_fc
     assert '<Component Name="AUX_B" />' in aux_fc
+
+
+def test_conversion_analyze_ir_supports_coil_mode_set_reset_and_default() -> None:
+    client = TestClient(app)
+    res = client.post(
+        "/api/conversion/analyze-ir",
+        json={
+            "sequenceName": "Excel Coil Mode",
+            "sourceName": "excel_coil_mode.xlsx",
+            "ir": {
+                "strict_operand_catalog": True,
+                "operand_catalog": ["M_SET", "M_RST", "M_NORM", "C1", "C2", "C3"],
+                "operand_categories": {
+                    "M_SET": "aux",
+                    "M_RST": "aux",
+                    "M_NORM": "aux",
+                    "C1": "aux",
+                    "C2": "aux",
+                    "C3": "aux",
+                },
+                "support_members": [],
+                "support_logic": [
+                    {
+                        "category": "aux",
+                        "result_member": "M_SET",
+                        "condition_expression": "C1",
+                        "comment": "Set",
+                        "network_index": 1,
+                        "coil_mode": "set",
+                    },
+                    {
+                        "category": "aux",
+                        "result_member": "M_RST",
+                        "condition_expression": "C2",
+                        "comment": "Reset",
+                        "network_index": 2,
+                        "coil_mode": "reset",
+                    },
+                    {
+                        "category": "aux",
+                        "result_member": "M_NORM",
+                        "condition_expression": "C3",
+                        "comment": "Normal",
+                        "network_index": 3,
+                        "coil_mode": "",
+                    },
+                ],
+                "steps": [{"name": "S1"}],
+                "transitions": [],
+            },
+        },
+    )
+    assert res.status_code == 200
+    payload = res.json()
+    aux_fc = next(
+        preview["content"]
+        for preview in payload["artifact_previews"]
+        if preview["artifact_type"] == "support_lad_fc_aux"
+    )
+    assert '<Part Name="SCoil"' in aux_fc
+    assert '<Part Name="RCoil"' in aux_fc
+    assert '<Part Name="Coil"' in aux_fc

@@ -75,6 +75,22 @@ def _infer_operands_from_expression(expression: str) -> list[str]:
     return inferred
 
 
+def _normalize_coil_mode(value: object) -> str:
+    raw = _cell_text(value).strip().lower()
+    if not raw:
+        return ""
+    aliases = {
+        "set": "set",
+        "s": "set",
+        "reset": "reset",
+        "r": "reset",
+    }
+    normalized = aliases.get(raw)
+    if normalized is None:
+        raise ValueError(f"coil_mode non valido: {raw}")
+    return normalized
+
+
 def _int_or_default(value: object, default: int) -> int:
     text = _cell_text(value)
     if not text:
@@ -325,6 +341,7 @@ def _read_support_logic_rows(path: Path) -> list[dict[str, object]]:
             condition_expression = " AND ".join(condition_operands)
         if not condition_operands and condition_expression and condition_expression.upper() != "TRUE":
             condition_operands = _infer_operands_from_expression(condition_expression)
+        coil_mode = _normalize_coil_mode(row.get("coil_mode"))
         logic_rows.append(
             {
                 "category": category,
@@ -333,6 +350,7 @@ def _read_support_logic_rows(path: Path) -> list[dict[str, object]]:
                 "result_member": result_member,
                 "condition_expression": condition_expression or "TRUE",
                 "condition_operands": condition_operands,
+                "coil_mode": coil_mode,
                 "comment": _cell_text(row.get("comment")),
             }
         )

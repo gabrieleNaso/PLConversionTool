@@ -150,6 +150,7 @@ Colonne canoniche di `support_fc`:
 - `member_name`
 - `result_member`
 - `condition_expression`
+- `coil_mode`
 - `comment`
 - `network`
 
@@ -159,6 +160,7 @@ Regole hard:
 - `network` e' il numero rete della FC per ordinare le compile unit;
 - righe con stessa `category` + stesso `network` devono essere aggregate nella stessa CompileUnit FC;
 - ogni rete LAD FC deve contenere un solo `Powerrail`;
+- `coil_mode` e' per-riga: `set` -> `SCoil`, `reset` -> `RCoil`, vuoto -> `Coil`;
 - il commento di rete FC e' confinato alla FC e non puo' essere usato come commento dei member DB;
 - il parser Excel supporta solo fogli e colonne canoniche del formato corrente (nessun alias legacy di foglio/colonna);
 - non e' ammesso introdurre una pipeline separata che dipenda da un foglio FC logico dedicato diverso da `support_fc`.

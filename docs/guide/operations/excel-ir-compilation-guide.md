@@ -121,6 +121,7 @@ Colonne:
 - `member_name`
 - `result_member`
 - `condition_expression`
+- `coil_mode` (opzionale: `set` / `reset`; vuoto = bobina normale)
 - `comment`
 - `network`
 
@@ -135,6 +136,7 @@ Regole pratiche:
 - piu' righe logiche con stessa `category` + stesso `network` vengono aggregate in un'unica network LAD.
 - se vuoi reti distinte, usa numeri `network` diversi.
 - se compili `result_member`/condizione, la FC della categoria usa la logica scritta qui.
+- `coil_mode` e' per-riga: `set` genera `SCoil`, `reset` genera `RCoil`, vuoto genera `Coil` normale.
 - i segnali presenti in `operands` vengono collegati ai DB supporto.
 - i segnali NON presenti in `operands` restano comunque usabili nella logica FC come variabili globali non agganciate a DB.
 - nelle transition GRAPH i simboli sono risolti per owner DB: una condizione puo' leggere variabili da DB diversi nella stessa rete.
@@ -154,13 +156,14 @@ Regole pratiche:
   - `(M1 AND NOT M2) OR M3`
 
 Formato riga consigliato:
-`category | member_name | result_member | condition_expression | comment | network`
+`category | member_name | result_member | condition_expression | coil_mode | comment | network`
 
 Esempi:
 - `io | I_START_BTN |  |  |  | Pulsante start |`
 - `io | I_STOP_BTN |  |  |  | Pulsante stop |`
-- `io |  | RUN_ENABLE | I_START_BTN AND NOT I_STOP_BTN | I_START_BTN;I_STOP_BTN | Rete start/stop | 1`
-- `output | Q_MOTOR_CMD | Q_MOTOR_CMD | RUN_ENABLE AND SAFETY_OK | RUN_ENABLE;SAFETY_OK | Comando motore | 1`
+- `io |  | RUN_ENABLE | I_START_BTN AND NOT I_STOP_BTN |  | Rete start/stop | 1`
+- `aux |  | MOTOR_LATCH | RUN_ENABLE | set | Set marcia | 2`
+- `aux |  | MOTOR_LATCH | STOP_BTN OR FAULT | reset | Reset marcia | 3`
 
 Checklist compilazione manuale FC:
 1. Compila sempre `support_fc` (almeno una riga valida con `member_name` e/o `result_member`).

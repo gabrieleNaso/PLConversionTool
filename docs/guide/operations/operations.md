@@ -195,7 +195,7 @@ Output nel bundle:
 Fogli Excel consigliati:
 - `sequence`: `step_name`, `numero_step`, `transition_id`, `from_step`, `to_step`, `condition_expression`, `flow_type`, `parallel_group`
 - `operands`: `operand`, `category`, `datatype`, `control_kind`, `control_value`, `note`
-- `support_fc` (obbligatorio, pagina unica FC): `category`, `member_name`, `result_member`, `condition_expression`, `comment`, `network`
+- `support_fc` (obbligatorio, pagina unica FC): `category`, `member_name`, `result_member`, `condition_expression`, `coil_mode`, `comment`, `network`
 
 Regole Excel importanti:
 - l'inizio sequenza e' il passo con `numero_step=1` (non dal nome del passo);
@@ -209,6 +209,7 @@ Regole Excel importanti:
 - timer/contatori definiti in `operands` e usati in `support_fc` vengono emessi come blocchi LAD completi, con preset da `control_value`.
 - se piu' righe `support_fc` hanno stessa `category` e stesso `network`, vengono aggregate in una sola network FC.
 - ogni network FC deve avere un solo `Powerrail` LAD (vincolo import TIA).
+- `coil_mode` per riga: `set` -> `SCoil`, `reset` -> `RCoil`, vuoto -> bobina normale (`Coil`).
 - `operands` e `support_fc` sono obbligatori: se manca uno dei due (o e' vuoto), `generate-excel-ir` termina con errore.
 - nelle espressioni logiche (`condition_expression` / `guard_expression`) sono supportate parentesi e precedenza booleana.
 - il generatore deduce automaticamente gli operandi da `condition_expression`/`guard_expression` (non servono colonne operandi dedicate nel formato corrente).

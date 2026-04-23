@@ -3028,6 +3028,7 @@ def _build_support_lad_compile_units(
                     continue
                 condition_expression = str(logic_row.get("condition_expression") or "TRUE")
                 condition_operands = _as_str_list(logic_row.get("condition_operands"))
+                coil_mode = str(logic_row.get("coil_mode") or "").strip()
                 explicit_comment = str(logic_row.get("comment") or "").strip()
                 if not comment and explicit_comment:
                     comment = explicit_comment
@@ -3042,6 +3043,7 @@ def _build_support_lad_compile_units(
                         symbol_home_db_map=symbol_home_db_map,
                         member_datatypes=member_datatypes,
                         timer_configs=timer_configs,
+                        coil_mode=coil_mode,
                         prefer_current_db_for_unmapped=prefer_current_db_for_unmapped,
                     )
                 )
@@ -3120,6 +3122,7 @@ def _build_support_lad_compile_units(
             symbol_home_db_map=symbol_home_db_map,
             member_datatypes=member_datatypes,
             timer_configs=timer_configs,
+            coil_mode="",
             prefer_current_db_for_unmapped=prefer_current_db_for_unmapped,
         )
         units.append(
@@ -3271,6 +3274,7 @@ def _build_support_logic_flgnet(
     symbol_home_db_map: dict[str, str],
     member_datatypes: dict[str, str],
     timer_configs: dict[str, dict[str, str]],
+    coil_mode: str = "",
     prefer_current_db_for_unmapped: bool = False,
 ) -> str:
     next_uid = 21
@@ -3282,6 +3286,12 @@ def _build_support_logic_flgnet(
         return current
 
     normalized_result = _support_member_name(result_member, "", strict_excel_mode=True)
+    normalized_coil_mode = str(coil_mode or "").strip().lower()
+    coil_part_name = "Coil"
+    if normalized_coil_mode in {"set", "s"}:
+        coil_part_name = "SCoil"
+    elif normalized_coil_mode in {"reset", "r"}:
+        coil_part_name = "RCoil"
     guard_clauses = _parse_guard_clauses(condition_expression, condition_operands)
     guard_clauses, common_terms = _factor_common_guard_terms(guard_clauses)
     clause_contact_uids: list[list[int]] = []
@@ -3396,7 +3406,7 @@ def _build_support_logic_flgnet(
     coil_access_uid = alloc_uid()
     coil_uid = alloc_uid()
     parts_lines.extend(_render_access(normalized_result, [normalized_result], coil_access_uid))
-    parts_lines.append(f'    <Part Name="Coil" UId="{coil_uid}" />\n')
+    parts_lines.append(f'    <Part Name="{coil_part_name}" UId="{coil_uid}" />\n')
     coil_operand_wire_uid = alloc_uid()
     wires_lines.extend(
         [
@@ -3842,6 +3852,7 @@ def _excel_support_logic_rows(
                 "result_member": result_member,
                 "condition_expression": condition_expression,
                 "condition_operands": operands,
+                "coil_mode": str(item.get("coil_mode") or "").strip(),
                 "comment": str(item.get("comment") or "").strip(),
                 "network_index": item_network,
             }

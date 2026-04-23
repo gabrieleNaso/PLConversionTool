@@ -48,6 +48,7 @@ def test_support_fc_infers_condition_operands_from_expression(tmp_path: Path) ->
             "result_member",
             "condition_expression",
             "condition_operands",
+            "coil_mode",
             "comment",
             "network",
         ]
@@ -59,6 +60,7 @@ def test_support_fc_infers_condition_operands_from_expression(tmp_path: Path) ->
             "AUX_CMD",
             "AUX_SIG AND NOT AUX_BLOCK",
             "",
+            "set",
             "Rete AUX",
             1,
         ]
@@ -69,3 +71,4 @@ def test_support_fc_infers_condition_operands_from_expression(tmp_path: Path) ->
     rows = _read_support_logic_rows(excel_path)
     assert len(rows) == 1
     assert rows[0]["condition_operands"] == ["AUX_SIG", "AUX_BLOCK"]
+    assert rows[0]["coil_mode"] == "set"
