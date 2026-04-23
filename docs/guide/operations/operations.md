@@ -35,7 +35,7 @@ La configurazione sta nelle variabili ambiente del compose (`compose.dev.yml` / 
 Valorizza l'URL dell'agent Windows, ad esempio:
 
 ```text
-TIA_WINDOWS_AGENT_URL=http://192.167.1.41:8050
+TIA_WINDOWS_AGENT_URL=http://192.168.1.41:8050
 ```
 
 Controllo rapido dallo status:
@@ -69,10 +69,9 @@ Output:
 - un bundle per file in `data/output/generated/<nome>/`
 - file baseline sempre presenti:
   - `FB_<Name>_GRAPH_auto.xml`
-  - `DB_<Name>_global_auto.xml`
-  - `FC_<Name>_lad_auto.xml`
+  - `FC14_<Name>_transitions_lad_auto.xml`
   - `<Name>_analysis.json`
-- in base al contenuto AWL possono comparire anche altri `DB_*` e `FC_*` di supporto
+- in base al contenuto AWL compaiono anche `DB_*` e `FC_*` di supporto (incluse le famiglie DB operative del pacchetto)
 
 Comportamento importante:
 - la cartella del bundle target viene **pulita automaticamente** prima della nuova generazione;
@@ -190,7 +189,9 @@ make generate-excel
 Output nel bundle:
 - `<Name>_ir.json` (IR estratto dall'Excel)
 - `<Name>_analysis.json` (analisi completa usata per generare XML)
-- XML baseline e support per `GRAPH + DB + FC`
+- XML baseline e support per `GRAPH + DB + FC`:
+  - baseline manifest: `graph_fb` + `lad_fc`
+  - support manifest/previews: DB e FC di supporto (`support_global_db_*`, `support_lad_fc_*`)
 
 Fogli Excel consigliati:
 - `sequence`: `step_name`, `numero_step`, `transition_id`, `from_step`, `to_step`, `condition_expression`, `flow_type`, `parallel_group`
@@ -204,7 +205,8 @@ Regole Excel importanti:
 - in modalita' strict Excel, i commenti DB derivano solo da commenti espliciti del member e da `operands.note`; se mancanti, restano vuoti.
 - i commenti di rete FC (`support_fc.comment`) restano nelle FC e non vengono copiati nei DB.
 - in `operands.category` usa solo categorie funzionali (`alarm`, `aux`, `hmi`, `output`, `memory`, `external`, `lv2`/`lev2`, `transition`/`transitions`).
-- `mode` non e' una categoria valida lato Excel: per LEV2 usa sempre `lv2` (oppure alias `lev2`).
+- alias legacy `timer`/`counter`/`manual_mode`/`auto_mode` sono accettati dal parser e normalizzati a `aux`.
+- per LEV2 usa `lv2`/`lev2`; la categoria `mode` non viene normalizzata automaticamente a LEV2 nel parser `operands`.
 - variabili FC non presenti in `operands` non vengono dichiarate nei DB supporto, ma restano utilizzabili nella logica FC come simboli globali non agganciati a DB.
 - timer/contatori definiti in `operands` e usati in `support_fc` vengono emessi come blocchi LAD completi, con preset da `control_value`.
 - se piu' righe `support_fc` hanno stessa `category` e stesso `network`, vengono aggregate in una sola network FC.
@@ -264,7 +266,7 @@ curl -sS "http://127.0.0.1:8000/api/tia/jobs/<JOB_ID>"
 - **Naming famiglie blocchi**: le FC seguono la famiglia numerica prevista; `15GG` e' riservato al GRAPH (`FB15GG`) e al suo DB istanza TIA (`DB15GG SEQ`) generato automaticamente.
 - **Profilo target corretto**:
   - FC: `FC11` Alarms, `FC12` HMI, `FC13` Aux, `FC14` Transitions, `FC16` Output, `FC17` LEV2
-  - DB custom: `DB11` base/alarms, `DB12` HMI, `DB13` PARAMETERS, `DB16` I/O, `DB17` LEV2, `DB18` external, `DB19` AUX
+  - DB custom: `DB11` alarms, `DB12` HMI, `DB13` PARAMETERS, `DB14` transitions, `DB16` I/O + output, `DB17` LEV2, `DB18` external, `DB19` AUX
   - FB/istanza: `FB15` GRAPH + `DB15` SEQ (istanza TIA automatica)
 
 ## Problemi comuni (e cosa fare)

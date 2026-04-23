@@ -109,7 +109,7 @@ Il confronto tra i documenti normativi aggiornati e i file XML reali oggi dispon
 - I casi legacy come `T1-A ARUNC LEV2` confermano che nel corpus storico esistono sequenze e strutture dati utili per il reverse engineering semantico, ma non necessariamente allineate alla partizione target chiusa del nuovo convertitore.
 - Mappa famiglie consolidata al 23-04-2026 (forma `XXGG`): `11GG` alarms/diag, `12GG` hmi (`12GG` = DB HMI), `13GG` aux, `14GG` transitions, `15GG` graph, `16GG` sequenza, `17GG` LEV2, `18GG` external, `19GG` output.
 - `DB15GG SEQ` va considerato DB istanza del GRAPH generato da TIA: non deve essere emesso dal convertitore come DB custom.
-- Profilo operativo corretto: `FC11/12/13/14/16/17`, `FB15`, DB custom `11/12/13/16/17/18/19` + `DB15` solo istanza TIA.
+- Profilo operativo corretto: `FC11/12/13/14/16/17`, `FB15`, DB custom `11/12/13/14/16/17/18/19` + `DB15` solo istanza TIA.
 - La famiglia `17GG` e' riservata a `LEV2` e va considerata parte del modello target quando prevista dal caso reale.
 - Nel flusso Excel l'ownership DB e' determinata da `operands`: uso cross-FC ammesso ma senza migrazione del DB owner della variabile.
 
@@ -216,7 +216,7 @@ Il modello corretto, osservato sia nell'analisi AWL sia negli XML di riferimento
 In pratica, il GRAPH resta l'artefatto unico che formalizza la topologia sequenziale; i DB possono articolarsi in contenitori distinti come base, sequenza, HMI, AUX, I-O, parameters, EXT o altri DB coerenti col tipico; allo stesso modo le FC possono articolarsi in famiglie diverse come HMI, Aux, Transitions, Output, handshake, manuale o altri servizi additivi.
 
 L'esempio reale del pacchetto XML `T1-A ARUNC` rende il punto molto chiaro: si osserva un solo blocco sequenziale `05 T1-A ARUNC Sequence`, ma più FC di supporto (`02 T1-A ARUNC HMI`, `03 T1-A ARUNC Aux`, `04 T1-A ARUNC Transitions`, `06 T1-A ARUNC Output`, `07 T1-A ARUNC LEV2`) e più DB (`T1-A ARUNC`, `T1-A ARUNC HMI`, `T1-A ARUNC I-O`, `T1-A ARUNC AUX`, `T1-A ARUNC PARAMETERS`, `T1-A ARUNC LEV2`, oltre ai DB esterni `DB81-OPIN` e `DB82-OPOUT`).
-La numerazione `02/03/04/06/07` resta una evidenza del campione storico; nel convertitore corrente la naming FC e' allineata ai DB (`FC12/FC13/FC14/FC19` + eventuali FC di servizio).
+La numerazione `02/03/04/06/07` resta una evidenza del campione storico; nel convertitore corrente il profilo FC operativo e' `FC11/FC12/FC13/FC14/FC16/FC17`.
 
 La conseguenza architetturale è che l'IR deve descrivere una sola topologia GRAPH per sequenza AWL, mentre i backend DB e FC devono restare variabili nella cardinalità e aderire alla partizione reale del caso tradotto.
 

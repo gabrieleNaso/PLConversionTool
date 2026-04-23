@@ -97,7 +97,7 @@ Nel pacchetto `T1-A ARUNC` il comportamento atteso del generatore è confermato 
 
 Nota di allineamento naming convertitore:
 - la numerazione `02/03/04/06/07` e' quella osservata nei campioni storici;
-- nel convertitore corrente le famiglie FC sono allineate ai DB in formato `XXGG`: `FC12` HMI, `FC13` Aux, `FC14` Transitions, `FC19` Output (piu' eventuali FC di servizio coerenti alla famiglia prevista).
+- nel convertitore corrente il profilo FC operativo e' `FC11/FC12/FC13/FC14/FC16/FC17` (alarms, HMI, aux, transitions, output, LEV2).
 
 Questo esempio va usato come verifica di cardinalità del pacchetto, non come eccezione.
 
@@ -424,7 +424,7 @@ Mappa famiglie consolidata:
 Nota operativa vincolante:
 - `DB15GG SEQ` e' il DB istanza FB GRAPH creato da TIA in fase import/runtime;
 - il convertitore non deve emettere `DB15GG` come DB custom applicativo.
-- profilo blocchi correntemente adottato (modo corretto): FC `11/12/13/14/16/17`, FB `15`, DB custom `11/12/13/16/17/18/19` con `DB15` riservato alla sola istanza TIA.
+- profilo blocchi correntemente adottato (modo corretto): FC `11/12/13/14/16/17`, FB `15`, DB custom `11/12/13/14/16/17/18/19` con `DB15` riservato alla sola istanza TIA.
 - la famiglia `17GG` e' riservata a `LEV2` e va trattata come famiglia normativa del convertitore quando il caso reale la richiede.
 
 ## 21. Regola sui DB di progetto

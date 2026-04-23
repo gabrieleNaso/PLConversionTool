@@ -113,7 +113,7 @@ Flusso tipico:
 1. Backend chiama `POST /api/tia/jobs/import`.
 2. Bridge inoltra all'agent Windows.
 3. L'agent usa le DLL Openness per importare in TIA.
-4. Il bridge accoda automaticamente una `compile` sullo stesso target.
+4. La `compile` va richiesta esplicitamente con `POST /api/tia/jobs/compile` quando serve.
 
 ## 6) Output finale in TIA
 
@@ -140,4 +140,3 @@ Il risultato corretto e' un progetto TIA che:
 - Checklists: `docs/guide/checklists/workflow-checklists.md`
 - Convenzioni: `docs/guide/standards/conventions.md`
 - Integrazione TIA: `docs/guide/integration/tia-integration.md`
-- Architettura: `docs/architettura/plant.uml`

@@ -90,8 +90,8 @@ Categorie supportate:
 - `transition`/`transitions` -> owner DB TRANSITIONS
 
 Nota importante:
-- `timer`, `counter`, `manual_mode`, `auto_mode` non sono categorie valide nel foglio `operands`.
-- `mode` non e' una categoria valida in input Excel: usa `lv2` (o `lev2`).
+- alias legacy `timer`, `counter`, `manual_mode`, `auto_mode` sono accettati e normalizzati a `aux`.
+- in input Excel per LEV2 usare `lv2` (o `lev2`): `mode` non viene normalizzata automaticamente a LEV2 nel foglio `operands`.
 - timer/contatori si definiscono tramite `datatype` (`IEC_TIMER`/`IEC_COUNTER`) + `control_kind` + `control_value`.
 
 ## 4) Regola Strict DB (Excel)
@@ -223,8 +223,9 @@ Regole consolidate (23-04-2026):
 - profilo blocchi target corretto (con `GG` variabile):
   - FC: `FC11` Alarms, `FC12` HMI, `FC13` Aux, `FC14` Transitions, `FC16` Output, `FC17` LEV2
   - FB: `FB15` Sequence (GRAPH)
-  - DB custom: `DB11` base/alarms, `DB12` HMI, `DB13` PARAMETERS, `DB16` I/O, `DB17` LEV2, `DB18` external, `DB19` AUX
+  - DB custom: `DB11` alarms, `DB12` HMI, `DB13` PARAMETERS, `DB14` transitions, `DB16` I/O + output, `DB17` LEV2, `DB18` external, `DB19` AUX
   - DB istanza TIA: `DB15` SEQ (auto-creato da TIA, non serializzato dal tool)
+- nota sul manifest conversione: la voce `baseline` contiene `graph_fb` + `lad_fc`; i DB sono esposti nelle sezioni `support_*`.
 - anche quando una famiglia DB/FC non ha member valorizzati dall'Excel, il blocco viene comunque emesso con placeholder per mantenere il pacchetto completo.
 - le variabili usate nelle FC possono essere cross-categoria, ma il DB owner non cambia:
   - il DB owner e' determinato dal catalogo `operands`;

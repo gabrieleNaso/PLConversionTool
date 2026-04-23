@@ -15,7 +15,5 @@
 - `templates/reports/daily-report-template.md`
 
 ## Riferimenti
-- `reference/reports/report-2026-04-15.md`
-- `reference/reports/report_del_15-04-2026.md`
-- `reference/specs/spec-awl-xml-tia-v20-2026-04-15.md`
-- `reference/specs/Specifica_master_traduzione_AWL_e_generazione_XML_TIA_V20_V2_15_04.md`
+- `reference/reports/report_del_23-04-2026.md`
+- `reference/specs/Specifica_master_traduzione_AWL_e_generazione_XML_TIA_V20_V2_23_04.md`

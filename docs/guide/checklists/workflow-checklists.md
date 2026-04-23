@@ -1,7 +1,7 @@
 # Checklist operative (TIA Portal V20 / GRAPH V2)
 
 Queste checklist sono da eseguire sempre prima di perdere tempo su debug casuale.
-Fonte: `docs/reference/reports/report-2026-04-15.md` e `docs/reference/specs/spec-awl-xml-tia-v20-2026-04-15.md`.
+Fonte: `docs/reference/reports/report_del_23-04-2026.md` e `docs/reference/specs/Specifica_master_traduzione_AWL_e_generazione_XML_TIA_V20_V2_23_04.md`.
 
 Regola trasversale:
 - `FB GRAPH`, `GlobalDB`, `FC LAD` e ogni eventuale blocco aggiuntivo vanno verificati come pacchetto coerente.
