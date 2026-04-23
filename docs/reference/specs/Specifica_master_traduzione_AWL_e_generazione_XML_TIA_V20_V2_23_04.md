@@ -416,6 +416,7 @@ Mappa famiglie consolidata:
 - `14GG` -> transitions;
 - `15GG` -> GRAPH (FB);
 - `16GG` -> sequenza;
+- `17GG` -> LEV2;
 - `18GG` -> external;
 - `19GG` -> output.
 
@@ -423,6 +424,7 @@ Nota operativa vincolante:
 - `DB15GG SEQ` e' il DB istanza FB GRAPH creato da TIA in fase import/runtime;
 - il convertitore non deve emettere `DB15GG` come DB custom applicativo.
 - profilo blocchi correntemente adottato (modo corretto): FC `11/12/13/14/16/17`, FB `15`, DB custom `11/12/13/16/17/18/19` con `DB15` riservato alla sola istanza TIA.
+- la famiglia `17GG` e' riservata a `LEV2` e va trattata come famiglia normativa del convertitore quando il caso reale la richiede.
 
 ## 21. Regola sui DB di progetto
 
@@ -433,12 +435,13 @@ La distribuzione corretta dei dati è:
 - `13GG` = DB AUX;
 - `14GG` = DB transitions;
 - `16GG` = DB sequenza;
+- `17GG` = DB LEV2;
 - `18GG` = DB `EXT`;
 - `19GG` = DB output.
 
 ## 21-bis. Regola di natura normativa della partizione target
 
-La partizione per famiglie `11GG/12GG/13GG/14GG/15GG/16GG/18GG/19GG` definita in questa specifica e' una regola del convertitore target e del serializer finale.
+La partizione per famiglie `11GG/12GG/13GG/14GG/15GG/16GG/17GG/18GG/19GG` definita in questa specifica e' una regola del convertitore target e del serializer finale.
 
 Non deve essere letta come vincolo retroattivo sui tipici legacy del corpus.
 

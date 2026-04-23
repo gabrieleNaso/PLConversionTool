@@ -107,9 +107,10 @@ Il confronto tra i documenti normativi aggiornati e i file XML reali oggi dispon
 - Il modello HMI va esplicitato su due livelli: condizioni elementari nel path `Conditions.<gruppo>.Conditions.nX` e metadati/stati di gruppo nello stesso owner DB HMI, con campi del tipo `PopUpNumber`, `ConditionOK`, `Visible`, `FO` o equivalenti previsti dal modello finale.
 - I DB esterni fissi di integrazione, quando presenti, costituiscono un contratto rigido di naming. In particolare i pattern `Pnnn` e `Lnnn` osservati in `DB81-OPIN` e `DB82-OPOUT` non devono essere rinominati liberamente dal generatore.
 - I casi legacy come `T1-A ARUNC LEV2` confermano che nel corpus storico esistono sequenze e strutture dati utili per il reverse engineering semantico, ma non necessariamente allineate alla partizione target chiusa del nuovo convertitore.
-- Mappa famiglie consolidata al 23-04-2026 (forma `XXGG`): `11GG` alarms/diag, `12GG` hmi (`12GG` = DB HMI), `13GG` aux, `14GG` transitions, `15GG` graph, `16GG` sequenza, `18GG` external, `19GG` output.
+- Mappa famiglie consolidata al 23-04-2026 (forma `XXGG`): `11GG` alarms/diag, `12GG` hmi (`12GG` = DB HMI), `13GG` aux, `14GG` transitions, `15GG` graph, `16GG` sequenza, `17GG` LEV2, `18GG` external, `19GG` output.
 - `DB15GG SEQ` va considerato DB istanza del GRAPH generato da TIA: non deve essere emesso dal convertitore come DB custom.
 - Profilo operativo corretto: `FC11/12/13/14/16/17`, `FB15`, DB custom `11/12/13/16/17/18/19` + `DB15` solo istanza TIA.
+- La famiglia `17GG` e' riservata a `LEV2` e va considerata parte del modello target quando prevista dal caso reale.
 - Nel flusso Excel l'ownership DB e' determinata da `operands`: uso cross-FC ammesso ma senza migrazione del DB owner della variabile.
 
 ## 2-quater. Integrazioni finali flusso Excel/GRAPH (23-04-2026)
@@ -692,7 +693,7 @@ Regola generale:
 - il formato e' `XXGG`, dove `XX` identifica la famiglia e `GG` e' il gruppo comune della traduzione;
 - `03` e' un esempio operativo di `GG`, non un valore fisso.
 
-Mappa famiglie consolidata: `11GG` alarms/diag, `12GG` hmi (`12GG` = DB HMI), `13GG` aux, `14GG` transitions, `15GG` graph, `16GG` sequenza, `18GG` external, `19GG` output.
+Mappa famiglie consolidata: `11GG` alarms/diag, `12GG` hmi (`12GG` = DB HMI), `13GG` aux, `14GG` transitions, `15GG` graph, `16GG` sequenza, `17GG` LEV2, `18GG` external, `19GG` output.
 
 Nota: `DB15GG SEQ` e' l'istanza FB GRAPH generata da TIA; il convertitore non deve serializzarla come DB applicativo.
 
@@ -1096,7 +1097,7 @@ Alla data del 23-04-2026 la baseline consolidata del progetto è la seguente.
 
 I prossimi passi più utili sono:
 
-1. formalizzare un IR unico di progetto per sequenza, dati e reti, gia' coerente con la mappa famiglie `11/12/13/14/15/16/18/19` in formato `XXGG`;
+1. formalizzare un IR unico di progetto per sequenza, dati e reti, gia' coerente con la mappa famiglie `11/12/13/14/15/16/17/18/19` in formato `XXGG`;
 2. costruire una libreria di pattern GRAPH e FC esplicitamente convalidati;
 3. implementare validator e linter come parte obbligatoria della pipeline;
 4. estendere i test reali su più tipologie di blocchi XML, mantenendo il target finale sempre in `V2`;
