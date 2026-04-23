@@ -897,3 +897,56 @@ def test_conversion_analyze_ir_uses_member_comment_for_fallback_fc_network() -> 
         if preview["artifact_type"] == "support_lad_fc_aux"
     )
     assert '<Text>Commento solo member</Text>' in aux_fc
+
+
+def test_conversion_analyze_ir_groups_same_network_rows_into_single_fc_network() -> None:
+    client = TestClient(app)
+    res = client.post(
+        "/api/conversion/analyze-ir",
+        json={
+            "sequenceName": "Excel Same Network",
+            "sourceName": "excel_same_network.xlsx",
+            "ir": {
+                "strict_operand_catalog": True,
+                "operand_catalog": ["AUX_A", "AUX_B", "IN_1", "IN_2"],
+                "operand_categories": {
+                    "AUX_A": "aux",
+                    "AUX_B": "aux",
+                    "IN_1": "aux",
+                    "IN_2": "aux",
+                },
+                "support_members": [],
+                "support_logic": [
+                    {
+                        "category": "aux",
+                        "result_member": "AUX_A",
+                        "condition_expression": "IN_1",
+                        "condition_operands": ["IN_1"],
+                        "comment": "Rete AUX",
+                        "network_index": 1,
+                    },
+                    {
+                        "category": "aux",
+                        "result_member": "AUX_B",
+                        "condition_expression": "IN_2",
+                        "condition_operands": ["IN_2"],
+                        "comment": "",
+                        "network_index": 1,
+                    },
+                ],
+                "steps": [{"name": "S1"}],
+                "transitions": [],
+            },
+        },
+    )
+    assert res.status_code == 200
+    payload = res.json()
+    aux_fc = next(
+        preview["content"]
+        for preview in payload["artifact_previews"]
+        if preview["artifact_type"] == "support_lad_fc_aux"
+    )
+    assert aux_fc.count('<SW.Blocks.CompileUnit ID="') == 1
+    assert aux_fc.count("Powerrail") == 1
+    assert '<Component Name="AUX_A" />' in aux_fc
+    assert '<Component Name="AUX_B" />' in aux_fc

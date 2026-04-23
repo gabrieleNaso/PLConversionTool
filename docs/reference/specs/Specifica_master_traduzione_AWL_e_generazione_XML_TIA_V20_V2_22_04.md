@@ -1,4 +1,4 @@
-Specifica master consolidata del 22-04-2026
+Specifica master consolidata del 23-04-2026
 per le regole di traduzione e generazione XML
 AWL / Excel -> IR -> GRAPH / GlobalDB / FC LAD per TIA Portal V20
 
@@ -136,7 +136,7 @@ Non è ammesso introdurre un backend XML separato che trasformi direttamente l'E
 
 L'Excel va quindi trattato come sorgente alternativa di modellazione e catalogazione, non come formato finale di emissione.
 
-### 4-ter. Contratto fogli Excel (formato consolidato 22-04-2026)
+### 4-ter. Contratto fogli Excel (formato consolidato 23-04-2026)
 
 Per il percorso Excel del convertitore, il contratto minimo dei fogli e' da considerare hard:
 
@@ -158,10 +158,13 @@ Regole hard:
 
 - almeno una riga valida in `support_fc` con `member_name` e/o `result_member`;
 - `network` e' il numero rete della FC per ordinare le compile unit;
+- righe con stessa `category` + stesso `network` devono essere aggregate nella stessa CompileUnit FC;
+- ogni rete LAD FC deve contenere un solo `Powerrail`;
+- il commento di rete FC e' confinato alla FC e non puo' essere usato come commento dei member DB;
 - il parser Excel supporta solo fogli e colonne canoniche del formato corrente (nessun alias legacy di foglio/colonna);
 - non e' ammesso introdurre una pipeline separata che dipenda da un foglio FC logico dedicato diverso da `support_fc`.
 
-### 4-quater. Categorie Excel e ownership DB (consolidato 22-04-2026)
+### 4-quater. Categorie Excel e ownership DB (consolidato 23-04-2026)
 
 Nel foglio `operands` le categorie funzionali ammesse sono:
 
@@ -918,6 +921,9 @@ Regola aggiuntiva per IR da Excel (modalita' strict):
 - la logica transizioni GRAPH deve mantenere gli operandi della condizione;
 - la dichiarazione member nei `GlobalDB` deve usare il catalogo `operands` dell'Excel (piu' categorie derivate);
 - non e' ammesso introdurre member DB non catalogati per inferenza non esplicita.
+- i commenti DB devono derivare solo da commenti member espliciti e/o `operands.note`;
+- i commenti rete FC (`support_fc.comment`) non devono essere propagati nei tag DB;
+- se commenti e note non sono valorizzati, il commento DB resta vuoto.
 - per le FC di supporto, member e logica devono essere letti dal foglio unico `support_fc` secondo il contratto di cui alla sezione 4-ter.
 
 ### Composizione canonica
@@ -1687,11 +1693,13 @@ Nota operativa di orchestrazione:
 - nel workflow mediato da `tia-bridge`, `import` e `compile` sono operazioni esplicite e separate;
 - il tracciamento end-to-end deve considerare i due `JobId` distinti (import e compile), senza dipendere da compile automatica post-import.
 
-Nota operativa Excel FC (consolidata al 22-04-2026):
+Nota operativa Excel FC (consolidata al 23-04-2026):
 
 - i tag con `datatype=IEC_TIMER` e `control_kind` coerente (`t_on`, `t_off`, `t_p`) devono generare blocchi LAD timer completi con `PT` derivato da `control_value`;
 - i tag con `datatype=IEC_COUNTER` e `control_kind` coerente (`ctu`, `ctd`, `ctud`) devono generare blocchi LAD contatore completi con `PV` derivato da `control_value`;
 - i pin obbligatori non valorizzati nel foglio Excel devono essere cablati con default sicuro per garantire import robusto su TIA.
+- le righe FC con stesso `network` devono generare una sola rete LAD aggregata;
+- nella rete aggregata deve essere presente un solo `Powerrail`.
 
 ## 10. Regole finali da non violare
 
@@ -1774,7 +1782,7 @@ Il naming finale dei passi GRAPH resta invece una policy del builder, che può:
 - introdurre step di chiusura o fine ciclo, purché il comportamento funzionale resti equivalente.
 
 
-# Appendice B - Integrazioni consolidate al 22-04-2026
+# Appendice B - Integrazioni consolidate al 23-04-2026
 
 ## B.1 Regola di prevalenza normativa
 In caso di conflitto tra una convenzione di repository, un'abitudine storica del team o una semplificazione implementativa del tool, prevale sempre la presente specifica.

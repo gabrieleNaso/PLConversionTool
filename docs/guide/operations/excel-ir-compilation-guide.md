@@ -2,12 +2,15 @@
 
 Obiettivo: compilare un Excel leggibile per generare `IR JSON` e XML TIA (`FB/DB/FC`) senza passare da AWL.
 
-Aggiornato al `22-04-2026`:
+Aggiornato al `23-04-2026`:
 - timer e contatori in `support_fc` vengono generati come blocchi LAD completi (non come contatti semplici);
 - il preset usa sempre `operands.control_value` (`PT` per timer, `PV` per contatori).
 - nelle transition GRAPH viene mantenuta la logica booleana reale dell'Excel (non fallback su marker `T1/T2`);
 - nelle transition GRAPH ogni variabile e' risolta sul DB owner corretto dal catalogo `operands` (cross-DB);
 - i blocchi supporto vengono creati sempre anche se vuoti (placeholder `NoData`), incluso `DB14 ... transitions`.
+- separazione commenti FC/DB: i commenti delle reti FC non vengono copiati nei tag DB.
+- commenti DB non autocompilati: se non presenti in Excel (o in `operands.note`), restano vuoti.
+- righe `support_fc` con stesso `network` e stessa `category` vengono aggregate nella stessa rete FC (con un solo power rail LAD).
 
 Template consigliato:
 - `docs/templates/ir_excel_template_single_page_with_support_fc.xlsx` (pagina FC completa: `support_fc` obbligatoria)
@@ -69,7 +72,10 @@ Colonne:
 
 Uso di `note` e `comment`:
 - `operands.note` viene propagata nei commenti dei member DB quando il segnale viene dichiarato nel DB owner.
-- `support_fc.comment` viene usata come commento della network LAD generata per quella riga logica.
+- `support_fc.comment` viene usata solo come commento della rete FC.
+- i commenti FC (`support_fc.comment`) non vengono propagati nei commenti dei member DB.
+- in modalita' strict Excel, i commenti DB derivano solo da commenti espliciti `support_fc.member_name`/`support_members` e da `operands.note`.
+- se commenti e note non sono valorizzati, il commento DB resta vuoto (nessun testo automatico).
 
 Nota timer:
 - `trigger_operands` non e' piu' usato nel foglio `operands`; i trigger/consensi si modellano nella logica FC (`support_fc`).
@@ -127,8 +133,9 @@ Regole pratiche:
   - riga mista (member + logica insieme).
 - se compili una categoria qui, il generatore usa questi dati invece dell'inferenza automatica.
 - `operands` resta comunque obbligatorio e continua a governare il catalogo strict DB.
-- una riga logica = una network LAD della FC della categoria.
 - `network` e' il numero rete (1, 2, 3, ...): usa questo campo per ordinare e separare le reti.
+- piu' righe logiche con stessa `category` + stesso `network` vengono aggregate in un'unica network LAD.
+- se vuoi reti distinte, usa numeri `network` diversi.
 - se compili `result_member`/condizione, la FC della categoria usa la logica scritta qui.
 - i segnali presenti in `operands` vengono collegati ai DB supporto.
 - i segnali NON presenti in `operands` restano comunque usabili nella logica FC come variabili globali non agganciate a DB.
@@ -195,7 +202,7 @@ make import-generated \
   IMPORT_BUNDLE="<nome_bundle>"
 ```
 
-Regole consolidate (22-04-2026):
+Regole consolidate (23-04-2026):
 - `import-generated` esegue polling automatico del job import.
 - i numeri blocco sono il valore reale XML `<Number>` (non il prefisso nel nome file).
 - il suffisso finale e' il numero comune di gruppo (`GG`): `03` e' un esempio, non un valore obbligatorio.
@@ -221,3 +228,4 @@ Regole consolidate (22-04-2026):
   - il DB owner e' determinato dal catalogo `operands`;
   - se una variabile e' usata in un'altra FC, resta referenziata nel DB owner originale;
   - eccezione di robustezza per `FC transitions`: se una variabile non ha owner risolto, fallback sul DB transitions per evitare import error.
+- per ogni network LAD FC viene mantenuto un solo `Powerrail`; in caso di merge righe su stesso `network`, i rami vengono accorpati sulla stessa alimentazione.

@@ -25,13 +25,17 @@ Regola trasversale:
 - **Organizzazione**: preferire `Struct` funzionali (cmd/feedback/param/diag/mapping...).
 - **Naming coerente**: naming deterministico, stabile, leggibile (vedi `docs/guide/standards/conventions.md`).
 - **Commenti visibili in TIA**: verificare forma/posizionamento commenti come nel caso validato del DB di prova.
+- **Origine commenti DB (Excel)**: nei DB usare solo `operands.note` + commenti member espliciti; non copiare commenti rete FC nei tag DB.
+- **No autocompilazione commenti**: se Excel non valorizza commento/note, il commento DB deve restare vuoto.
 - **Contratto cross-blocco**: il DB deve dichiarare tutti i member richiesti dal `GRAPH`, dalla `FC LAD` e da eventuali blocchi aggiuntivi del pacchetto, senza drift di naming.
 - **Caso Excel strict**: verificare che i member DB siano coerenti con il catalogo `operands` del file Excel, senza extra non dichiarati.
 
 ## C) Checklist rapida — FC LAD importabile
 - **Blocco**: `SW.Blocks.FC` in LAD, importabile anche con interfaccia minima.
 - **CompileUnit ordinati**: sequenza coerente di `SW.Blocks.CompileUnit`.
+- **Merge reti da Excel**: righe con stessa `category` + stesso `network` devono stare nella stessa CompileUnit FC.
 - **FlgNet valido**: uso corretto di `PartNode`, `TemplateValue`, `CallInfo`, ecc.
+- **Power rail unico**: ogni network LAD deve avere un solo `Powerrail`.
 - **GlobalVariable**: ok usarle nel `FlgNet` (riferimenti simbolici espliciti), purché risolvibili.
 - **Coerenza col pacchetto**: la `FC LAD` non deve introdurre riferimenti, mapping o nomi di member che non esistono davvero nel `GlobalDB` o che divergono dal `GRAPH`.
 

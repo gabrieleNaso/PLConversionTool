@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import re
 from xml.sax.saxutils import escape
 
@@ -3006,35 +3007,52 @@ def _build_support_lad_compile_units(
     units: list[str] = []
     if logic_rows:
         base_id = 3
-        for index, logic_row in enumerate(logic_rows):
+        grouped_rows: list[tuple[int, list[dict[str, object]]]] = []
+        by_network: dict[int, list[dict[str, object]]] = {}
+        for row_index, logic_row in enumerate(logic_rows):
             result_member = str(logic_row.get("result_member") or "").strip()
             if not result_member:
                 continue
-            network_no = _as_positive_int(logic_row.get("network_index")) or (index + 1)
-            condition_expression = str(logic_row.get("condition_expression") or "TRUE")
-            condition_operands = _as_str_list(logic_row.get("condition_operands"))
-            explicit_comment = str(logic_row.get("comment") or "").strip()
-            _ = network_no
-            _ = condition_operands
-            _ = operand_notes
-            # Keep FC network comments strictly explicit from Excel.
-            comment = explicit_comment
+            network_no = _as_positive_int(logic_row.get("network_index")) or (row_index + 1)
+            if network_no not in by_network:
+                by_network[network_no] = []
+                grouped_rows.append((network_no, by_network[network_no]))
+            by_network[network_no].append(logic_row)
+
+        for index, (_, network_rows) in enumerate(grouped_rows):
+            flgnet_fragments: list[str] = []
+            comment = ""
+            for logic_row in network_rows:
+                result_member = str(logic_row.get("result_member") or "").strip()
+                if not result_member:
+                    continue
+                condition_expression = str(logic_row.get("condition_expression") or "TRUE")
+                condition_operands = _as_str_list(logic_row.get("condition_operands"))
+                explicit_comment = str(logic_row.get("comment") or "").strip()
+                if not comment and explicit_comment:
+                    comment = explicit_comment
+                _ = operand_notes
+                flgnet_fragments.append(
+                    _build_support_logic_flgnet(
+                        db_name=db_name,
+                        result_member=result_member,
+                        condition_expression=condition_expression,
+                        condition_operands=condition_operands,
+                        db_members=db_member_set,
+                        symbol_home_db_map=symbol_home_db_map,
+                        member_datatypes=member_datatypes,
+                        timer_configs=timer_configs,
+                        prefer_current_db_for_unmapped=prefer_current_db_for_unmapped,
+                    )
+                )
+            if not flgnet_fragments:
+                continue
             unit_id = format(base_id + (index * 5), "X")
             comment_id = format(base_id + (index * 5) + 1, "X")
             comment_item_id = format(base_id + (index * 5) + 2, "X")
             title_id = format(base_id + (index * 5) + 3, "X")
             title_item_id = format(base_id + (index * 5) + 4, "X")
-            flgnet_xml = _build_support_logic_flgnet(
-                db_name=db_name,
-                result_member=result_member,
-                condition_expression=condition_expression,
-                condition_operands=condition_operands,
-                db_members=db_member_set,
-                symbol_home_db_map=symbol_home_db_map,
-                member_datatypes=member_datatypes,
-                timer_configs=timer_configs,
-                prefer_current_db_for_unmapped=prefer_current_db_for_unmapped,
-            )
+            flgnet_xml = _merge_support_logic_flgnets(flgnet_fragments)
             units.append(
                 '      <SW.Blocks.CompileUnit ID="'
                 + unit_id
@@ -3139,6 +3157,109 @@ def _build_support_lad_compile_units(
                 '      </SW.Blocks.CompileUnit>'
         )
     return "\n".join(units)
+
+
+def _merge_support_logic_flgnets(flgnet_fragments: list[str]) -> str:
+    if not flgnet_fragments:
+        return ""
+    if len(flgnet_fragments) == 1:
+        return flgnet_fragments[0]
+    ns = "http://www.siemens.com/automation/Openness/SW/NetworkSource/FlgNet/v5"
+    flgnet_tag = f"{{{ns}}}FlgNet"
+    parts_tag = f"{{{ns}}}Parts"
+    wires_tag = f"{{{ns}}}Wires"
+    wire_tag = f"{{{ns}}}Wire"
+    powerrail_tag = f"{{{ns}}}Powerrail"
+    namecon_tag = f"{{{ns}}}NameCon"
+
+    merged_xml = _extract_flgnet_element_xml(flgnet_fragments[0])
+    merged_flgnet = _parse_xml_element(merged_xml)
+    if merged_flgnet is None or merged_flgnet.tag != flgnet_tag:
+        return flgnet_fragments[0]
+    merged_parts = merged_flgnet.find(parts_tag)
+    merged_wires = merged_flgnet.find(wires_tag)
+    if merged_parts is None or merged_wires is None:
+        return flgnet_fragments[0]
+    primary_powerrail_wire = _find_powerrail_wire(merged_wires, wire_tag, powerrail_tag)
+
+    for index, fragment in enumerate(flgnet_fragments[1:], start=1):
+        fragment_xml = _extract_flgnet_element_xml(fragment)
+        fragment_flgnet = _parse_xml_element(fragment_xml)
+        if fragment_flgnet is None or fragment_flgnet.tag != flgnet_tag:
+            continue
+        _offset_element_uids(fragment_flgnet, index * 1000)
+        fragment_parts = fragment_flgnet.find(parts_tag)
+        fragment_wires = fragment_flgnet.find(wires_tag)
+        if fragment_parts is None or fragment_wires is None:
+            continue
+
+        fragment_powerrail_wires = [
+            wire
+            for wire in list(fragment_wires.findall(wire_tag))
+            if wire.find(powerrail_tag) is not None
+        ]
+        if primary_powerrail_wire is None and fragment_powerrail_wires:
+            primary_powerrail_wire = copy.deepcopy(fragment_powerrail_wires[0])
+            merged_wires.append(primary_powerrail_wire)
+            fragment_powerrail_wires = fragment_powerrail_wires[1:]
+        for pwire in fragment_powerrail_wires:
+            if primary_powerrail_wire is not None:
+                for child in list(pwire):
+                    if child.tag == namecon_tag:
+                        primary_powerrail_wire.append(copy.deepcopy(child))
+            fragment_wires.remove(pwire)
+
+        for node in list(fragment_parts):
+            merged_parts.append(copy.deepcopy(node))
+        for node in list(fragment_wires):
+            merged_wires.append(copy.deepcopy(node))
+
+    return f"<NetworkSource>{_serialize_xml_element(merged_flgnet)}</NetworkSource>"
+
+
+def _extract_flgnet_element_xml(network_source_xml: str) -> str:
+    match = re.search(r"(<FlgNet\b[^>]*>.*?</FlgNet>)", network_source_xml, flags=re.DOTALL)
+    if not match:
+        return ""
+    return match.group(1)
+
+
+def _parse_xml_element(xml_text: str):
+    if not xml_text:
+        return None
+    try:
+        from xml.etree import ElementTree as ET
+
+        return ET.fromstring(xml_text)
+    except Exception:
+        return None
+
+
+def _serialize_xml_element(element) -> str:
+    from xml.etree import ElementTree as ET
+
+    xml = ET.tostring(element, encoding="unicode")
+    xml = xml.replace("<ns0:", "<").replace("</ns0:", "</")
+    xml = xml.replace('xmlns:ns0="http://www.siemens.com/automation/Openness/SW/NetworkSource/FlgNet/v5"', 'xmlns="http://www.siemens.com/automation/Openness/SW/NetworkSource/FlgNet/v5"')
+    return xml
+
+
+def _find_powerrail_wire(wires_element, wire_tag: str, powerrail_tag: str):
+    for wire in list(wires_element.findall(wire_tag)):
+        if wire.find(powerrail_tag) is not None:
+            return wire
+    return None
+
+
+def _offset_element_uids(element, uid_offset: int) -> None:
+    for node in element.iter():
+        raw_uid = node.attrib.get("UId")
+        if not raw_uid:
+            continue
+        try:
+            node.attrib["UId"] = str(int(raw_uid) + uid_offset)
+        except ValueError:
+            continue
 
 
 def _build_support_logic_flgnet(

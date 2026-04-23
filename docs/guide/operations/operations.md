@@ -201,10 +201,14 @@ Regole Excel importanti:
 - l'inizio sequenza e' il passo con `numero_step=1` (non dal nome del passo);
 - i nomi passo sono liberi (`Init`, `StartCiclo`, ecc.);
 - in modalita' Excel, il catalogo `operands` guida la dichiarazione variabili DB (niente inferenze casuali).
+- in modalita' strict Excel, i commenti DB derivano solo da commenti espliciti del member e da `operands.note`; se mancanti, restano vuoti.
+- i commenti di rete FC (`support_fc.comment`) restano nelle FC e non vengono copiati nei DB.
 - in `operands.category` usa solo categorie funzionali (`alarm`, `aux`, `hmi`, `output`, `memory`, `external`, `lv2`/`lev2`, `transition`/`transitions`).
 - `mode` non e' una categoria valida lato Excel: per LEV2 usa sempre `lv2` (oppure alias `lev2`).
 - variabili FC non presenti in `operands` non vengono dichiarate nei DB supporto, ma restano utilizzabili nella logica FC come simboli globali non agganciati a DB.
 - timer/contatori definiti in `operands` e usati in `support_fc` vengono emessi come blocchi LAD completi, con preset da `control_value`.
+- se piu' righe `support_fc` hanno stessa `category` e stesso `network`, vengono aggregate in una sola network FC.
+- ogni network FC deve avere un solo `Powerrail` LAD (vincolo import TIA).
 - `operands` e `support_fc` sono obbligatori: se manca uno dei due (o e' vuoto), `generate-excel-ir` termina con errore.
 - nelle espressioni logiche (`condition_expression` / `guard_expression`) sono supportate parentesi e precedenza booleana.
 - nel GRAPH, le transition usano la logica reale dell'Excel (`condition_expression`) e non vengono ridotte a marker tipo `T1/T2`.
