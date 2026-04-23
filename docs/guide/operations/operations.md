@@ -117,7 +117,7 @@ Alternative:
 
 Note operative:
 - l'import non accoda compile automatiche
-- se un blocco con lo stesso nome esiste gia' in TIA, l'import viene rifiutato (name collision)
+- se un blocco con lo stesso nome esiste gia' in TIA, il singolo tentativo di import va in collisione; `import-generated` gestisce il caso con retry e rinomina automatica.
 - lo script `import-generated` effettua polling del job e, su collisione nome blocco, prova automaticamente suffissi numerici (`...1`, `...2`, ...).
 
 ### One command: genera + importa
