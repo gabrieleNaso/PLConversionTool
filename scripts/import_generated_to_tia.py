@@ -58,7 +58,11 @@ def _is_name_collision(detail: str | None) -> bool:
     if not detail:
         return False
     lowered = detail.lower()
-    return "block name" in lowered and "already exists" in lowered
+    return (
+        ("block name" in lowered and "already exists" in lowered)
+        or "composition already contains an object with the same values for the identifier(s) 'name, namespace'" in lowered
+        or ("same values for the identifier(s) 'name, namespace'" in lowered)
+    )
 
 
 def _extract_colliding_name(detail: str | None) -> str | None:
@@ -67,6 +71,19 @@ def _extract_colliding_name(detail: str | None) -> str | None:
     match = re.search(r"The block name '([^']+)' is invalid", detail, flags=re.IGNORECASE)
     if match:
         return match.group(1).strip()
+    file_match = re.search(r"Import non riuscito per '([^']+)'", detail, flags=re.IGNORECASE)
+    if file_match:
+        file_name = Path(file_match.group(1)).name
+        core = re.sub(r"^(DB\d+_|FC\d+_|FB_)", "", file_name, flags=re.IGNORECASE)
+        core = re.sub(
+            r"_(?:alarms|hmi|parameters|transitions|io|lev2|ext|aux|output)_(?:db|lad)_auto\.xml$",
+            "",
+            core,
+            flags=re.IGNORECASE,
+        )
+        core = re.sub(r"_GRAPH_auto\.xml$", "", core, flags=re.IGNORECASE)
+        if core:
+            return core.strip()
     return None
 
 
@@ -217,17 +234,16 @@ def main() -> int:
                 and retry_index < args.max_name_collision_retries
             ):
                 blocked_name = _extract_colliding_name(detail)
-                if not blocked_name:
-                    break
                 if base_name is None:
-                    stem, suffix = _split_trailing_number(blocked_name)
+                    candidate = blocked_name or current_name or bundle_dir.name
+                    stem, suffix = _split_trailing_number(candidate)
                     base_name = stem
                     next_suffix = (suffix + 1) if suffix is not None else 1
 
                 retry_index += 1
                 next_name = f"{base_name}{next_suffix}"
                 next_suffix += 1
-                source_name = current_name or blocked_name
+                source_name = current_name or blocked_name or base_name
                 current_bundle_dir = _build_renamed_bundle(
                     current_bundle_dir,
                     source_name=source_name,
@@ -236,7 +252,7 @@ def main() -> int:
                 )
                 current_name = next_name
                 print(
-                    f"[RENAME] Collisione nome blocco '{blocked_name}'. "
+                    f"[RENAME] Collisione nome blocco '{blocked_name or source_name}'. "
                     f"Riprovo con '{next_name}'."
                 )
                 continue

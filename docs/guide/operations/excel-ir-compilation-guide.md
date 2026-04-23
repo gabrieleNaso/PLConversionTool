@@ -67,6 +67,10 @@ Colonne:
   - counter: setpoint intero (`10`, `25`, ...)
 - `note`: testo libero.
 
+Uso di `note` e `comment`:
+- `operands.note` viene propagata nei commenti dei member DB quando il segnale viene dichiarato nel DB owner.
+- `support_fc.comment` viene usata come commento della network LAD generata per quella riga logica.
+
 Nota timer:
 - `trigger_operands` non e' piu' usato nel foglio `operands`; i trigger/consensi si modellano nella logica FC (`support_fc`).
 

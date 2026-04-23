@@ -802,3 +802,98 @@ def test_conversion_analyze_ir_honors_explicit_step_number_from_payload() -> Non
     }
     assert step_no_by_name["S1"] == 1
     assert step_no_by_name["S2"] == 20
+
+
+def test_conversion_analyze_ir_keeps_fc_logic_comments_out_of_db_tags() -> None:
+    client = TestClient(app)
+    res = client.post(
+        "/api/conversion/analyze-ir",
+        json={
+            "sequenceName": "Excel Comments",
+            "sourceName": "excel_comments.xlsx",
+            "ir": {
+                "strict_operand_catalog": True,
+                "operand_catalog": ["AUX_SIG", "AUX_CMD"],
+                "operand_categories": {
+                    "AUX_SIG": "aux",
+                    "AUX_CMD": "aux",
+                },
+                "operand_notes": {
+                    "AUX_CMD": "Nota da operands",
+                },
+                "support_members": [
+                    {
+                        "category": "aux",
+                        "member_name": "AUX_SIG",
+                        "comment": "Commento member AUX",
+                    }
+                ],
+                "support_logic": [
+                    {
+                        "category": "aux",
+                        "result_member": "AUX_CMD",
+                        "condition_expression": "AUX_SIG",
+                        "condition_operands": ["AUX_SIG"],
+                        "comment": "Commento rete AUX",
+                        "network_index": 1,
+                    }
+                ],
+                "steps": [{"name": "S1"}],
+                "transitions": [],
+            },
+        },
+    )
+    assert res.status_code == 200
+    payload = res.json()
+
+    aux_db = next(
+        preview["content"]
+        for preview in payload["artifact_previews"]
+        if preview["artifact_type"] == "support_global_db_aux"
+    )
+    assert '<Member Name="AUX_CMD" Datatype="Bool">' in aux_db
+    assert '<MultiLanguageText Lang="en-US">Nota da operands</MultiLanguageText>' in aux_db
+    assert "Commento rete AUX" not in aux_db
+
+    aux_fc = next(
+        preview["content"]
+        for preview in payload["artifact_previews"]
+        if preview["artifact_type"] == "support_lad_fc_aux"
+    )
+    assert "Commento rete AUX" in aux_fc
+
+
+def test_conversion_analyze_ir_uses_member_comment_for_fallback_fc_network() -> None:
+    client = TestClient(app)
+    res = client.post(
+        "/api/conversion/analyze-ir",
+        json={
+            "sequenceName": "Excel Member Comments",
+            "sourceName": "excel_member_comments.xlsx",
+            "ir": {
+                "strict_operand_catalog": False,
+                "operand_catalog": ["AUX_ONLY"],
+                "operand_categories": {
+                    "AUX_ONLY": "aux",
+                },
+                "support_members": [
+                    {
+                        "category": "aux",
+                        "member_name": "AUX_ONLY",
+                        "comment": "Commento solo member",
+                    }
+                ],
+                "support_logic": [],
+                "steps": [{"name": "S1"}],
+                "transitions": [],
+            },
+        },
+    )
+    assert res.status_code == 200
+    payload = res.json()
+    aux_fc = next(
+        preview["content"]
+        for preview in payload["artifact_previews"]
+        if preview["artifact_type"] == "support_lad_fc_aux"
+    )
+    assert '<Text>Commento solo member</Text>' in aux_fc

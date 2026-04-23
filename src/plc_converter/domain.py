@@ -184,6 +184,8 @@ class AwlIR:
     strict_operand_catalog: bool = False
     operand_catalog: list[str] = field(default_factory=list)
     operand_datatypes: dict[str, str] = field(default_factory=dict)
+    operand_categories: dict[str, str] = field(default_factory=dict)
+    operand_notes: dict[str, str] = field(default_factory=dict)
     operand_control_settings: dict[str, dict[str, str]] = field(default_factory=dict)
     operand_timer_settings: dict[str, dict[str, str]] = field(default_factory=dict)
     support_members: list[dict[str, object]] = field(default_factory=list)

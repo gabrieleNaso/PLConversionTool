@@ -567,6 +567,8 @@ def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[s
     )
     operand_catalog: list[str] = []
     operand_datatypes: dict[str, str] = {}
+    operand_categories: dict[str, str] = {}
+    operand_notes: dict[str, str] = {}
     operand_control_settings: dict[str, dict[str, str]] = {}
     operand_timer_settings: dict[str, dict[str, str]] = {}
     for idx, row in enumerate(operand_rows, start=1):
@@ -603,8 +605,11 @@ def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[s
                 },
             )
         category = _normalize_operand_category(row.get("category"))
+        operand_categories.setdefault(operand, category)
         network_index = _infer_network_index_for_operand(operand, transitions, idx)
         note = _cell_text(row.get("note"))
+        if note:
+            operand_notes.setdefault(operand, note)
 
         if category == "alarm":
             faults.append(
@@ -778,6 +783,8 @@ def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[s
         "strict_operand_catalog": True,
         "operand_catalog": operand_catalog,
         "operand_datatypes": operand_datatypes,
+        "operand_categories": operand_categories,
+        "operand_notes": operand_notes,
         "operand_control_settings": operand_control_settings,
         "operand_timer_settings": operand_timer_settings,
         "support_members": support_members,

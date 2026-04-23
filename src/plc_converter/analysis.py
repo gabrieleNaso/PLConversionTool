@@ -108,7 +108,7 @@ SUPPORT_FAMILY_OVERRIDES = {
     "hmi": {"db_family": "hmi", "fc_family": "hmi"},
     "aux": {"db_family": "output", "fc_family": "aux"},
     "transitions": {"db_family": "transitions", "fc_family": "transitions"},
-    "output": {"db_family": "output", "fc_family": "sequence"},
+    "output": {"db_family": "sequence", "fc_family": "sequence"},
 }
 
 TIA_MEMBER_NAME_MAX_LEN = 96
@@ -323,6 +323,8 @@ def _ir_from_payload(
         strict_operand_catalog=bool(ir_payload.get("strict_operand_catalog", False)),
         operand_catalog=sorted(set(_as_str_list(ir_payload.get("operand_catalog")))),
         operand_datatypes=_as_str_dict(ir_payload.get("operand_datatypes")),
+        operand_categories=_as_str_dict(ir_payload.get("operand_categories")),
+        operand_notes=_as_str_dict(ir_payload.get("operand_notes")),
         operand_control_settings=_as_str_dict_dict(ir_payload.get("operand_control_settings")),
         operand_timer_settings=_as_str_dict_dict(ir_payload.get("operand_timer_settings")),
         support_members=_as_dict_list(ir_payload.get("support_members")),
@@ -1810,6 +1812,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
     previews: list[ArtifactPreview] = []
     symbol_home_db_map = _build_support_symbol_home_db_map(ir)
     member_datatypes = _support_operand_datatypes(ir)
+    operand_notes = _support_operand_notes(ir)
     timer_configs = _support_timer_configs(ir)
     diag_db_name, diag_fc_name, diag_db_file, diag_fc_file, diag_db_base, diag_fc_base = _support_block_names(
         ir.sequence_name, "diag"
@@ -1823,8 +1826,11 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
     tr_db_name, tr_fc_name, tr_db_file, tr_fc_file, tr_db_base, tr_fc_base = _support_block_names(
         ir.sequence_name, "transitions"
     )
-    io_db_name, io_fc_name, io_db_file, io_fc_file, io_db_base, io_fc_base = _support_block_names(
+    io_db_name, _, io_db_file, _, io_db_base, _ = _support_block_names(
         ir.sequence_name, "io"
+    )
+    _, output_fc_name, _, output_fc_file, _, output_fc_base = _support_block_names(
+        ir.sequence_name, "output"
     )
     mode_db_name, mode_fc_name, mode_db_file, mode_fc_file, mode_db_base, mode_fc_base = _support_block_names(
         ir.sequence_name, "mode"
@@ -1847,12 +1853,22 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
     transitions_logic = _excel_support_logic_rows(ir, "transitions")
     transitions_members = _excel_support_members(ir, "transitions") or _collect_transitions_support_members(ir, [])
     transitions_merged_members = _merge_support_members_with_logic(transitions_members, transitions_logic)
-    transitions_db_members = _dedupe_named_members(transitions_merged_members)
-    transitions_fc_members = list(dict.fromkeys(name for name, _ in transitions_merged_members if name))
+    transitions_db_members = _prepare_support_db_members(ir, "transitions", transitions_merged_members)
+    transitions_fc_members = _dedupe_named_members(
+        [(name, comment) for name, comment in transitions_merged_members if str(name or "").strip()]
+    )
 
+    io_logic = _excel_support_logic_rows(ir, "io")
     output_logic = _excel_support_logic_rows(ir, "output")
-    output_members = _excel_support_members(ir, "output") or _collect_output_family_members(ir)
-    output_db_members, output_fc_members = _prepare_support_members(ir, "output", output_members, output_logic)
+    io_output_logic = io_logic + output_logic
+    io_members = _excel_support_members(ir, "io")
+    output_members = _excel_support_members(ir, "output")
+    io_output_members = io_members + output_members
+    if not io_output_members:
+        io_output_members = _collect_output_family_members(ir)
+    output_db_members, output_fc_members = _prepare_support_members(
+        ir, "io", io_output_members, io_output_logic
+    )
 
     mode_logic = _excel_support_logic_rows(ir, "mode")
     mode_members = _excel_support_members(ir, "mode") or _collect_mode_support_members(ir)
@@ -1891,9 +1907,10 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                 db_members=[name for name, _ in diag_db_members],
                 symbol_home_db_map=symbol_home_db_map,
                 member_datatypes=member_datatypes,
+                operand_notes=operand_notes,
                 timer_configs=timer_configs,
                 logic_rows=diag_logic,
-                allow_member_fallback=True,
+                allow_member_fallback=not ir.strict_operand_catalog,
                 number_seed=f"{ir.sequence_name}_DIAG_FC",
                 number_base=diag_fc_base,
             ),
@@ -1926,9 +1943,10 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                 db_members=[name for name, _ in hmi_db_members],
                 symbol_home_db_map=symbol_home_db_map,
                 member_datatypes=member_datatypes,
+                operand_notes=operand_notes,
                 timer_configs=timer_configs,
                 logic_rows=hmi_logic,
-                allow_member_fallback=True,
+                allow_member_fallback=not ir.strict_operand_catalog,
                 number_seed=f"{ir.sequence_name}_HMI_FC",
                 number_base=hmi_fc_base,
             ),
@@ -1961,9 +1979,10 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                 db_members=[name for name, _ in aux_db_members],
                 symbol_home_db_map=symbol_home_db_map,
                 member_datatypes=member_datatypes,
+                operand_notes=operand_notes,
                 timer_configs=timer_configs,
                 logic_rows=aux_logic,
-                allow_member_fallback=True,
+                allow_member_fallback=not ir.strict_operand_catalog,
                 number_seed=f"{ir.sequence_name}_AUX_FC",
                 number_base=aux_fc_base,
             ),
@@ -1996,9 +2015,10 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                 db_members=[name for name, _ in transitions_db_members],
                 symbol_home_db_map=symbol_home_db_map,
                 member_datatypes=member_datatypes,
+                operand_notes=operand_notes,
                 timer_configs=timer_configs,
                 logic_rows=transitions_logic,
-                allow_member_fallback=True,
+                allow_member_fallback=not ir.strict_operand_catalog,
                 prefer_current_db_for_unmapped=True,
                 number_seed=f"{ir.sequence_name}_TRANSITIONS_FC",
                 number_base=tr_fc_base,
@@ -2023,20 +2043,21 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
     previews.append(
         ArtifactPreview(
             artifact_type="support_lad_fc_output",
-            file_name=io_fc_file,
+            file_name=output_fc_file,
             content=_build_support_lad_fc_xml(
-                fc_name=io_fc_name,
+                fc_name=output_fc_name,
                 title=f"{ir.sequence_name} Output LAD",
                 db_name=io_db_name,
                 support_members=output_fc_members,
                 db_members=[name for name, _ in output_db_members],
                 symbol_home_db_map=symbol_home_db_map,
                 member_datatypes=member_datatypes,
+                operand_notes=operand_notes,
                 timer_configs=timer_configs,
-                logic_rows=output_logic,
-                allow_member_fallback=True,
+                logic_rows=io_output_logic,
+                allow_member_fallback=not ir.strict_operand_catalog,
                 number_seed=f"{ir.sequence_name}_OUTPUT_FC",
-                number_base=io_fc_base,
+                number_base=output_fc_base,
             ),
         )
     )
@@ -2067,9 +2088,10 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                 db_members=[name for name, _ in mode_db_members],
                 symbol_home_db_map=symbol_home_db_map,
                 member_datatypes=member_datatypes,
+                operand_notes=operand_notes,
                 timer_configs=timer_configs,
                 logic_rows=mode_logic,
-                allow_member_fallback=True,
+                allow_member_fallback=not ir.strict_operand_catalog,
                 number_seed=f"{ir.sequence_name}_MODE_FC",
                 number_base=mode_fc_base,
             ),
@@ -2239,7 +2261,7 @@ def _build_graph_fb_xml(profile, ir: AwlIR, graph_topology: GraphTopology) -> st
         '  </PreOperations>\n'
         '  <Sequence>\n'
         '    <Title />\n'
-        '    <Comment>\n'
+        '    <Comment Informative="true">\n'
         '      <MultiLanguageText Lang="en-US" />\n'
         '    </Comment>\n'
         '    <Steps>\n'
@@ -2499,10 +2521,11 @@ def _build_support_lad_fc_xml(
     fc_name: str,
     title: str,
     db_name: str,
-    support_members: list[str],
+    support_members: list[tuple[str, str]],
     db_members: list[str],
     symbol_home_db_map: dict[str, str] | None,
     member_datatypes: dict[str, str] | None,
+    operand_notes: dict[str, str] | None,
     timer_configs: dict[str, dict[str, str]] | None,
     number_seed: str,
     logic_rows: list[dict[str, object]] | None = None,
@@ -2524,6 +2547,7 @@ def _build_support_lad_fc_xml(
         db_members=db_members,
         symbol_home_db_map=symbol_home_db_map or {},
         member_datatypes=member_datatypes or {},
+        operand_notes=operand_notes or {},
         timer_configs=timer_configs or {},
         logic_rows=logic_rows or [],
         allow_member_fallback=allow_member_fallback,
@@ -2606,7 +2630,9 @@ def _emit_member_ir(member: MemberIR, indent: str) -> str:
         lines.append(f"{inner_indent}</AttributeList>")
 
     if member.comment:
-        lines.append(f'{inner_indent}<Comment Informative="true">')
+        # For DB member comments, Openness/TIA shows them more reliably
+        # when emitted in the simple Comment + MultiLanguageText form.
+        lines.append(f"{inner_indent}<Comment>")
         lines.append(
             f'{inner_indent}  <MultiLanguageText Lang="en-US">{escape(member.comment)}</MultiLanguageText>'
         )
@@ -2766,6 +2792,21 @@ def _support_operand_datatypes(ir: AwlIR) -> dict[str, str]:
         if not normalized_name:
             continue
         mapping[normalized_name] = _normalize_plc_datatype(raw_datatype)
+    return mapping
+
+
+def _support_operand_notes(ir: AwlIR) -> dict[str, str]:
+    mapping: dict[str, str] = {}
+    for raw_name, raw_note in ir.operand_notes.items():
+        note = str(raw_note or "").strip()
+        if not note:
+            continue
+        normalized_name = _support_member_name(raw_name, "", strict_excel_mode=True)
+        if normalized_name:
+            mapping.setdefault(normalized_name, note)
+        raw_token = str(raw_name or "").strip()
+        if raw_token:
+            mapping.setdefault(raw_token, note)
     return mapping
 
 
@@ -2930,12 +2971,7 @@ def _build_lad_compile_units(ir: AwlIR, graph_topology: GraphTopology) -> str:
             '        <ObjectList>\n'
             f'          <MultilingualText ID="{comment_id}" CompositionName="Comment">\n'
             '            <ObjectList>\n'
-            f'              <MultilingualTextItem ID="{comment_item_id}" CompositionName="Items">\n'
-            '                <AttributeList>\n'
-            '                  <Culture>en-US</Culture>\n'
-            f'                  <Text>Network {transition.network_index}</Text>\n'
-            '                </AttributeList>\n'
-            '              </MultilingualTextItem>\n'
+            f"{_render_multilingual_text_items(comment_item_id, f'Network {transition.network_index}', indent='              ')}\n"
             '            </ObjectList>\n'
             '          </MultilingualText>\n'
             f'          <MultilingualText ID="{title_id}" CompositionName="Title">\n'
@@ -2956,10 +2992,11 @@ def _build_lad_compile_units(ir: AwlIR, graph_topology: GraphTopology) -> str:
 
 def _build_support_lad_compile_units(
     db_name: str,
-    support_members: list[str],
+    support_members: list[tuple[str, str]],
     db_members: list[str],
     symbol_home_db_map: dict[str, str],
     member_datatypes: dict[str, str],
+    operand_notes: dict[str, str],
     timer_configs: dict[str, dict[str, str]],
     logic_rows: list[dict[str, object]] | None = None,
     allow_member_fallback: bool = True,
@@ -2976,10 +3013,17 @@ def _build_support_lad_compile_units(
             network_no = _as_positive_int(logic_row.get("network_index")) or (index + 1)
             condition_expression = str(logic_row.get("condition_expression") or "TRUE")
             condition_operands = _as_str_list(logic_row.get("condition_operands"))
-            comment = str(logic_row.get("comment") or "").strip() or f"Network {network_no} - {result_member}"
-            unit_id = format(base_id + (index * 3), "X")
-            comment_id = format(base_id + (index * 3) + 1, "X")
-            comment_item_id = format(base_id + (index * 3) + 2, "X")
+            explicit_comment = str(logic_row.get("comment") or "").strip()
+            _ = network_no
+            _ = condition_operands
+            _ = operand_notes
+            # Keep FC network comments strictly explicit from Excel.
+            comment = explicit_comment
+            unit_id = format(base_id + (index * 5), "X")
+            comment_id = format(base_id + (index * 5) + 1, "X")
+            comment_item_id = format(base_id + (index * 5) + 2, "X")
+            title_id = format(base_id + (index * 5) + 3, "X")
+            title_item_id = format(base_id + (index * 5) + 4, "X")
             flgnet_xml = _build_support_logic_flgnet(
                 db_name=db_name,
                 result_member=result_member,
@@ -3004,8 +3048,16 @@ def _build_support_lad_compile_units(
                 + comment_id
                 + '" CompositionName="Comment">\n'
                 '            <ObjectList>\n'
+                + _render_multilingual_text_items(comment_item_id, comment, indent="              ")
+                + "\n"
+                '            </ObjectList>\n'
+                '          </MultilingualText>\n'
+                '          <MultilingualText ID="'
+                + title_id
+                + '" CompositionName="Title">\n'
+                '            <ObjectList>\n'
                 '              <MultilingualTextItem ID="'
-                + comment_item_id
+                + title_item_id
                 + '" CompositionName="Items">\n'
                 '                <AttributeList>\n'
                 '                  <Culture>en-US</Culture>\n'
@@ -3023,14 +3075,24 @@ def _build_support_lad_compile_units(
     if not allow_member_fallback:
         return ""
 
-    unique_members = list(dict.fromkeys(member for member in support_members if member))
+    unique_members = _dedupe_named_members(
+        [
+            (name, comment)
+            for name, comment in support_members
+            if str(name or "").strip()
+        ]
+    )
     if not unique_members:
-        unique_members = ["PACKET_READY"]
+        unique_members = [("PACKET_READY", "PACKET_READY support network")]
     base_id = 3
-    for index, member_name in enumerate(unique_members):
-        unit_id = format(base_id + (index * 3), "X")
-        comment_id = format(base_id + (index * 3) + 1, "X")
-        comment_item_id = format(base_id + (index * 3) + 2, "X")
+    for index, (member_name, member_comment) in enumerate(unique_members):
+        # Keep fallback network comments strictly explicit from Excel.
+        fallback_comment = str(member_comment or "").strip()
+        unit_id = format(base_id + (index * 5), "X")
+        comment_id = format(base_id + (index * 5) + 1, "X")
+        comment_item_id = format(base_id + (index * 5) + 2, "X")
+        title_id = format(base_id + (index * 5) + 3, "X")
+        title_item_id = format(base_id + (index * 5) + 4, "X")
         flgnet_xml = _build_support_logic_flgnet(
             db_name=db_name,
             result_member=member_name,
@@ -3055,18 +3117,26 @@ def _build_support_lad_compile_units(
             + comment_id
             + '" CompositionName="Comment">\n'
             '            <ObjectList>\n'
-            '              <MultilingualTextItem ID="'
-            + comment_item_id
-            + '" CompositionName="Items">\n'
-            '                <AttributeList>\n'
-            '                  <Culture>en-US</Culture>\n'
-            f'                  <Text>{escape(member_name)} support network</Text>\n'
-            '                </AttributeList>\n'
-            '              </MultilingualTextItem>\n'
+            + _render_multilingual_text_items(comment_item_id, fallback_comment, indent="              ")
+            + "\n"
             '            </ObjectList>\n'
             '          </MultilingualText>\n'
-            '        </ObjectList>\n'
-            '      </SW.Blocks.CompileUnit>'
+            '          <MultilingualText ID="'
+            + title_id
+            + '" CompositionName="Title">\n'
+            '            <ObjectList>\n'
+                '              <MultilingualTextItem ID="'
+                + title_item_id
+                + '" CompositionName="Items">\n'
+                '                <AttributeList>\n'
+                '                  <Culture>en-US</Culture>\n'
+                f'                  <Text>{escape(fallback_comment)}</Text>\n'
+                '                </AttributeList>\n'
+                '              </MultilingualTextItem>\n'
+                '            </ObjectList>\n'
+                '          </MultilingualText>\n'
+                '        </ObjectList>\n'
+                '      </SW.Blocks.CompileUnit>'
         )
     return "\n".join(units)
 
@@ -3609,7 +3679,7 @@ def _excel_support_members(ir: AwlIR, category: str) -> list[tuple[str, str]]:
             continue
         member_name = _support_member_name(raw_name, "", strict_excel_mode=True)
         comment = str(item.get("comment") or "").strip()
-        members.append((member_name, comment or f"Excel override ({normalized_category})"))
+        members.append((member_name, comment))
     return _dedupe_named_members(members)
 
 
@@ -3671,14 +3741,15 @@ def _merge_support_members_with_logic(
     merged = list(members)
     existing = {name for name, _ in merged}
     for row in logic_rows:
+        row_comment = str(row.get("comment") or "").strip()
         result_member = str(row.get("result_member") or "").strip()
         if result_member and result_member not in existing:
-            merged.append((result_member, "Result member from support_fc_logic"))
+            merged.append((result_member, row_comment))
             existing.add(result_member)
         for operand in _as_str_list(row.get("condition_operands")):
             token = str(operand or "").strip()
             if token and token not in existing:
-                merged.append((token, "Condition operand from support_fc_logic"))
+                merged.append((token, row_comment))
                 existing.add(token)
         # Make variables usable across FC categories even when the user
         # writes only the boolean expression and leaves condition_operands empty.
@@ -3688,7 +3759,7 @@ def _merge_support_members_with_logic(
                 continue
             normalized = _support_member_name(token, "", strict_excel_mode=True)
             if normalized and normalized not in existing:
-                merged.append((normalized, "Condition token from support_fc expression"))
+                merged.append((normalized, row_comment))
                 existing.add(normalized)
     return _dedupe_named_members(merged)
 
@@ -3710,11 +3781,12 @@ def _prepare_support_members(
     category: str,
     members: list[tuple[str, str]],
     logic_rows: list[dict[str, object]],
-) -> tuple[list[tuple[str, str]], list[str]]:
+) -> tuple[list[tuple[str, str]], list[tuple[str, str]]]:
     merged = _merge_support_members_with_logic(members, logic_rows)
-    merged_names = [name for name, _ in merged if str(name or "").strip()]
-    db_members = _prepare_support_db_members(ir, category, members)
-    fc_members = list(dict.fromkeys(merged_names))
+    db_members = _prepare_support_db_members(ir, category, merged)
+    fc_members = _dedupe_named_members(
+        [(name, comment) for name, comment in merged if str(name or "").strip()]
+    )
     return _dedupe_named_members(db_members), fc_members
 
 
@@ -3724,26 +3796,82 @@ def _prepare_support_db_members(
     members: list[tuple[str, str]],
 ) -> list[tuple[str, str]]:
     allowed = _strict_support_db_catalog(ir)
+    operand_notes = _support_operand_notes(ir)
+    explicit_excel_comments = _explicit_excel_member_comments(ir)
     current_db_name, _, _, _, _, _ = _support_block_names(ir.sequence_name, category)
     owner_db_map = _build_support_symbol_home_db_map(ir)
-    if allowed is None:
-        return _dedupe_named_members(
-            [
-                (name, comment)
-                for name, comment in members
-                if owner_db_map.get(name, current_db_name) == current_db_name
-            ]
-        )
-    return _dedupe_named_members(
-        [
-            (name, comment)
-            for name, comment in members
-            if name in allowed and owner_db_map.get(name, current_db_name) == current_db_name
-        ]
-    )
+    filtered = [
+        (name, comment)
+        for name, comment in members
+        if owner_db_map.get(name, current_db_name) == current_db_name
+    ]
+    if allowed is not None:
+        filtered = [(name, comment) for name, comment in filtered if name in allowed]
+
+    enriched: list[tuple[str, str]] = []
+    for name, comment in filtered:
+        # In strict Excel mode, avoid auto-generated comments:
+        # keep only explicit Excel comments and operands.note.
+        if ir.strict_operand_catalog:
+            base_comment = str(explicit_excel_comments.get(name) or "").strip()
+        else:
+            base_comment = str(comment or "").strip()
+        note_comment = str(operand_notes.get(name) or "").strip()
+        if note_comment and base_comment:
+            if note_comment in base_comment:
+                final_comment = base_comment
+            else:
+                final_comment = f"{note_comment} | {base_comment}"
+        else:
+            final_comment = note_comment or base_comment
+        enriched.append((name, final_comment))
+    return _dedupe_named_members(enriched)
+
+
+def _explicit_excel_member_comments(ir: AwlIR) -> dict[str, str]:
+    comments: dict[str, str] = {}
+
+    for item in ir.support_members:
+        raw_name = str(item.get("member_name") or "").strip()
+        raw_comment = str(item.get("comment") or "").strip()
+        if not raw_name or not raw_comment:
+            continue
+        normalized = _support_member_name(raw_name, "", strict_excel_mode=True)
+        if normalized:
+            comments.setdefault(normalized, raw_comment)
+
+    return comments
 
 
 def _build_support_symbol_home_db_map(ir: AwlIR) -> dict[str, str]:
+    # 1) Explicit ownership from operands sheet (Excel strict mode).
+    explicit_category_map: dict[str, str] = {
+        "alarm": "diag",
+        "aux": "aux",
+        "memory": "aux",
+        "hmi": "hmi",
+        "external": "external",
+        "output": "io",
+        "lv2": "mode",
+        "lev2": "mode",
+        "mode": "mode",
+        "transition": "transitions",
+        "transitions": "transitions",
+    }
+    mapping: dict[str, str] = {}
+    allowed = _strict_support_db_catalog(ir)
+    for raw_name, raw_category in ir.operand_categories.items():
+        operand_name = str(raw_name or "").strip()
+        category = explicit_category_map.get(str(raw_category or "").strip().lower())
+        if not operand_name or not category:
+            continue
+        member_name = _support_member_name(operand_name, "", strict_excel_mode=True)
+        if allowed is not None and member_name not in allowed:
+            continue
+        db_name, _, _, _, _, _ = _support_block_names(ir.sequence_name, category)
+        mapping.setdefault(member_name, db_name)
+
+    # 2) Heuristic fallback from support members and inferred collections.
     category_sources: list[tuple[str, list[tuple[str, str]]]] = [
         # Priority order matters: explicit/specialized families first.
         ("hmi", _excel_support_members(ir, "hmi") or _collect_hmi_support_members(ir)),
@@ -3755,8 +3883,6 @@ def _build_support_symbol_home_db_map(ir: AwlIR) -> dict[str, str]:
         ("io", _excel_support_members(ir, "io") or _collect_io_support_members(ir)),
         ("mode", _excel_support_members(ir, "mode") or _collect_mode_support_members(ir)),
     ]
-    mapping: dict[str, str] = {}
-    allowed = _strict_support_db_catalog(ir)
     for category, members in category_sources:
         db_name, _, _, _, _, _ = _support_block_names(ir.sequence_name, category)
         for name, _ in _dedupe_named_members(members):
@@ -4584,6 +4710,18 @@ def _render_empty_graph_net(coil_name: str) -> str:
 
 def _join_lines(lines: list[str]) -> str:
     return "\n".join(lines)
+
+
+def _render_multilingual_text_items(item_id_hex: str, text: str, indent: str = "") -> str:
+    escaped_text = escape(text)
+    return (
+        f'{indent}<MultilingualTextItem ID="{item_id_hex}" CompositionName="Items">\n'
+        f"{indent}  <AttributeList>\n"
+        f"{indent}    <Culture>en-US</Culture>\n"
+        f"{indent}    <Text>{escaped_text}</Text>\n"
+        f"{indent}  </AttributeList>\n"
+        f"{indent}</MultilingualTextItem>"
+    )
 
 
 def _normalize_symbol_name(guard_expression: str, fallback: str) -> str:
