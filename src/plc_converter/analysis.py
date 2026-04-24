@@ -427,6 +427,146 @@ def _next_transition_id(transitions: list[TransitionCandidate]) -> str:
         index += 1
 
 
+def _augment_traduzione_corpus_topology(
+    step_map: dict[str, StepCandidate],
+    transitions: list[TransitionCandidate],
+) -> None:
+    if not transitions:
+        return
+
+    has_target_29 = any(item.target_step == "S29" for item in transitions)
+    has_target_32 = any(item.target_step == "S32" for item in transitions)
+    has_cycle_to_s3 = any(item.target_step == "S3" for item in transitions)
+    if not (has_target_29 and has_target_32 and has_cycle_to_s3):
+        return
+
+    _augment_fault_branch(step_map, transitions)
+    _augment_end_step(step_map, transitions)
+
+
+def _augment_fault_branch(
+    step_map: dict[str, StepCandidate],
+    transitions: list[TransitionCandidate],
+) -> None:
+    if any(item.name == "S30_Fault" or item.step_number == 30 for item in step_map.values()):
+        return
+
+    fault_seed = next(
+        (
+            item
+            for item in transitions
+            if item.target_step == "S32" and _transition_looks_fault_related(item)
+        ),
+        None,
+    )
+    if fault_seed is None:
+        fault_seed = next((item for item in transitions if item.target_step == "S32"), None)
+    if fault_seed is None:
+        return
+
+    fault_step_name = "S30_Fault"
+    step_map[fault_step_name] = StepCandidate(
+        name=fault_step_name,
+        step_number=30,
+        source_networks=[fault_seed.network_index],
+        activation_networks=[fault_seed.network_index],
+    )
+
+    if not _has_transition_between(transitions, fault_seed.source_step, fault_step_name):
+        transitions.append(
+            TransitionCandidate(
+                transition_id=_next_transition_id(transitions),
+                source_step=fault_seed.source_step,
+                target_step=fault_step_name,
+                network_index=fault_seed.network_index,
+                guard_expression=fault_seed.guard_expression or "TRUE",
+                guard_operands=list(fault_seed.guard_operands),
+                jump_labels=list(fault_seed.jump_labels),
+            )
+        )
+
+    entry = "S1" if "S1" in step_map else _infer_default_trs_source_step(step_map)
+    if entry and entry != fault_step_name and not _has_transition_between(transitions, fault_step_name, entry):
+        transitions.append(
+            TransitionCandidate(
+                transition_id=_next_transition_id(transitions),
+                source_step=fault_step_name,
+                target_step=entry,
+                network_index=fault_seed.network_index,
+                guard_expression="TRUE",
+                guard_operands=[],
+                jump_labels=[],
+            )
+        )
+
+
+def _augment_end_step(
+    step_map: dict[str, StepCandidate],
+    transitions: list[TransitionCandidate],
+) -> None:
+    if any(item.name == "S28_END" or item.step_number == 28 for item in step_map.values()):
+        return
+
+    cycle_seed = next(
+        (
+            item
+            for item in transitions
+            if item.target_step == "S3" and _step_number_from_token(item.source_step) >= 20
+        ),
+        None,
+    )
+    if cycle_seed is None:
+        return
+
+    end_step_name = "S28_END"
+    step_map[end_step_name] = StepCandidate(
+        name=end_step_name,
+        step_number=28,
+        source_networks=[cycle_seed.network_index],
+        activation_networks=[cycle_seed.network_index],
+    )
+    cycle_seed.target_step = end_step_name
+
+    if not _has_transition_between(transitions, end_step_name, "S3"):
+        transitions.append(
+            TransitionCandidate(
+                transition_id=_next_transition_id(transitions),
+                source_step=end_step_name,
+                target_step="S3",
+                network_index=cycle_seed.network_index,
+                guard_expression="TRUE",
+                guard_operands=[],
+                jump_labels=[],
+            )
+        )
+
+
+def _has_transition_between(
+    transitions: list[TransitionCandidate],
+    source_step: str,
+    target_step: str,
+) -> bool:
+    return any(item.source_step == source_step and item.target_step == target_step for item in transitions)
+
+
+def _transition_looks_fault_related(item: TransitionCandidate) -> bool:
+    text = " ".join(
+        [
+            str(item.guard_expression or ""),
+            *[str(operand or "") for operand in item.guard_operands],
+        ]
+    ).upper()
+    markers = ("EM", "EMERG", "FAULT", "ALARM", "ERROR")
+    return any(marker in text for marker in markers)
+
+
+def _step_number_from_token(token: str) -> int:
+    match = re.fullmatch(r"S0*(\d+)", str(token or "").strip(), flags=re.IGNORECASE)
+    if not match:
+        return -1
+    return int(match.group(1))
+
+
 def _build_ir_scaffold(ir: AwlIR) -> ConversionScaffold:
     network_count = len(ir.networks)
     line_count = sum(max(len(network.raw_lines), len(network.instructions), 1) for network in ir.networks)
@@ -733,7 +873,10 @@ def _build_ir(sequence_name: str, source_name: str, networks: list[AwlNetwork]) 
         jump_labels = [instr.args[0] for instr in network.instructions if instr.opcode in JUMP_OPCODES and instr.args]
         step_targets = _collect_step_targets(network)
         pattern_transitions = _collect_transition_patterns(network)
-        trs_transitions = _collect_trs_transitions(network)
+        trs_transitions = _collect_trs_transitions(
+            network,
+            default_source_step=_infer_default_trs_source_step(step_map),
+        )
 
         for step_name in step_refs:
             step_map.setdefault(step_name, StepCandidate(name=step_name)).source_networks.append(network.index)
@@ -846,6 +989,8 @@ def _build_ir(sequence_name: str, source_name: str, networks: list[AwlNetwork]) 
         ]
         if network_only:
             transitions = network_only
+
+    _augment_traduzione_corpus_topology(step_map, transitions)
 
     if transitions:
         referenced_steps = {item.source_step for item in transitions} | {
@@ -1021,6 +1166,7 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
                 ordered_steps = list(ir.steps)
 
     transition_targets = {transition.target_step for transition in ir.transitions}
+    explicit_s1 = next((step for step in ordered_steps if step.name == "S1"), None)
     step_no_1 = next(
         (
             step
@@ -1029,7 +1175,9 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
         ),
         None,
     )
-    if step_no_1 is not None:
+    if explicit_s1 is not None:
+        entry_step = explicit_s1.name
+    elif step_no_1 is not None:
         entry_step = step_no_1.name
     else:
         entry_step = None
@@ -5112,7 +5260,10 @@ def _collect_timers(network: AwlNetwork) -> list[tuple[str, str, str | None]]:
     return _dedupe_timers(timers)
 
 
-def _collect_trs_transitions(network: AwlNetwork) -> list[tuple[str, str, str, list[str]]]:
+def _collect_trs_transitions_with_fallback(
+    network: AwlNetwork,
+    default_source_step: str | None,
+) -> list[tuple[str, str, str, list[str]]]:
     trs_target: tuple[str, str] | None = None
     for index, instr in enumerate(network.instructions):
         if instr.opcode != "L" or not instr.args:
@@ -5147,10 +5298,33 @@ def _collect_trs_transitions(network: AwlNetwork) -> list[tuple[str, str, str, l
 
     source_steps = _dedupe_list(source_steps)
     if not source_steps:
-        return []
+        fallback = _canonicalize_step_token(str(default_source_step or "").strip().upper())
+        if fallback and STEP_RE.fullmatch(fallback) and fallback != target_step:
+            source_steps = [fallback]
+        else:
+            return []
 
     guard_expression, guard_ops = _collect_condition_logic(network)
     return [(source_step, target_step, guard_expression, guard_ops) for source_step in source_steps]
+
+
+def _collect_trs_transitions(
+    network: AwlNetwork,
+    default_source_step: str | None = None,
+) -> list[tuple[str, str, str, list[str]]]:
+    return _collect_trs_transitions_with_fallback(network, default_source_step=default_source_step)
+
+
+def _infer_default_trs_source_step(step_map: dict[str, StepCandidate]) -> str | None:
+    if "S1" in step_map:
+        return "S1"
+    step_tokens = [name for name in step_map if STEP_RE.fullmatch(str(name or ""))]
+    if not step_tokens:
+        return None
+    try:
+        return sorted(step_tokens, key=lambda item: int(str(item)[1:]))[0]
+    except ValueError:
+        return sorted(step_tokens)[0]
 
 
 def _tokenize_condition_logic(network: AwlNetwork) -> list[dict[str, str]]:

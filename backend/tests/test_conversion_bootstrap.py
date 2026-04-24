@@ -638,6 +638,118 @@ def test_conversion_analyze_preserves_or_not_logic_for_trs_transitions() -> None
     assert all("NOT M47.1" in item["guard_expression"] for item in s1_transitions)
 
 
+def test_conversion_analyze_trs_transition_without_explicit_source_falls_back_to_entry_step() -> None:
+    client = TestClient(app)
+    res = client.post(
+        "/api/conversion/analyze",
+        json={
+            "sequenceName": "TRS Fallback",
+            "sourceName": "trs_fallback.awl",
+            "awlSource": "\n".join(
+                [
+                    "NETWORK 1",
+                    "      A     M02.S1",
+                    "      A     M49.0",
+                    "      JNB   _001",
+                    "      L     2",
+                    "      T     M02.Trs",
+                    "_001: NOP 0",
+                    "NETWORK 2",
+                    "      A     M44.0",
+                    "      A     M47.0",
+                    "      JNB   _002",
+                    "      L     29",
+                    "      T     M02.Trs",
+                    "_002: NOP 0",
+                ]
+            ),
+        },
+    )
+    assert res.status_code == 200
+    payload = res.json()
+    transitions = payload["ir"]["transitions"]
+    assert any(
+        item["source_step"] == "S1"
+        and item["target_step"] == "S2"
+        for item in transitions
+    )
+    assert any(
+        item["source_step"] == "S1"
+        and item["target_step"] == "S29"
+        and "M44.0" in item["guard_expression"]
+        and "M47.0" in item["guard_expression"]
+        for item in transitions
+    )
+
+
+def test_conversion_analyze_augments_end_fault_steps_for_traduzione_pattern() -> None:
+    client = TestClient(app)
+    res = client.post(
+        "/api/conversion/analyze",
+        json={
+            "sequenceName": "Traduzione Pattern",
+            "sourceName": "traduzione_pattern.awl",
+            "awlSource": "\n".join(
+                [
+                    "NETWORK 1",
+                    "      A     M02.S1",
+                    "      A     M49.0",
+                    "      JNB   _001",
+                    "      L     2",
+                    "      T     M02.Trs",
+                    "_001: NOP 0",
+                    "NETWORK 2",
+                    "      A     M02.S26",
+                    "      JNB   _002",
+                    "      L     3",
+                    "      T     M02.Trs",
+                    "_002: NOP 0",
+                    "NETWORK 3",
+                    "      A     M02.EM",
+                    "      JNB   _003",
+                    "      L     32",
+                    "      T     M02.Trs",
+                    "_003: NOP 0",
+                    "NETWORK 4",
+                    "      A     M44.0",
+                    "      A     M47.0",
+                    "      JNB   _004",
+                    "      L     29",
+                    "      T     M02.Trs",
+                    "_004: NOP 0",
+                ]
+            ),
+        },
+    )
+    assert res.status_code == 200
+    payload = res.json()
+    steps = payload["ir"]["steps"]
+    transitions = payload["ir"]["transitions"]
+    step_by_name = {item["name"]: item for item in steps}
+    assert "S28_END" in step_by_name
+    assert step_by_name["S28_END"]["step_number"] == 28
+    assert "S30_Fault" in step_by_name
+    assert step_by_name["S30_Fault"]["step_number"] == 30
+    assert any(
+        item["source_step"] == "S26" and item["target_step"] == "S28_END"
+        for item in transitions
+    )
+    assert any(
+        item["source_step"] == "S28_END" and item["target_step"] == "S3"
+        for item in transitions
+    )
+    assert any(
+        item["source_step"] == "S1"
+        and item["target_step"] == "S30_Fault"
+        and "EM" in item["guard_expression"]
+        for item in transitions
+    )
+    assert any(
+        item["source_step"] == "S30_Fault" and item["target_step"] == "S1"
+        for item in transitions
+    )
+
+
 def test_conversion_analyze_detects_q_outputs_as_output_targets() -> None:
     client = TestClient(app)
     res = client.post(
