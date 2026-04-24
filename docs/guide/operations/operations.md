@@ -194,7 +194,7 @@ Output nel bundle:
   - support manifest/previews: DB e FC di supporto (`support_global_db_*`, `support_lad_fc_*`)
 
 Fogli Excel consigliati:
-- `sequence`: `step_name`, `numero_step`, `transition_id`, `from_step`, `to_step`, `condition_expression`, `flow_type`, `parallel_group`
+- `sequence`: `step_name`, `numero_step`, `from_step`, `transition_id`, `to_step`, `condition_expression`, `flow_type`, `parallel_group`
 - `operands`: `operand`, `category`, `datatype`, `control_kind`, `control_value`, `note`
 - `support_fc` (obbligatorio, pagina unica FC): `category`, `member_name`, `result_member`, `condition_expression`, `coil_mode`, `comment`, `network`
 

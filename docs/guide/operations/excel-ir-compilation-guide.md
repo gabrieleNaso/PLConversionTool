@@ -42,8 +42,8 @@ Ogni riga puo' descrivere uno step, una transizione, o entrambi.
 Colonne:
 - `step_name`: nome passo libero (es. `Init`, `Carico`, `Fine_Ciclo`).
 - `numero_step`: numero passo (intero positivo).
-- `transition_id`: id transizione (opzionale, auto `T1`, `T2`, ... se vuoto).
 - `from_step`: passo sorgente transizione.
+- `transition_id`: id transizione (opzionale, auto `T1`, `T2`, ... se vuoto).
 - `to_step`: passo destinazione transizione.
 - `condition_expression`: espressione LAD/booleana (default `TRUE`).
 - `flow_type`: `alternative` oppure `parallel`.
