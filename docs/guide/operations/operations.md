@@ -57,7 +57,7 @@ curl -sS http://127.0.0.1:8010/api/status
 Metti i file in `data/input/` con estensione:
 - `.awl`
 - `.txt`
-- `.md` (viene usato il primo blocco fenced che contiene `NETWORK`)
+- `.md` (vengono estratti i blocchi fenced AWL/STL; se non rilevati, viene usato il testo completo)
 
 ### 2) Genera i bundle
 
@@ -109,7 +109,7 @@ make import-generated \
 make import-generated \
   PROJECT_PATH="C:\\Users\\Admin\\Desktop\\prova_connessione_openness\\prova_connessione_openness.ap20" \
   TARGET_PATH="Program blocks/generati da tool/mio_test" \
-  IMPORT_BUNDLE="check_awl_romania"
+  IMPORT_BUNDLE="auto_awl_romania"
 ```
 
 Alternative:
@@ -219,7 +219,7 @@ Regole Excel importanti:
 - il generatore deduce automaticamente gli operandi da `condition_expression`/`guard_expression` (non servono colonne operandi dedicate nel formato corrente).
 - nel GRAPH, le transition usano la logica reale dell'Excel (`condition_expression`) e non vengono ridotte a marker tipo `T1/T2`.
 - i riferimenti variabile nelle transition GRAPH sono cross-DB: ogni simbolo punta al DB owner derivato dal catalogo `operands`.
-- i blocchi supporto vengono sempre emessi anche se vuoti (placeholder `NoData`), incluso `DB14 ... transitions`.
+- i blocchi supporto vengono emessi in modo completo per famiglia; se una famiglia non ha member utili puo' essere emesso un placeholder `NoData`.
 
 Compatibilita':
 - lo script accetta solo il formato Excel corrente (`sequence`, `operands`, `support_fc`) con colonne canoniche.
@@ -271,6 +271,10 @@ curl -sS "http://127.0.0.1:8000/api/tia/jobs/<JOB_ID>"
   - DB custom: `DB11` alarms, `DB12` HMI, `DB13` PARAMETERS, `DB14` transitions, `DB16` I/O + output, `DB17` LEV2, `DB18` external, `DB19` AUX
   - FB/istanza: `FB15` GRAPH + `DB15` SEQ (istanza TIA automatica)
 
+Nota sui nomi member DB:
+- i nomi in transizione privilegiano alias semantici derivati dall'AWL (es. `TR_OP_S29`, `TR_OP_STC`);
+- in caso di alias ambiguo il generatore usa fallback deterministico basato su indirizzo, senza lasciare nomi vuoti.
+
 ## Problemi comuni (e cosa fare)
 
 ### Import bloccato: "block name already exists"
@@ -291,6 +295,17 @@ Strategie:
 
 ### Windows agent non raggiungibile
 Verifica in `http://127.0.0.1:8010/api/status` che `remoteAgentStatus` sia popolato e che l'URL sia corretto.
+
+### `make generate-input INPUT_FILE="..."` non genera nulla
+Cause tipiche:
+- nome file non esatto rispetto a `data/input/` (maiuscole/spazi inclusi);
+- file presente ma estensione non supportata;
+- file `.md` senza blocchi riconoscibili come AWL e testo non interpretabile.
+
+Verifica rapida:
+```bash
+ls -la data/input/
+```
 
 ## Debug rapido (errore -> causa -> fix)
 - Errore import: `A connection between "T6" and "Branch 1" cannot be created`

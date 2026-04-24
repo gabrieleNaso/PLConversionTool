@@ -29,6 +29,7 @@ Regola trasversale:
 - **No autocompilazione commenti**: se Excel non valorizza commento/note, il commento DB deve restare vuoto.
 - **Contratto cross-blocco**: il DB deve dichiarare tutti i member richiesti dal `GRAPH`, dalla `FC LAD` e da eventuali blocchi aggiuntivi del pacchetto, senza drift di naming.
 - **Caso Excel strict**: verificare che i member DB siano coerenti con il catalogo `operands` del file Excel, senza extra non dichiarati.
+- **Qualita' naming**: evitare member vuoti o instabili; preferire alias semantici e fallback deterministici da indirizzo solo in caso di ambiguita'.
 
 ## C) Checklist rapida — FC LAD importabile
 - **Blocco**: `SW.Blocks.FC` in LAD, importabile anche con interfaccia minima.

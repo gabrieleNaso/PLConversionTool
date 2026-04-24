@@ -68,7 +68,7 @@ In pratica e' il **contratto interno** che garantisce coerenza tra i blocchi.
 ### Da IR a XML
 1. **Builder**: genera `FB GRAPH`, `GlobalDB`, `FC LAD` (e blocchi extra se servono).
 2. **Allineamento**: simboli/guard replicati coerentemente tra FB/DB/FC.
-3. **Serializzazione**: output XML compatibile TIA.
+3. **Serializzazione**: output XML compatibile TIA con naming member deterministico e owner DB coerente.
 4. **Scrittura**: `data/output/generated/<nome_bundle>/`.
 
 ## 3) Generazione XML (pacchetto coerente)

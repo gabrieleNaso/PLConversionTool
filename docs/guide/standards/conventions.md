@@ -7,10 +7,10 @@
 
 
 ## Naming file (artefatti XML)
-- **FB GRAPH**: `FB_<AreaOImpianto>_<Funzione>_GRAPH_<variant>.xml`
-  - es.: `FB_BottlingLine_GRAPH_strict_rebased.xml`
-- **GlobalDB del pacchetto**: `DB_<AreaOImpianto>_<Funzione>_global_<variant>.xml`
-- **FC LAD del pacchetto**: `FC_<AreaOImpianto>_<Funzione>_lad_<variant>.xml`
+Per il generatore corrente, usare naming deterministico aderente al profilo blocchi:
+- **FB GRAPH**: `FB_<SequenceName>_GRAPH_auto.xml`
+- **GlobalDB di famiglia**: `DB<XX>_<SequenceName>_<family>_db_auto.xml`
+- **FC LAD di famiglia**: `FC<XX>_<SequenceName>_<family>_lad_auto.xml`
 
 Suggerimento: usare suffissi di variante solo quando aggiungono informazione utile:
 - `strict`: serializer/validator "hard rules" attivo

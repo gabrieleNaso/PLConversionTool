@@ -76,11 +76,11 @@ Il generatore deve poter emettere almeno le seguenti famiglie architetturali:
 - `1 x FB GRAPH` della sequenza;
 - `DB 11..` base;
 - `DB 12..` HMI (`12GG` = DB HMI);
-- `DB 13..` AUX;
+- `DB 13..` PARAMETERS;
 - `DB 14..` transitions;
-- `DB 16..` sequenza;
+- `DB 16..` sequenza/I-O;
 - `DB 18.. EXT`;
-- `DB 19..` output;
+- `DB 19..` AUX;
 - `FC 12 HMI`;
 - `FC 13 Aux`;
 - `FC 14 Transitions`;
@@ -198,7 +198,7 @@ Nel percorso Excel il pacchetto supporto deve essere sempre completo per famigli
 
 Regole hard:
 
-- il blocco va comunque emesso con placeholder valido (`NoData`) per mantenere coerenza di import e struttura bundle;
+- il blocco va comunque emesso; se la famiglia non contiene member effettivi puo' includere placeholder valido (`NoData`) per mantenere coerenza di import e struttura bundle;
 - il requisito include il DB transitions (`DB14GG`) e le altre famiglie DB/FC di supporto previste dal profilo corrente.
 
 # Parte II - Regole di analisi del sorgente AWL
@@ -413,13 +413,13 @@ La convenzione fissa del progetto è:
 Mappa famiglie consolidata:
 - `11GG` -> alarms/diag;
 - `12GG` -> HMI (`12GG` = DB HMI);
-- `13GG` -> AUX;
+- `13GG` -> PARAMETERS;
 - `14GG` -> transitions;
 - `15GG` -> GRAPH (FB);
-- `16GG` -> sequenza;
+- `16GG` -> sequenza/I-O;
 - `17GG` -> LEV2;
 - `18GG` -> external;
-- `19GG` -> output.
+- `19GG` -> AUX.
 
 Nota operativa vincolante:
 - `DB15GG SEQ` e' il DB istanza FB GRAPH creato da TIA in fase import/runtime;
@@ -433,12 +433,12 @@ La distribuzione corretta dei dati è:
 
 - `11GG` = DB allarmi/diagnostica;
 - `12GG` = DB HMI;
-- `13GG` = DB AUX;
+- `13GG` = DB PARAMETERS;
 - `14GG` = DB transitions;
-- `16GG` = DB sequenza;
+- `16GG` = DB sequenza/I-O;
 - `17GG` = DB LEV2;
 - `18GG` = DB `EXT`;
-- `19GG` = DB output.
+- `19GG` = DB AUX.
 
 ## 21-bis. Regola di natura normativa della partizione target
 

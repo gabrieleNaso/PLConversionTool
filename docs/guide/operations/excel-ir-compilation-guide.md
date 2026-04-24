@@ -2,12 +2,12 @@
 
 Obiettivo: compilare un Excel leggibile per generare `IR JSON` e XML TIA (`FB/DB/FC`) senza passare da AWL.
 
-Aggiornato al `23-04-2026`:
+Aggiornato al `24-04-2026`:
 - timer e contatori in `support_fc` vengono generati come blocchi LAD completi (non come contatti semplici);
 - il preset usa sempre `operands.control_value` (`PT` per timer, `PV` per contatori).
 - nelle transition GRAPH viene mantenuta la logica booleana reale dell'Excel (non fallback su marker `T1/T2`);
 - nelle transition GRAPH ogni variabile e' risolta sul DB owner corretto dal catalogo `operands` (cross-DB);
-- i blocchi supporto vengono creati sempre anche se vuoti (placeholder `NoData`), incluso `DB14 ... transitions`.
+- i blocchi supporto vengono emessi in modo completo per famiglia; se una famiglia risulta priva di member puo' includere placeholder `NoData`.
 - separazione commenti FC/DB: i commenti delle reti FC non vengono copiati nei tag DB.
 - commenti DB non autocompilati: se non presenti in Excel (o in `operands.note`), restano vuoti.
 - righe `support_fc` con stesso `network` e stessa `category` vengono aggregate nella stessa rete FC (con un solo power rail LAD).
@@ -50,6 +50,7 @@ Colonne:
 - `parallel_group`: gruppo parallelo (obbligatorio quando `flow_type=parallel`).
 
 Regole importanti:
+- ordine raccomandato colonne sequenza: `from_step`, `transition_id`, `to_step` (coerente con il tracciato operativo corrente).
 - i nomi passo sono liberi: il generatore non impone nomi fissi.
 - l'inizio sequenza e' determinato da `numero_step = 1`.
 - `from_step`/`to_step` possono usare alias tipo `S1`, `S2`: se in `steps` esiste un passo con `numero_step` corrispondente, l'alias viene risolto al nome reale.
@@ -204,7 +205,7 @@ make import-generated \
   IMPORT_BUNDLE="<nome_bundle>"
 ```
 
-Regole consolidate (23-04-2026):
+Regole consolidate (24-04-2026):
 - `import-generated` esegue polling automatico del job import.
 - i numeri blocco sono il valore reale XML `<Number>` (non il prefisso nel nome file).
 - il suffisso finale e' il numero comune di gruppo (`GG`): `03` e' un esempio, non un valore obbligatorio.
@@ -226,7 +227,7 @@ Regole consolidate (23-04-2026):
   - DB custom: `DB11` alarms, `DB12` HMI, `DB13` PARAMETERS, `DB14` transitions, `DB16` I/O + output, `DB17` LEV2, `DB18` external, `DB19` AUX
   - DB istanza TIA: `DB15` SEQ (auto-creato da TIA, non serializzato dal tool)
 - nota sul manifest conversione: la voce `baseline` contiene `graph_fb` + `lad_fc`; i DB sono esposti nelle sezioni `support_*`.
-- anche quando una famiglia DB/FC non ha member valorizzati dall'Excel, il blocco viene comunque emesso con placeholder per mantenere il pacchetto completo.
+- anche quando una famiglia DB/FC non ha member valorizzati dall'Excel, il blocco viene comunque emesso; se necessario viene usato un placeholder per mantenere il pacchetto completo.
 - le variabili usate nelle FC possono essere cross-categoria, ma il DB owner non cambia:
   - il DB owner e' determinato dal catalogo `operands`;
   - se una variabile e' usata in un'altra FC, resta referenziata nel DB owner originale;

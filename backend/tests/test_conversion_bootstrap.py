@@ -730,6 +730,14 @@ def test_conversion_analyze_augments_end_fault_steps_for_traduzione_pattern() ->
     assert step_by_name["S28_END"]["step_number"] == 28
     assert "S30_Fault" in step_by_name
     assert step_by_name["S30_Fault"]["step_number"] == 30
+    graph_step_no_by_name = {
+        item["name"]: item["step_no"] for item in payload["graph_topology"]["step_nodes"]
+    }
+    assert graph_step_no_by_name["S30_Fault"] == 30
+    if "S32" in graph_step_no_by_name:
+        assert graph_step_no_by_name["S32"] == 32
+    if "S29" in graph_step_no_by_name:
+        assert graph_step_no_by_name["S29"] == 29
     assert any(
         item["source_step"] == "S26" and item["target_step"] == "S28_END"
         for item in transitions
@@ -748,6 +756,154 @@ def test_conversion_analyze_augments_end_fault_steps_for_traduzione_pattern() ->
         item["source_step"] == "S30_Fault" and item["target_step"] == "S1"
         for item in transitions
     )
+
+
+def test_conversion_analyze_augments_s7_recycle_branch_for_traduzione_pattern() -> None:
+    client = TestClient(app)
+    res = client.post(
+        "/api/conversion/analyze",
+        json={
+            "sequenceName": "Traduzione S7 Branch",
+            "sourceName": "traduzione_s7_branch.awl",
+            "awlSource": "\n".join(
+                [
+                    "NETWORK 1",
+                    "      A     M02.S1",
+                    "      JNB   _001",
+                    "      L     2",
+                    "      T     M02.Trs",
+                    "_001: NOP 0",
+                    "NETWORK 2",
+                    "      A     M02.S2",
+                    "      JNB   _002",
+                    "      L     3",
+                    "      T     M02.Trs",
+                    "_002: NOP 0",
+                    "NETWORK 3",
+                    "      A     M02.S3",
+                    "      JNB   _003",
+                    "      L     4",
+                    "      T     M02.Trs",
+                    "_003: NOP 0",
+                    "NETWORK 4",
+                    "      A     M02.S4",
+                    "      JNB   _004",
+                    "      L     7",
+                    "      T     M02.Trs",
+                    "_004: NOP 0",
+                    "NETWORK 5",
+                    "      A     M02.S7",
+                    "      JNB   _005",
+                    "      L     10",
+                    "      T     M02.Trs",
+                    "_005: NOP 0",
+                    "NETWORK 6",
+                    "      A     M02.S26",
+                    "      JNB   _006",
+                    "      L     3",
+                    "      T     M02.Trs",
+                    "_006: NOP 0",
+                    "NETWORK 7",
+                    "      A     M02.EM",
+                    "      JNB   _007",
+                    "      L     32",
+                    "      T     M02.Trs",
+                    "_007: NOP 0",
+                    "NETWORK 8",
+                    "      A     M44.0",
+                    "      A     M47.0",
+                    "      JNB   _008",
+                    "      L     29",
+                    "      T     M02.Trs",
+                    "_008: NOP 0",
+                ]
+            ),
+        },
+    )
+    assert res.status_code == 200
+    payload = res.json()
+    transitions = payload["ir"]["transitions"]
+    assert any(
+        item["source_step"] == "S7" and item["target_step"] == "S3"
+        for item in transitions
+    )
+    assert any(
+        item["branch_type"] == "AltBegin" and item["owner_step"] == "S7"
+        for item in payload["graph_topology"]["branch_nodes"]
+    )
+
+
+def test_conversion_analyze_does_not_augment_tracking_steps_by_default() -> None:
+    client = TestClient(app)
+    res = client.post(
+        "/api/conversion/analyze",
+        json={
+            "sequenceName": "Tracking Pattern",
+            "sourceName": "tracking_pattern.awl",
+            "awlSource": "\n".join(
+                [
+                    "NETWORK 1",
+                    "      A     M02.S1",
+                    "      JNB   _001",
+                    "      L     3",
+                    "      T     M02.Trs",
+                    "_001: NOP 0",
+                    "NETWORK 2",
+                    "      A     M02.S3",
+                    "      A     DB103.DBX6.2",
+                    "      AN    DB103.DBX23.3",
+                    "      JNB   _002",
+                    "      L     22",
+                    "      T     M02.Trs",
+                    "_002: NOP 0",
+                ]
+            ),
+        },
+    )
+    assert res.status_code == 200
+    payload = res.json()
+    steps = {item["name"]: item for item in payload["ir"]["steps"]}
+    transitions = payload["ir"]["transitions"]
+    assert "S100_TRK_CHECK" not in steps
+    assert "S101_TRK_TRANSFER" not in steps
+    assert any(
+        item["source_step"] == "S3" and item["target_step"] == "S22"
+        for item in transitions
+    )
+
+
+def test_conversion_analyze_graph_transition_binds_owner_db_and_member_aliases() -> None:
+    client = TestClient(app)
+    res = client.post(
+        "/api/conversion/analyze",
+        json={
+            "sequenceName": "Owner DB Bind",
+            "sourceName": "owner_db_bind.awl",
+            "awlSource": "\n".join(
+                [
+                    "NETWORK 1",
+                    "      A     S1",
+                    "      A     M44.0",
+                    "      A     DB102.DBX25.5",
+                    "      S     S2",
+                ]
+            ),
+        },
+    )
+    assert res.status_code == 200
+    payload = res.json()
+    graph_preview = next(
+        preview["content"]
+        for preview in payload["artifact_previews"]
+        if preview["artifact_type"] == "graph_fb"
+    )
+    assert '<Component Name="DB19_Owner_DB_Bind_AUX_DB" />' in graph_preview
+    assert '<Component Name="AUX_MEM_M44_0" />' in graph_preview
+    assert '<Component Name="DB14_Owner_DB_Bind_TRANSITIONS_DB" />' in graph_preview
+    assert '<Component Name="TR_OP_DB102_DBX25_5" />' in graph_preview
+    assert '<Component Name="DB18_Owner_DB_Bind_EXT_DB" />' not in graph_preview
+    assert '<Component Name="M44_0" />' not in graph_preview
+    assert '<Component Name="DB102_DBX25_5" />' not in graph_preview
 
 
 def test_conversion_analyze_detects_q_outputs_as_output_targets() -> None:

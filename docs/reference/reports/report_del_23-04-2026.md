@@ -107,7 +107,7 @@ Il confronto tra i documenti normativi aggiornati e i file XML reali oggi dispon
 - Il modello HMI va esplicitato su due livelli: condizioni elementari nel path `Conditions.<gruppo>.Conditions.nX` e metadati/stati di gruppo nello stesso owner DB HMI, con campi del tipo `PopUpNumber`, `ConditionOK`, `Visible`, `FO` o equivalenti previsti dal modello finale.
 - I DB esterni fissi di integrazione, quando presenti, costituiscono un contratto rigido di naming. In particolare i pattern `Pnnn` e `Lnnn` osservati in `DB81-OPIN` e `DB82-OPOUT` non devono essere rinominati liberamente dal generatore.
 - I casi legacy come `T1-A ARUNC LEV2` confermano che nel corpus storico esistono sequenze e strutture dati utili per il reverse engineering semantico, ma non necessariamente allineate alla partizione target chiusa del nuovo convertitore.
-- Mappa famiglie consolidata al 23-04-2026 (forma `XXGG`): `11GG` alarms/diag, `12GG` hmi (`12GG` = DB HMI), `13GG` aux, `14GG` transitions, `15GG` graph, `16GG` sequenza, `17GG` LEV2, `18GG` external, `19GG` output.
+- Mappa famiglie consolidata al 23-04-2026 (forma `XXGG`): `11GG` alarms/diag, `12GG` hmi (`12GG` = DB HMI), `13GG` parameters, `14GG` transitions, `15GG` graph, `16GG` sequenza/I-O, `17GG` LEV2, `18GG` external, `19GG` aux.
 - `DB15GG SEQ` va considerato DB istanza del GRAPH generato da TIA: non deve essere emesso dal convertitore come DB custom.
 - Profilo operativo corretto: `FC11/12/13/14/16/17`, `FB15`, DB custom `11/12/13/14/16/17/18/19` + `DB15` solo istanza TIA.
 - La famiglia `17GG` e' riservata a `LEV2` e va considerata parte del modello target quando prevista dal caso reale.
@@ -121,7 +121,7 @@ Nel percorso Excel risultano consolidate anche le seguenti regole operative:
 - in input `operands`, LEV2 usa `lv2`/`lev2`; `mode` non rappresenta la forma canonica di input;
 - le transition nel GRAPH mantengono la formula booleana reale dell'Excel (`condition_expression`) senza degradare in marker semplificati (`T1`, `T2`, ...);
 - nelle transition GRAPH i riferimenti variabile sono cross-DB e devono puntare al DB owner corretto determinato dal catalogo `operands`;
-- il pacchetto supporto va emesso completo anche in assenza di contenuto logico/dati per alcune famiglie, con placeholder validi (`NoData`) per preservare importabilita' e struttura attesa;
+- il pacchetto supporto va emesso completo anche in assenza di contenuto logico/dati per alcune famiglie; se necessario possono essere usati placeholder validi (`NoData`) per preservare importabilita' e struttura attesa;
 - righe `support_fc` con stessa `category` + stesso `network` devono essere aggregate nella stessa rete FC;
 - ogni rete LAD FC deve avere un solo `Powerrail` per garantire importabilita' su TIA.
 - in particolare il DB transitions (`DB14GG`) deve essere sempre presente nel bundle quando il pacchetto Excel include la famiglia transitions.
@@ -693,7 +693,7 @@ Regola generale:
 - il formato e' `XXGG`, dove `XX` identifica la famiglia e `GG` e' il gruppo comune della traduzione;
 - `03` e' un esempio operativo di `GG`, non un valore fisso.
 
-Mappa famiglie consolidata: `11GG` alarms/diag, `12GG` hmi (`12GG` = DB HMI), `13GG` aux, `14GG` transitions, `15GG` graph, `16GG` sequenza, `17GG` LEV2, `18GG` external, `19GG` output.
+Mappa famiglie consolidata: `11GG` alarms/diag, `12GG` hmi (`12GG` = DB HMI), `13GG` parameters, `14GG` transitions, `16GG` sequenza/I-O, `17GG` LEV2, `18GG` external, `19GG` aux, con `15GG` riservato al GRAPH.
 
 Nota: `DB15GG SEQ` e' l'istanza FB GRAPH generata da TIA; il convertitore non deve serializzarla come DB applicativo.
 

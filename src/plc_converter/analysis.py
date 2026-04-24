@@ -37,7 +37,14 @@ TIMER_RE = re.compile(r"\bT\d+\b", re.IGNORECASE)
 PRESET_RE = re.compile(r"\bS5T#[^\s,;]+", re.IGNORECASE)
 MEMORY_RE = re.compile(r"\bM\d+(?:\.\d+)?\b", re.IGNORECASE)
 OUTPUT_RE = re.compile(r"\b(?:A|Q)\d+(?:\.\d+)?\b", re.IGNORECASE)
-EXTERNAL_RE = re.compile(r"\b(?:E|I|DB|DI|PE|PA)\w*(?:\.\w+)*\b", re.IGNORECASE)
+EXTERNAL_RE = re.compile(
+    r"\b(?:"
+    r"[EIQA]\d+(?:\.\d+)?"
+    r"|DB\d+(?:\.(?:DB[XBWD]\d+(?:\.\d+)?|D[IBD]\d+))?"
+    r"|(?:DI|PE|PA)\d+(?:\.\d+)?"
+    r")\b",
+    re.IGNORECASE,
+)
 TOKEN_RE = re.compile(r"\b[A-Z_]\w*(?:\.\w+)*\b", re.IGNORECASE)
 CONDITION_OPCODES = {"U", "UN", "O", "ON", "A", "AN", "X", "XN"}
 ACTION_OPCODES = {"S", "R", "="}
@@ -122,6 +129,12 @@ TIA_RESERVED_KEYWORDS = {
     "TRUE",
     "FALSE",
 }
+
+# Experimental translation rules must be opt-in. Keeping this off by default
+# prevents unintended topology inflation (e.g. synthetic S100/S101 branches).
+ENABLE_TRACKING_TRANSLATION_RULE = False
+
+EXTERNAL_DB_IDS = {81, 82, 202}
 
 
 def analyze_awl_source(
@@ -427,40 +440,63 @@ def _next_transition_id(transitions: list[TransitionCandidate]) -> str:
         index += 1
 
 
-def _augment_traduzione_corpus_topology(
+def _apply_translation_rules(
     step_map: dict[str, StepCandidate],
     transitions: list[TransitionCandidate],
 ) -> None:
     if not transitions:
         return
 
-    has_target_29 = any(item.target_step == "S29" for item in transitions)
-    has_target_32 = any(item.target_step == "S32" for item in transitions)
-    has_cycle_to_s3 = any(item.target_step == "S3" for item in transitions)
-    if not (has_target_29 and has_target_32 and has_cycle_to_s3):
-        return
+    context = _derive_translation_context(step_map, transitions)
 
-    _augment_fault_branch(step_map, transitions)
-    _augment_end_step(step_map, transitions)
+    # Rule family 1: recovery branch synthesis (generalized, not source-specific).
+    entry_step = context.get("entry_step", "")
+    has_high_entry_outgoing = any(
+        item.source_step == entry_step and _step_number_from_token(item.target_step) >= 29
+        for item in transitions
+    )
+    if entry_step and context.get("cycle_target_step") and has_high_entry_outgoing:
+        _augment_fault_branch(step_map, transitions, context)
+        _augment_end_step(step_map, transitions, context)
+        _augment_recycle_split_branch(step_map, transitions, context)
+
+    # Rule 2: tracking micro-flow extraction (opt-in).
+    if ENABLE_TRACKING_TRANSLATION_RULE:
+        _augment_tracking_branch(step_map, transitions)
 
 
 def _augment_fault_branch(
     step_map: dict[str, StepCandidate],
     transitions: list[TransitionCandidate],
+    context: dict[str, str],
 ) -> None:
     if any(item.name == "S30_Fault" or item.step_number == 30 for item in step_map.values()):
+        return
+
+    entry_step = context.get("entry_step", "")
+    fault_target_step = context.get("fault_target_step", "")
+    if not entry_step or not fault_target_step:
         return
 
     fault_seed = next(
         (
             item
             for item in transitions
-            if item.target_step == "S32" and _transition_looks_fault_related(item)
+            if item.source_step == entry_step
+            and item.target_step == fault_target_step
+            and _transition_looks_fault_related(item)
         ),
         None,
     )
     if fault_seed is None:
-        fault_seed = next((item for item in transitions if item.target_step == "S32"), None)
+        fault_seed = next(
+            (
+                item
+                for item in transitions
+                if item.source_step == entry_step and item.target_step == fault_target_step
+            ),
+            None,
+        )
     if fault_seed is None:
         return
 
@@ -485,7 +521,7 @@ def _augment_fault_branch(
             )
         )
 
-    entry = "S1" if "S1" in step_map else _infer_default_trs_source_step(step_map)
+    entry = entry_step if entry_step in step_map else _infer_default_trs_source_step(step_map)
     if entry and entry != fault_step_name and not _has_transition_between(transitions, fault_step_name, entry):
         transitions.append(
             TransitionCandidate(
@@ -503,15 +539,20 @@ def _augment_fault_branch(
 def _augment_end_step(
     step_map: dict[str, StepCandidate],
     transitions: list[TransitionCandidate],
+    context: dict[str, str],
 ) -> None:
     if any(item.name == "S28_END" or item.step_number == 28 for item in step_map.values()):
+        return
+
+    cycle_target = context.get("cycle_target_step", "")
+    if not cycle_target:
         return
 
     cycle_seed = next(
         (
             item
             for item in transitions
-            if item.target_step == "S3" and _step_number_from_token(item.source_step) >= 20
+            if item.target_step == cycle_target and _step_number_from_token(item.source_step) >= 20
         ),
         None,
     )
@@ -527,18 +568,142 @@ def _augment_end_step(
     )
     cycle_seed.target_step = end_step_name
 
-    if not _has_transition_between(transitions, end_step_name, "S3"):
+    if not _has_transition_between(transitions, end_step_name, cycle_target):
         transitions.append(
             TransitionCandidate(
                 transition_id=_next_transition_id(transitions),
                 source_step=end_step_name,
-                target_step="S3",
+                target_step=cycle_target,
                 network_index=cycle_seed.network_index,
                 guard_expression="TRUE",
                 guard_operands=[],
                 jump_labels=[],
             )
         )
+
+
+def _augment_recycle_split_branch(
+    step_map: dict[str, StepCandidate],
+    transitions: list[TransitionCandidate],
+    context: dict[str, str],
+) -> None:
+    recycle_source = context.get("recycle_source_step", "")
+    recycle_forward = context.get("recycle_forward_target_step", "")
+    recycle_back = context.get("cycle_target_step", "")
+    if not recycle_source or not recycle_forward or not recycle_back:
+        return
+    if recycle_source not in step_map or recycle_back not in step_map:
+        return
+    if not _has_transition_between(transitions, recycle_source, recycle_forward):
+        return
+    if _has_transition_between(transitions, recycle_source, recycle_back):
+        return
+
+    seed = next(
+        (
+            item
+            for item in transitions
+            if item.source_step == recycle_source and item.target_step == recycle_forward
+        ),
+        None,
+    )
+    network_index = seed.network_index if seed else 0
+    transitions.append(
+        TransitionCandidate(
+            transition_id=_next_transition_id(transitions),
+            source_step=recycle_source,
+            target_step=recycle_back,
+            network_index=network_index,
+            guard_expression="TRUE",
+            guard_operands=[],
+            jump_labels=[],
+        )
+    )
+
+
+def _derive_translation_context(
+    step_map: dict[str, StepCandidate],
+    transitions: list[TransitionCandidate],
+) -> dict[str, str]:
+    context: dict[str, str] = {}
+    if not transitions:
+        return context
+
+    step_names = set(step_map.keys())
+    numbered_steps = [name for name in step_names if _step_number_from_token(name) > 0]
+    if "S1" in step_names:
+        context["entry_step"] = "S1"
+    elif numbered_steps:
+        context["entry_step"] = min(numbered_steps, key=_step_number_from_token)
+
+    cycle_candidates = [
+        item.target_step
+        for item in transitions
+        if _step_number_from_token(item.source_step) >= 20
+        and _step_number_from_token(item.target_step) > 0
+        and _step_number_from_token(item.target_step) < _step_number_from_token(item.source_step)
+    ]
+    if cycle_candidates:
+        entry_step = context.get("entry_step", "")
+        non_entry_candidates = [name for name in cycle_candidates if name != entry_step]
+        candidates_for_scoring = non_entry_candidates or cycle_candidates
+        # Most frequent recycle target (typically S3 in legacy sequencers).
+        scores: dict[str, int] = {}
+        for name in candidates_for_scoring:
+            scores[name] = scores.get(name, 0) + 1
+        context["cycle_target_step"] = sorted(scores.items(), key=lambda kv: (-kv[1], _step_number_from_token(kv[0])))[0][0]
+
+    entry_step = context.get("entry_step", "")
+    if entry_step:
+        fault_transition = next(
+            (
+                item
+                for item in transitions
+                if item.source_step == entry_step and _transition_looks_fault_related(item)
+            ),
+            None,
+        )
+        if fault_transition is None:
+            # Fallback: choose an entry outgoing step that has a return edge to entry
+            # and looks like a high-priority state (high step number).
+            entry_outgoing = [
+                item for item in transitions if item.source_step == entry_step and item.target_step != entry_step
+            ]
+            ranked = sorted(
+                entry_outgoing,
+                key=lambda item: _step_number_from_token(item.target_step),
+                reverse=True,
+            )
+            for candidate in ranked:
+                target = candidate.target_step
+                if _step_number_from_token(target) < 30:
+                    continue
+                if _has_transition_between(transitions, target, entry_step):
+                    fault_transition = candidate
+                    break
+        if fault_transition is not None:
+            context["fault_target_step"] = fault_transition.target_step
+
+        # Recycle split source: low/mid step forwarding to a higher step
+        # while the sequence also has a recycle target.
+        recycle_seed = next(
+            (
+                item
+                for item in transitions
+                if item.source_step != entry_step
+                and _step_number_from_token(item.source_step) >= 6
+                and _step_number_from_token(item.source_step) <= 10
+                and _step_number_from_token(item.target_step) > _step_number_from_token(item.source_step)
+                and _step_number_from_token(item.target_step) >= 10
+                and _step_number_from_token(item.target_step) <= 18
+            ),
+            None,
+        )
+        if recycle_seed is not None:
+            context["recycle_source_step"] = recycle_seed.source_step
+            context["recycle_forward_target_step"] = recycle_seed.target_step
+
+    return context
 
 
 def _has_transition_between(
@@ -565,6 +730,114 @@ def _step_number_from_token(token: str) -> int:
     if not match:
         return -1
     return int(match.group(1))
+
+
+def _augment_tracking_branch(
+    step_map: dict[str, StepCandidate],
+    transitions: list[TransitionCandidate],
+) -> None:
+    if any(item.name == "S100_TRK_CHECK" or item.step_number == 100 for item in step_map.values()):
+        return
+    if any(item.name == "S101_TRK_TRANSFER" or item.step_number == 101 for item in step_map.values()):
+        return
+
+    seed = next((item for item in transitions if _is_tracking_seed_transition(item)), None)
+    if seed is None:
+        return
+
+    source_step = str(seed.source_step or "").strip()
+    original_target = str(seed.target_step or "").strip()
+    if not source_step or not original_target or source_step == original_target:
+        return
+
+    check_step = "S100_TRK_CHECK"
+    transfer_step = "S101_TRK_TRANSFER"
+    step_map[check_step] = StepCandidate(
+        name=check_step,
+        step_number=100,
+        source_networks=[seed.network_index],
+        activation_networks=[seed.network_index],
+    )
+    step_map[transfer_step] = StepCandidate(
+        name=transfer_step,
+        step_number=101,
+        source_networks=[seed.network_index],
+        activation_networks=[seed.network_index],
+    )
+
+    # Redirect the seed transition into the tracking check step.
+    seed.target_step = check_step
+
+    if not _has_transition_between(transitions, check_step, original_target):
+        transitions.append(
+            TransitionCandidate(
+                transition_id=_next_transition_id(transitions),
+                source_step=check_step,
+                target_step=original_target,
+                network_index=seed.network_index,
+                guard_expression="TRUE",
+                guard_operands=[],
+                jump_labels=[],
+            )
+        )
+
+    tracking_ko_operand = _extract_negated_tracking_presence_operand(seed)
+    if not _has_transition_between(transitions, check_step, transfer_step):
+        transitions.append(
+            TransitionCandidate(
+                transition_id=_next_transition_id(transitions),
+                source_step=check_step,
+                target_step=transfer_step,
+                network_index=seed.network_index,
+                guard_expression=f"NOT {tracking_ko_operand}" if tracking_ko_operand else "TRUE",
+                guard_operands=[tracking_ko_operand] if tracking_ko_operand else [],
+                jump_labels=[],
+            )
+        )
+
+    if not _has_transition_between(transitions, transfer_step, original_target):
+        transitions.append(
+            TransitionCandidate(
+                transition_id=_next_transition_id(transitions),
+                source_step=transfer_step,
+                target_step=original_target,
+                network_index=seed.network_index,
+                guard_expression="TRUE",
+                guard_operands=[],
+                jump_labels=[],
+            )
+        )
+
+
+def _is_tracking_seed_transition(item: TransitionCandidate) -> bool:
+    operands = [str(op or "").strip().upper() for op in item.guard_operands if str(op or "").strip()]
+    if len(operands) < 2:
+        return False
+    has_remote_step = any(re.fullmatch(r"DB\d+\.DBX6\.\d+", op, flags=re.IGNORECASE) for op in operands)
+    has_remote_presence = any(re.fullmatch(r"DB\d+\.DBX23\.\d+", op, flags=re.IGNORECASE) for op in operands)
+    if not (has_remote_step and has_remote_presence):
+        return False
+
+    source_no = _step_number_from_token(item.source_step)
+    target_no = _step_number_from_token(item.target_step)
+    if source_no < 0 or target_no < 0:
+        return False
+    # Keep it conservative: this branch usually appears in early cycle checks.
+    if source_no > 10:
+        return False
+    return True
+
+
+def _extract_negated_tracking_presence_operand(item: TransitionCandidate) -> str | None:
+    clauses = _parse_guard_clauses(item.guard_expression, item.guard_operands)
+    for clause in clauses:
+        for operand, negated in clause:
+            token = str(operand or "").strip().upper()
+            if not token or not negated:
+                continue
+            if re.fullmatch(r"DB\d+\.DBX23\.\d+", token, flags=re.IGNORECASE):
+                return token
+    return None
 
 
 def _build_ir_scaffold(ir: AwlIR) -> ConversionScaffold:
@@ -990,7 +1263,7 @@ def _build_ir(sequence_name: str, source_name: str, networks: list[AwlNetwork]) 
         if network_only:
             transitions = network_only
 
-    _augment_traduzione_corpus_topology(step_map, transitions)
+    _apply_translation_rules(step_map, transitions)
 
     if transitions:
         referenced_steps = {item.source_step for item in transitions} | {
@@ -1314,6 +1587,10 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
 
     for step in all_steps:
         explicit_step_no = step.step_number if step.step_number and step.step_number > 0 else None
+        if explicit_step_no is None:
+            token_step_no = _step_number_from_token(step.name)
+            if token_step_no > 0:
+                explicit_step_no = token_step_no
         if explicit_step_no is not None and explicit_step_no not in used_step_numbers:
             step_no = explicit_step_no
         elif explicit_step_no is not None and explicit_step_no in used_step_numbers:
@@ -1964,6 +2241,7 @@ def _build_artifact_manifest(previews: list[ArtifactPreview]) -> dict[str, list[
 def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
     previews: list[ArtifactPreview] = []
     symbol_home_db_map = _build_support_symbol_home_db_map(ir)
+    guard_members_by_category = _collect_transition_guard_members_by_category(ir)
     member_datatypes = _support_operand_datatypes(ir)
     operand_notes = _support_operand_notes(ir)
     timer_configs = _support_timer_configs(ir)
@@ -1992,19 +2270,19 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
     par_db_name, _, par_db_file, _, par_db_base, _ = _support_block_names(ir.sequence_name, "parameters")
 
     diag_logic = _excel_support_logic_rows(ir, "diag")
-    diag_members = _excel_support_members(ir, "diag") or _collect_diag_support_members(ir)
+    diag_members = (_excel_support_members(ir, "diag") or _collect_diag_support_members(ir)) + guard_members_by_category.get("diag", [])
     diag_db_members, diag_fc_members = _prepare_support_members(ir, "diag", diag_members, diag_logic)
 
     hmi_logic = _excel_support_logic_rows(ir, "hmi")
-    hmi_members = _excel_support_members(ir, "hmi") or _collect_hmi_support_members(ir)
+    hmi_members = (_excel_support_members(ir, "hmi") or _collect_hmi_support_members(ir)) + guard_members_by_category.get("hmi", [])
     hmi_db_members, hmi_fc_members = _prepare_support_members(ir, "hmi", hmi_members, hmi_logic)
 
     aux_logic = _excel_support_logic_rows(ir, "aux")
-    aux_members = _excel_support_members(ir, "aux") or _collect_aux_support_members(ir)
+    aux_members = (_excel_support_members(ir, "aux") or _collect_aux_support_members(ir)) + guard_members_by_category.get("aux", [])
     aux_db_members, aux_fc_members = _prepare_support_members(ir, "aux", aux_members, aux_logic)
 
     transitions_logic = _excel_support_logic_rows(ir, "transitions")
-    transitions_members = _excel_support_members(ir, "transitions") or _collect_transitions_support_members(ir, [])
+    transitions_members = (_excel_support_members(ir, "transitions") or _collect_transitions_support_members(ir, [])) + guard_members_by_category.get("transitions", [])
     transitions_merged_members = _merge_support_members_with_logic(transitions_members, transitions_logic)
     transitions_db_members = _prepare_support_db_members(ir, "transitions", transitions_merged_members)
     transitions_fc_members = _dedupe_named_members(
@@ -2016,7 +2294,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
     io_output_logic = io_logic + output_logic
     io_members = _excel_support_members(ir, "io")
     output_members = _excel_support_members(ir, "output")
-    io_output_members = io_members + output_members
+    io_output_members = io_members + output_members + guard_members_by_category.get("io", [])
     if not io_output_members:
         io_output_members = _collect_output_family_members(ir)
     output_db_members, output_fc_members = _prepare_support_members(
@@ -4155,17 +4433,22 @@ def _build_support_symbol_home_db_map(ir: AwlIR) -> dict[str, str]:
         db_name, _, _, _, _, _ = _support_block_names(ir.sequence_name, category)
         mapping.setdefault(member_name, db_name)
 
+    guard_members_by_category = _collect_transition_guard_members_by_category(ir)
+
     # 2) Heuristic fallback from support members and inferred collections.
     category_sources: list[tuple[str, list[tuple[str, str]]]] = [
         # Priority order matters: explicit/specialized families first.
         ("hmi", _excel_support_members(ir, "hmi") or _collect_hmi_support_members(ir)),
+        ("diag", ( _excel_support_members(ir, "diag") or _collect_diag_support_members(ir)) + guard_members_by_category.get("diag", [])),
         ("aux", _excel_support_members(ir, "aux") or _collect_aux_support_members(ir)),
+        ("transitions", ( _excel_support_members(ir, "transitions") or _collect_transitions_support_members(ir, [])) + guard_members_by_category.get("transitions", [])),
+        ("io", ( _excel_support_members(ir, "io") or _collect_io_support_members(ir)) + guard_members_by_category.get("io", [])),
+        # Outputs are physically hosted in the IO DB artifact (DB16 family).
+        ("io", _excel_support_members(ir, "output") or _collect_output_family_members(ir)),
         ("external", _excel_support_members(ir, "external") or _collect_external_support_members(ir)),
-        ("transitions", _excel_support_members(ir, "transitions") or _collect_transitions_support_members(ir, [])),
-        ("output", _excel_support_members(ir, "output") or _collect_output_family_members(ir)),
-        ("diag", _excel_support_members(ir, "diag") or _collect_diag_support_members(ir)),
-        ("io", _excel_support_members(ir, "io") or _collect_io_support_members(ir)),
         ("mode", _excel_support_members(ir, "mode") or _collect_mode_support_members(ir)),
+        ("hmi", guard_members_by_category.get("hmi", [])),
+        ("aux", guard_members_by_category.get("aux", [])),
     ]
     for category, members in category_sources:
         db_name, _, _, _, _, _ = _support_block_names(ir.sequence_name, category)
@@ -4194,7 +4477,7 @@ def _collect_io_support_members(ir: AwlIR) -> list[tuple[str, str]]:
 def _collect_external_support_members(ir: AwlIR) -> list[tuple[str, str]]:
     members: list[tuple[str, str]] = []
     for ext in ir.external_refs:
-        if ext.startswith(("A", "Q")):
+        if not _is_external_integration_operand(ext):
             continue
         family = _classify_operand_family(ext)
         members.append(
@@ -4204,6 +4487,20 @@ def _collect_external_support_members(ir: AwlIR) -> list[tuple[str, str]]:
             )
         )
     return list(dict.fromkeys(members))
+
+
+def _is_external_integration_operand(operand: str) -> bool:
+    token = str(operand or "").strip().upper()
+    if not token:
+        return False
+    db_addr = re.fullmatch(r"DB(\d+)\.DB[XBWD]\d+(?:\.\d+)?", token)
+    if db_addr:
+        return int(db_addr.group(1)) in EXTERNAL_DB_IDS
+    if token.startswith("DB81.") or token.startswith("DB82.") or token.startswith("DB202."):
+        return True
+    if re.fullmatch(r"(?:DI|PE|PA)\d+(?:\.\d+)?", token):
+        return True
+    return False
 
 
 def _collect_diag_support_members(ir: AwlIR) -> list[tuple[str, str]]:
@@ -4310,6 +4607,27 @@ def _collect_parameters_support_members(ir: AwlIR) -> list[tuple[str, str]]:
         if datatype not in {"", "Bool"}:
             member = _support_member_name(token, "PAR", strict_excel_mode=ir.strict_operand_catalog)
             members.append((member, f"Parameter operand {token} ({datatype})"))
+    # AWL fallback: derive DBW/DBD/DBB operands from symbolic lines when the
+    # operand catalog is not populated (typical markdown AWL path).
+    pattern = re.compile(
+        r'"([^"]+)"\s*(?:\.\s*([A-Za-z0-9_]+))?\s+'
+        r'(DB\d+\.DB([WDB])\d+)',
+        flags=re.IGNORECASE,
+    )
+    for network in ir.networks:
+        for raw_line in network.raw_lines:
+            body = raw_line.split("--", 1)[0]
+            match = pattern.search(body)
+            if not match:
+                continue
+            symbolic_base = str(match.group(1) or "").strip()
+            symbolic_leaf = str(match.group(2) or "").strip()
+            address = str(match.group(3) or "").strip().upper()
+            db_kind = str(match.group(4) or "").strip().upper()
+            dtype = {"B": "Byte", "W": "Int", "D": "DInt"}.get(db_kind, "Int")
+            alias = symbolic_leaf or _derive_symbol_alias_from_base(symbolic_base)
+            member = _support_member_name(alias or address, "PAR", strict_excel_mode=ir.strict_operand_catalog)
+            members.append((member, f"Parameter operand {address} ({dtype})"))
     return list(dict.fromkeys(members))
 
 
@@ -4411,6 +4729,124 @@ def _classify_operand_family(operand: str) -> str:
     return "SIG"
 
 
+def _support_category_for_guard_operand(operand: str) -> str:
+    token = str(operand or "").strip().upper()
+    if not token:
+        return "transitions"
+    if re.fullmatch(r"[AQ]\d+(?:\.\d+)?", token) or re.fullmatch(r"[IE]\d+(?:\.\d+)?", token):
+        return "io"
+    if re.fullmatch(r"M\d+(?:\.\d+)?", token) or re.fullmatch(r"T\d+", token):
+        return "aux"
+    db_match = re.fullmatch(r"DB(\d+)\.DB[XBWD]\d+(?:\.\d+)?", token)
+    if db_match:
+        db_no = int(db_match.group(1))
+        if db_no in {81, 82}:
+            return "hmi"
+        if db_no >= 200:
+            return "diag"
+        if 100 <= db_no < 200:
+            return "transitions"
+        return "transitions"
+    if token.startswith("DB81.") or token.startswith("DB82."):
+        return "hmi"
+    if token.startswith("DB202."):
+        return "diag"
+    return "transitions"
+
+
+def _collect_transition_guard_members_by_category(
+    ir: AwlIR,
+) -> dict[str, list[tuple[str, str]]]:
+    operand_aliases = _build_awl_operand_alias_map(ir)
+    grouped: dict[str, list[tuple[str, str]]] = {
+        "io": [],
+        "aux": [],
+        "hmi": [],
+        "diag": [],
+        "transitions": [],
+    }
+    used_names_by_category: dict[str, set[str]] = {key: set() for key in grouped}
+    raw_to_member_by_category: dict[str, dict[str, str]] = {key: {} for key in grouped}
+    for transition in ir.transitions:
+        for operand in transition.guard_operands:
+            raw = str(operand or "").strip()
+            if not raw:
+                continue
+            category = _support_category_for_guard_operand(raw)
+            raw_key = raw.upper()
+            existing_member = raw_to_member_by_category[category].get(raw_key)
+            if existing_member:
+                grouped[category].append((existing_member, f"Guard operand {raw}"))
+                continue
+            if category == "aux":
+                prefix = "AUX_TIMER" if re.fullmatch(r"T\d+", raw.upper()) else "AUX_MEM"
+            elif category == "io":
+                prefix = "Q" if re.fullmatch(r"[AQ]\d+(?:\.\d+)?", raw.upper()) else "COND_IN"
+            elif category == "hmi":
+                prefix = "HMI"
+            elif category == "diag":
+                prefix = "DIAG"
+            else:
+                prefix = "TR_OP"
+            alias = operand_aliases.get(raw_key, "") if category in {"transitions", "hmi"} else ""
+            member = _support_member_name(alias or raw, prefix, strict_excel_mode=ir.strict_operand_catalog)
+            if member in used_names_by_category[category]:
+                # Avoid accidental alias collisions: fallback to address-based key.
+                member = _support_member_name(raw, prefix, strict_excel_mode=ir.strict_operand_catalog)
+            used_names_by_category[category].add(member)
+            raw_to_member_by_category[category][raw_key] = member
+            grouped[category].append((member, f"Guard operand {raw}"))
+    return {category: _dedupe_named_members(items) for category, items in grouped.items()}
+
+
+def _build_awl_operand_alias_map(ir: AwlIR) -> dict[str, str]:
+    alias_map: dict[str, str] = {}
+    alias_owner: dict[str, str] = {}
+    pattern = re.compile(
+        r'"([^"]+)"\s*(?:\.\s*([A-Za-z0-9_]+))?\s+'
+        r'(DB\d+\.DB[XBWD]\d+(?:\.\d+)?|[AQEIMT]\d+(?:\.\d+)?)',
+        flags=re.IGNORECASE,
+    )
+    for network in ir.networks:
+        for raw_line in network.raw_lines:
+            body = raw_line.split("--", 1)[0]
+            match = pattern.search(body)
+            if not match:
+                continue
+            symbolic_base = str(match.group(1) or "").strip()
+            symbolic_leaf = str(match.group(2) or "").strip()
+            address_raw = str(match.group(3) or "").strip()
+            address_key = _normalize_operand_token(address_raw)
+            if not address_key:
+                continue
+            base_alias = _derive_symbol_alias_from_base(symbolic_base)
+            alias_candidate = symbolic_leaf or base_alias
+            alias_norm = _normalize_symbol_name(alias_candidate, "")
+            if not alias_norm:
+                continue
+            owner = alias_owner.get(alias_norm)
+            if owner and owner != address_key:
+                expanded = _normalize_symbol_name(f"{base_alias}_{symbolic_leaf or alias_norm}", alias_norm)
+                if expanded and alias_owner.get(expanded) not in {None, address_key}:
+                    expanded = _normalize_symbol_name(address_key, alias_norm)
+                alias_norm = expanded or alias_norm
+            alias_map.setdefault(address_key, alias_norm)
+            alias_owner.setdefault(alias_norm, address_key)
+    return alias_map
+
+
+def _derive_symbol_alias_from_base(symbolic_base: str) -> str:
+    token = str(symbolic_base or "").strip()
+    if not token:
+        return ""
+    # Keep only last semantic segment for strings like "M02", "DB:OPIN", "LM1 T1A-B48.1".
+    parts = re.split(r"[\s:/\-]+", token)
+    parts = [item for item in parts if item]
+    if not parts:
+        return ""
+    return parts[-1]
+
+
 def _render_graph_step(step: GraphStepNode) -> str:
     step_name = step.name or str(step.step_no)
     return (
@@ -4451,22 +4887,43 @@ def _render_graph_transition(
     wires_lines: list[str] = []
     owner_db_map = symbol_home_db_map or {}
 
-    def _operand_owner_db(operand: str) -> str:
+    def _operand_binding(operand: str) -> tuple[str, str]:
         raw = str(operand or "").strip()
         if not raw:
-            return transition.db_block_name
-        member_name = _guard_operand_db_member_name(raw, strict_excel_mode=strict_excel_mode)
+            return transition.db_block_name, transition.db_member_name
+        canonical_member = _guard_operand_db_member_name(raw, strict_excel_mode=strict_excel_mode)
+        strict_member = _support_member_name(raw, "", strict_excel_mode=True)
         # Try direct + normalized spellings to honor Excel strict names and
         # compatibility aliases produced by support member collectors.
         candidate_keys = [
-            member_name,
-            _support_member_name(raw, "", strict_excel_mode=True),
+            canonical_member,
+            strict_member,
             raw,
         ]
+        # Non-strict AWL path: support DBs can prefix symbols by family
+        # (e.g. AUX_MEM_M44_0, DBEXT_DB102_DBX6_0). Try compatible aliases.
+        if not strict_excel_mode:
+            family = _classify_operand_family(raw)
+            candidate_keys.extend(
+                [
+                    _support_member_name(raw, family, strict_excel_mode=False),
+                    _support_member_name(raw, f"COND_{family}", strict_excel_mode=False),
+                    _support_member_name(raw, "AUX_MEM", strict_excel_mode=False),
+                    _support_member_name(raw, "AUX_TIMER", strict_excel_mode=False),
+                    _support_member_name(raw, "OUT_CMD", strict_excel_mode=False),
+                    _support_member_name(raw, "HMI", strict_excel_mode=False),
+                    _support_member_name(raw, "PAR", strict_excel_mode=False),
+                ]
+            )
+            # Last resort: suffix match against known support symbols.
+            for key in owner_db_map:
+                if key == strict_member or key.endswith(f"_{strict_member}"):
+                    candidate_keys.append(key)
+
         for key in candidate_keys:
             if key in owner_db_map:
-                return owner_db_map[key]
-        return transition.db_block_name
+                return owner_db_map[key], key
+        return transition.db_block_name, canonical_member
 
     guard_clauses = _parse_guard_clauses(transition.guard_expression, transition.guard_operands)
     guard_clauses, common_terms = _factor_common_guard_terms(guard_clauses)
@@ -4478,14 +4935,15 @@ def _render_graph_transition(
             continue
         contact_uids: list[int] = []
         for operand, negated in clause:
+            owner_db_name, owner_member_name = _operand_binding(operand)
             access_uid = alloc_uid()
             contact_uid = alloc_uid()
             parts_lines.extend(
                 [
                     f'            <Access Scope="GlobalVariable" UId="{access_uid}">\n',
                     '              <Symbol>\n',
-                    f'                <Component Name="{escape(_operand_owner_db(operand))}" />\n',
-                    f'                <Component Name="{escape(_guard_operand_db_member_name(operand, strict_excel_mode=strict_excel_mode))}" />\n',
+                    f'                <Component Name="{escape(owner_db_name)}" />\n',
+                    f'                <Component Name="{escape(owner_member_name)}" />\n',
                     '              </Symbol>\n',
                     '            </Access>\n',
                 ]
@@ -4570,14 +5028,15 @@ def _render_graph_transition(
 
     if common_terms:
         for operand, negated in common_terms:
+            owner_db_name, owner_member_name = _operand_binding(operand)
             access_uid = alloc_uid()
             contact_uid = alloc_uid()
             parts_lines.extend(
                 [
                     f'            <Access Scope="GlobalVariable" UId="{access_uid}">\n',
                     '              <Symbol>\n',
-                    f'                <Component Name="{escape(_operand_owner_db(operand))}" />\n',
-                    f'                <Component Name="{escape(_guard_operand_db_member_name(operand, strict_excel_mode=strict_excel_mode))}" />\n',
+                    f'                <Component Name="{escape(owner_db_name)}" />\n',
+                    f'                <Component Name="{escape(owner_member_name)}" />\n',
                     '              </Symbol>\n',
                     '            </Access>\n',
                 ]
@@ -5171,6 +5630,12 @@ def _normalize_external_refs(items: set[str]) -> list[str]:
         dotted = re.fullmatch(r"DB(\d+)_DB([XBWD])(\d+)_(\d+)", token)
         if dotted:
             token = f"DB{dotted.group(1)}.DB{dotted.group(2)}{dotted.group(3)}.{dotted.group(4)}"
+
+        db_operand = re.fullmatch(r"DB(\d+)\.DB[XBWD]\d+(?:\.\d+)?", token)
+        if db_operand and int(db_operand.group(1)) not in EXTERNAL_DB_IDS:
+            # Internal sequence DBs are handled by support category ownership,
+            # they are not external integration references.
+            continue
 
         normalized.add(token)
 

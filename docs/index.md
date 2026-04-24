@@ -3,6 +3,7 @@
 ## Guide operative
 - `guide/process/flow.md`
 - `guide/operations/operations.md`
+- `guide/operations/excel-ir-compilation-guide.md`
 - `guide/checklists/workflow-checklists.md`
 
 ## Standard e convenzioni
@@ -12,6 +13,7 @@
 - `guide/integration/tia-integration.md`
 
 ## Template
+- `templates/ir_excel_template_single_page_with_support_fc.xlsx`
 - `templates/reports/daily-report-template.md`
 
 ## Riferimenti
