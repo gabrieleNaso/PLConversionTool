@@ -884,6 +884,23 @@ Nella pipeline corrente vengono convertiti in:
 
 La `FC 13 Aux` ha quindi il ruolo di ricostruire in forma leggibile e importabile la parte di AWL che nel sorgente faceva da appoggio tecnico alla sequenza.
 
+### 32.10-bis Regola naming simbolico (AWL -> DB supporto)
+
+Nel flusso AWL (non Excel strict) il generatore deve leggere **letteralmente** i nomi simbolici presenti nel sorgente e usarli come membri nei DB supporto, evitando alias casuali o hash.
+
+Regola consolidata:
+
+- se in AWL compare un riferimento strutturato del tipo `"BASE".LEAF <indirizzo>` (es. `"LLALM".DB202_DBX62_1 DB202.DBX62.1`), il member emesso deve usare il `LEAF` (`DB202_DBX62_1`) come nome simbolico;
+- l'indirizzo fisico (`DB202.DBX62.1`, `I30.1`, ecc.) non deve apparire nei nomi dei member generati (resta solo come sorgente di ownership e mapping).
+
+### 32.10-ter FC 14 Transitions: derivazione da guardie AWL
+
+Nel flusso AWL (non Excel strict) la `FC 14 Transitions` non deve cadere in modalità fallback (reti autoreferenziali), ma deve materializzare la logica di guardia:
+
+- per ogni transizione `Tn` viene emessa una rete che calcola `TR_Tn` a partire da `guard_expression`/`guard_operands`;
+- i contatti della rete devono essere referenziati nel DB owner corretto (IO/AUX/HMI/DIAG) tramite ownership deterministica;
+- quando una guardia contiene un timer `Txx`, il contatto usato deve essere `Txx_DONE` (non l'istanza `IEC_TIMER`).
+
 ### 32.11 Backbone della sequenza
 
 Il backbone non va inferito con rinomina forzata dei nomi passo.

@@ -2246,6 +2246,11 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
     member_datatypes = _support_operand_datatypes(ir)
     operand_notes = _support_operand_notes(ir)
     timer_configs = _support_timer_configs(ir)
+    derived_actions = (
+        _derive_awl_action_logic_rows(ir)
+        if not ir.strict_operand_catalog
+        else {"aux": [], "io": [], "hmi": [], "diag": [], "transitions": []}
+    )
     diag_db_name, diag_fc_name, diag_db_file, diag_fc_file, diag_db_base, diag_fc_base = _support_block_names(
         ir.sequence_name, "diag"
     )
@@ -2271,6 +2276,8 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
     par_db_name, _, par_db_file, _, par_db_base, _ = _support_block_names(ir.sequence_name, "parameters")
 
     diag_logic = _excel_support_logic_rows(ir, "diag")
+    if not ir.strict_operand_catalog:
+        diag_logic = diag_logic + derived_actions.get("diag", [])
     diag_members = (
         (_excel_support_members(ir, "diag") or _collect_diag_support_members(ir))
         + guard_members_by_category.get("diag", [])
@@ -2279,6 +2286,8 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
     diag_db_members, diag_fc_members = _prepare_support_members(ir, "diag", diag_members, diag_logic)
 
     hmi_logic = _excel_support_logic_rows(ir, "hmi")
+    if not ir.strict_operand_catalog:
+        hmi_logic = hmi_logic + derived_actions.get("hmi", [])
     hmi_members = (
         (_excel_support_members(ir, "hmi") or _collect_hmi_support_members(ir))
         + guard_members_by_category.get("hmi", [])
@@ -2291,6 +2300,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
     # used in guards map coherently to IEC_TIMER instances + *_DONE bits.
     if not ir.strict_operand_catalog:
         aux_logic = aux_logic + _derive_awl_timer_logic_rows(ir)
+        aux_logic = aux_logic + derived_actions.get("aux", [])
     aux_members = (
         (_excel_support_members(ir, "aux") or _collect_aux_support_members(ir))
         + guard_members_by_category.get("aux", [])
@@ -2299,7 +2309,12 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
     aux_db_members, aux_fc_members = _prepare_support_members(ir, "aux", aux_members, aux_logic)
 
     transitions_logic = _excel_support_logic_rows(ir, "transitions")
-    transitions_members = (_excel_support_members(ir, "transitions") or _collect_transitions_support_members(ir, [])) + guard_members_by_category.get("transitions", [])
+    if not ir.strict_operand_catalog:
+        transitions_logic = transitions_logic + derived_actions.get("transitions", [])
+    transitions_members = (
+        (_excel_support_members(ir, "transitions") or _collect_transitions_support_members(ir, []))
+        + guard_members_by_category.get("transitions", [])
+    )
     transitions_merged_members = _merge_support_members_with_logic(transitions_members, transitions_logic)
     transitions_db_members = _prepare_support_db_members(ir, "transitions", transitions_merged_members)
     transitions_fc_members = _dedupe_named_members(
@@ -2309,6 +2324,8 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
     io_logic = _excel_support_logic_rows(ir, "io")
     output_logic = _excel_support_logic_rows(ir, "output")
     io_output_logic = io_logic + output_logic
+    if not ir.strict_operand_catalog:
+        io_output_logic = io_output_logic + derived_actions.get("io", [])
     io_members = _excel_support_members(ir, "io")
     output_members = _excel_support_members(ir, "output")
     io_output_members = (
@@ -4530,6 +4547,17 @@ def _build_support_symbol_home_db_map(ir: AwlIR) -> dict[str, str]:
         address_member = _support_member_name(address_key, "", strict_excel_mode=True)
         if address_member and (allowed is None or address_member in allowed):
             mapping.setdefault(address_member, db_name)
+
+    # 4) Synthetic AWL locals: keep them in AUX (DB19..).
+    # Detect "L 1.0" style locals in raw lines and reserve their synthesized names.
+    aux_db_name, _, _, _, _, _ = _support_block_names(ir.sequence_name, "aux")
+    for network in ir.networks:
+        for raw_line in network.raw_lines:
+            for match in re.findall(r"\bL\s+(\d+(?:\.\d+)?)\b", raw_line, flags=re.IGNORECASE):
+                local_token = f"L{match}"
+                synth = _support_member_name(f"N{network.index}_{_normalize_operand_token(local_token)}", "", strict_excel_mode=True)
+                if synth and (allowed is None or synth in allowed):
+                    mapping[synth] = aux_db_name
     return mapping
 
 
@@ -4858,6 +4886,10 @@ def _support_category_for_guard_operand(operand: str) -> str:
     token = str(operand or "").strip().upper()
     if not token:
         return "transitions"
+    if re.fullmatch(r"L\d+(?:\.\d+)?", token):
+        return "aux"
+    if re.fullmatch(r"N\d+_L\d+_\d+(?:_\d+)?", token):
+        return "aux"
     if re.fullmatch(r"[AQ]\d+(?:\.\d+)?", token) or re.fullmatch(r"[IE]\d+(?:\.\d+)?", token):
         return "io"
     if re.fullmatch(r"M\d+(?:\.\d+)?", token) or re.fullmatch(r"T\d+", token):
@@ -4942,11 +4974,9 @@ def _build_awl_operand_alias_map(ir: AwlIR) -> dict[str, str]:
                 continue
             base_alias = _derive_symbol_alias_from_base(symbolic_base)
             comment_alias = _derive_symbol_alias_from_comment(comment)
-            leaf_is_address_like = bool(
-                symbolic_leaf
-                and re.fullmatch(r"DB\d+_DB[XBWD]\d+(?:_\d+)?", symbolic_leaf, flags=re.IGNORECASE)
-            )
-            if symbolic_leaf and not leaf_is_address_like:
+            # Prefer the *literal* symbolic leaf when present (e.g. "LLALM".DB202_DBX32_0),
+            # even if it looks address-like. This keeps generated DB members stable and meaningful.
+            if symbolic_leaf:
                 alias_candidate = symbolic_leaf
             elif comment_alias:
                 alias_candidate = comment_alias
@@ -4957,7 +4987,7 @@ def _build_awl_operand_alias_map(ir: AwlIR) -> dict[str, str]:
                 continue
             owner = alias_owner.get(alias_norm)
             if owner and owner != address_key:
-                if symbolic_leaf and not leaf_is_address_like:
+                if symbolic_leaf:
                     disambiguator = symbolic_leaf
                 elif comment_alias and comment_alias != alias_norm:
                     disambiguator = comment_alias
@@ -5683,6 +5713,215 @@ def _derive_awl_timer_logic_rows(ir: AwlIR) -> list[dict[str, object]]:
     return rows
 
 
+def _derive_awl_action_logic_rows(ir: AwlIR) -> dict[str, list[dict[str, object]]]:
+    """
+    Derive support_fc-like logic rows from raw AWL networks.
+
+    Goal: keep the AWL behavior by materializing SET/RESET/ASSIGN operations
+    into the correct support FC (AUX for M bits, OUTPUT for Q/A bits).
+    """
+    operand_aliases = _build_awl_operand_alias_map(ir)
+    rows_by_category: dict[str, list[dict[str, object]]] = {
+        "aux": [],
+        "io": [],
+        "hmi": [],
+        "diag": [],
+        "transitions": [],
+    }
+
+    def _map_symbol(raw: str, network_index: int) -> str:
+        normalized = _normalize_operand_token(raw)
+        if re.fullmatch(r"L\d+(?:\.\d+)?", normalized, flags=re.IGNORECASE):
+            return _support_member_name(f"N{network_index}_{normalized}", "", strict_excel_mode=True)
+        # In AWL, using "Txx" in boolean logic means the timer's done bit, not the IEC_TIMER instance.
+        if TIMER_RE.fullmatch(normalized.upper()):
+            return _support_member_name(f"{normalized}_DONE", "", strict_excel_mode=True)
+        alias = operand_aliases.get(normalized, "")
+        return _support_member_name(alias or raw, "", strict_excel_mode=True)
+
+    def _rewrite_expression(expr: str, network_index: int, *, strip_locals: bool) -> tuple[str, list[str]]:
+        tokens = _tokenize_boolean_expression(expr or "")
+        if tokens is None:
+            return "TRUE", []
+        rewritten: list[str] = []
+        operands: list[str] = []
+        for kind, raw in tokens:
+            if kind != "IDENT":
+                rewritten.append(raw)
+                continue
+            upper = raw.upper()
+            if upper in {"AND", "OR", "NOT", "TRUE", "FALSE"}:
+                rewritten.append(upper)
+                continue
+            normalized = _normalize_operand_token(raw)
+            if strip_locals and re.fullmatch(r"L\d+(?:\.\d+)?", normalized, flags=re.IGNORECASE):
+                continue
+            symbol = _map_symbol(raw, network_index)
+            if not symbol:
+                continue
+            rewritten.append(symbol)
+            operands.append(symbol)
+        rendered = " ".join(rewritten).strip() or "TRUE"
+        return rendered, _dedupe_list(operands)
+
+    for network in ir.networks:
+        condition_expression, condition_operands_raw = _collect_condition_logic(network)
+        if not condition_expression:
+            condition_expression = "TRUE"
+        condition_expression, condition_operands = _rewrite_expression(
+            condition_expression,
+            network.index,
+            strip_locals=False,
+        )
+        if not condition_operands and condition_operands_raw:
+            for raw in condition_operands_raw:
+                operand = _map_symbol(raw, network.index)
+                if operand:
+                    condition_operands.append(operand)
+            condition_operands = _dedupe_list(condition_operands)
+        if condition_operands and condition_expression == "TRUE":
+            condition_expression = " AND ".join(condition_operands)
+
+        for raw_target, action in _collect_memory_targets(network):
+            result_member = _map_symbol(raw_target, network.index)
+            if not result_member:
+                continue
+            coil_mode = ""
+            if action == "S":
+                coil_mode = "set"
+            elif action == "R":
+                coil_mode = "reset"
+            rows_by_category["aux"].append(
+                {
+                    "result_member": result_member,
+                    "condition_expression": condition_expression,
+                    "condition_operands": list(condition_operands),
+                    "coil_mode": coil_mode,
+                    "comment": network.title or f"NETWORK {network.index}",
+                    "network_index": network.index,
+                }
+            )
+
+        for raw_target, action in _collect_local_targets(network):
+            result_member = _map_symbol(raw_target, network.index)
+            if not result_member:
+                continue
+            local_expr, local_ops = _rewrite_expression(
+                condition_expression,
+                network.index,
+                strip_locals=True,
+            )
+            if local_ops and local_expr == "TRUE":
+                local_expr = " AND ".join(local_ops)
+            coil_mode = ""
+            if action == "S":
+                coil_mode = "set"
+            elif action == "R":
+                coil_mode = "reset"
+            rows_by_category["aux"].append(
+                {
+                    "result_member": result_member,
+                    "condition_expression": local_expr,
+                    "condition_operands": list(local_ops),
+                    "coil_mode": coil_mode,
+                    "comment": network.title or f"NETWORK {network.index}",
+                    "network_index": network.index,
+                }
+            )
+
+        for raw_target, action in _collect_output_targets(network):
+            result_member = _map_symbol(raw_target, network.index)
+            if not result_member:
+                continue
+            coil_mode = ""
+            if action == "S":
+                coil_mode = "set"
+            elif action == "R":
+                coil_mode = "reset"
+            rows_by_category["io"].append(
+                {
+                    "result_member": result_member,
+                    "condition_expression": condition_expression,
+                    "condition_operands": list(condition_operands),
+                    "coil_mode": coil_mode,
+                    "comment": network.title or f"NETWORK {network.index}",
+                    "network_index": network.index,
+                }
+            )
+
+        # Generic "=" / S/R to DB operands (e.g. DB202 alarms, DB82 opout, internal DB102 bits).
+        for instr in network.instructions:
+            if instr.opcode not in ACTION_OPCODES or not instr.args:
+                continue
+            raw_operand = _select_instruction_operand(instr.args)
+            if not raw_operand:
+                continue
+            normalized = _normalize_operand_token(raw_operand)
+            # Skip targets handled by specialized collectors above.
+            if MEMORY_RE.fullmatch(normalized) or OUTPUT_RE.fullmatch(normalized) or re.fullmatch(r"L\d+(?:\.\d+)?", normalized):
+                continue
+            if not _is_address_like_operand(normalized) and not normalized.startswith("DB"):
+                continue
+            category = _support_category_for_guard_operand(normalized)
+            # Route internal DB writes to IO when they belong to the sequence family.
+            result_member = _map_symbol(raw_operand, network.index)
+            if not result_member:
+                continue
+            coil_mode = ""
+            if instr.opcode == "S":
+                coil_mode = "set"
+            elif instr.opcode == "R":
+                coil_mode = "reset"
+            rows_by_category.setdefault(category, []).append(
+                {
+                    "result_member": result_member,
+                    "condition_expression": condition_expression,
+                    "condition_operands": list(condition_operands),
+                    "coil_mode": coil_mode,
+                    "comment": network.title or f"NETWORK {network.index}",
+                    "network_index": network.index,
+                }
+            )
+
+    # Transitions support FC: materialize guard expressions into TR_* coils so the
+    # generated TIA project is functional even without an Excel support sheet.
+    for transition in ir.transitions:
+        result_member = _support_member_name(str(transition.transition_id or "").strip(), "TR", strict_excel_mode=True)
+        if not result_member:
+            continue
+        network_index = _as_positive_int(getattr(transition, "network_index", None)) or 0
+        guard_expression_raw = str(getattr(transition, "guard_expression", "") or "").strip() or "TRUE"
+        expr, ops = _rewrite_expression(guard_expression_raw, network_index, strip_locals=False)
+        if not ops and getattr(transition, "guard_operands", None):
+            mapped_ops: list[str] = []
+            for raw in (transition.guard_operands or []):
+                operand = _map_symbol(str(raw or ""), network_index)
+                if operand:
+                    mapped_ops.append(operand)
+            ops = _dedupe_list(mapped_ops)
+        if ops and (not expr or expr.strip().upper() == "TRUE"):
+            expr = " AND ".join(ops)
+        rows_by_category["transitions"].append(
+            {
+                "result_member": result_member,
+                "condition_expression": expr or "TRUE",
+                "condition_operands": list(_dedupe_list(ops)),
+                "coil_mode": "",
+                "comment": f"{transition.transition_id}: {transition.source_step}->{transition.target_step}",
+                "network_index": network_index,
+            }
+        )
+
+    for key in rows_by_category:
+        rows_by_category[key].sort(
+            key=lambda row: (
+                _as_positive_int(row.get("network_index")) or 10**9,
+                str(row.get("result_member") or ""),
+            )
+        )
+    return rows_by_category
+
+
 def _global_db_block_name(ir: AwlIR) -> str:
     return f"{DB_FAMILY_PREFIX['sequence']}_{ir.sequence_name}_SEQ_DB"
 
@@ -6179,6 +6418,20 @@ def _collect_output_targets(network: AwlNetwork) -> list[tuple[str, str]]:
     return targets
 
 
+def _collect_local_targets(network: AwlNetwork) -> list[tuple[str, str]]:
+    targets: list[tuple[str, str]] = []
+    for instr in network.instructions:
+        if instr.opcode not in ACTION_OPCODES or not instr.args:
+            continue
+        candidate = _select_instruction_operand(instr.args)
+        if not candidate:
+            continue
+        normalized = _normalize_operand_token(candidate)
+        if re.fullmatch(r"L\d+(?:\.\d+)?", normalized, flags=re.IGNORECASE):
+            targets.append((candidate, instr.opcode))
+    return targets
+
+
 def _select_instruction_operand(args: list[str]) -> str | None:
     cleaned: list[str] = []
     for raw_arg in args:
@@ -6224,7 +6477,7 @@ def _merge_split_address_operand(tokens: list[str]) -> str | None:
     if len(tokens) < 2:
         return None
     head, tail = tokens[0], tokens[1]
-    if head not in {"A", "E", "I", "M", "Q", "T"}:
+    if head not in {"A", "E", "I", "M", "Q", "T", "L"}:
         return None
     if not re.fullmatch(r"\d+(?:\.\d+)?", tail):
         return None
