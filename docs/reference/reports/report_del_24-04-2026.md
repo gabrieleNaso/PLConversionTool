@@ -163,8 +163,8 @@ Occorre trasformare una logica AWL implicita, dispersa in bit di stato, set/rese
 Gli output corretti del progetto sono:
 
 1. un solo `FB GRAPH` strutturalmente valido e importabile per ciascuna sequenza AWL;
-2. uno o più `GlobalDB` leggibili e manutentivi, ciascuno con responsabilità coerente;
-3. quando serve, una o più `FC LAD` importabili e coerenti con i pattern TIA realmente osservati.
+2. più `GlobalDB` leggibili e manutentivi, ciascuno con responsabilità coerente;
+3. più `FC LAD` importabili e coerenti con i pattern TIA realmente osservati.
 
 ---
 
