@@ -1,4 +1,4 @@
-# Report aggiornato del 23-04-2026
+# Report aggiornato del 24-04-2026
 
 ## Progetto
 Conversione di sequenziatori PLC da AWL a GRAPH in TIA Portal V20 tramite XML.
@@ -16,7 +16,7 @@ L'obiettivo di questa versione consolidata è:
 - mantenere una baseline unica, leggibile e riusabile;
 - integrare in un unico testo sia la parte di reverse engineering XML sia la parte operativa su TIA Portal Openness.
 
-Il documento va quindi usato come riferimento tecnico corrente del progetto alla data del 23-04-2026.
+Il documento va quindi usato come riferimento tecnico corrente del progetto alla data del 24-04-2026.
 
 ---
 
@@ -62,7 +62,7 @@ Conseguenza architetturale da considerare fissata:
 
 `AWL parser` oppure `Excel strutturato` -> `IR comune` -> `builder GRAPH / GlobalDB / FC` -> `serializer XML`.
 
-Regola operativa consolidata al 23-04-2026 per il flusso Excel:
+Regola operativa consolidata al 24-04-2026 per il flusso Excel:
 
 - `operands` e `support_fc` sono fogli obbligatori;
 - nel foglio `support_fc` devono convivere sia la definizione member (`member_name`) sia la logica FC (`result_member`, `condition_expression`, `coil_mode`, `network`);
@@ -85,7 +85,7 @@ Il progetto include ora anche il livello operativo di orchestrazione TIA, con ob
 ---
 
 
-## 2-bis. Chiarimenti documentali e operativi consolidati al 23-04-2026
+## 2-bis. Chiarimenti documentali e operativi consolidati al 24-04-2026
 
 A valle del confronto tra i documenti operativi, i report consolidati e i tipici XML del caso `T1-A ARUNC`, emergono in modo ricorrente i seguenti punti.
 
@@ -107,13 +107,13 @@ Il confronto tra i documenti normativi aggiornati e i file XML reali oggi dispon
 - Il modello HMI va esplicitato su due livelli: condizioni elementari nel path `Conditions.<gruppo>.Conditions.nX` e metadati/stati di gruppo nello stesso owner DB HMI, con campi del tipo `PopUpNumber`, `ConditionOK`, `Visible`, `FO` o equivalenti previsti dal modello finale.
 - I DB esterni fissi di integrazione, quando presenti, costituiscono un contratto rigido di naming. In particolare i pattern `Pnnn` e `Lnnn` osservati in `DB81-OPIN` e `DB82-OPOUT` non devono essere rinominati liberamente dal generatore.
 - I casi legacy come `T1-A ARUNC LEV2` confermano che nel corpus storico esistono sequenze e strutture dati utili per il reverse engineering semantico, ma non necessariamente allineate alla partizione target chiusa del nuovo convertitore.
-- Mappa famiglie consolidata al 23-04-2026 (forma `XXGG`): `11GG` alarms/diag, `12GG` hmi (`12GG` = DB HMI), `13GG` parameters, `14GG` transitions, `15GG` graph, `16GG` sequenza/I-O, `17GG` LEV2, `18GG` external, `19GG` aux.
+- Mappa famiglie consolidata al 24-04-2026 (forma `XXGG`): `11GG` alarms/diag, `12GG` hmi (`12GG` = DB HMI), `13GG` parameters, `14GG` transitions, `15GG` graph, `16GG` sequenza/I-O, `17GG` LEV2, `18GG` external, `19GG` aux.
 - `DB15GG SEQ` va considerato DB istanza del GRAPH generato da TIA: non deve essere emesso dal convertitore come DB custom.
 - Profilo operativo corretto: `FC11/12/13/14/16/17`, `FB15`, DB custom `11/12/13/14/16/17/18/19` + `DB15` solo istanza TIA.
 - La famiglia `17GG` e' riservata a `LEV2` e va considerata parte del modello target quando prevista dal caso reale.
 - Nel flusso Excel l'ownership DB e' determinata da `operands`: uso cross-FC ammesso ma senza migrazione del DB owner della variabile.
 
-## 2-quater. Integrazioni finali flusso Excel/GRAPH (23-04-2026)
+## 2-quater. Integrazioni finali flusso Excel/GRAPH (24-04-2026)
 
 Nel percorso Excel risultano consolidate anche le seguenti regole operative:
 
@@ -705,11 +705,11 @@ Nella baseline corrente la partizione dei DB di una sequenza tradotta va conside
 
 - `11..` = DB alarms/diag;
 - `12..` = DB HMI;
-- `13..` = DB ausiliare (timer, contatori, appoggi tecnici);
+- `13..` = DB PARAMETERS;
 - `14..` = DB transitions;
-- `16..` = DB sequenza;
+- `16..` = DB sequenza/I-O;
 - `18..` = DB `EXT`;
-- `19..` = DB output.
+- `19..` = DB AUX.
 
 Questa distribuzione deve essere rispettata dal modello IR e dai serializer, evitando accorpamenti opportunistici fra aree con ruolo diverso.
 
@@ -746,11 +746,11 @@ La forma corretta dell'output è un insieme coordinato di artefatti:
 - `FB GRAPH` per la macchina a stati esplicita;
 - `DB 11..` per memorie, transizioni semantiche e stato leggibile del sequenziatore;
 - `DB 12..` per dati HMI, popup, condizioni visualizzate e strutture HMI (`12GG` = DB HMI);
-- `DB 13..` per supporti ausiliari (timer, contatori, appoggi tecnici);
+- `DB 13..` per PARAMETERS e preset/configurazioni di progetto;
 - `DB 14..` per transitions;
-- `DB 16..` per il contenitore della sequenza secondo il modello scelto;
+- `DB 16..` per il contenitore della sequenza e/o I-O secondo il modello scelto;
 - `DB 18..` per variabili esterne alla sequenza;
-- `DB 19..` per output;
+- `DB 19..` per AUX, cioe timer, contatori, one-shot e appoggi tecnici;
 - `FC 12` HMI;
 - `FC 13` Aux;
 - `FC 14` Transitions;
@@ -804,7 +804,7 @@ La regola corretta è separare i dati in base al ruolo:
 - bit semantici di avanzamento -> `Transitions` nel DB `14..`;
 - memorie di processo, consensi cumulativi e stati fisici -> `Memory` nel DB base `11..`;
 - stato leggibile della sequenza, step attuale e storico -> `Seq Status` nel DB base `11..`;
-- timer e contatori AWL -> `DB 13..` con tipi IEC e supporto `FC 13 Aux`;
+- timer e contatori AWL -> `DB 19..` con tipi IEC e supporto `FC 13 Aux`;
 - variabili esterne alla sequenza -> `DB 18.. EXT`;
 - informazioni HMI e popup -> DB HMI.
 
@@ -843,7 +843,7 @@ Conseguenze pratiche osservate:
 - nel DB tipo OPOUT uscite, lampade e stati comandati restano nella famiglia `Lxxx`;
 - nel DB `14..` le variabili di transizione restano nel ramo `Transitions`;
 - nel DB base `11..` le variabili di stato/memoria restano nei rami `Memory`, `Seq Status`;
-- nel `DB 13.. AUX` i supporti tecnici restano nella famiglia ausiliaria senza migrare con naming libero in altri DB;
+- nel `DB 19.. AUX` i supporti tecnici restano nella famiglia ausiliaria senza migrare con naming libero in altri DB;
 - nel DB HMI popup e condizioni mantengono un path coerente al gruppo di appartenenza.
 
 Per questo motivo, nella baseline corrente, non vengono emesse variabili globali con nomi neutri o incompleti quando il target richiede naming specifico.
@@ -877,7 +877,7 @@ I timer AWL `Txx`, i preset `S5T`, i bit di appoggio pulsati e le memorie tecnic
 
 Nella pipeline corrente vengono convertiti in:
 
-- istanze IEC nel `DB 13..`;
+- istanze IEC nel `DB 19..`;
 - reti LAD nella `FC 13 Aux`;
 - eventuali memorie semantiche derivate nel DB base `11..`.
 
@@ -1019,11 +1019,11 @@ I prossimi step non sono più “far parlare il sistema con TIA”, ma:
 
 ---
 
-# PARTE F - BASELINE FINALE DEL PROGETTO AL 23-04-2026
+# PARTE F - BASELINE FINALE DEL PROGETTO AL 24-04-2026
 
 ## 38. Baseline consolidata
 
-Alla data del 23-04-2026 la baseline consolidata del progetto è la seguente.
+Alla data del 24-04-2026 la baseline consolidata del progetto è la seguente.
 
 ### 38.1 Sul GRAPH
 
@@ -1085,7 +1085,7 @@ Alla data del 23-04-2026 la baseline consolidata del progetto è la seguente.
 - il generatore allinea in modo deterministico `GRAPH`, `GlobalDB` e `FC` sulle stesse transizioni, includendo anche i member delle transizioni sintetiche (es. `T_HOLD_*`, `T_CHAIN_*`) nei `GlobalDB` quando usati dalle reti LAD/GRAPH;
 - la diagnostica compile lato `tia_windows_agent` è stata estesa con messaggi dettagliati, contesto e classificazione errori/warning.
 
-### 38.7 Aggiornamento del 23-04-2026 (Excel FC timer/contatori)
+### 38.7 Aggiornamento del 24-04-2026 (Excel FC timer/contatori)
 
 - nel flusso Excel, timer e contatori usati in `support_fc` vengono emessi come blocchi LAD completi (`TON/TOF/TP`, `CTU/CTD/CTUD`);
 - il preset viene letto dal catalogo `operands.control_value` (`PT` per timer, `PV` per contatori);
@@ -1132,7 +1132,7 @@ Questa indicazione non e' organizzativa: deriva dai vincoli tecnici osservati ne
 
 ## 42. Sintesi finale
 
-Alla data del 23-04-2026 il progetto ha raggiunto una baseline forte su quattro livelli:
+Alla data del 24-04-2026 il progetto ha raggiunto una baseline forte su quattro livelli:
 
 1. reverse engineering strutturale del `GRAPH`;
 2. generazione stabile dei `GlobalDB` applicativi e di supporto;

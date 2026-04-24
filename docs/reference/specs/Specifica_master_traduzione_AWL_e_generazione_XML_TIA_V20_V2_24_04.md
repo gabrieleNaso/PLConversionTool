@@ -1,4 +1,4 @@
-Specifica master consolidata del 23-04-2026
+Specifica master consolidata del 24-04-2026
 per le regole di traduzione e generazione XML
 AWL / Excel -> IR -> GRAPH / GlobalDB / FC LAD per TIA Portal V20
 
@@ -136,7 +136,7 @@ Non è ammesso introdurre un backend XML separato che trasformi direttamente l'E
 
 L'Excel va quindi trattato come sorgente alternativa di modellazione e catalogazione, non come formato finale di emissione.
 
-### 4-ter. Contratto fogli Excel (formato consolidato 23-04-2026)
+### 4-ter. Contratto fogli Excel (formato consolidato 24-04-2026)
 
 Per il percorso Excel del convertitore, il contratto minimo dei fogli e' da considerare hard:
 
@@ -165,7 +165,7 @@ Regole hard:
 - il parser Excel supporta solo fogli e colonne canoniche del formato corrente (nessun alias legacy di foglio/colonna);
 - non e' ammesso introdurre una pipeline separata che dipenda da un foglio FC logico dedicato diverso da `support_fc`.
 
-### 4-quater. Categorie Excel e ownership DB (consolidato 23-04-2026)
+### 4-quater. Categorie Excel e ownership DB (consolidato 24-04-2026)
 
 Nel foglio `operands` le categorie funzionali ammesse sono:
 
@@ -372,7 +372,7 @@ Ogni timer nell'IR deve contenere almeno:
 - tipo target IEC proposto;
 - trigger di attivazione;
 - output derivati;
-- area target proposta nel `DB 13..`.
+- area target proposta nel `DB 19..`.
 
 ## 18. Regola di rappresentazione delle uscite
 
@@ -478,9 +478,9 @@ Nel `DB 18..` devono finire tutte le variabili che arrivano dall'esterno della s
 - segnali provenienti da altri blocchi o altre sezioni impianto;
 - riferimenti fissi di progetto esposti al sequenziatore.
 
-## 25. Regola di allocazione nel `DB 13.. AUX`
+## 25. Regola di allocazione nel `DB 19.. AUX`
 
-Nel `DB 13..` devono finire:
+Nel `DB 19..` devono finire:
 
 - timer IEC;
 - contatori IEC;
@@ -561,7 +561,7 @@ Il mapping seguente va considerato normativo.
 - Condizioni HMI elementari -> DB HMI, ramo `Conditions.<gruppo>.Conditions.nX`. Non e' ammesso saltare il ramo intermedio `Conditions` del gruppo. Questa regola vale per le condizioni elementari del popup e non esaurisce la struttura del gruppo HMI.
 - Strutture HMI operative -> DB HMI, ramo `HMI.*` secondo la struttura del blocco HMI generato.
 - Metadati e stati di gruppo HMI -> DB HMI, all'interno del gruppo `Conditions.<gruppo>` oppure in rami equivalenti del modello HMI finale, con campi come `PopUpNumber`, `ConditionOK`, `Visible`, `FO` o equivalenti. Non e' ammesso ridurre tutto il modello HMI al solo vettore `nX`.
-- Timer, one-shot e supporti tecnici -> DB `13.. AUX`, rami coerenti con il modello ausiliario, ad esempio `AUX.TIMER[...]`, `AUX.OS[...]`, `AUX_MEMORY.*`.
+- Timer, one-shot e supporti tecnici -> DB `19.. AUX`, rami coerenti con il modello ausiliario, ad esempio `AUX.TIMER[...]`, `AUX.OS[...]`, `AUX_MEMORY.*`.
 - Segnali I/O fisici modellati in DB dedicato -> DB I-O, rami `DI.*` o `DO.*`.
 
 ### 26-bis.4 Come deve essere scritto il riferimento XML
@@ -1697,7 +1697,7 @@ Nota operativa di orchestrazione:
 - nel workflow mediato da `tia-bridge`, `import` e `compile` sono operazioni esplicite e separate;
 - il tracciamento end-to-end deve considerare i due `JobId` distinti (import e compile), senza dipendere da compile automatica post-import.
 
-Nota operativa Excel FC (consolidata al 23-04-2026):
+Nota operativa Excel FC (consolidata al 24-04-2026):
 
 - i tag con `datatype=IEC_TIMER` e `control_kind` coerente (`t_on`, `t_off`, `t_p`) devono generare blocchi LAD timer completi con `PT` derivato da `control_value`;
 - i tag con `datatype=IEC_COUNTER` e `control_kind` coerente (`ctu`, `ctd`, `ctud`) devono generare blocchi LAD contatore completi con `PV` derivato da `control_value`;
@@ -1786,7 +1786,7 @@ Il naming finale dei passi GRAPH resta invece una policy del builder, che può:
 - introdurre step di chiusura o fine ciclo, purché il comportamento funzionale resti equivalente.
 
 
-# Appendice B - Integrazioni consolidate al 23-04-2026
+# Appendice B - Integrazioni consolidate al 24-04-2026
 
 ## B.1 Regola di prevalenza normativa
 In caso di conflitto tra una convenzione di repository, un'abitudine storica del team o una semplificazione implementativa del tool, prevale sempre la presente specifica.
