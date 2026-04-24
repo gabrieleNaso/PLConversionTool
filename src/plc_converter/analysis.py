@@ -132,7 +132,9 @@ TIA_RESERVED_KEYWORDS = {
 
 # Experimental translation rules must be opt-in. Keeping this off by default
 # prevents unintended topology inflation (e.g. synthetic S100/S101 branches).
-ENABLE_TRACKING_TRANSLATION_RULE = False
+# Tracking branch extraction is guarded by conservative pattern matching;
+# enabling it improves fidelity on sequencers that embed tracking checks in AWL.
+ENABLE_TRACKING_TRANSLATION_RULE = True
 
 EXTERNAL_DB_IDS = {81, 82, 202}
 
@@ -464,6 +466,73 @@ def _apply_translation_rules(
     if ENABLE_TRACKING_TRANSLATION_RULE:
         _augment_tracking_branch(step_map, transitions)
 
+    # Final simplification: remove pure pass-through steps (TRUE-only outgoing)
+    # so the resulting GRAPH is closer to typical TIA structures.
+    _collapse_passthrough_steps(step_map, transitions)
+
+
+def _collapse_passthrough_steps(
+    step_map: dict[str, StepCandidate],
+    transitions: list[TransitionCandidate],
+) -> None:
+    if not transitions:
+        return
+    protected = {"S1", "S28_END", "S29", "S30_Fault", "S32", "S100_TRK_CHECK", "S101_TRK_TRANSFER"}
+
+    # Build adjacency.
+    outgoing: dict[str, list[TransitionCandidate]] = {}
+    incoming_count: dict[str, int] = {}
+    for tr in transitions:
+        outgoing.setdefault(tr.source_step, []).append(tr)
+        incoming_count[tr.target_step] = incoming_count.get(tr.target_step, 0) + 1
+
+    # Iterate until stable (collapsing can create new candidates).
+    changed = True
+    while changed:
+        changed = False
+        for step_name in list(step_map.keys()):
+            if step_name in protected:
+                continue
+            outs = outgoing.get(step_name, [])
+            if len(outs) != 1:
+                continue
+            only = outs[0]
+            # Collapse only if this step is effectively a wire: guard TRUE, no operands, no labels.
+            if (only.guard_expression or "").strip().upper() != "TRUE":
+                continue
+            if only.guard_operands or only.jump_labels:
+                continue
+            step_no = _step_number_from_token(step_name)
+            target_no = _step_number_from_token(only.target_step)
+            # Keep low/mid sequence steps even if they look pass-through: they often
+            # correspond to action steps in the original AWL.
+            if step_no >= 0 and step_no < 20 and only.target_step != "S28_END" and target_no > 3:
+                continue
+            if incoming_count.get(step_name, 0) != 1:
+                continue
+
+            # Find the single incoming transition and redirect it to the outgoing target.
+            incoming = next((t for t in transitions if t.target_step == step_name), None)
+            if incoming is None:
+                continue
+            if incoming.source_step == only.target_step:
+                continue
+
+            incoming.target_step = only.target_step
+            # Remove the pass-through step and its outgoing transition.
+            transitions.remove(only)
+            step_map.pop(step_name, None)
+            changed = True
+            break
+
+        if changed:
+            # Recompute adjacency.
+            outgoing = {}
+            incoming_count = {}
+            for tr in transitions:
+                outgoing.setdefault(tr.source_step, []).append(tr)
+                incoming_count[tr.target_step] = incoming_count.get(tr.target_step, 0) + 1
+
 
 def _augment_fault_branch(
     step_map: dict[str, StepCandidate],
@@ -765,43 +834,93 @@ def _augment_tracking_branch(
         activation_networks=[seed.network_index],
     )
 
-    # Redirect the seed transition into the tracking check step.
-    seed.target_step = check_step
+    # Reference-style rewrite:
+    # replace the original target step with the tracking check step when safe to do so
+    # (single incoming: seed, single outgoing: gate).
+    outgoing = [item for item in transitions if item.source_step == original_target]
+    incoming = [item for item in transitions if item.target_step == original_target]
+    if len(outgoing) == 1 and len(incoming) == 1 and incoming[0] is seed:
+        gate = outgoing[0]
+        # Redirect: source_step -> check_step -> gate.target_step
+        seed.target_step = check_step
+        gate.source_step = check_step
 
-    if not _has_transition_between(transitions, check_step, original_target):
+        # Remove the replaced step if present.
+        step_map.pop(original_target, None)
+        # Drop any residual transitions still pointing at the removed step.
+        transitions[:] = [
+            item
+            for item in transitions
+            if item.source_step != original_target and item.target_step != original_target
+        ]
+    else:
+        # Fallback: just insert the check step between source and original target.
+        seed.target_step = check_step
+        if not _has_transition_between(transitions, check_step, original_target):
+            transitions.append(
+                TransitionCandidate(
+                    transition_id=_next_transition_id(transitions),
+                    source_step=check_step,
+                    target_step=original_target,
+                    network_index=seed.network_index,
+                    guard_expression="TRUE",
+                    guard_operands=[],
+                    jump_labels=[],
+                )
+            )
+
+    # Optional KO branch: when a presence operand exists, allow a jump-back.
+    presence_operand = next(
+        (
+            op
+            for op in (seed.guard_operands or [])
+            if re.fullmatch(r"DB\d+\.DBX23\.\d+", str(op or "").strip(), flags=re.IGNORECASE)
+        ),
+        None,
+    )
+    if presence_operand and not _has_transition_between(transitions, check_step, source_step):
         transitions.append(
             TransitionCandidate(
                 transition_id=_next_transition_id(transitions),
                 source_step=check_step,
-                target_step=original_target,
+                target_step=source_step,
                 network_index=seed.network_index,
-                guard_expression="TRUE",
-                guard_operands=[],
+                guard_expression=f"NOT {presence_operand}",
+                guard_operands=[presence_operand],
                 jump_labels=[],
             )
         )
 
-    tracking_ko_operand = _extract_negated_tracking_presence_operand(seed)
-    if not _has_transition_between(transitions, check_step, transfer_step):
-        transitions.append(
-            TransitionCandidate(
-                transition_id=_next_transition_id(transitions),
-                source_step=check_step,
-                target_step=transfer_step,
-                network_index=seed.network_index,
-                guard_expression=f"NOT {tracking_ko_operand}" if tracking_ko_operand else "TRUE",
-                guard_operands=[tracking_ko_operand] if tracking_ko_operand else [],
-                jump_labels=[],
+    # Optional transfer step insertion: if we find a later transition gated by a presence operand,
+    # insert S101 between it and its target (best-effort, conservative).
+    if not any(item.step_number == 101 for item in step_map.values()):
+        return
+    candidate = next(
+        (
+            item
+            for item in sorted(transitions, key=lambda t: (_as_positive_int(t.network_index) or 10**9))
+            if _step_number_from_token(item.source_step) >= 10
+            and _step_number_from_token(item.target_step) >= 10
+            and any(
+                re.fullmatch(r"DB\d+\.DBX23\.\d+", str(op or "").strip(), flags=re.IGNORECASE)
+                for op in (item.guard_operands or [])
             )
-        )
-
-    if not _has_transition_between(transitions, transfer_step, original_target):
+        ),
+        None,
+    )
+    if candidate is None:
+        return
+    if candidate.target_step == transfer_step or candidate.source_step == transfer_step:
+        return
+    old_target = candidate.target_step
+    candidate.target_step = transfer_step
+    if not _has_transition_between(transitions, transfer_step, old_target):
         transitions.append(
             TransitionCandidate(
                 transition_id=_next_transition_id(transitions),
                 source_step=transfer_step,
-                target_step=original_target,
-                network_index=seed.network_index,
+                target_step=old_target,
+                network_index=candidate.network_index,
                 guard_expression="TRUE",
                 guard_operands=[],
                 jump_labels=[],
@@ -1129,6 +1248,138 @@ def _parse_instructions(lines: list[str], network_index: int) -> list[AwlInstruc
     return instructions
 
 
+def _build_awl_operand_alias_map_from_networks(networks: list[AwlNetwork]) -> dict[str, str]:
+    """
+    Minimal alias map (address -> symbolic leaf) built directly from AWL raw lines.
+
+    Used during parsing to clean transition guards (e.g. remove the source step bit operand),
+    before we have a full AwlIR available.
+    """
+    alias_map: dict[str, str] = {}
+    local_prefix = _infer_sequence_trs_prefix(networks)
+    pattern = re.compile(
+        r'"([^"]+)"\s*(?:\.\s*([A-Za-z0-9_]+))?\s+'
+        r'(DB\d+\.DB[XBWD]\d+(?:\.\d+)?|[AQEIMT]\d+(?:\.\d+)?)',
+        flags=re.IGNORECASE,
+    )
+    for network in networks:
+        for raw_line in network.raw_lines:
+            body, _, _comment = raw_line.partition("--")
+            match = pattern.search(body)
+            if not match:
+                continue
+            symbolic_leaf = str(match.group(2) or "").strip()
+            address_raw = str(match.group(3) or "").strip()
+            address_key = _normalize_operand_token(address_raw)
+            if not address_key or not symbolic_leaf:
+                continue
+            base_alias = _derive_symbol_alias_from_base(str(match.group(1) or "").strip())
+            # Step-like leaf (Sxx): keep plain leaf for the local sequence, but
+            # prefix for foreign/remote sequences to avoid collisions (S03 vs S03).
+            if STEP_RE.fullmatch(symbolic_leaf) and base_alias and local_prefix and base_alias.upper() != local_prefix.upper():
+                alias_candidate = f"{base_alias}_{symbolic_leaf}"
+            else:
+                alias_candidate = symbolic_leaf
+            alias = _normalize_symbol_name(alias_candidate, "") or alias_candidate
+            alias_map.setdefault(address_key, alias)
+    return alias_map
+
+
+def _infer_sequence_db_no(networks: list[AwlNetwork]) -> int | None:
+    counts: dict[int, int] = {}
+    for network in networks:
+        for line in network.raw_lines:
+            for match in re.findall(r"\bDB(\d+)\.DBW2\b", line, flags=re.IGNORECASE):
+                try:
+                    db_no = int(match)
+                except ValueError:
+                    continue
+                counts[db_no] = counts.get(db_no, 0) + 1
+    if not counts:
+        return None
+    return max(counts.items(), key=lambda kv: kv[1])[0]
+
+
+def _infer_sequence_trs_prefix(networks: list[AwlNetwork]) -> str | None:
+    counts: dict[str, int] = {}
+    for network in networks:
+        for line in network.raw_lines:
+            match = re.search(r'"?([A-Za-z0-9_]+)"?\s*\.\s*TRS\b', line, flags=re.IGNORECASE)
+            if not match:
+                continue
+            prefix = _normalize_operand_token(match.group(1))
+            if prefix:
+                counts[prefix] = counts.get(prefix, 0) + 1
+    if not counts:
+        return None
+    return max(counts.items(), key=lambda kv: kv[1])[0]
+
+
+def _strip_operands_from_guard_expression(expression: str, operands_to_drop: set[str]) -> str:
+    text = str(expression or "").strip()
+    if not text or text.upper() == "TRUE" or not operands_to_drop:
+        return text or "TRUE"
+
+    # Best-effort: step operands are typically an AND term (A Sxx ...).
+    for raw in sorted(operands_to_drop, key=len, reverse=True):
+        token = re.escape(str(raw))
+        text = re.sub(rf"\(\s*{token}\s+AND\s+", "(", text, flags=re.IGNORECASE)
+        text = re.sub(rf"^\s*{token}\s+AND\s+", "", text, flags=re.IGNORECASE)
+        text = re.sub(rf"\s+AND\s+{token}\s*\)", ")", text, flags=re.IGNORECASE)
+        text = re.sub(rf"\s+AND\s+{token}\b", "", text, flags=re.IGNORECASE)
+        text = re.sub(rf"\b{token}\b", "", text, flags=re.IGNORECASE)
+
+    text = re.sub(r"\(\s*\)", "", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    if not text:
+        return "TRUE"
+    text = re.sub(r"^(AND|OR)\b\s*", "", text, flags=re.IGNORECASE).strip()
+    text = re.sub(r"\s*\b(AND|OR)$", "", text, flags=re.IGNORECASE).strip()
+    return text or "TRUE"
+
+
+def _strip_source_step_operands_from_transitions(
+    transitions: list[TransitionCandidate],
+    operand_aliases: dict[str, str],
+    sequence_db_no: int | None = None,
+) -> None:
+    if not transitions or not operand_aliases:
+        return
+    for tr in transitions:
+        src_no = _step_number_from_token(tr.source_step)
+        if src_no < 0:
+            continue
+        drop: set[str] = set()
+        for op in list(tr.guard_operands or []):
+            key = _normalize_operand_token(op)
+            alias = operand_aliases.get(key, "")
+            if alias and _step_number_from_token(alias) == src_no:
+                match = re.match(r"DB(\d+)\.", str(op or "").strip(), flags=re.IGNORECASE)
+                if sequence_db_no is not None:
+                    if match and int(match.group(1)) == sequence_db_no:
+                        drop.add(op)
+                else:
+                    # Fallback: when we cannot infer a local sequence DB, keep conservative behavior
+                    # and drop only if this operand belongs to the most common DB in the guard.
+                    db_counts: dict[int, int] = {}
+                    for guard_op in (tr.guard_operands or []):
+                        mm = re.match(r"DB(\d+)\.", str(guard_op or "").strip(), flags=re.IGNORECASE)
+                        if mm:
+                            db_no = int(mm.group(1))
+                            db_counts[db_no] = db_counts.get(db_no, 0) + 1
+                    dominant_db = max(db_counts.items(), key=lambda kv: kv[1])[0] if db_counts else None
+                    if dominant_db is None:
+                        drop.add(op)
+                    elif match and int(match.group(1)) == dominant_db:
+                        drop.add(op)
+        if not drop:
+            continue
+        tr.guard_operands = [op for op in (tr.guard_operands or []) if op not in drop]
+        tr.guard_expression = _strip_operands_from_guard_expression(tr.guard_expression or "", drop)
+        if (tr.guard_expression or "").strip().upper() == "TRUE" and tr.guard_operands:
+            tr.guard_expression = " AND ".join(tr.guard_operands)
+
+
 def _build_ir(sequence_name: str, source_name: str, networks: list[AwlNetwork]) -> AwlIR:
     step_map: dict[str, StepCandidate] = {}
     transitions: list[TransitionCandidate] = []
@@ -1139,6 +1390,8 @@ def _build_ir(sequence_name: str, source_name: str, networks: list[AwlNetwork]) 
     manual_logic_networks: list[int] = []
     auto_logic_networks: list[int] = []
     external_refs: set[str] = set()
+    operand_aliases = _build_awl_operand_alias_map_from_networks(networks)
+    sequence_db_no = _infer_sequence_db_no(networks)
 
     for network in networks:
         step_refs = sorted(_collect_matches(network, STEP_RE))
@@ -1262,6 +1515,9 @@ def _build_ir(sequence_name: str, source_name: str, networks: list[AwlNetwork]) 
         ]
         if network_only:
             transitions = network_only
+
+    # Drop redundant source-step operands from guard expressions (e.g. DB102.DBX6.2 for S3).
+    _strip_source_step_operands_from_transitions(transitions, operand_aliases, sequence_db_no)
 
     _apply_translation_rules(step_map, transitions)
 
@@ -4955,6 +5211,7 @@ def _collect_transition_guard_members_by_category(
 def _build_awl_operand_alias_map(ir: AwlIR) -> dict[str, str]:
     alias_map: dict[str, str] = {}
     alias_owner: dict[str, str] = {}
+    local_prefix = _infer_sequence_trs_prefix(ir.networks)
     pattern = re.compile(
         r'"([^"]+)"\s*(?:\.\s*([A-Za-z0-9_]+))?\s+'
         r'(DB\d+\.DB[XBWD]\d+(?:\.\d+)?|[AQEIMT]\d+(?:\.\d+)?)',
@@ -4977,7 +5234,12 @@ def _build_awl_operand_alias_map(ir: AwlIR) -> dict[str, str]:
             # Prefer the *literal* symbolic leaf when present (e.g. "LLALM".DB202_DBX32_0),
             # even if it looks address-like. This keeps generated DB members stable and meaningful.
             if symbolic_leaf:
-                alias_candidate = symbolic_leaf
+                # For step-like leaves (Sxx), prefix with the base when it is not the local sequence
+                # to avoid collisions across sequencers (e.g. M03.S03 vs M02.S03).
+                if STEP_RE.fullmatch(symbolic_leaf) and base_alias and local_prefix and base_alias.upper() != local_prefix.upper():
+                    alias_candidate = f"{base_alias}_{symbolic_leaf}"
+                else:
+                    alias_candidate = symbolic_leaf
             elif comment_alias:
                 alias_candidate = comment_alias
             else:
@@ -6550,4 +6812,3 @@ def _canonicalize_step_token(token: str) -> str:
     if not match:
         return token
     return f"S{int(match.group(1))}"
-    allowed_guard_operands = _strict_allowed_guard_operands(ir)

@@ -900,6 +900,15 @@ Nel flusso AWL (non Excel strict) la `FC 14 Transitions` non deve cadere in moda
 - per ogni transizione `Tn` viene emessa una rete che calcola `TR_Tn` a partire da `guard_expression`/`guard_operands`;
 - i contatti della rete devono essere referenziati nel DB owner corretto (IO/AUX/HMI/DIAG) tramite ownership deterministica;
 - quando una guardia contiene un timer `Txx`, il contatto usato deve essere `Txx_DONE` (non l'istanza `IEC_TIMER`).
+- quando una guardia contiene il bit step locale della sequenza (es. `DBxxx.DBX6.y` relativo allo step sorgente), tale termine va rimosso dalla guardia: nel GRAPH essere nello step e' gia' implicito;
+- se la guardia contiene step di altri sequenziatori (es. `M03.S03`), il nome simbolico deve essere disambiguato col prefisso (es. `M03_S03`) per evitare collisioni con gli step locali.
+
+### 32.10-quater Tracking: estrazione micro-flusso (S100/S101)
+
+Quando il parser riconosce un pattern di tracking (guardie che combinano step esterno `DB?.DBX6.*` e presenza `DB?.DBX23.*`), il builder puo' inserire un micro-flusso standard:
+
+- `S100_TRK_CHECK` come step di controllo tracking dopo la verifica di presenza pezzo;
+- `S101_TRK_TRANSFER` come step di trasferimento tracking prima di una fase di movimento successiva.
 
 ### 32.11 Backbone della sequenza
 
