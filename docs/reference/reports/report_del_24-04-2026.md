@@ -878,6 +878,7 @@ I timer AWL `Txx`, i preset `S5T`, i bit di appoggio pulsati e le memorie tecnic
 Nella pipeline corrente vengono convertiti in:
 
 - istanze IEC nel `DB 19..`;
+- per ogni timer AWL `Txx` viene esposto anche un bit booleano `Txx_DONE` (usato come contatto nelle guardie e nella logica);
 - reti LAD nella `FC 13 Aux`;
 - eventuali memorie semantiche derivate nel DB base `11..`.
 

@@ -1211,14 +1211,14 @@ def _build_ir(sequence_name: str, source_name: str, networks: list[AwlNetwork]) 
                         )
                     )
 
-        for timer_name, timer_kind, preset in _collect_timers(network):
+        for timer_name, timer_kind, preset, timer_triggers in _collect_timers_with_triggers(network):
             timers.append(
                 TimerCandidate(
                     source_timer=timer_name,
                     network_index=network.index,
                     kind=timer_kind,
                     preset=preset,
-                    trigger_operands=condition_operands,
+                    trigger_operands=timer_triggers,
                 )
             )
 
@@ -2242,6 +2242,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
     previews: list[ArtifactPreview] = []
     symbol_home_db_map = _build_support_symbol_home_db_map(ir)
     guard_members_by_category = _collect_transition_guard_members_by_category(ir)
+    timer_trigger_members_by_category = _collect_timer_trigger_support_members_by_category(ir)
     member_datatypes = _support_operand_datatypes(ir)
     operand_notes = _support_operand_notes(ir)
     timer_configs = _support_timer_configs(ir)
@@ -2270,15 +2271,31 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
     par_db_name, _, par_db_file, _, par_db_base, _ = _support_block_names(ir.sequence_name, "parameters")
 
     diag_logic = _excel_support_logic_rows(ir, "diag")
-    diag_members = (_excel_support_members(ir, "diag") or _collect_diag_support_members(ir)) + guard_members_by_category.get("diag", [])
+    diag_members = (
+        (_excel_support_members(ir, "diag") or _collect_diag_support_members(ir))
+        + guard_members_by_category.get("diag", [])
+        + timer_trigger_members_by_category.get("diag", [])
+    )
     diag_db_members, diag_fc_members = _prepare_support_members(ir, "diag", diag_members, diag_logic)
 
     hmi_logic = _excel_support_logic_rows(ir, "hmi")
-    hmi_members = (_excel_support_members(ir, "hmi") or _collect_hmi_support_members(ir)) + guard_members_by_category.get("hmi", [])
+    hmi_members = (
+        (_excel_support_members(ir, "hmi") or _collect_hmi_support_members(ir))
+        + guard_members_by_category.get("hmi", [])
+        + timer_trigger_members_by_category.get("hmi", [])
+    )
     hmi_db_members, hmi_fc_members = _prepare_support_members(ir, "hmi", hmi_members, hmi_logic)
 
     aux_logic = _excel_support_logic_rows(ir, "aux")
-    aux_members = (_excel_support_members(ir, "aux") or _collect_aux_support_members(ir)) + guard_members_by_category.get("aux", [])
+    # For AWL sources, emit timer FB calls in AUX LAD so that timer operands
+    # used in guards map coherently to IEC_TIMER instances + *_DONE bits.
+    if not ir.strict_operand_catalog:
+        aux_logic = aux_logic + _derive_awl_timer_logic_rows(ir)
+    aux_members = (
+        (_excel_support_members(ir, "aux") or _collect_aux_support_members(ir))
+        + guard_members_by_category.get("aux", [])
+        + timer_trigger_members_by_category.get("aux", [])
+    )
     aux_db_members, aux_fc_members = _prepare_support_members(ir, "aux", aux_members, aux_logic)
 
     transitions_logic = _excel_support_logic_rows(ir, "transitions")
@@ -2294,7 +2311,12 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
     io_output_logic = io_logic + output_logic
     io_members = _excel_support_members(ir, "io")
     output_members = _excel_support_members(ir, "output")
-    io_output_members = io_members + output_members + guard_members_by_category.get("io", [])
+    io_output_members = (
+        io_members
+        + output_members
+        + guard_members_by_category.get("io", [])
+        + timer_trigger_members_by_category.get("io", [])
+    )
     if not io_output_members:
         io_output_members = _collect_output_family_members(ir)
     output_db_members, output_fc_members = _prepare_support_members(
@@ -2622,11 +2644,13 @@ def _build_graph_fb_xml(profile, ir: AwlIR, graph_topology: GraphTopology) -> st
 
     steps_xml = "\n".join(_render_graph_step(step) for step in graph_topology.step_nodes)
     symbol_home_db_map = _build_support_symbol_home_db_map(ir)
+    operand_aliases = _build_awl_operand_alias_map(ir)
     transitions_xml = "\n".join(
         _render_graph_transition(
             transition,
             strict_excel_mode=ir.strict_operand_catalog,
             symbol_home_db_map=symbol_home_db_map,
+            operand_aliases=operand_aliases,
         )
         for transition in graph_topology.transition_nodes
     )
@@ -3223,6 +3247,12 @@ def _support_operand_datatypes(ir: AwlIR) -> dict[str, str]:
         if not normalized_name:
             continue
         mapping[normalized_name] = _normalize_plc_datatype(raw_datatype)
+    # AWL path: timers are implicit and must be typed explicitly, otherwise
+    # support DBs default to Bool and LAD ends up wiring timer instances into coils.
+    for timer in ir.timers:
+        timer_name = _support_member_name(timer.source_timer, "", strict_excel_mode=True)
+        if timer_name:
+            mapping.setdefault(timer_name, "IEC_TIMER")
     return mapping
 
 
@@ -3250,6 +3280,17 @@ def _timer_part_name(timer_kind: str) -> str:
     return "TON"
 
 
+def _normalize_timer_preset_literal(raw_value: str) -> str:
+    token = str(raw_value or "").strip().upper()
+    if not token:
+        return "T#1S"
+    if token.startswith("S5T#"):
+        return f"T#{token[4:]}"
+    if token.startswith("T#"):
+        return token
+    return f"T#{token}"
+
+
 def _counter_part_name(counter_kind: str) -> str:
     raw = str(counter_kind or "").strip().lower()
     if raw in {"ctd", "down", "count_down"}:
@@ -3269,12 +3310,10 @@ def _support_timer_configs(ir: AwlIR) -> dict[str, dict[str, str]]:
         kind = str(settings.get("kind") or "").strip()
         value = str(settings.get("value") or "").strip()
         if datatype == "IEC_TIMER":
-            preset = value or "T#1S"
-            if not preset.upper().startswith("T#"):
-                preset = f"T#{preset}"
+            preset = _normalize_timer_preset_literal(value or "T#1S")
             configs[normalized_name] = {
                 "part_name": _timer_part_name(kind),
-                "value": preset.upper(),
+                "value": preset,
                 "control_family": "timer",
             }
         elif datatype == "IEC_COUNTER":
@@ -3291,12 +3330,10 @@ def _support_timer_configs(ir: AwlIR) -> dict[str, dict[str, str]]:
         if normalized_name in configs:
             continue
         kind = str(settings.get("kind") or "").strip()
-        preset = str(settings.get("preset") or "").strip() or "T#1S"
-        if not preset.upper().startswith("T#"):
-            preset = f"T#{preset}"
+        preset = _normalize_timer_preset_literal(str(settings.get("preset") or "").strip() or "T#1S")
         configs[normalized_name] = {
             "part_name": _timer_part_name(kind),
-            "value": preset.upper(),
+            "value": preset,
             "control_family": "timer",
         }
     for timer in ir.timers:
@@ -3305,12 +3342,10 @@ def _support_timer_configs(ir: AwlIR) -> dict[str, dict[str, str]]:
             continue
         if normalized_name in configs:
             continue
-        preset = str(timer.preset or "").strip() or "T#1S"
-        if not preset.upper().startswith("T#"):
-            preset = f"T#{preset}"
+        preset = _normalize_timer_preset_literal(str(timer.preset or "").strip() or "T#1S")
         configs[normalized_name] = {
             "part_name": _timer_part_name(timer.kind),
-            "value": preset.upper(),
+            "value": preset,
             "control_family": "timer",
         }
     return configs
@@ -3323,6 +3358,13 @@ def _resolve_logic_symbol_path(
     token = str(operand or "").strip()
     if not token:
         return "", []
+    # AWL address-like operands (e.g. I30.1, Q24.0, M49.0, DB202.DBX32.0)
+    # must be treated as a single leaf symbol, not as dotted struct access.
+    if _is_address_like_operand(token.upper()):
+        base_name = _support_member_name(token, "", strict_excel_mode=True)
+        if not base_name:
+            return "", []
+        return base_name, [base_name]
     raw_parts = [part for part in token.split(".") if part]
     if not raw_parts:
         return "", []
@@ -3762,18 +3804,32 @@ def _build_support_logic_flgnet(
     active_timer_part = ""
     active_timer_preset = ""
     active_timer_family = ""
+
+    # Special case: if the coil is a *_DONE bool, infer the underlying timer instance
+    # without requiring the timer symbol itself to appear in the boolean expression.
+    if normalized_result.endswith("_DONE"):
+        base_candidate = normalized_result[: -len("_DONE")]
+        cfg = timer_configs.get(base_candidate) or {}
+        datatype = _normalize_plc_datatype(member_datatypes.get(base_candidate, ""))
+        control_family = cfg.get("control_family") or ("counter" if "COUNTER" in datatype.upper() else "timer")
+        if datatype in {"IEC_TIMER", "IEC_COUNTER"} or cfg:
+            active_timer_name = base_candidate
+            active_timer_part = cfg.get("part_name") or ("CTU" if control_family == "counter" else "TON")
+            active_timer_preset = cfg.get("value") or ("1" if control_family == "counter" else "T#1S")
+            active_timer_family = "counter" if control_family == "counter" else "timer"
     scan_terms = [common_terms, *guard_clauses]
-    for clause in scan_terms:
-        for operand, negated in clause:
-            candidate = _timer_candidate_for_operand(operand, negated)
-            if candidate:
-                active_timer_name = candidate[0]
-                active_timer_part = candidate[1]
-                active_timer_preset = candidate[2]
-                active_timer_family = candidate[3]
+    if not active_timer_name:
+        for clause in scan_terms:
+            for operand, negated in clause:
+                candidate = _timer_candidate_for_operand(operand, negated)
+                if candidate:
+                    active_timer_name = candidate[0]
+                    active_timer_part = candidate[1]
+                    active_timer_preset = candidate[2]
+                    active_timer_family = candidate[3]
+                    break
+            if active_timer_name:
                 break
-        if active_timer_name:
-            break
 
     def _render_access(symbol_name: str, symbol_path: list[str], access_uid: int) -> list[str]:
         target_db_name = _owner_db_name(symbol_name)
@@ -4434,6 +4490,7 @@ def _build_support_symbol_home_db_map(ir: AwlIR) -> dict[str, str]:
         mapping.setdefault(member_name, db_name)
 
     guard_members_by_category = _collect_transition_guard_members_by_category(ir)
+    operand_aliases = _build_awl_operand_alias_map(ir)
 
     # 2) Heuristic fallback from support members and inferred collections.
     category_sources: list[tuple[str, list[tuple[str, str]]]] = [
@@ -4459,6 +4516,20 @@ def _build_support_symbol_home_db_map(ir: AwlIR) -> dict[str, str]:
             if allowed is not None and token not in allowed:
                 continue
             mapping.setdefault(token, db_name)
+
+    # 3) AWL symbolic aliases: ensure that "nice" names still resolve to the
+    # correct owner DB even when logic rows reference the alias instead of the
+    # raw address operand.
+    for address_key, alias_norm in operand_aliases.items():
+        category = _support_category_for_guard_operand(address_key)
+        db_name, _, _, _, _, _ = _support_block_names(ir.sequence_name, category)
+        alias_member = _support_member_name(alias_norm, "", strict_excel_mode=True)
+        if alias_member and (allowed is None or alias_member in allowed):
+            mapping.setdefault(alias_member, db_name)
+        # Also support the sanitized address-style member name as a fallback key.
+        address_member = _support_member_name(address_key, "", strict_excel_mode=True)
+        if address_member and (allowed is None or address_member in allowed):
+            mapping.setdefault(address_member, db_name)
     return mapping
 
 
@@ -4474,16 +4545,49 @@ def _collect_io_support_members(ir: AwlIR) -> list[tuple[str, str]]:
     return list(dict.fromkeys(members))
 
 
+def _collect_timer_trigger_support_members_by_category(
+    ir: AwlIR,
+) -> dict[str, list[tuple[str, str]]]:
+    operand_aliases = _build_awl_operand_alias_map(ir)
+    grouped: dict[str, list[tuple[str, str]]] = {
+        "io": [],
+        "aux": [],
+        "hmi": [],
+        "diag": [],
+        "transitions": [],
+    }
+    for timer in ir.timers:
+        timer_name = str(timer.source_timer or "").strip()
+        for raw in (timer.trigger_operands or []):
+            operand = str(raw or "").strip()
+            if not operand:
+                continue
+            category = _support_category_for_guard_operand(operand)
+            alias = operand_aliases.get(_normalize_operand_token(operand), "")
+            member = _support_member_name(alias or operand, "", strict_excel_mode=True)
+            if not member:
+                continue
+            grouped.setdefault(category, []).append((member, f"Timer trigger {timer_name}"))
+    return {k: _dedupe_named_members(v) for k, v in grouped.items()}
+
+
 def _collect_external_support_members(ir: AwlIR) -> list[tuple[str, str]]:
+    operand_aliases = _build_awl_operand_alias_map(ir)
     members: list[tuple[str, str]] = []
     for ext in ir.external_refs:
         if not _is_external_integration_operand(ext):
             continue
-        family = _classify_operand_family(ext)
+        normalized = _normalize_operand_token(ext)
+        alias = operand_aliases.get(normalized, "")
+        if not alias:
+            shortcut = re.fullmatch(r"DB\d+\.(P\d{3}|L\d{3})", str(ext or "").strip(), flags=re.IGNORECASE)
+            if shortcut:
+                alias = shortcut.group(1).upper()
+        symbol = alias or ext
         members.append(
             (
-                _support_member_name(ext, family, strict_excel_mode=ir.strict_operand_catalog),
-                f"External reference {ext} ({family})",
+                _support_member_name(symbol, "", strict_excel_mode=True),
+                f"External reference {symbol}",
             )
         )
     return list(dict.fromkeys(members))
@@ -4566,12 +4670,20 @@ def _collect_output_family_members(ir: AwlIR) -> list[tuple[str, str]]:
 
 
 def _collect_hmi_support_members(ir: AwlIR) -> list[tuple[str, str]]:
+    operand_aliases = _build_awl_operand_alias_map(ir)
     members: list[tuple[str, str]] = []
     for ext in ir.external_refs:
         candidate = ext.upper()
         if any(marker in candidate for marker in ("HMI", "OPIN", "OPOUT", "DB81", "DB82")):
-            member = _support_member_name(candidate, "HMI", strict_excel_mode=ir.strict_operand_catalog)
-            members.append((member, f"HMI/Operator reference {candidate}"))
+            normalized = _normalize_operand_token(ext)
+            alias = operand_aliases.get(normalized, "")
+            if not alias:
+                shortcut = re.fullmatch(r"DB\d+\.(P\d{3}|L\d{3})", str(ext or "").strip(), flags=re.IGNORECASE)
+                if shortcut:
+                    alias = shortcut.group(1).upper()
+            symbol = alias or candidate
+            member = _support_member_name(symbol, "", strict_excel_mode=True)
+            members.append((member, f"HMI/Operator reference {symbol}"))
     for memory in ir.memories:
         if str(memory.role).lower() == "hmi":
             member = _support_member_name(memory.name, "HMI", strict_excel_mode=ir.strict_operand_catalog)
@@ -4580,33 +4692,45 @@ def _collect_hmi_support_members(ir: AwlIR) -> list[tuple[str, str]]:
 
 
 def _collect_aux_support_members(ir: AwlIR) -> list[tuple[str, str]]:
+    operand_aliases = _build_awl_operand_alias_map(ir)
     members: list[tuple[str, str]] = []
     for memory in ir.memories:
-        member = _support_member_name(memory.name, "AUX_MEM", strict_excel_mode=ir.strict_operand_catalog)
-        members.append((member, f"Aux memory ({memory.role}) {memory.name}"))
+        raw = str(memory.name or "").strip()
+        alias = operand_aliases.get(_normalize_operand_token(raw), "")
+        member = _support_member_name(alias or raw, "", strict_excel_mode=True)
+        members.append((member, f"Aux memory ({memory.role}) {alias or member}"))
     for timer in ir.timers:
-        member = _support_member_name(timer.source_timer, "AUX_TIMER", strict_excel_mode=ir.strict_operand_catalog)
-        members.append((member, f"Aux timer {timer.source_timer}"))
+        raw = str(timer.source_timer or "").strip()
+        alias = operand_aliases.get(_normalize_operand_token(raw), "")
+        member = _support_member_name(alias or raw, "", strict_excel_mode=True)
+        members.append((member, f"Aux timer {alias or member}"))
+        # Timer operands (e.g. T50) are used as bool contacts in AWL via the
+        # "done" bit. Model this explicitly as a separate BOOL member.
+        done_member = _guard_operand_db_member_name(raw, strict_excel_mode=False)
+        members.append((done_member, f"Aux timer done {alias or member}"))
     return list(dict.fromkeys(members))
 
 
 def _collect_parameters_support_members(ir: AwlIR) -> list[tuple[str, str]]:
     # PARAMETERS DB: keep control-like operands (timers/counters and non-bool process values)
     # in a stable place without inventing ad-hoc symbols.
+    operand_aliases = _build_awl_operand_alias_map(ir)
     members: list[tuple[str, str]] = []
     datatype_map = _support_operand_datatypes(ir)
     for operand in ir.operand_catalog:
         token = str(operand or "").strip()
         if not token:
             continue
+        alias = operand_aliases.get(_normalize_operand_token(token), "")
+        symbol = alias or token
         datatype = _normalize_plc_datatype(datatype_map.get(token, ""))
         if datatype in {"IEC_TIMER", "IEC_COUNTER"}:
-            member = _support_member_name(token, "PAR", strict_excel_mode=ir.strict_operand_catalog)
-            members.append((member, f"Parameter/control operand {token} ({datatype})"))
+            member = _support_member_name(symbol, "PAR", strict_excel_mode=ir.strict_operand_catalog)
+            members.append((member, f"Parameter/control operand {symbol} ({datatype})"))
             continue
         if datatype not in {"", "Bool"}:
-            member = _support_member_name(token, "PAR", strict_excel_mode=ir.strict_operand_catalog)
-            members.append((member, f"Parameter operand {token} ({datatype})"))
+            member = _support_member_name(symbol, "PAR", strict_excel_mode=ir.strict_operand_catalog)
+            members.append((member, f"Parameter operand {symbol} ({datatype})"))
     # AWL fallback: derive DBW/DBD/DBB operands from symbolic lines when the
     # operand catalog is not populated (typical markdown AWL path).
     pattern = re.compile(
@@ -4626,8 +4750,9 @@ def _collect_parameters_support_members(ir: AwlIR) -> list[tuple[str, str]]:
             db_kind = str(match.group(4) or "").strip().upper()
             dtype = {"B": "Byte", "W": "Int", "D": "DInt"}.get(db_kind, "Int")
             alias = symbolic_leaf or _derive_symbol_alias_from_base(symbolic_base)
-            member = _support_member_name(alias or address, "PAR", strict_excel_mode=ir.strict_operand_catalog)
-            members.append((member, f"Parameter operand {address} ({dtype})"))
+            symbol = alias or address
+            member = _support_member_name(symbol, "PAR", strict_excel_mode=ir.strict_operand_catalog)
+            members.append((member, f"Parameter operand {symbol} ({dtype})"))
     return list(dict.fromkeys(members))
 
 
@@ -4745,8 +4870,8 @@ def _support_category_for_guard_operand(operand: str) -> str:
         if db_no >= 200:
             return "diag"
         if 100 <= db_no < 200:
-            return "transitions"
-        return "transitions"
+            return "io"
+        return "io"
     if token.startswith("DB81.") or token.startswith("DB82."):
         return "hmi"
     if token.startswith("DB202."):
@@ -4776,26 +4901,22 @@ def _collect_transition_guard_members_by_category(
             raw_key = raw.upper()
             existing_member = raw_to_member_by_category[category].get(raw_key)
             if existing_member:
-                grouped[category].append((existing_member, f"Guard operand {raw}"))
+                comment_symbol = operand_aliases.get(raw_key, "") or existing_member
+                grouped[category].append((existing_member, f"Guard operand {comment_symbol}"))
                 continue
-            if category == "aux":
-                prefix = "AUX_TIMER" if re.fullmatch(r"T\d+", raw.upper()) else "AUX_MEM"
-            elif category == "io":
-                prefix = "Q" if re.fullmatch(r"[AQ]\d+(?:\.\d+)?", raw.upper()) else "COND_IN"
-            elif category == "hmi":
-                prefix = "HMI"
-            elif category == "diag":
-                prefix = "DIAG"
+            # Keep guard members literal to AWL operands (TIA-sanitized),
+            # avoiding synthetic prefixes such as TR_OP_/AUX_MEM_.
+            alias = operand_aliases.get(raw_key, "")
+            if category == "aux" and TIMER_RE.fullmatch(raw.upper()):
+                member = _guard_operand_db_member_name(raw, strict_excel_mode=False)
             else:
-                prefix = "TR_OP"
-            alias = operand_aliases.get(raw_key, "") if category in {"transitions", "hmi"} else ""
-            member = _support_member_name(alias or raw, prefix, strict_excel_mode=ir.strict_operand_catalog)
+                member = _support_member_name(alias or raw, "", strict_excel_mode=True)
             if member in used_names_by_category[category]:
-                # Avoid accidental alias collisions: fallback to address-based key.
-                member = _support_member_name(raw, prefix, strict_excel_mode=ir.strict_operand_catalog)
+                member = _support_member_name(f"{raw}_{transition.transition_id}", "", strict_excel_mode=True)
             used_names_by_category[category].add(member)
             raw_to_member_by_category[category][raw_key] = member
-            grouped[category].append((member, f"Guard operand {raw}"))
+            comment_symbol = alias or member
+            grouped[category].append((member, f"Guard operand {comment_symbol}"))
     return {category: _dedupe_named_members(items) for category, items in grouped.items()}
 
 
@@ -4809,7 +4930,7 @@ def _build_awl_operand_alias_map(ir: AwlIR) -> dict[str, str]:
     )
     for network in ir.networks:
         for raw_line in network.raw_lines:
-            body = raw_line.split("--", 1)[0]
+            body, _, comment = raw_line.partition("--")
             match = pattern.search(body)
             if not match:
                 continue
@@ -4820,15 +4941,32 @@ def _build_awl_operand_alias_map(ir: AwlIR) -> dict[str, str]:
             if not address_key:
                 continue
             base_alias = _derive_symbol_alias_from_base(symbolic_base)
-            alias_candidate = symbolic_leaf or base_alias
+            comment_alias = _derive_symbol_alias_from_comment(comment)
+            leaf_is_address_like = bool(
+                symbolic_leaf
+                and re.fullmatch(r"DB\d+_DB[XBWD]\d+(?:_\d+)?", symbolic_leaf, flags=re.IGNORECASE)
+            )
+            if symbolic_leaf and not leaf_is_address_like:
+                alias_candidate = symbolic_leaf
+            elif comment_alias:
+                alias_candidate = comment_alias
+            else:
+                alias_candidate = base_alias
             alias_norm = _normalize_symbol_name(alias_candidate, "")
             if not alias_norm:
                 continue
             owner = alias_owner.get(alias_norm)
             if owner and owner != address_key:
-                expanded = _normalize_symbol_name(f"{base_alias}_{symbolic_leaf or alias_norm}", alias_norm)
+                if symbolic_leaf and not leaf_is_address_like:
+                    disambiguator = symbolic_leaf
+                elif comment_alias and comment_alias != alias_norm:
+                    disambiguator = comment_alias
+                else:
+                    disambiguator = _stable_hash_token(address_key, size=6)
+                expanded_seed = f"{base_alias}_{disambiguator}" if base_alias else f"{alias_norm}_{disambiguator}"
+                expanded = _normalize_symbol_name(expanded_seed, alias_norm)
                 if expanded and alias_owner.get(expanded) not in {None, address_key}:
-                    expanded = _normalize_symbol_name(address_key, alias_norm)
+                    expanded = _normalize_symbol_name(f"{alias_norm}_{_stable_hash_token(address_key, size=8)}", alias_norm)
                 alias_norm = expanded or alias_norm
             alias_map.setdefault(address_key, alias_norm)
             alias_owner.setdefault(alias_norm, address_key)
@@ -4839,12 +4977,27 @@ def _derive_symbol_alias_from_base(symbolic_base: str) -> str:
     token = str(symbolic_base or "").strip()
     if not token:
         return ""
-    # Keep only last semantic segment for strings like "M02", "DB:OPIN", "LM1 T1A-B48.1".
     parts = re.split(r"[\s:/\-]+", token)
     parts = [item for item in parts if item]
     if not parts:
         return ""
-    return parts[-1]
+    meaningful = [item for item in parts if len(item) > 1]
+    if not meaningful:
+        return parts[-1]
+    if len(meaningful) == 1:
+        return meaningful[0]
+    return "_".join(meaningful[-2:])
+
+
+def _derive_symbol_alias_from_comment(comment: str) -> str:
+    raw = str(comment or "").strip()
+    if not raw:
+        return ""
+    words = re.findall(r"[A-Za-z][A-Za-z0-9_]+", raw)
+    words = [word for word in words if len(word) > 2][:4]
+    if not words:
+        return ""
+    return "_".join(words)
 
 
 def _render_graph_step(step: GraphStepNode) -> str:
@@ -4874,6 +5027,7 @@ def _render_graph_transition(
     *,
     strict_excel_mode: bool = False,
     symbol_home_db_map: dict[str, str] | None = None,
+    operand_aliases: dict[str, str] | None = None,
 ) -> str:
     next_uid = 21
 
@@ -4886,6 +5040,7 @@ def _render_graph_transition(
     parts_lines: list[str] = []
     wires_lines: list[str] = []
     owner_db_map = symbol_home_db_map or {}
+    alias_map = operand_aliases or {}
 
     def _operand_binding(operand: str) -> tuple[str, str]:
         raw = str(operand or "").strip()
@@ -4893,9 +5048,12 @@ def _render_graph_transition(
             return transition.db_block_name, transition.db_member_name
         canonical_member = _guard_operand_db_member_name(raw, strict_excel_mode=strict_excel_mode)
         strict_member = _support_member_name(raw, "", strict_excel_mode=True)
+        alias_raw = alias_map.get(_normalize_operand_token(raw), "")
+        alias_member = _support_member_name(alias_raw, "", strict_excel_mode=True) if alias_raw else ""
         # Try direct + normalized spellings to honor Excel strict names and
         # compatibility aliases produced by support member collectors.
         candidate_keys = [
+            alias_member,
             canonical_member,
             strict_member,
             raw,
@@ -5492,6 +5650,39 @@ def _guard_operand_db_member_name(operand: str, *, strict_excel_mode: bool = Fal
     return _db_member_name(token)
 
 
+def _derive_awl_timer_logic_rows(ir: AwlIR) -> list[dict[str, object]]:
+    rows: list[dict[str, object]] = []
+    operand_aliases = _build_awl_operand_alias_map(ir)
+    for timer in ir.timers:
+        timer_name = str(timer.source_timer or "").strip()
+        if not timer_name:
+            continue
+        trigger_ops_raw = [str(op or "").strip() for op in (timer.trigger_operands or []) if str(op or "").strip()]
+        trigger_ops: list[str] = []
+        for raw in trigger_ops_raw:
+            alias = operand_aliases.get(_normalize_operand_token(raw), "")
+            trigger_ops.append(_support_member_name(alias or raw, "", strict_excel_mode=True))
+        trigger_ops = [op for op in trigger_ops if op]
+        condition_expression = " AND ".join(trigger_ops) if trigger_ops else "TRUE"
+        rows.append(
+            {
+                "result_member": _guard_operand_db_member_name(timer_name, strict_excel_mode=False),
+                "condition_expression": condition_expression,
+                "condition_operands": trigger_ops,
+                "coil_mode": "",
+                "comment": f"Aux timer {timer_name}",
+                "network_index": int(timer.network_index or 0),
+            }
+        )
+    rows.sort(
+        key=lambda row: (
+            _as_positive_int(row.get("network_index")) or 10**9,
+            str(row.get("result_member") or ""),
+        )
+    )
+    return rows
+
+
 def _global_db_block_name(ir: AwlIR) -> str:
     return f"{DB_FAMILY_PREFIX['sequence']}_{ir.sequence_name}_SEQ_DB"
 
@@ -5723,6 +5914,40 @@ def _collect_timers(network: AwlNetwork) -> list[tuple[str, str, str | None]]:
         for match in TIMER_RE.findall(instr.raw):
             timers.append((match.upper(), "LEGACY_TIMER", _extract_preset(network)))
     return _dedupe_timers(timers)
+
+
+def _collect_timers_with_triggers(
+    network: AwlNetwork,
+) -> list[tuple[str, str, str | None, list[str]]]:
+    timers: list[tuple[str, str, str | None, list[str]]] = []
+    condition_operands: list[str] = []
+    for instr in network.instructions:
+        if instr.opcode in CONDITION_OPCODES and instr.args:
+            operand = _select_instruction_operand(instr.args)
+            if not operand:
+                continue
+            if STEP_RE.fullmatch(operand):
+                # Step marker resets the condition chain.
+                condition_operands = []
+                continue
+            condition_operands.append(operand)
+
+        if instr.opcode in TIMER_OPCODES and instr.args:
+            timer_name = _select_instruction_operand(instr.args)
+            if not timer_name:
+                continue
+            preset = _extract_preset(network)
+            timers.append((timer_name, instr.opcode, preset, list(condition_operands)))
+
+    seen: set[tuple[str, str, str | None, tuple[str, ...]]] = set()
+    unique: list[tuple[str, str, str | None, list[str]]] = []
+    for name, kind, preset, triggers in timers:
+        key = (name, kind, preset, tuple(triggers))
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append((name, kind, preset, _dedupe_list(triggers)))
+    return unique
 
 
 def _collect_trs_transitions_with_fallback(

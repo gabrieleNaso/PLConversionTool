@@ -898,12 +898,12 @@ def test_conversion_analyze_graph_transition_binds_owner_db_and_member_aliases()
         if preview["artifact_type"] == "graph_fb"
     )
     assert '<Component Name="DB19_Owner_DB_Bind_AUX_DB" />' in graph_preview
-    assert '<Component Name="AUX_MEM_M44_0" />' in graph_preview
-    assert '<Component Name="DB14_Owner_DB_Bind_TRANSITIONS_DB" />' in graph_preview
-    assert '<Component Name="TR_OP_DB102_DBX25_5" />' in graph_preview
+    assert '<Component Name="M44_0" />' in graph_preview
+    assert '<Component Name="DB16_Owner_DB_Bind_IO_DB" />' in graph_preview
+    assert '<Component Name="DB102_DBX25_5" />' in graph_preview
     assert '<Component Name="DB18_Owner_DB_Bind_EXT_DB" />' not in graph_preview
-    assert '<Component Name="M44_0" />' not in graph_preview
-    assert '<Component Name="DB102_DBX25_5" />' not in graph_preview
+    assert '<Component Name="AUX_MEM_M44_0" />' not in graph_preview
+    assert '<Component Name="TR_OP_DB102_DBX25_5" />' not in graph_preview
 
 
 def test_conversion_analyze_detects_q_outputs_as_output_targets() -> None:
