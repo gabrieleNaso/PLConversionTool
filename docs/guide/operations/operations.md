@@ -70,12 +70,14 @@ Output:
 - file baseline sempre presenti:
   - `FB_<Name>_GRAPH_auto.xml`
   - `FC14_<Name>_transitions_lad_auto.xml`
+  - `<Name>_ir.json`
   - `<Name>_analysis.json`
 - in base al contenuto AWL compaiono anche `DB_*` e `FC_*` di supporto (incluse le famiglie DB operative del pacchetto)
 
 Comportamento importante:
 - la cartella del bundle target viene **pulita automaticamente** prima della nuova generazione;
 - non restano file XML "stale" di run precedenti nello stesso bundle;
+- il percorso AWL passa esplicitamente da IR (`AWL -> IR JSON -> XML`), allineato al flusso Excel;
 - il bundle va letto come pacchetto coerente e non come somma casuale di file;
 - il file `<Name>_analysis.json` va conservato come diagnosi primaria del mapping AWL -> IR -> XML.
 

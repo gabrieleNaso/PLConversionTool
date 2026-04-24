@@ -1012,3 +1012,52 @@ def test_conversion_analyze_ir_supports_coil_mode_set_reset_and_default() -> Non
     assert '<Part Name="SCoil"' in aux_fc
     assert '<Part Name="RCoil"' in aux_fc
     assert '<Part Name="Coil"' in aux_fc
+
+
+def test_conversion_analyze_preserves_opin_opout_symbolic_aliases() -> None:
+    client = TestClient(app)
+    res = client.post(
+        "/api/conversion/analyze",
+        json={
+            "sequenceName": "Alias Contract",
+            "sourceName": "alias_contract.awl",
+            "awlSource": "\n".join(
+                [
+                    "NETWORK 1",
+                    '      O "DB:OPIN".P437 DB81.DBX54.4 -- comando OPIN',
+                    '      = "DB:OPOUT".L045 DB82.DBX5.4 -- stato OPOUT',
+                ]
+            ),
+        },
+    )
+    assert res.status_code == 200
+    payload = res.json()
+    external_refs = payload["ir"]["external_refs"]
+    assert "DB81.P437" in external_refs
+    assert "DB82.L045" in external_refs
+    assert "DB81.DBX54.4" in external_refs
+    assert "DB82.DBX5.4" in external_refs
+
+
+def test_conversion_analyze_normalizes_noisy_external_refs() -> None:
+    client = TestClient(app)
+    res = client.post(
+        "/api/conversion/analyze",
+        json={
+            "sequenceName": "External Normalize",
+            "sourceName": "external_normalize.awl",
+            "awlSource": "\n".join(
+                [
+                    "NETWORK 1",
+                    '      AN "LLALM".DB202_DBX32_0 DB202.DBX32.0',
+                    "      = DB202.DBX62.0",
+                ]
+            ),
+        },
+    )
+    assert res.status_code == 200
+    payload = res.json()
+    external_refs = payload["ir"]["external_refs"]
+    assert "DB" not in external_refs
+    assert "DB202_DBX32_0" not in external_refs
+    assert "DB202.DBX32.0" in external_refs

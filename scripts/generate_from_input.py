@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import shutil
 import sys
@@ -13,7 +14,7 @@ BACKEND_ROOT = PROJECT_ROOT / "backend"
 if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
-from app.core_converter import export_conversion_bundle  # noqa: E402
+from app.core_converter import analyze_conversion, export_conversion_bundle_from_ir  # noqa: E402
 
 
 SUPPORTED_EXTENSIONS = {".awl", ".txt", ".md"}
@@ -142,14 +143,28 @@ def main() -> int:
         bundle_dir.mkdir(parents=True, exist_ok=True)
         bundle_dir_relative = bundle_dir.relative_to(PROJECT_ROOT)
 
-        result = export_conversion_bundle(
+        analysis = analyze_conversion(
             sequence_name=sequence_name,
             awl_source=awl_source,
+            source_name=source.name,
+        )
+        ir_payload = analysis.get("ir")
+        if not isinstance(ir_payload, dict):
+            print(f"Skipping {source.name}: analysis IR non disponibile.")
+            continue
+
+        ir_json_path = bundle_dir / f"{sequence_name}_ir.json"
+        ir_json_path.write_text(json.dumps(ir_payload, indent=2), encoding="utf-8")
+
+        result = export_conversion_bundle_from_ir(
+            sequence_name=sequence_name,
+            ir_payload=ir_payload,
             source_name=source.name,
             output_dir=str(bundle_dir_relative),
         )
         generated += 1
         print(f"[OK] {source.name} -> {result['outputDirectory']}")
+        print(f"[IR] {ir_json_path}")
 
     print(f"Done. Generated bundles: {generated}")
     return 0

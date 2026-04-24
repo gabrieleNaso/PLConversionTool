@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import re
 from xml.sax.saxutils import escape
 
@@ -832,6 +833,7 @@ def _build_ir(sequence_name: str, source_name: str, networks: list[AwlNetwork]) 
             auto_logic_networks.append(network.index)
 
         external_refs.update(_collect_matches(network, EXTERNAL_RE))
+        external_refs.update(_collect_structured_external_aliases(network))
 
     if not transitions:
         transitions = _build_network_pattern_transitions(step_map, networks)
@@ -860,6 +862,8 @@ def _build_ir(sequence_name: str, source_name: str, networks: list[AwlNetwork]) 
         "Il bundle XML generato e' una baseline strutturale iniziale, non ancora un serializer TIA completo.",
     ]
 
+    normalized_external_refs = _normalize_external_refs(external_refs)
+
     return AwlIR(
         sequence_name=sequence_name,
         source_name=source_name,
@@ -872,7 +876,7 @@ def _build_ir(sequence_name: str, source_name: str, networks: list[AwlNetwork]) 
         outputs=sorted(outputs.values(), key=lambda item: (item.name, item.network_index)),
         manual_logic_networks=manual_logic_networks,
         auto_logic_networks=auto_logic_networks,
-        external_refs=sorted(external_refs),
+        external_refs=normalized_external_refs,
         assumptions=assumptions,
     )
 
@@ -4980,6 +4984,49 @@ def _collect_matches(network: AwlNetwork, pattern: re.Pattern[str]) -> set[str]:
         for match in pattern.findall(line):
             matches.add(_canonicalize_step_token(match.upper()))
     return matches
+
+
+def _collect_structured_external_aliases(network: AwlNetwork) -> set[str]:
+    aliases: set[str] = set()
+    for raw_line in network.raw_lines:
+        body = raw_line.split("--", 1)[0]
+        if not body.strip():
+            continue
+
+        # Preserve OPIN/OPOUT naming contract when present in symbolic AWL tokens.
+        # Example: "DB:OPIN".P437 DB81.DBX54.4 -> DB81.P437
+        # Example: "DB:OPOUT".L045 DB82.DBX5.4 -> DB82.L045
+        opin_match = re.search(r'"DB:OPIN"\s*\.\s*(P\d{3})\b', body, flags=re.IGNORECASE)
+        if opin_match:
+            aliases.add(f"DB81.{opin_match.group(1).upper()}")
+
+        opout_match = re.search(r'"DB:OPOUT"\s*\.\s*(L\d{3})\b', body, flags=re.IGNORECASE)
+        if opout_match:
+            aliases.add(f"DB82.{opout_match.group(1).upper()}")
+    return aliases
+
+
+def _normalize_external_refs(items: set[str]) -> list[str]:
+    normalized: set[str] = set()
+    for raw in items:
+        token = str(raw or "").strip().upper()
+        if not token:
+            continue
+
+        # Drop generic noise captured by broad regex.
+        if token in {"DB", "DI", "PE", "PA", "E", "I"}:
+            continue
+        if re.fullmatch(r"DB\d+", token):
+            continue
+
+        # Normalize legacy symbolic style DB202_DBX32_0 -> DB202.DBX32.0
+        dotted = re.fullmatch(r"DB(\d+)_DB([XBWD])(\d+)_(\d+)", token)
+        if dotted:
+            token = f"DB{dotted.group(1)}.DB{dotted.group(2)}{dotted.group(3)}.{dotted.group(4)}"
+
+        normalized.add(token)
+
+    return sorted(normalized)
 
 
 def _collect_condition_logic(network: AwlNetwork) -> tuple[str, list[str]]:
