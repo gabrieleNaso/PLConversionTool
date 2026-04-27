@@ -12,6 +12,7 @@ if str(SRC_ROOT) not in sys.path:
 
 from plc_converter import (  # noqa: E402
     analyze_awl_source,
+    analyze_awl_project,
     analyze_ir_payload,
     build_conversion_scaffold,
     build_target_profile,
@@ -43,6 +44,22 @@ def analyze_conversion(
         sequence_name=sequence_name,
         awl_source=awl_source,
         source_name=source_name,
+    ).to_dict()
+
+
+def analyze_conversion_project(
+    sequence_name: str | None,
+    awl_source: str,
+    project_blocks: dict[str, str],
+    source_name: str | None = None,
+    entry_block_id: str | None = None,
+) -> dict:
+    return analyze_awl_project(
+        sequence_name=sequence_name,
+        awl_source=awl_source,
+        project_blocks=project_blocks,
+        source_name=source_name,
+        entry_block_id=entry_block_id,
     ).to_dict()
 
 

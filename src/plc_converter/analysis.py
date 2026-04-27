@@ -130,13 +130,17 @@ TIA_RESERVED_KEYWORDS = {
     "FALSE",
 }
 
-# Experimental translation rules must be opt-in. Keeping this off by default
-# prevents unintended topology inflation (e.g. synthetic S100/S101 branches).
-# Tracking branch extraction is guarded by conservative pattern matching;
-# enabling it improves fidelity on sequencers that embed tracking checks in AWL.
+# Tracking branch extraction (synthetic TRK_CHECK step) is guarded by conservative
+# pattern matching on symbolic operands; it's enabled by default to better match
+# sequencers that embed inter-machine tracking checks in AWL.
 ENABLE_TRACKING_TRANSLATION_RULE = True
 
 EXTERNAL_DB_IDS = {81, 82, 202}
+
+CALL_BLOCK_RE = re.compile(
+    r"\bCALL\b[^\n\r]*?\b(?:(FC|FB|OB)\s*0*(\d+)|\b(FC|FB|OB)\s*0*(\d+)\b)",
+    re.IGNORECASE,
+)
 
 
 def analyze_awl_source(
@@ -165,6 +169,97 @@ def analyze_awl_source(
         artifact_previews=previews,
         artifact_manifest=manifest,
     )
+
+
+def analyze_awl_project(
+    sequence_name: str | None,
+    awl_source: str,
+    project_blocks: dict[str, str],
+    source_name: str | None = None,
+    entry_block_id: str | None = None,
+) -> ConversionAnalysis:
+    """
+    Analyze an entry AWL source with awareness of a surrounding project containing
+    multiple blocks (FC/FB/OB). The main converter still generates artifacts for the
+    entry block, but the analysis report includes dependency resolution information.
+    """
+    analysis = analyze_awl_source(sequence_name=sequence_name, awl_source=awl_source, source_name=source_name)
+    if not project_blocks:
+        return analysis
+
+    called = _find_called_blocks(awl_source)
+    if not called:
+        return analysis
+
+    missing = [block for block in called if block not in project_blocks]
+    present = [block for block in called if block in project_blocks]
+
+    # Attach dependency metadata to the IR so reports can explain missing branches.
+    analysis.ir.external_refs = sorted(set([*analysis.ir.external_refs, *called]))
+    analysis.ir.support_logic.append(
+        {
+            "kind": "project_dependencies",
+            "entry_block": entry_block_id or source_name or "",
+            "called_blocks": called,
+            "present_blocks": present,
+            "missing_blocks": missing,
+        }
+    )
+    if missing:
+        analysis.validation_issues.append(
+            ValidationIssue(
+                level="warning",
+                code="missing_called_blocks",
+                message=(
+                    "Analisi multi-blocco: alcuni blocchi chiamati via CALL non sono presenti nei sorgenti "
+                    "forniti. Questo puo' impedire di ricostruire diramazioni e condizioni di transizione "
+                    "che nel progetto reale sono calcolate in blocchi esterni (es. sequencer FC32, Aux/LEV2)."
+                ),
+                context=f"entry={entry_block_id or source_name or ''} missing={', '.join(missing)}",
+            )
+        )
+        analysis.ir.assumptions.append(
+            "Per ricostruire completamente le transizioni del GRAPH (diramazioni incluse), fornire anche i "
+            f"blocchi chiamati via CALL: {', '.join(missing)}."
+        )
+
+    # Best-effort: add a tiny summary of present dependencies to make reports self-contained.
+    for block_id in present:
+        try:
+            dep_networks = _parse_networks(_normalize_awl_source(project_blocks[block_id]))
+        except Exception:
+            dep_networks = []
+        analysis.ir.support_logic.append(
+            {
+                "kind": "dependency_summary",
+                "block_id": block_id,
+                "network_count": len(dep_networks),
+            }
+        )
+
+    return analysis
+
+
+def _find_called_blocks(awl_source: str) -> list[str]:
+    called: list[str] = []
+    for match in CALL_BLOCK_RE.finditer(awl_source or ""):
+        kind = (match.group(1) or match.group(3) or "").upper()
+        number = match.group(2) or match.group(4) or ""
+        if not kind or not number:
+            continue
+        try:
+            called.append(f"{kind}{int(number)}")
+        except ValueError:
+            continue
+    # Dedupe while preserving order.
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for item in called:
+        if item in seen:
+            continue
+        seen.add(item)
+        ordered.append(item)
+    return ordered
 
 
 def analyze_ir_payload(
@@ -477,7 +572,15 @@ def _collapse_passthrough_steps(
 ) -> None:
     if not transitions:
         return
-    protected = {"S1", "S28_END", "S29", "S30_Fault", "S32", "S100_TRK_CHECK", "S101_TRK_TRANSFER"}
+    # Keep synthetic tracking check steps intact when enabled.
+    protected = {"S1", "S28_END", "S29", "S30_Fault", "S32"}
+    protected.update(
+        {
+            name
+            for name, step in step_map.items()
+            if "TRK_" in str(step.name or "").upper() or "TRK_" in str(name or "").upper()
+        }
+    )
 
     # Build adjacency.
     outgoing: dict[str, list[TransitionCandidate]] = {}
@@ -801,13 +904,75 @@ def _step_number_from_token(token: str) -> int:
     return int(match.group(1))
 
 
+def _pick_tracking_check_step_number(step_map: dict[str, StepCandidate]) -> int:
+    used = {step.step_number for step in step_map.values() if isinstance(step.step_number, int)}
+    if 100 not in used:
+        return 100
+    candidate = 100
+    while candidate in used:
+        candidate += 1
+    return candidate
+
+
+def _pick_tracking_transfer_step_number(step_map: dict[str, StepCandidate], preferred: int) -> int:
+    used = {step.step_number for step in step_map.values() if isinstance(step.step_number, int)}
+    if preferred >= 100 and preferred not in used:
+        return preferred
+    candidate = max(100, preferred)
+    while candidate in used:
+        candidate += 1
+    return candidate
+
+
+def _infer_most_common_prefix(operands: list[str]) -> str | None:
+    counts: dict[str, int] = {}
+    for op in operands:
+        m = re.fullmatch(r"([A-Za-z0-9_]+)\.[A-Za-z0-9_]+", str(op or "").strip(), flags=re.IGNORECASE)
+        if not m:
+            continue
+        prefix = m.group(1)
+        counts[prefix] = counts.get(prefix, 0) + 1
+    if not counts:
+        return None
+    return max(counts.items(), key=lambda kv: kv[1])[0]
+
+
+def _find_tracking_presence_operand(item: TransitionCandidate, source_step_no: int) -> str | None:
+    # Pattern: a transition from SNN that checks a *remote* sequence is also in SNN
+    # and reads its presence bit (PT / PT_END). Example: M03.S03 + M03.PT.
+    ops = [str(op or "").strip() for op in (item.guard_operands or []) if str(op or "").strip()]
+    remote_prefixes: set[str] = set()
+    for op in ops:
+        m = re.fullmatch(r"([A-Za-z0-9_]+)\.S0*(\d+)", op, flags=re.IGNORECASE)
+        if not m:
+            continue
+        if int(m.group(2)) == source_step_no:
+            remote_prefixes.add(m.group(1))
+    if not remote_prefixes:
+        return None
+    for prefix in sorted(remote_prefixes):
+        presence = next(
+            (
+                op
+                for op in ops
+                if re.fullmatch(
+                    rf"{re.escape(prefix)}\.PT(?:_END)?",
+                    op,
+                    flags=re.IGNORECASE,
+                )
+            ),
+            None,
+        )
+        if presence:
+            return presence
+    return None
+
+
 def _augment_tracking_branch(
     step_map: dict[str, StepCandidate],
     transitions: list[TransitionCandidate],
 ) -> None:
-    if any(item.name == "S100_TRK_CHECK" or item.step_number == 100 for item in step_map.values()):
-        return
-    if any(item.name == "S101_TRK_TRANSFER" or item.step_number == 101 for item in step_map.values()):
+    if any("TRK_CHECK" in str(item.name or "").upper() for item in step_map.values()):
         return
 
     seed = next((item for item in transitions if _is_tracking_seed_transition(item)), None)
@@ -819,17 +984,15 @@ def _augment_tracking_branch(
     if not source_step or not original_target or source_step == original_target:
         return
 
-    check_step = "S100_TRK_CHECK"
-    transfer_step = "S101_TRK_TRANSFER"
+    source_no = _step_number_from_token(source_step)
+    if source_no <= 0:
+        return
+
+    check_no = _pick_tracking_check_step_number(step_map)
+    check_step = f"S{check_no}_TRK_CHECK"
     step_map[check_step] = StepCandidate(
         name=check_step,
-        step_number=100,
-        source_networks=[seed.network_index],
-        activation_networks=[seed.network_index],
-    )
-    step_map[transfer_step] = StepCandidate(
-        name=transfer_step,
-        step_number=101,
+        step_number=check_no,
         source_networks=[seed.network_index],
         activation_networks=[seed.network_index],
     )
@@ -869,15 +1032,8 @@ def _augment_tracking_branch(
                 )
             )
 
-    # Optional KO branch: when a presence operand exists, allow a jump-back.
-    presence_operand = next(
-        (
-            op
-            for op in (seed.guard_operands or [])
-            if re.fullmatch(r"DB\d+\.DBX23\.\d+", str(op or "").strip(), flags=re.IGNORECASE)
-        ),
-        None,
-    )
+    # Optional KO branch: when a remote presence operand exists, allow a jump-back.
+    presence_operand = _find_tracking_presence_operand(seed, source_no)
     if presence_operand and not _has_transition_between(transitions, check_step, source_step):
         transitions.append(
             TransitionCandidate(
@@ -891,27 +1047,55 @@ def _augment_tracking_branch(
             )
         )
 
-    # Optional transfer step insertion: if we find a later transition gated by a presence operand,
-    # insert S101 between it and its target (best-effort, conservative).
-    if not any(item.step_number == 101 for item in step_map.values()):
+    # Optional transfer step insertion (TRK_TRANSFER): if we find a later mid/high-step transition
+    # gated by a *remote* presence operand, insert a dedicated step between it and its target.
+    # This keeps the topology close to common TIA graphs without hardcoding step numbers.
+    local_prefix = _infer_most_common_prefix([str(op or "").strip() for op in (seed.guard_operands or [])])
+    candidate: TransitionCandidate | None = None
+    presence_for_transfer: str | None = None
+    for item in sorted(transitions, key=lambda t: (_as_positive_int(t.network_index) or 10**9)):
+        if _step_number_from_token(item.source_step) < 10 or _step_number_from_token(item.target_step) < 10:
+            continue
+        if item.source_step == check_step or item.target_step == check_step:
+            continue
+        if "TRK_" in str(item.source_step or "").upper() or "TRK_" in str(item.target_step or "").upper():
+            continue
+        ops = [str(op or "").strip() for op in (item.guard_operands or []) if str(op or "").strip()]
+        symbolic_presence = next(
+            (
+                op
+                for op in ops
+                if re.fullmatch(r"([A-Za-z0-9_]+)\.PT(?:_END)?", op, flags=re.IGNORECASE)
+                and (local_prefix is None or not op.upper().startswith(f"{local_prefix.upper()}."))
+            ),
+            None,
+        )
+        address_presence = next(
+            (op for op in ops if re.fullmatch(r"DB\d+\.DBX23\.\d+", op, flags=re.IGNORECASE)),
+            None,
+        )
+        presence = symbolic_presence or address_presence
+        if not presence:
+            continue
+        candidate = item
+        presence_for_transfer = presence
+        break
+
+    if candidate is None or presence_for_transfer is None:
         return
-    candidate = next(
-        (
-            item
-            for item in sorted(transitions, key=lambda t: (_as_positive_int(t.network_index) or 10**9))
-            if _step_number_from_token(item.source_step) >= 10
-            and _step_number_from_token(item.target_step) >= 10
-            and any(
-                re.fullmatch(r"DB\d+\.DBX23\.\d+", str(op or "").strip(), flags=re.IGNORECASE)
-                for op in (item.guard_operands or [])
-            )
-        ),
-        None,
+
+    if any("TRK_TRANSFER" in str(item.name or "").upper() for item in step_map.values()):
+        return
+
+    transfer_no = _pick_tracking_transfer_step_number(step_map, check_no + 1)
+    transfer_step = f"S{transfer_no}_TRK_TRANSFER"
+    step_map[transfer_step] = StepCandidate(
+        name=transfer_step,
+        step_number=transfer_no,
+        source_networks=[candidate.network_index],
+        activation_networks=[candidate.network_index],
     )
-    if candidate is None:
-        return
-    if candidate.target_step == transfer_step or candidate.source_step == transfer_step:
-        return
+
     old_target = candidate.target_step
     candidate.target_step = transfer_step
     if not _has_transition_between(transitions, transfer_step, old_target):
@@ -929,12 +1113,8 @@ def _augment_tracking_branch(
 
 
 def _is_tracking_seed_transition(item: TransitionCandidate) -> bool:
-    operands = [str(op or "").strip().upper() for op in item.guard_operands if str(op or "").strip()]
+    operands = [str(op or "").strip() for op in item.guard_operands if str(op or "").strip()]
     if len(operands) < 2:
-        return False
-    has_remote_step = any(re.fullmatch(r"DB\d+\.DBX6\.\d+", op, flags=re.IGNORECASE) for op in operands)
-    has_remote_presence = any(re.fullmatch(r"DB\d+\.DBX23\.\d+", op, flags=re.IGNORECASE) for op in operands)
-    if not (has_remote_step and has_remote_presence):
         return False
 
     source_no = _step_number_from_token(item.source_step)
@@ -944,7 +1124,13 @@ def _is_tracking_seed_transition(item: TransitionCandidate) -> bool:
     # Keep it conservative: this branch usually appears in early cycle checks.
     if source_no > 10:
         return False
-    return True
+    # Prefer symbolic detection: remote sequencer in same step and reads its presence bit.
+    if _find_tracking_presence_operand(item, source_no) is not None:
+        return True
+    # Fallback for older/less-symbolic IRs: DB-based detection.
+    has_remote_step = any(re.fullmatch(r"DB\d+\.DBX6\.\d+", op, flags=re.IGNORECASE) for op in operands)
+    has_remote_presence = any(re.fullmatch(r"DB\d+\.DBX23\.\d+", op, flags=re.IGNORECASE) for op in operands)
+    return bool(has_remote_step and has_remote_presence)
 
 
 def _extract_negated_tracking_presence_operand(item: TransitionCandidate) -> str | None:

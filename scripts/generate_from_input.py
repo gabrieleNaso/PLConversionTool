@@ -15,6 +15,7 @@ if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
 from app.core_converter import analyze_conversion, export_conversion_bundle_from_ir  # noqa: E402
+from app.core_converter import analyze_conversion_project  # noqa: E402
 
 
 SUPPORTED_EXTENSIONS = {".awl", ".txt", ".md"}
@@ -73,6 +74,22 @@ def _load_awl_text(path: Path) -> str:
     return raw
 
 
+def _extract_block_id(path: Path, raw_text: str) -> str | None:
+    # Prefer explicit markdown header: "# FC102 : ..." etc.
+    header_match = re.search(
+        r"^\s*#\s*(FC|FB|OB)\s*0*(\d+)\b",
+        raw_text,
+        flags=re.IGNORECASE | re.MULTILINE,
+    )
+    if header_match:
+        return f"{header_match.group(1).upper()}{int(header_match.group(2))}"
+    # Fallback to filename if it embeds the block id.
+    name_match = re.search(r"\b(FC|FB|OB)\s*0*(\d+)\b", path.stem, flags=re.IGNORECASE)
+    if name_match:
+        return f"{name_match.group(1).upper()}{int(name_match.group(2))}"
+    return None
+
+
 def _collect_sources(input_dir: Path, source: str | None, prefix: str | None) -> list[Path]:
     candidates = [
         item
@@ -128,12 +145,24 @@ def main() -> int:
         print("Add .awl, .txt, or .md files and run again.")
         return 0
 
+    # Project scan: index all blocks available in the input folder so the converter
+    # can resolve CALL dependencies (e.g. sequencer FC32) when those sources exist.
+    project_blocks: dict[str, str] = {}
+    for candidate in _collect_sources(input_dir, None, args.prefix):
+        raw_text = candidate.read_text(encoding="utf-8")
+        block_id = _extract_block_id(candidate, raw_text)
+        if not block_id:
+            continue
+        project_blocks.setdefault(block_id, _extract_awl_from_markdown(raw_text) if candidate.suffix.lower() == ".md" else raw_text)
+
     generated = 0
     for source in sources:
-        awl_source = _load_awl_text(source)
+        raw_text = source.read_text(encoding="utf-8")
+        awl_source = _extract_awl_from_markdown(raw_text) if source.suffix.lower() == ".md" else raw_text
         if "NETWORK" not in awl_source.upper() and source.suffix.lower() != ".md":
             print(f"Skipping {source.name}: no AWL NETWORK found.")
             continue
+        entry_block_id = _extract_block_id(source, raw_text)
 
         base_name = _slugify(source.stem)
         sequence_name = _slugify(f"{args.name_prefix}_{base_name}")
@@ -143,10 +172,20 @@ def main() -> int:
         bundle_dir.mkdir(parents=True, exist_ok=True)
         bundle_dir_relative = bundle_dir.relative_to(PROJECT_ROOT)
 
-        analysis = analyze_conversion(
-            sequence_name=sequence_name,
-            awl_source=awl_source,
-            source_name=source.name,
+        analysis = (
+            analyze_conversion_project(
+                sequence_name=sequence_name,
+                awl_source=awl_source,
+                source_name=source.name,
+                project_blocks=project_blocks,
+                entry_block_id=entry_block_id,
+            )
+            if project_blocks
+            else analyze_conversion(
+                sequence_name=sequence_name,
+                awl_source=awl_source,
+                source_name=source.name,
+            )
         )
         ir_payload = analysis.get("ir")
         if not isinstance(ir_payload, dict):
@@ -162,6 +201,10 @@ def main() -> int:
             source_name=source.name,
             output_dir=str(bundle_dir_relative),
         )
+        # Preserve project-level warnings/metadata (e.g. missing called blocks) which would
+        # otherwise be lost when re-analyzing from IR.
+        analysis_json_path = bundle_dir / f"{sequence_name}_analysis.json"
+        analysis_json_path.write_text(json.dumps(analysis, indent=2), encoding="utf-8")
         generated += 1
         print(f"[OK] {source.name} -> {result['outputDirectory']}")
         print(f"[IR] {ir_json_path}")
