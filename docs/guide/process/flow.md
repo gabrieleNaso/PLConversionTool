@@ -46,12 +46,14 @@ L'IR nasce da:
   - famiglie funzionali ricorrenti: allarmi, memorie/ausiliari, sequenza, manuale/automatico, emergenza/fault, uscite.
 
 ### Come l'IR viene creato (passi operativi)
-1. **Split per `NETWORK`** e tokenizzazione (istruzioni, simboli, indirizzi).
+1. **Split per `NETWORK`** e tokenizzazione (istruzioni, simboli, eventuali indirizzi presenti nel sorgente: usati solo come input di mapping, non come naming nell'output).
 2. **Parsing semantico**: ogni network diventa logica sequenziale (step, transizioni, guard, timer, set/reset).
    - Per le transizioni pilotate da `Trs` viene preservata la struttura booleana delle condizioni (`A/AN/O/ON` e gruppi con parentesi).
 3. **Normalizzazione**: naming deterministico e riferimenti uniformati.
 4. **Costruzione IR**: grafo/struttura di nodi (step, transition, timer, mapping DB, ownership delle variabili globali, riferimenti simbolici completi).
 5. **Validazione**: coerenza minima e contratti cross-blocco (riferimenti presenti, topologia consistente, owner DB, branch path, leaf name, cardinalita' del pacchetto).
+   - se l'AWL contiene `CALL` a blocchi non presenti nei sorgenti disponibili, il report segnala una dipendenza mancante (warning `missing_called_blocks`).
+   - quando il sorgente e' monolitico e non include le FC chiamate, alcune diramazioni possono essere ricostruite con regole interne (es. split su presenza), ma non tutte le semantiche esterne sono deducibili.
 
 ### Cos'e' l'IR (cosa rappresenta)
 L'IR e' il modello dati del sequenziatore:

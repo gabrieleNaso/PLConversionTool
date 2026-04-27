@@ -103,6 +103,9 @@ make import-generated \
   TARGET_PATH="Program blocks/generati da tool"
 ```
 
+Nota:
+- `PROJECT_PATH` e `TARGET_PATH` sono obbligatori (se lasciati vuoti, lo script termina con errore).
+
 ### Import di una sola cartella bundle (consigliato)
 
 ```bash
@@ -120,6 +123,15 @@ Note operative:
 - l'import non accoda compile automatiche
 - se un blocco con lo stesso nome esiste gia' in TIA, il singolo tentativo di import va in collisione; `import-generated` gestisce il caso con retry e rinomina automatica.
 - lo script `import-generated` effettua polling del job e, su collisione nome blocco, prova automaticamente suffissi numerici (`...1`, `...2`, ...).
+- `tia-bridge` carica e invia all'agent Windows solo i file `*.xml` del bundle: i report `.json` restano locali e non bloccano l'import.
+
+## Multi-blocco (best effort)
+
+Se in `data/input/` sono presenti piu' blocchi (es. `# FC102`, `# FC32` in file diversi), la generazione indicizza i blocchi disponibili e registra nel report eventuali dipendenze trovate via `CALL`:
+- nel file `<Name>_analysis.json` trovi `ir.support_logic.kind=project_dependencies` con `called_blocks/present_blocks/missing_blocks`.
+- se manca un blocco chiamato, compare un warning `missing_called_blocks`.
+
+Quando i sorgenti esterni non sono disponibili (caso: AWL monolitico unico), alcune diramazioni possono comunque essere ricostruite con regole interne (es. split su presenza pezzo), ma il tool segnala comunque le chiamate AWL non risolte.
 
 ### One command: genera + importa
 
@@ -272,8 +284,8 @@ curl -sS "http://127.0.0.1:8000/api/tia/jobs/<JOB_ID>"
   - FB/istanza: `FB15` GRAPH + `DB15` SEQ (istanza TIA automatica)
 
 Nota sui nomi member DB:
-- i nomi in transizione privilegiano alias semantici derivati dall'AWL (es. `TR_OP_S29`, `TR_OP_STC`);
-- in caso di alias ambiguo il generatore usa fallback deterministico basato su indirizzo, senza lasciare nomi vuoti.
+- i nomi in transizione privilegiano alias semantici derivati dall'AWL (es. da simboli/tag ricorrenti nel sorgente).
+- in caso di alias ambiguo il generatore usa fallback deterministico basato sul token AWL originale (sanitizzato), senza introdurre indirizzi nuovi e senza lasciare nomi vuoti.
 
 ## Problemi comuni (e cosa fare)
 

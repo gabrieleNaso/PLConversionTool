@@ -38,5 +38,5 @@
 
 ### Link rapidi
 - **Indice docs**: `../../README.md`
-- **Report consolidato**: `../../reference/reports/report_del_23-04-2026.md`
-- **Specifica generatore XML**: `../../reference/specs/Specifica_master_traduzione_AWL_e_generazione_XML_TIA_V20_V2_23_04.md`
+- **Report consolidato**: `../../reference/reports/report_del_27-04-2026.md`
+- **Specifica generatore XML**: `../../reference/specs/Specifica_master_traduzione_AWL_e_generazione_XML_TIA_V20_V2_27_04.md`

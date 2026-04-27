@@ -2,7 +2,7 @@
 
 Obiettivo: compilare un Excel leggibile per generare `IR JSON` e XML TIA (`FB/DB/FC`) senza passare da AWL.
 
-Aggiornato al `24-04-2026`:
+Aggiornato al `27-04-2026`:
 - timer e contatori in `support_fc` vengono generati come blocchi LAD completi (non come contatti semplici);
 - il preset usa sempre `operands.control_value` (`PT` per timer, `PV` per contatori).
 - nelle transition GRAPH viene mantenuta la logica booleana reale dell'Excel (non fallback su marker `T1/T2`);
@@ -184,8 +184,10 @@ Il generatore emette:
 
 ## 7) Esempio minimo
 `sequence`:
-- `Init | 1 | T1 | Init | Dosaggio | M_START | M_START | alternative |`
-- `Dosaggio | 2 | T2 | Dosaggio | Fine | M_DONE | M_DONE | alternative |`
+- colonne: `step_name | numero_step | from_step | transition_id | to_step | condition_expression | flow_type | parallel_group`
+- `Init | 1 | Init | T1 | Dosaggio | M_START | alternative |`
+- `Dosaggio | 2 | Dosaggio | T2 | Fine | M_DONE | alternative |`
+- `Fine | 3 |  |  |  |  |  |`
 
 `operands`:
 - `M_START | aux | | | | | consenso avvio`
@@ -205,7 +207,7 @@ make import-generated \
   IMPORT_BUNDLE="<nome_bundle>"
 ```
 
-Regole consolidate (24-04-2026):
+Regole consolidate (27-04-2026):
 - `import-generated` esegue polling automatico del job import.
 - i numeri blocco sono il valore reale XML `<Number>` (non il prefisso nel nome file).
 - il suffisso finale e' il numero comune di gruppo (`GG`): `03` e' un esempio, non un valore obbligatorio.

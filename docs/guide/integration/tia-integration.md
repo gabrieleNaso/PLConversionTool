@@ -30,6 +30,7 @@ Nel setup dev il container `tia-bridge`:
 - `POST /api/jobs/import` inoltra l'import all'agent Windows
 - `POST /api/jobs/compile` va richiesto esplicitamente quando serve la compilazione
 - il bridge deve essere pensato come orchestratore di **bundle**, non come semplice uploader di XML isolati
+  - nel flusso corrente, quando `artifactPath` e' una cartella, il bridge stage-a e invia all'agent Windows solo i file `*.xml` (i `.json` e altri file non vengono caricati).
 
 ## Windows VM + Agent (`tia_windows_agent/`)
 

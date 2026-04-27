@@ -1,7 +1,7 @@
-# Documentazione progetto (allineamento guide: 24-04-2026)
+# Documentazione progetto (allineamento guide: 27-04-2026)
 
 Indice rapido:
-- `index.md`
+- `guide/process/flow.md`
 
 Struttura:
 - `guide/process/flow.md`
@@ -11,8 +11,8 @@ Struttura:
 - `guide/integration/tia-integration.md`
 - `guide/checklists/workflow-checklists.md`
 - `templates/reports/daily-report-template.md`
-- `reference/reports/report_del_23-04-2026.md`
-- `reference/specs/Specifica_master_traduzione_AWL_e_generazione_XML_TIA_V20_V2_23_04.md`
+- `reference/reports/report_del_27-04-2026.md`
+- `reference/specs/Specifica_master_traduzione_AWL_e_generazione_XML_TIA_V20_V2_27_04.md`
 
 Criteri di aggiornamento integrati:
 - gerarchia documentale chiara tra specifica/report e guide operative;

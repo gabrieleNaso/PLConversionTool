@@ -1,4 +1,4 @@
-# Report aggiornato del 24-04-2026
+# Report aggiornato del 27-04-2026
 
 ## Progetto
 Conversione di sequenziatori PLC da AWL a GRAPH in TIA Portal V20 tramite XML.
@@ -7,7 +7,7 @@ Conversione di sequenziatori PLC da AWL a GRAPH in TIA Portal V20 tramite XML.
 
 ## 1. Scopo del documento
 
-Questo documento sostituisce la versione accumulativa del report del 10-04-2026 e ne mantiene solo il contenuto tecnico consolidato.
+Questo documento sostituisce le versioni accumulative precedenti del report e ne mantiene solo il contenuto tecnico consolidato.
 
 L'obiettivo di questa versione consolidata è:
 
@@ -16,7 +16,9 @@ L'obiettivo di questa versione consolidata è:
 - mantenere una baseline unica, leggibile e riusabile;
 - integrare in un unico testo sia la parte di reverse engineering XML sia la parte operativa su TIA Portal Openness.
 
-Il documento va quindi usato come riferimento tecnico corrente del progetto alla data del 24-04-2026.
+Il documento va quindi usato come riferimento tecnico corrente del progetto alla data del 27-04-2026.
+
+Nota: diverse regole operative sono state consolidate in revisioni precedenti e poi riallineate/validate nella presente revisione.
 
 ---
 
@@ -62,7 +64,7 @@ Conseguenza architetturale da considerare fissata:
 
 `AWL parser` oppure `Excel strutturato` -> `IR comune` -> `builder GRAPH / GlobalDB / FC` -> `serializer XML`.
 
-Regola operativa consolidata al 24-04-2026 per il flusso Excel:
+Regola operativa consolidata al 27-04-2026 per il flusso Excel:
 
 - `operands` e `support_fc` sono fogli obbligatori;
 - nel foglio `support_fc` devono convivere sia la definizione member (`member_name`) sia la logica FC (`result_member`, `condition_expression`, `coil_mode`, `network`);
@@ -85,7 +87,7 @@ Il progetto include ora anche il livello operativo di orchestrazione TIA, con ob
 ---
 
 
-## 2-bis. Chiarimenti documentali e operativi consolidati al 24-04-2026
+## 2-bis. Chiarimenti documentali e operativi consolidati al 27-04-2026
 
 A valle del confronto tra i documenti operativi, i report consolidati e i tipici XML del caso `T1-A ARUNC`, emergono in modo ricorrente i seguenti punti.
 
@@ -107,13 +109,13 @@ Il confronto tra i documenti normativi aggiornati e i file XML reali oggi dispon
 - Il modello HMI va esplicitato su due livelli: condizioni elementari nel path `Conditions.<gruppo>.Conditions.nX` e metadati/stati di gruppo nello stesso owner DB HMI, con campi del tipo `PopUpNumber`, `ConditionOK`, `Visible`, `FO` o equivalenti previsti dal modello finale.
 - I DB esterni fissi di integrazione, quando presenti, costituiscono un contratto rigido di naming. In particolare i pattern `Pnnn` e `Lnnn` osservati in `DB81-OPIN` e `DB82-OPOUT` non devono essere rinominati liberamente dal generatore.
 - I casi legacy come `T1-A ARUNC LEV2` confermano che nel corpus storico esistono sequenze e strutture dati utili per il reverse engineering semantico, ma non necessariamente allineate alla partizione target chiusa del nuovo convertitore.
-- Mappa famiglie consolidata al 24-04-2026 (forma `XXGG`): `11GG` alarms/diag, `12GG` hmi (`12GG` = DB HMI), `13GG` parameters, `14GG` transitions, `15GG` graph, `16GG` sequenza/I-O, `17GG` LEV2, `18GG` external, `19GG` aux.
+- Mappa famiglie consolidata al 27-04-2026 (forma `XXGG`): `11GG` alarms/diag, `12GG` hmi (`12GG` = DB HMI), `13GG` parameters, `14GG` transitions, `15GG` graph, `16GG` sequenza/I-O, `17GG` LEV2, `18GG` external, `19GG` aux.
 - `DB15GG SEQ` va considerato DB istanza del GRAPH generato da TIA: non deve essere emesso dal convertitore come DB custom.
 - Profilo operativo corretto: `FC11/12/13/14/16/17`, `FB15`, DB custom `11/12/13/14/16/17/18/19` + `DB15` solo istanza TIA.
 - La famiglia `17GG` e' riservata a `LEV2` e va considerata parte del modello target quando prevista dal caso reale.
 - Nel flusso Excel l'ownership DB e' determinata da `operands`: uso cross-FC ammesso ma senza migrazione del DB owner della variabile.
 
-## 2-quater. Integrazioni finali flusso Excel/GRAPH (24-04-2026)
+## 2-quater. Integrazioni finali flusso Excel/GRAPH (27-04-2026)
 
 Nel percorso Excel risultano consolidate anche le seguenti regole operative:
 
@@ -905,10 +907,24 @@ Nel flusso AWL (non Excel strict) la `FC 14 Transitions` non deve cadere in moda
 
 ### 32.10-quater Tracking: estrazione micro-flusso (S100/S101)
 
-Quando il parser riconosce un pattern di tracking (guardie che combinano step esterno `DB?.DBX6.*` e presenza `DB?.DBX23.*`), il builder puo' inserire un micro-flusso standard:
+Quando il parser riconosce un pattern di tracking (guardie che combinano step esterno e presenza, in forma simbolica tipo `M03.S03` + `M03.PT` oppure in forma indirizzo tipo `DB?.DBX6.*` + `DB?.DBX23.*`), il builder puo' inserire un micro-flusso standard.
 
-- `S100_TRK_CHECK` come step di controllo tracking dopo la verifica di presenza pezzo;
-- `S101_TRK_TRANSFER` come step di trasferimento tracking prima di una fase di movimento successiva.
+Regola di naming/numbering:
+- i numeri `100/101` sono **convenzionali**: vengono usati se liberi, altrimenti il builder sceglie il primo numero libero `>= 100`.
+- i nomi risultano `S{N}_TRK_CHECK` e `S{N+1}_TRK_TRANSFER` (quando il transfer viene realmente inserito).
+
+Vincoli di coerenza:
+- non devono esistere transizioni vuote impossibili: in presenza di due uscite alternative dallo stesso step, le guardie devono essere mutuamente esclusive (`presence` / `NOT presence`) oppure derivare da una condizione reale.
+
+### 32.10-quinquies Diramazione su presenza (solo AWL monolitico)
+
+Nel caso in cui l'unico sorgente disponibile sia un AWL monolitico (nessuna FC esterna fornita), alcune diramazioni del graph target possono comunque emergere applicando una regola generale:
+
+- se esiste un operando di presenza (`DB*.DBX23.*` o `*.PT/PT_END`) usato nelle guardie,
+- e uno step "starting" ha una forward edge verso la fase di movimento,
+- allora il builder puo' generare uno split alternativo che mantiene la semantica comune:
+  - avanti con `presence`,
+  - ritorno allo step di check con `NOT presence`.
 
 ### 32.11 Backbone della sequenza
 
@@ -1046,11 +1062,11 @@ I prossimi step non sono più “far parlare il sistema con TIA”, ma:
 
 ---
 
-# PARTE F - BASELINE FINALE DEL PROGETTO AL 24-04-2026
+# PARTE F - BASELINE FINALE DEL PROGETTO AL 27-04-2026
 
 ## 38. Baseline consolidata
 
-Alla data del 24-04-2026 la baseline consolidata del progetto è la seguente.
+Alla data del 27-04-2026 la baseline consolidata del progetto è la seguente.
 
 ### 38.1 Sul GRAPH
 
@@ -1112,7 +1128,7 @@ Alla data del 24-04-2026 la baseline consolidata del progetto è la seguente.
 - il generatore allinea in modo deterministico `GRAPH`, `GlobalDB` e `FC` sulle stesse transizioni, includendo anche i member delle transizioni sintetiche (es. `T_HOLD_*`, `T_CHAIN_*`) nei `GlobalDB` quando usati dalle reti LAD/GRAPH;
 - la diagnostica compile lato `tia_windows_agent` è stata estesa con messaggi dettagliati, contesto e classificazione errori/warning.
 
-### 38.7 Aggiornamento del 24-04-2026 (Excel FC timer/contatori)
+### 38.7 Aggiornamento del 27-04-2026 (Excel FC timer/contatori)
 
 - nel flusso Excel, timer e contatori usati in `support_fc` vengono emessi come blocchi LAD completi (`TON/TOF/TP`, `CTU/CTD/CTUD`);
 - il preset viene letto dal catalogo `operands.control_value` (`PT` per timer, `PV` per contatori);
@@ -1159,7 +1175,7 @@ Questa indicazione non e' organizzativa: deriva dai vincoli tecnici osservati ne
 
 ## 42. Sintesi finale
 
-Alla data del 24-04-2026 il progetto ha raggiunto una baseline forte su quattro livelli:
+Alla data del 27-04-2026 il progetto ha raggiunto una baseline forte su quattro livelli:
 
 1. reverse engineering strutturale del `GRAPH`;
 2. generazione stabile dei `GlobalDB` applicativi e di supporto;

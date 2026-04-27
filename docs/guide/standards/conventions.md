@@ -47,6 +47,8 @@ Nota importante:
   - i blocchi `A(...)` / `O(...)` vanno mantenuti come sottogruppi in `guard_expression`.
 - **Passi sorgente**:
   - i token step (`Sxx`) usati per identificare la sorgente transizione non devono inquinare la parte semantica della guardia.
+- **Bit presenza pezzo**:
+  - quando esiste un operando di presenza (`DB*.DBX23.*` o `*.PT/PT_END`) e un punto di split, le guardie delle uscite devono essere rese mutuamente esclusive (`presence` / `NOT presence`) per evitare transizioni vuote o doppie `TRUE`.
 - **Output fisiche**:
   - riconoscere sia notazione `Axx(.x)` sia `Qxx(.x)` per mapping uscite.
 
@@ -62,6 +64,7 @@ Tenere separati:
 - `data/datasets/corpus/`
   - `type_xml/` (es. `Type_*.xml` come corpus GRAPH)
   - `tia_exports/` (export grezzi TIA per reverse engineering)
+  - `traduzione/` (traduzioni gia' fatte: JSON/artefatti usati come riferimento per estrarre regole e fare regressione sul generatore)
 - `data/datasets/typicals/`
   - `graph_fb/` (tipici FB GRAPH per reverse engineering/confronto)
   - `globaldb/` (tipici GlobalDB)
