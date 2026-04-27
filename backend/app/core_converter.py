@@ -12,11 +12,16 @@ if str(SRC_ROOT) not in sys.path:
 
 from plc_converter import (  # noqa: E402
     analyze_awl_source,
-    analyze_awl_project,
     analyze_ir_payload,
     build_conversion_scaffold,
     build_target_profile,
 )
+
+try:
+    # Optional API (may be missing during hot-reload / partial sync).
+    from plc_converter import analyze_awl_project  # type: ignore  # noqa: E402
+except ImportError:  # pragma: no cover
+    analyze_awl_project = None  # type: ignore[assignment]
 
 
 def get_target_profile() -> dict:
@@ -54,6 +59,11 @@ def analyze_conversion_project(
     source_name: str | None = None,
     entry_block_id: str | None = None,
 ) -> dict:
+    if analyze_awl_project is None:
+        raise RuntimeError(
+            "Backend non supporta analyze_awl_project (API non disponibile). "
+            "Aggiorna/restarta i servizi oppure usa analyze_conversion (single-file)."
+        )
     return analyze_awl_project(
         sequence_name=sequence_name,
         awl_source=awl_source,

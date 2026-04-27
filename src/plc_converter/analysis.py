@@ -561,6 +561,10 @@ def _apply_translation_rules(
     if ENABLE_TRACKING_TRANSLATION_RULE:
         _augment_tracking_branch(step_map, transitions)
 
+    # Rule 3: presence-loop branch (general). Some sequencers keep a "starting" step
+    # that forks: proceed if piece is present, otherwise jump back to a check step.
+    _augment_presence_loop_branch(step_map, transitions)
+
     # Final simplification: remove pure pass-through steps (TRUE-only outgoing)
     # so the resulting GRAPH is closer to typical TIA structures.
     _collapse_passthrough_steps(step_map, transitions)
@@ -780,14 +784,23 @@ def _augment_recycle_split_branch(
         None,
     )
     network_index = seed.network_index if seed else 0
+
+    # Try to infer a presence operand so we can generate a meaningful, mutually-exclusive split:
+    # - forward when presence is TRUE
+    # - back (recycle) when presence is FALSE
+    presence_operand = _pick_presence_operand_for_branch(transitions)
+    if seed is not None and presence_operand and (seed.guard_expression or "").strip().upper() == "TRUE":
+        seed.guard_expression = f"({presence_operand})"
+        seed.guard_operands = [presence_operand]
+
     transitions.append(
         TransitionCandidate(
             transition_id=_next_transition_id(transitions),
             source_step=recycle_source,
             target_step=recycle_back,
             network_index=network_index,
-            guard_expression="TRUE",
-            guard_operands=[],
+            guard_expression=f"NOT {presence_operand}" if presence_operand else "TRUE",
+            guard_operands=[presence_operand] if presence_operand else [],
             jump_labels=[],
         )
     )
@@ -902,6 +915,142 @@ def _step_number_from_token(token: str) -> int:
     if not match:
         return -1
     return int(match.group(1))
+
+
+def _looks_like_presence_operand(token: str) -> bool:
+    raw = str(token or "").strip()
+    if not raw:
+        return False
+    if re.fullmatch(r"DB\d+\.DBX23\.\d+", raw, flags=re.IGNORECASE):
+        return True
+    # Symbolic presence bits are commonly named PT / PT_END (piece present / end position present).
+    if re.fullmatch(r"[A-Za-z0-9_]+\.PT(?:_END)?", raw, flags=re.IGNORECASE):
+        return True
+    return False
+
+
+def _guard_mentions_operand(guard_expression: str, operand: str) -> bool:
+    g = str(guard_expression or "")
+    o = str(operand or "").strip()
+    if not g or not o:
+        return False
+    return o in g
+
+
+def _pick_presence_operand_for_branch(transitions: list[TransitionCandidate]) -> str | None:
+    # Prefer operands that appear negated in some guard (so we can build the back edge),
+    # then fall back to the most frequent presence-like operand.
+    counts: dict[str, int] = {}
+    negated_counts: dict[str, int] = {}
+    for tr in transitions:
+        guard = str(tr.guard_expression or "")
+        for op in tr.guard_operands or []:
+            op = str(op or "").strip()
+            if not _looks_like_presence_operand(op):
+                continue
+            counts[op] = counts.get(op, 0) + 1
+            if "NOT" in guard.upper() and _guard_mentions_operand(guard, op):
+                negated_counts[op] = negated_counts.get(op, 0) + 1
+    if not counts:
+        return None
+    ranked = sorted(
+        counts.keys(),
+        key=lambda op: (-negated_counts.get(op, 0), -counts.get(op, 0), op.upper()),
+    )
+    return ranked[0] if ranked else None
+
+
+def _augment_presence_loop_branch(
+    step_map: dict[str, StepCandidate],
+    transitions: list[TransitionCandidate],
+) -> None:
+    if not transitions or not step_map:
+        return
+
+    # 1) Pick a presence operand that appears in guard operands.
+    presence_counts: dict[str, int] = {}
+    for tr in transitions:
+        for op in tr.guard_operands or []:
+            op = str(op or "").strip()
+            if not _looks_like_presence_operand(op):
+                continue
+            presence_counts[op] = presence_counts.get(op, 0) + 1
+    if not presence_counts:
+        return
+    presence_operand = max(presence_counts.items(), key=lambda kv: kv[1])[0]
+
+    # 2) Find a "check step": earliest step whose outgoing transition mentions NOT presence.
+    check_step: str | None = None
+    for tr in sorted(
+        transitions, key=lambda t: (_step_number_from_token(t.source_step), _as_positive_int(t.network_index) or 10**9)
+    ):
+        if _step_number_from_token(tr.source_step) < 0:
+            continue
+        guard = str(tr.guard_expression or "")
+        if "NOT" not in guard.upper():
+            continue
+        if not _guard_mentions_operand(guard, presence_operand):
+            continue
+        check_step = tr.source_step
+        break
+    if not check_step:
+        return
+
+    # 3) Find a "starting step": a low/mid step with a single TRUE outgoing transition
+    # to a higher step (movement phase).
+    outgoing: dict[str, list[TransitionCandidate]] = {}
+    for tr in transitions:
+        outgoing.setdefault(tr.source_step, []).append(tr)
+    starting_step: str | None = None
+    forward_tr: TransitionCandidate | None = None
+    for step_name in sorted(step_map.keys(), key=_step_number_from_token):
+        step_no = _step_number_from_token(step_name)
+        if step_no < 0 or step_no < 5 or step_no > 12:
+            continue
+        outs = outgoing.get(step_name, [])
+        if len(outs) != 1:
+            continue
+        only = outs[0]
+        if (only.guard_expression or "").strip().upper() != "TRUE":
+            continue
+        if _step_number_from_token(only.target_step) < 10:
+            continue
+        starting_step = step_name
+        forward_tr = only
+        break
+    if not starting_step or forward_tr is None:
+        return
+
+    # Avoid duplicating if a presence loop already exists.
+    if any(
+        tr.source_step == starting_step and _guard_mentions_operand(str(tr.guard_expression or ""), presence_operand)
+        for tr in outgoing.get(starting_step, [])
+    ):
+        return
+
+    original_target = forward_tr.target_step
+    # Replace the unconditional forward transition with two mutually exclusive transitions.
+    forward_tr.guard_expression = f"({presence_operand})"
+    forward_tr.guard_operands = [presence_operand]
+
+    if not _has_transition_between(transitions, starting_step, check_step):
+        transitions.append(
+            TransitionCandidate(
+                transition_id=_next_transition_id(transitions),
+                source_step=starting_step,
+                target_step=check_step,
+                network_index=forward_tr.network_index,
+                guard_expression=f"NOT {presence_operand}",
+                guard_operands=[presence_operand],
+                jump_labels=[],
+            )
+        )
+
+    # Keep topology consistent: if check_step equals starting_step, revert.
+    if check_step == starting_step:
+        forward_tr.guard_expression = "TRUE"
+        forward_tr.guard_operands = []
+        transitions[:] = [t for t in transitions if not (t.source_step == starting_step and t.target_step == check_step and t is not forward_tr)]
 
 
 def _pick_tracking_check_step_number(step_map: dict[str, StepCandidate]) -> int:
