@@ -37,7 +37,7 @@ Regola hard aggiuntiva:
 
 - i blocchi generati non vanno considerati unità indipendenti;
 - `FB GRAPH`, `GlobalDB`, `FC LAD` e ogni eventuale blocco aggiuntivo costituiscono un unico pacchetto coerente;
-- la cardinalità del pacchetto è asimmetrica: per ogni sequenza AWL il generatore deve emettere esattamente `1 x FB GRAPH`, mentre i `GlobalDB` e le `FC LAD` devono essere trattati come insiemi a cardinalità variabile;
+- la cardinalità del pacchetto è asimmetrica: per ogni sequenza AWL il generatore deve emettere esattamente `1 x FB GRAPH`, mentre le famiglie `GlobalDB` e `FC LAD` sono determinate dal profilo di conversione e devono essere emesse complete anche quando il contenuto effettivo di alcune famiglie è vuoto;
 - la validità reale del risultato non è "XML singolarmente importabile", ma "insieme di blocchi coerente e compilabile";
 - ogni simbolo, member, tag di transizione, nome blocco, contratto dati o assunzione runtime emessa in un blocco deve essere soddisfatta dagli altri blocchi del pacchetto che la consumano.
 
@@ -49,6 +49,8 @@ La cardinalità corretta da usare in generazione è la seguente:
 
 `1 sequenza AWL -> 1 x FB GRAPH + N x GlobalDB + M x FC LAD`
 
+In questa formula `N` e `M` dipendono dal profilo di conversione adottato, non dal fatto che il parser abbia trovato o meno contenuto in una famiglia. Una famiglia prevista dal profilo resta parte del pacchetto anche quando viene emessa vuota o minimale.
+
 ### 2.1 Regola hard di cardinalità
 
 Il generatore deve applicare le seguenti regole senza eccezioni:
@@ -56,8 +58,9 @@ Il generatore deve applicare le seguenti regole senza eccezioni:
 - da una singola sequenza AWL deve nascere una sola topologia sequenziale target;
 - questa topologia deve essere emessa in un solo blocco `SW.Blocks.FB` GRAPH;
 - non è ammesso spezzare la stessa sequenza AWL in due o più GRAPH distinti;
-- i dati applicativi, le strutture HMI, gli ausiliari, gli I-O, i parametri e le altre aree non runtime devono essere partizionati in uno o più `SW.Blocks.GlobalDB`;
-- le reti LAD di supporto devono essere partizionate in una o più `SW.Blocks.FC`, separate per famiglia funzionale quando il caso reale lo richiede.
+- i dati applicativi, le strutture HMI, gli ausiliari, gli I-O, i parametri, le transizioni normalizzate, gli allarmi/diagnostica e le altre aree non runtime devono essere partizionati nei `SW.Blocks.GlobalDB` previsti dal profilo;
+- le reti LAD di supporto devono essere partizionate negli `SW.Blocks.FC` previsti dal profilo, separate per famiglia funzionale;
+- l'assenza di elementi estratti per una famiglia non autorizza l'omissione del blocco: il blocco va comunque emesso in forma vuota o minimale importabile.
 
 ### 2.2 Procedura obbligatoria di compilazione
 
@@ -65,26 +68,30 @@ Per ogni sequenza AWL il convertitore deve procedere in questo ordine:
 
 1. identificare nell'IR una sola macchina a stati della sequenza;
 2. compilare tale macchina a stati in `1 x FB GRAPH`;
-3. estrarre dall'IR tutti i dati non runtime GRAPH e partizionarli nei `GlobalDB` richiesti dal modello;
-4. estrarre dall'IR tutte le reti combinatorie e di supporto non appartenenti al GRAPH e partizionarle nelle `FC LAD` richieste dal modello;
-5. validare che nessun riferimento del GRAPH, dei DB e delle FC punti a member o blocchi non emessi nel pacchetto finale.
+3. estrarre dall'IR tutti i dati non runtime GRAPH e partizionarli nei `GlobalDB` richiesti dal profilo target;
+4. estrarre dall'IR tutte le reti combinatorie e di supporto non appartenenti al GRAPH e partizionarle nelle `FC LAD` richieste dal profilo target;
+5. emettere comunque tutte le famiglie DB/FC previste dal profilo, anche quando una famiglia risulta priva di elementi estratti;
+6. validare che nessun riferimento del GRAPH, dei DB e delle FC punti a member o blocchi non emessi nel pacchetto finale.
 
 ### 2.3 Famiglie minime da supportare
 
 Il generatore deve poter emettere almeno le seguenti famiglie architetturali:
 
 - `1 x FB GRAPH` della sequenza;
-- `DB 11..` base;
+- `DB 11..` allarmi/diagnostica;
 - `DB 12..` HMI (`12GG` = DB HMI);
 - `DB 13..` PARAMETERS;
 - `DB 14..` transitions;
-- `DB 16..` sequenza/I-O;
+- `DB 16..` sequenza/I-O, memorie di processo e stato leggibile della sequenza;
+- `DB 17..` LEV2 quando previsto dal profilo;
 - `DB 18.. EXT`;
 - `DB 19..` AUX;
+- `FC 11 Alarms/Diag`;
 - `FC 12 HMI`;
 - `FC 13 Aux`;
 - `FC 14 Transitions`;
 - `FC 16 Output`;
+- `FC 17 LEV2` quando previsto dal profilo;
 - eventuali blocchi addizionali di servizio coerenti col progetto.
 
 ### 2.4 Esempio verificativo sui file XML di riferimento
@@ -194,12 +201,14 @@ Per transition generate da sorgente Excel:
 
 ### 4-sexies. Completezza emissione blocchi supporto
 
-Nel percorso Excel il pacchetto supporto deve essere sempre completo per famiglie previste dal profilo, anche quando una famiglia non contiene member effettivi.
+Nel percorso AWL e nel percorso Excel il pacchetto supporto deve essere sempre completo per tutte le famiglie previste dal profilo di conversione corrente, anche quando una famiglia non contiene member effettivi o reti logiche estratte.
 
 Regole hard:
 
-- il blocco va comunque emesso; se la famiglia non contiene member effettivi puo' includere placeholder valido (`NoData`) per mantenere coerenza di import e struttura bundle;
-- il requisito include il DB transitions (`DB14GG`) e le altre famiglie DB/FC di supporto previste dal profilo corrente.
+- il blocco va comunque emesso; se la famiglia non contiene member effettivi puo' includere una struttura vuota o un placeholder valido (`NoData`) per mantenere coerenza di import e struttura bundle;
+- l'assenza di contenuto non autorizza l'omissione della famiglia dal pacchetto;
+- il requisito include sempre il DB allarmi/diagnostica (`DB11GG`), il DB transitions (`DB14GG`) e tutte le altre famiglie DB/FC previste dal profilo corrente;
+- l'eventuale vuoto va considerato una condizione provvisoria di traduzione da correggere o completare successivamente, non una modifica del contratto architetturale del bundle.
 
 # Parte II - Regole di analisi del sorgente AWL
 
@@ -454,14 +463,22 @@ Conseguenze operative:
 
 ## 22. Regola di allocazione nel `DB 11..`
 
-Nel DB base devono confluire almeno:
+Il `DB 11..` è definitivamente il DB allarmi/diagnostica del pacchetto.
 
-- `Seq Status`;
-- `Transitions`;
-- `Memory`;
-- eventuali strutture semantiche di diagnostica o stato leggibile del sequenziatore.
+Nel `DB 11..` devono confluire almeno, quando presenti o quando previsti dal profilo:
 
-Il `DB 11..` è il contenitore leggibile dell'applicazione, non il runtime interno del GRAPH.
+- allarmi di sequenza;
+- fault e diagnostica di macchina;
+- emergenze e condizioni diagnostiche aggregate;
+- eventuali strutture di appoggio diagnostico richieste dal modello allarmi.
+
+Non devono essere allocate nel `DB 11..` le transizioni semantiche del GRAPH, le memorie di processo ordinarie o lo stato leggibile della sequenza.
+
+Regola di riallocazione definitiva:
+
+- transizioni e guardie normalizzate -> `DB 14..`;
+- memorie di processo e stato leggibile della sequenza -> `DB 16..` secondo il modello sequenza/I-O;
+- timer, one-shot e supporti tecnici -> `DB 19.. AUX`.
 
 ## 23. Regola di allocazione nel `DB 16..`
 
@@ -553,9 +570,10 @@ Se uno di questi sei passi non e' risolto, la variabile non e' emettibile nel pa
 
 Il mapping seguente va considerato normativo.
 
-- Variabili semantiche di avanzamento del sequenziatore -> DB base `11..`, ramo `Transitions`, leaf name semantico leggibile. Forma target: `<DB11>.Transitions.<nome>`.
-- Memorie semantiche, consensi cumulativi, stati fisici stabilizzati -> DB base `11..`, ramo `Memory`, leaf name semantico leggibile. Forma target: `<DB11>.Memory.<nome>`.
-- Stato leggibile della sequenza e storico -> DB base `11..`, ramo `Seq Status`. Forma target: `<DB11>.Seq Status.<campo>`.
+- Variabili semantiche di avanzamento del sequenziatore, guardie normalizzate e booleani di transizione -> DB transitions `14..`, ramo `Transitions`, leaf name semantico leggibile. Forma target: `<DB14>.Transitions.<nome>`.
+- Memorie semantiche, consensi cumulativi e stati fisici stabilizzati -> DB sequenza/I-O `16..`, ramo `Memory`, leaf name semantico leggibile. Forma target: `<DB16>.Memory.<nome>`.
+- Stato leggibile della sequenza e storico -> DB sequenza/I-O `16..`, ramo `Seq Status`. Forma target: `<DB16>.Seq Status.<campo>`.
+- Allarmi, fault, emergenze e diagnostica aggregata -> DB allarmi/diagnostica `11..`, rami coerenti con il modello allarmi. Forma target: `<DB11>.<ramo_diag>.<nome>`.
 - Variabili esterne di comando/preset gia' appartenenti a DB fissi di comando tipo OPIN -> DB fisso esterno, leaf name obbligatorio della famiglia `Pnnn`. Non e' ammesso sostituire `P013` con un nome semantico libero come `Cmd_Up`.
 - Variabili esterne di uscita o stato comandato gia' appartenenti a DB fissi tipo OPOUT -> DB fisso esterno, leaf name obbligatorio della famiglia `Lnnn`. Non e' ammesso sostituire `L045` con un nome semantico libero come `ShakerCmd`.
 - Condizioni HMI elementari -> DB HMI, ramo `Conditions.<gruppo>.Conditions.nX`. Non e' ammesso saltare il ramo intermedio `Conditions` del gruppo. Questa regola vale per le condizioni elementari del popup e non esaurisce la struttura del gruppo HMI.
@@ -589,16 +607,16 @@ Questo vale per `GRAPH`, `FC 12`, `FC 13`, `FC 14`, `FC 16` e per ogni altro blo
 
 Gli XML osservati nel progetto fissano le seguenti forme target, che il convertitore deve riprodurre.
 
-Esempio 1: una transizione semantica nel DB base viene referenziata come path completo del tipo:
+Esempio 1: una transizione semantica deve essere referenziata come path completo nel DB transitions target. Nei tipici legacy il path osservato era del tipo `T1-A ARUNC -> Transitions -> Bypass ilock`; nel target finale la stessa semantica deve essere riallocata nel DB `14..`:
 
 ```text
-T1-A ARUNC -> Transitions -> Bypass ilock
+<DB14> -> Transitions -> Bypass ilock
 ```
 
-Esempio 2: una memoria semantica nel DB base viene referenziata come path completo del tipo:
+Esempio 2: una memoria semantica deve essere referenziata come path completo nel DB sequenza/I-O target. Nei tipici legacy il path osservato era del tipo `T1-A ARUNC -> Memory -> Permanent Condition`; nel target finale la stessa semantica deve essere riallocata nel DB `16..`:
 
 ```text
-T1-A ARUNC -> Memory -> Permanent Condition
+<DB16> -> Memory -> Permanent Condition
 ```
 
 Esempio 3: una condizione HMI non usa un nome libero, ma un path strutturato del tipo:
@@ -617,7 +635,9 @@ Esempio 6: nel DB ausiliario i supporti tecnici non sono member sciolti, ma rest
 
 Il generatore deve applicare le regole seguenti.
 
-- Se il target e' il DB base `11..`, il leaf name puo' essere semantico leggibile, ma il ramo deve essere obbligatoriamente uno fra `Transitions`, `Memory`, `Seq Status`.
+- Se il target e' il DB transitions `14..`, il leaf name puo' essere semantico leggibile, ma il ramo deve essere obbligatoriamente `Transitions` o un ramo equivalente fissato dal modello transitions.
+- Se il target e' il DB sequenza/I-O `16..`, il leaf name puo' essere semantico leggibile, ma il ramo deve essere coerente con il ruolo (`Memory`, `Seq Status`, `DI`, `DO` o ramo equivalente fissato dal modello sequenza/I-O).
+- Se il target e' il DB allarmi/diagnostica `11..`, il member deve appartenere a una struttura diagnostica/allarmi e non puo' rappresentare una transizione o una memoria ordinaria di sequenza.
 - Se il target e' un DB fisso esterno che usa codifica storica, il leaf name non deve essere rigenerato semanticamente: deve essere quello canonico del DB target (`Pnnn`, `Lnnn` o altra famiglia fissata dal blocco reale).
 - Se il target e' HMI, il convertitore deve emettere il path HMI completo, incluso il gruppo e l'indice `nX` delle condizioni elementari quando il modello HMI lo richiede.
 - Se il target e' AUX, il convertitore deve emettere supporti tecnici soltanto dentro le strutture ausiliarie previste e non come member globali sciolti.
@@ -649,7 +669,7 @@ La variabile e' valida solo se il triplo vincolo e' soddisfatto e se tutti i con
 
 ## 27. Regola sul backend `FC 14 Transitions`
 
-La `FC 14` deve calcolare le condizioni di avanzamento semantiche.
+La `FC 14` deve calcolare le condizioni di avanzamento semantiche e materializzare, quando previsto, la normalizzazione delle guardie nel `DB 14.. transitions`.
 
 Non deve limitarsi a copiare l'AWL.
 
@@ -657,7 +677,24 @@ Deve:
 
 - produrre booleani nominati e leggibili;
 - raccogliere logiche comuni riusabili da GRAPH e HMI;
-- separare il calcolo della condizione dalla topologia della sequenza.
+- separare il calcolo della condizione dalla topologia della sequenza;
+- mantenere una sola semantica sorgente per ogni transizione, senza duplicare logiche divergenti tra `FC14`, `DB14` e GRAPH.
+
+### 27-bis. Catena unica di compilazione guardie/transizioni
+
+La catena di compilazione delle guardie e delle transizioni è unica e obbligatoria:
+
+```text
+AWL / Excel
+-> IR transition / guard expression
+-> normalizzazione in DB14 e FC14 quando prevista
+-> consumo coerente nel GRAPH
+-> validazione incrociata del bundle
+```
+
+Non è ammesso generare logiche divergenti tra `FC14`, `DB14` e `GRAPH`.
+
+Una transizione deve avere una sola semantica sorgente nell'IR; le rappresentazioni nei blocchi target sono materializzazioni diverse della stessa transizione e devono restare semanticamente equivalenti.
 
 ## 28. Regola sul backend `FC 13 Aux`
 

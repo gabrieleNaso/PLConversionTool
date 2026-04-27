@@ -124,9 +124,11 @@ Nel percorso Excel risultano consolidate anche le seguenti regole operative:
 - le transition nel GRAPH mantengono la formula booleana reale dell'Excel (`condition_expression`) senza degradare in marker semplificati (`T1`, `T2`, ...);
 - nelle transition GRAPH i riferimenti variabile sono cross-DB e devono puntare al DB owner corretto determinato dal catalogo `operands`;
 - il pacchetto supporto va emesso completo anche in assenza di contenuto logico/dati per alcune famiglie; se necessario possono essere usati placeholder validi (`NoData`) per preservare importabilita' e struttura attesa;
+- l'assenza di elementi estratti non autorizza l'omissione della famiglia dal bundle: i blocchi previsti dal profilo corrente vanno creati comunque, anche se vuoti o minimali;
+- `DB11GG` e' definitivamente il DB allarmi/diagnostica;
+- `DB14GG` e' definitivamente il DB transitions e deve essere sempre presente quando il profilo corrente prevede la famiglia transitions;
 - righe `support_fc` con stessa `category` + stesso `network` devono essere aggregate nella stessa rete FC;
 - ogni rete LAD FC deve avere un solo `Powerrail` per garantire importabilita' su TIA.
-- in particolare il DB transitions (`DB14GG`) deve essere sempre presente nel bundle quando il pacchetto Excel include la famiglia transitions.
 
 ## 3. Target tecnico consolidato
 
@@ -710,6 +712,7 @@ Nella baseline corrente la partizione dei DB di una sequenza tradotta va conside
 - `13..` = DB PARAMETERS;
 - `14..` = DB transitions;
 - `16..` = DB sequenza/I-O;
+- `17..` = DB LEV2;
 - `18..` = DB `EXT`;
 - `19..` = DB AUX.
 
@@ -746,20 +749,25 @@ La traduzione di una FC AWL di sequenza non va interpretata come generazione del
 La forma corretta dell'output è un insieme coordinato di artefatti:
 
 - `FB GRAPH` per la macchina a stati esplicita;
-- `DB 11..` per memorie, transizioni semantiche e stato leggibile del sequenziatore;
+- `DB 11..` per allarmi, fault, emergenze e diagnostica;
 - `DB 12..` per dati HMI, popup, condizioni visualizzate e strutture HMI (`12GG` = DB HMI);
 - `DB 13..` per PARAMETERS e preset/configurazioni di progetto;
-- `DB 14..` per transitions;
-- `DB 16..` per il contenitore della sequenza e/o I-O secondo il modello scelto;
+- `DB 14..` per transitions, guardie normalizzate e booleani semantici di avanzamento;
+- `DB 16..` per il contenitore della sequenza, memorie di processo, stato leggibile della sequenza e/o I-O secondo il modello scelto;
+- `DB 17..` per LEV2 quando previsto dal profilo;
 - `DB 18..` per variabili esterne alla sequenza;
 - `DB 19..` per AUX, cioe timer, contatori, one-shot e appoggi tecnici;
+- `FC 11` Alarms/Diag;
 - `FC 12` HMI;
 - `FC 13` Aux;
 - `FC 14` Transitions;
 - `FC 16` Output;
-- eventuale FC di servizio coerente alla famiglia numerica prevista (es. `FC16..` o equivalente).
+- `FC 17` LEV2 quando previsto dal profilo;
+- eventuale FC di servizio coerente alla famiglia numerica prevista dal profilo corrente.
 
 L'analisi porta a ragionare in termini di ecosistema di blocchi, non di singolo artefatto XML isolato.
+
+Regola operativa aggiuntiva: il pacchetto architetturale previsto dal profilo va emesso sempre completo. Se per errore di traduzione, caso anomalo o assenza temporanea di dati una famiglia risulta senza contenuto, il relativo blocco deve comunque essere creato in forma vuota o minimale importabile, così da permettere correzioni successive senza alterare la struttura del bundle.
 
 ### 32.6 Scomposizione della FC AWL in famiglie logiche
 
@@ -803,9 +811,10 @@ Un DB AWL unico non viene replicato direttamente nel target.
 
 La regola corretta è separare i dati in base al ruolo:
 
-- bit semantici di avanzamento -> `Transitions` nel DB `14..`;
-- memorie di processo, consensi cumulativi e stati fisici -> `Memory` nel DB base `11..`;
-- stato leggibile della sequenza, step attuale e storico -> `Seq Status` nel DB base `11..`;
+- bit semantici di avanzamento, guardie normalizzate e booleani di transizione -> `Transitions` nel DB `14..`;
+- memorie di processo, consensi cumulativi e stati fisici -> `Memory` nel DB sequenza/I-O `16..`;
+- stato leggibile della sequenza, step attuale e storico -> `Seq Status` nel DB sequenza/I-O `16..`;
+- allarmi, fault, emergenze e diagnostica -> DB allarmi/diagnostica `11..`;
 - timer e contatori AWL -> `DB 19..` con tipi IEC e supporto `FC 13 Aux`;
 - variabili esterne alla sequenza -> `DB 18.. EXT`;
 - informazioni HMI e popup -> DB HMI.
@@ -816,15 +825,26 @@ Il runtime interno del GRAPH resta nel blocco GRAPH e non deve essere duplicato 
 
 Le condizioni di transizione AWL non vanno copiate direttamente come testo dentro il GRAPH.
 
-Prima devono essere normalizzate in booleani semantici nel DB base e calcolate in una `FC 14 Transitions`.
+Prima devono essere trasformate in una rappresentazione unica nell'IR; quando la normalizzazione è prevista dal profilo, devono poi essere materializzate come booleani semantici nel DB `14.. transitions` e calcolate in una `FC 14 Transitions`.
 
-Il GRAPH e la HMI devono poi consumare questi booleani già normalizzati.
+Il GRAPH e la HMI devono poi consumare questi booleani già normalizzati, senza rigenerare una logica divergente.
+
+Catena unica obbligatoria:
+
+```text
+AWL / Excel
+-> IR transition / guard expression
+-> normalizzazione in DB14 e FC14 quando prevista
+-> consumo coerente nel GRAPH
+-> validazione incrociata del bundle
+```
 
 Conseguenze:
 
 - la `FC 14` è un compilatore di condizioni;
+- il `DB 14` è il contenitore dati delle transizioni normalizzate;
 - il GRAPH usa transizioni semanticamente pulite;
-- la HMI usa la stessa base semantica per popup e diagnostica;
+- la HMI usa la stessa base semantica per popup e diagnostica quando richiesto;
 - si evita di replicare più volte la stessa logica complessa in blocchi diversi.
 
 ### 32.9A Evidenza sul naming con suffisso e ownership dei DB
@@ -844,7 +864,8 @@ Conseguenze pratiche osservate:
 - nel DB tipo OPIN i comandi e i preset restano nella famiglia `Pxxx`;
 - nel DB tipo OPOUT uscite, lampade e stati comandati restano nella famiglia `Lxxx`;
 - nel DB `14..` le variabili di transizione restano nel ramo `Transitions`;
-- nel DB base `11..` le variabili di stato/memoria restano nei rami `Memory`, `Seq Status`;
+- nel DB `16..` le variabili di stato/memoria restano nei rami `Memory`, `Seq Status` o equivalenti del modello sequenza/I-O;
+- nel DB `11..` restano solo allarmi, fault, emergenze e diagnostica;
 - nel `DB 19.. AUX` i supporti tecnici restano nella famiglia ausiliaria senza migrare con naming libero in altri DB;
 - nel DB HMI popup e condizioni mantengono un path coerente al gruppo di appartenenza.
 
@@ -882,7 +903,7 @@ Nella pipeline corrente vengono convertiti in:
 - istanze IEC nel `DB 19..`;
 - per ogni timer AWL `Txx` viene esposto anche un bit booleano `Txx_DONE` (usato come contatto nelle guardie e nella logica);
 - reti LAD nella `FC 13 Aux`;
-- eventuali memorie semantiche derivate nel DB base `11..`.
+- eventuali memorie semantiche derivate nel DB sequenza/I-O `16..`.
 
 La `FC 13 Aux` ha quindi il ruolo di ricostruire in forma leggibile e importabile la parte di AWL che nel sorgente faceva da appoggio tecnico alla sequenza.
 
@@ -948,7 +969,7 @@ Nel target TIA le uscite devono nascere dalla composizione di:
 - consensi permanenti;
 - condizioni macchina già normalizzate.
 
-La `FC 16 Output` e' quindi un backend combinatorio separato che riceve segnali semantici dal DB base, dal GRAPH, dai DB fissi e dai DB I/O.
+La `FC 16 Output` e' quindi un backend combinatorio separato che riceve segnali semantici dal DB transitions `14..`, dal DB sequenza/I-O `16..`, dal GRAPH, dai DB fissi e dai DB I/O.
 
 ### 32.13 HMI
 
@@ -1229,7 +1250,7 @@ Essi rappresentano invece:
 
 Sintesi consolidata:
 
-> i feedback fisici stabilizzati non devono essere convertiti in step GRAPH; devono essere mappati nel modello target come memorie semantiche o condizioni di transizione, tipicamente nelle aree `Memory` e `Transitions` del `DB 11..`.
+> i feedback fisici stabilizzati non devono essere convertiti in step GRAPH; devono essere mappati nel modello target come memorie semantiche o condizioni di transizione. Le memorie semantiche vanno tipicamente in `Memory` del `DB 16..`, mentre le condizioni di transizione vanno in `Transitions` del `DB 14..`. Il `DB 11..` resta riservato ad allarmi/diagnostica.
 
 ## 46. Doppia famiglia dei timeout
 
