@@ -50,6 +50,7 @@ curl -sS http://127.0.0.1:8010/api/status
 - Ricordare che il bundle atteso non e' `1 + 1 + 1`, ma `1 x FB GRAPH + N x GlobalDB + M x FC LAD`.
 - Verificare che il caso abbia una policy chiara per il naming globale: owner DB, branch path e leaf name devono essere determinabili prima della serializzazione.
 - Se il caso deriva da un AWL monolitico, segmentarlo almeno nelle famiglie ricorrenti: allarmi, memorie/ausiliari, sequenza, manuale/automatico, emergenza/fault, uscite.
+- Se esiste una traduzione gia' fatta nel corpus (`data/datasets/corpus/traduzione/`), usarla come baseline di regressione: le regole vanno estratte da li' e generalizzate, evitando fix "ad hoc" solo per un caso.
 
 ## Generare XML senza AI (da file in `data/input/`)
 
@@ -78,6 +79,7 @@ Comportamento importante:
 - la cartella del bundle target viene **pulita automaticamente** prima della nuova generazione;
 - non restano file XML "stale" di run precedenti nello stesso bundle;
 - il percorso AWL passa esplicitamente da IR (`AWL -> IR JSON -> XML`), allineato al flusso Excel;
+- il target XML resta **solo simbolico**: gli indirizzi fisici eventualmente presenti nel sorgente (I/Q/M/DBX/...) sono usati solo come input di mapping, ma non devono comparire nel naming dei member o nei path serializzati;
 - il bundle va letto come pacchetto coerente e non come somma casuale di file;
 - il file `<Name>_analysis.json` va conservato come diagnosi primaria del mapping AWL -> IR -> XML.
 
@@ -151,7 +153,7 @@ curl -sS -X POST "http://127.0.0.1:8000/api/conversion/export" \
   -d '{
     "sequenceName":"MySeq_001",
     "sourceName":"myseq_001.awl",
-    "awlSource":"NETWORK 1\n      U     S1\n      U     M10.0\n      S     S29\n",
+    "awlSource":"NETWORK 1\n      U     S1\n      U     \\\"START_REQ\\\"\\n      S     S29\\n",
     "outputDir":"data/output/generated/myseq_001"
   }'
 ```
@@ -221,17 +223,17 @@ Regole Excel importanti:
 - in `operands.category` usa solo categorie funzionali (`alarm`, `aux`, `hmi`, `output`, `memory`, `external`, `lv2`/`lev2`, `transition`/`transitions`).
 - alias legacy `timer`/`counter`/`manual_mode`/`auto_mode` sono accettati dal parser e normalizzati a `aux`.
 - per LEV2 usa `lv2`/`lev2`; la categoria `mode` non viene normalizzata automaticamente a LEV2 nel parser `operands`.
-- variabili FC non presenti in `operands` non vengono dichiarate nei DB supporto, ma restano utilizzabili nella logica FC come simboli globali non agganciati a DB.
+- non usare variabili FC assenti da `operands`: se compaiono in una `condition_expression` vengono considerate **non risolte** (mancanza di owner DB) e il bundle non va considerato valido per import/compile.
 - timer/contatori definiti in `operands` e usati in `support_fc` vengono emessi come blocchi LAD completi, con preset da `control_value`.
 - se piu' righe `support_fc` hanno stessa `category` e stesso `network`, vengono aggregate in una sola network FC.
 - ogni network FC deve avere un solo `Powerrail` LAD (vincolo import TIA).
 - `coil_mode` per riga: `set` -> `SCoil`, `reset` -> `RCoil`, vuoto -> bobina normale (`Coil`).
-- `operands` e `support_fc` sono obbligatori: se manca uno dei due (o e' vuoto), `generate-excel-ir` termina con errore.
+- `sequence`, `operands` e `support_fc` sono obbligatori: se manca uno di questi (o `operands`/`support_fc` sono vuoti), `generate-excel-ir` termina con errore.
 - nelle espressioni logiche (`condition_expression` / `guard_expression`) sono supportate parentesi e precedenza booleana.
 - il generatore deduce automaticamente gli operandi da `condition_expression`/`guard_expression` (non servono colonne operandi dedicate nel formato corrente).
 - nel GRAPH, le transition usano la logica reale dell'Excel (`condition_expression`) e non vengono ridotte a marker tipo `T1/T2`.
 - i riferimenti variabile nelle transition GRAPH sono cross-DB: ogni simbolo punta al DB owner derivato dal catalogo `operands`.
-- i blocchi supporto vengono emessi in modo completo per famiglia; se una famiglia non ha member utili puo' essere emesso un placeholder `NoData`.
+- i blocchi supporto vengono emessi in modo completo per famiglia; un placeholder `NoData` e' ammesso solo quando la famiglia e' davvero non usata nel bundle (nessun simbolo richiesto da FB/FC/GRAPH). Se una famiglia e' referenziata (es. variabili esterne o HMI presenti), deve contenere i member richiesti.
 
 Compatibilita':
 - lo script accetta solo il formato Excel corrente (`sequence`, `operands`, `support_fc`) con colonne canoniche.

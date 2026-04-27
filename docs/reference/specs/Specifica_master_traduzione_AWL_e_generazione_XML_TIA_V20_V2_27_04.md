@@ -147,9 +147,24 @@ L'Excel va quindi trattato come sorgente alternativa di modellazione e catalogaz
 
 Per il percorso Excel del convertitore, il contratto minimo dei fogli e' da considerare hard:
 
+- `sequence` obbligatorio;
 - `operands` obbligatorio;
 - `support_fc` obbligatorio;
 - `support_fc` e' pagina unica FC e contiene sia dati member sia logica LAD.
+
+Colonne canoniche di `sequence`:
+
+- `step_name`
+- `numero_step`
+- `from_step`
+- `transition_id`
+- `to_step`
+- `condition_expression`
+- `flow_type`
+- `parallel_group`
+
+Nota operativa:
+- ordine raccomandato delle colonne transizione: `from_step`, `transition_id`, `to_step`.
 
 Colonne canoniche di `support_fc`:
 
@@ -205,7 +220,8 @@ Nel percorso AWL e nel percorso Excel il pacchetto supporto deve essere sempre c
 
 Regole hard:
 
-- il blocco va comunque emesso; se la famiglia non contiene member effettivi puo' includere una struttura vuota o un placeholder valido (`NoData`) per mantenere coerenza di import e struttura bundle;
+- il blocco va comunque emesso; un placeholder valido (`NoData`) e' ammesso solo quando la famiglia non e' referenziata da nessun punto del bundle (FB/FC/GRAPH);
+- se una famiglia e' referenziata (es. simboli esterni o HMI presenti nelle guardie o nelle FC), deve contenere i member necessari a mantenere i collegamenti simbolici corretti;
 - l'assenza di contenuto non autorizza l'omissione della famiglia dal pacchetto;
 - il requisito include sempre il DB allarmi/diagnostica (`DB11GG`), il DB transitions (`DB14GG`) e tutte le altre famiglie DB/FC previste dal profilo corrente;
 - l'eventuale vuoto va considerato una condizione provvisoria di traduzione da correggere o completare successivamente, non una modifica del contratto architetturale del bundle.

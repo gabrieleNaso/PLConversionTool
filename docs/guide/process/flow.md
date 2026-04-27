@@ -36,6 +36,7 @@ L'IR nasce da:
 - testo AWL completo;
 - regole di mapping (AWL -> GRAPH/DB/FC);
 - vincoli di coerenza (naming e contratti cross‑blocco).
+- corpus di riferimento quando disponibile (es. `data/datasets/corpus/traduzione/`) usato per estrarre regole generali e fare regressione sul generatore.
 
 ### Come l'AWL viene interpretato
 - L'AWL viene letto come testo e segmentato per `NETWORK` e per famiglie logiche ricorrenti del sequenziatore.
@@ -52,6 +53,7 @@ L'IR nasce da:
 3. **Normalizzazione**: naming deterministico e riferimenti uniformati.
 4. **Costruzione IR**: grafo/struttura di nodi (step, transition, timer, mapping DB, ownership delle variabili globali, riferimenti simbolici completi).
 5. **Validazione**: coerenza minima e contratti cross-blocco (riferimenti presenti, topologia consistente, owner DB, branch path, leaf name, cardinalita' del pacchetto).
+   - gate hard: nessuna variabile globale "orfana"; tutto cio' che viene referenziato in `FB/FC/GRAPH` deve esistere davvero in un DB owner con naming simbolico coerente.
    - se l'AWL contiene `CALL` a blocchi non presenti nei sorgenti disponibili, il report segnala una dipendenza mancante (warning `missing_called_blocks`).
    - quando il sorgente e' monolitico e non include le FC chiamate, alcune diramazioni possono essere ricostruite con regole interne (es. split su presenza), ma non tutte le semantiche esterne sono deducibili.
 
@@ -142,3 +144,4 @@ Il risultato corretto e' un progetto TIA che:
 - Checklists: `docs/guide/checklists/workflow-checklists.md`
 - Convenzioni: `docs/guide/standards/conventions.md`
 - Integrazione TIA: `docs/guide/integration/tia-integration.md`
+- Corpus traduzione/regressione: `data/datasets/corpus/traduzione/`

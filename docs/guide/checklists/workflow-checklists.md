@@ -17,6 +17,7 @@ Regola trasversale:
 - **Transition FlgNet "subset sicuro"**: struttura LAD delle transition nel sottoinsieme accettato da TIA.
 - **Step iniziale**: verificare che `Init="true"` sia assegnato al passo corretto (in workflow Excel: `step_number=1`).
 - **Simboli risolvibili**: tutto cio' che e' referenziato nel `FlgNet` deve essere dichiarato (locale FB o `GlobalDB` con riferimento simbolico esplicito).
+- **Solo simbolico**: nei nomi dei member e nei path dei riferimenti non devono comparire indirizzi fisici (`I..`, `Q..`, `M..`, `DB..DBX..`). Gli indirizzi possono esistere nel sorgente AWL ma non nel naming target.
 - **Coerenza col pacchetto**: ogni tag, member o nome di blocco referenziato dal `GRAPH` deve esistere e combaciare davvero nel `GlobalDB`/`FC` del pacchetto corrente.
 
 ## B) Checklist rapida — GlobalDB del pacchetto importabile (+ commenti visibili)
@@ -28,6 +29,7 @@ Regola trasversale:
 - **Origine commenti DB (Excel)**: nei DB usare solo `operands.note` + commenti member espliciti; non copiare commenti rete FC nei tag DB.
 - **No autocompilazione commenti**: se Excel non valorizza commento/note, il commento DB deve restare vuoto.
 - **Contratto cross-blocco**: il DB deve dichiarare tutti i member richiesti dal `GRAPH`, dalla `FC LAD` e da eventuali blocchi aggiuntivi del pacchetto, senza drift di naming.
+- **Nessun member vuoto/orfano**: evitare nomi vuoti, placeholder non collegati e simboli presenti in FC/GRAPH ma assenti dai DB.
 - **Caso Excel strict**: verificare che i member DB siano coerenti con il catalogo `operands` del file Excel, senza extra non dichiarati.
 - **Qualita' naming**: evitare member vuoti o instabili; preferire alias semantici e fallback deterministici dal token/simbolo AWL (sanitizzato) in caso di ambiguita'.
 
@@ -39,6 +41,7 @@ Regola trasversale:
 - **Power rail unico**: ogni network LAD deve avere un solo `Powerrail`.
 - **GlobalVariable**: ok usarle nel `FlgNet` (riferimenti simbolici espliciti), purché risolvibili.
 - **Coerenza col pacchetto**: la `FC LAD` non deve introdurre riferimenti, mapping o nomi di member che non esistono davvero nel `GlobalDB` o che divergono dal `GRAPH`.
+- **Coerenza tipo/uso**: timer e contatori devono avere datatype coerente (es. `IEC_TIMER`/`IEC_COUNTER`) e, se usati come contatti booleani, devono essere referenziati tramite bit/field corretto (es. `Txx_DONE` o `.Q`), non come variabile booleana inventata.
 
 ## D) Diagnosi quando l'import fallisce
 - **Prima**: validare struttura XML (hard) prima dei metadati runtime (soft).

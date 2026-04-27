@@ -123,7 +123,7 @@ Nel percorso Excel risultano consolidate anche le seguenti regole operative:
 - in input `operands`, LEV2 usa `lv2`/`lev2`; `mode` non rappresenta la forma canonica di input;
 - le transition nel GRAPH mantengono la formula booleana reale dell'Excel (`condition_expression`) senza degradare in marker semplificati (`T1`, `T2`, ...);
 - nelle transition GRAPH i riferimenti variabile sono cross-DB e devono puntare al DB owner corretto determinato dal catalogo `operands`;
-- il pacchetto supporto va emesso completo anche in assenza di contenuto logico/dati per alcune famiglie; se necessario possono essere usati placeholder validi (`NoData`) per preservare importabilita' e struttura attesa;
+- il pacchetto supporto va emesso completo anche in assenza di contenuto logico/dati per alcune famiglie; un placeholder valido (`NoData`) e' ammesso solo quando la famiglia non e' referenziata nel bundle (nessun simbolo richiesto da FB/FC/GRAPH). Se una famiglia e' referenziata, deve contenere i member necessari a mantenere i collegamenti simbolici corretti;
 - l'assenza di elementi estratti non autorizza l'omissione della famiglia dal bundle: i blocchi previsti dal profilo corrente vanno creati comunque, anche se vuoti o minimali;
 - `DB11GG` e' definitivamente il DB allarmi/diagnostica;
 - `DB14GG` e' definitivamente il DB transitions e deve essere sempre presente quando il profilo corrente prevede la famiglia transitions;
@@ -892,7 +892,7 @@ Quando la sorgente IR arriva da Excel con catalogo `operands`, il popolamento de
 - i commenti dei member DB non devono essere presi da `support_fc.comment` (commento rete FC);
 - i commenti DB devono restare separati dalla semantica di rete FC.
 
-Se una transizione usa operandi non presenti nel catalogo, il validator lo segnala come warning di coerenza.
+Se una transizione o una rete FC usa operandi non presenti nel catalogo, il validator li segnala come non risolti: un bundle con simboli non risolti non va considerato valido per import/compile.
 
 ### 32.10 Normalizzazione di memorie e timer
 

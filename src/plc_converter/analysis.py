@@ -135,7 +135,10 @@ TIA_RESERVED_KEYWORDS = {
 # sequencers that embed inter-machine tracking checks in AWL.
 ENABLE_TRACKING_TRANSLATION_RULE = True
 
-EXTERNAL_DB_IDS = {81, 82, 202}
+# External integration DBs (fixed contracts observed in corpus).
+# Note: DB202 is used by the LLALM alarm map in the Romania source and must be
+# treated as diagnostics/alarms (DB11 family), not as "external integration".
+EXTERNAL_DB_IDS = {81, 82}
 
 CALL_BLOCK_RE = re.compile(
     r"\bCALL\b[^\n\r]*?\b(?:(FC|FB|OB)\s*0*(\d+)|\b(FC|FB|OB)\s*0*(\d+)\b)",
@@ -2941,6 +2944,84 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
     parameters_members = _collect_parameters_support_members(ir)
     parameters_db_members = _prepare_support_db_members(ir, "parameters", parameters_members)
 
+    if not ir.strict_operand_catalog:
+        # General rule (AWL path): every GlobalVariable referenced by any support FC
+        # must exist in the correct owner DB. Otherwise TIA import/compile will fail
+        # with missing member errors.
+        required_by_db: dict[str, dict[str, str]] = {}
+
+        def _record_required(db_name: str, member: str, comment: str) -> None:
+            member = str(member or "").strip()
+            if not member or member.upper() in {"TRUE", "FALSE", "AND", "OR", "NOT"}:
+                return
+            required_by_db.setdefault(db_name, {}).setdefault(member, str(comment or "").strip())
+
+        def _scan_logic_rows(db_name_for_category: str, logic_rows: list[dict[str, object]]) -> None:
+            for row in logic_rows or []:
+                comment = str(row.get("comment") or "").strip()
+                result_member = str(row.get("result_member") or "").strip()
+                if result_member:
+                    owner = symbol_home_db_map.get(result_member, db_name_for_category)
+                    _record_required(owner, result_member, comment)
+                    # Hard rule for timer/counter patterns: if we generate/use a DONE bit,
+                    # we must also declare the underlying instance member (same owner DB).
+                    if result_member.endswith("_DONE") and len(result_member) > len("_DONE"):
+                        base = result_member[: -len("_DONE")]
+                        _record_required(owner, base, comment)
+
+                for operand in _as_str_list(row.get("condition_operands")):
+                    token = str(operand or "").strip()
+                    if not token:
+                        continue
+                    owner = symbol_home_db_map.get(token, db_name_for_category)
+                    _record_required(owner, token, comment)
+                    if token.endswith("_DONE") and len(token) > len("_DONE"):
+                        base = token[: -len("_DONE")]
+                        _record_required(owner, base, comment)
+
+                expression = str(row.get("condition_expression") or "").strip()
+                for token in re.findall(r"[A-Za-z_]\w*(?:\.\w+)*", expression):
+                    if token.upper() in {"AND", "OR", "NOT", "TRUE", "FALSE"}:
+                        continue
+                    normalized = _support_member_name(token, "", strict_excel_mode=True)
+                    if not normalized:
+                        continue
+                    owner = symbol_home_db_map.get(normalized, db_name_for_category)
+                    _record_required(owner, normalized, comment)
+
+        _scan_logic_rows(diag_db_name, diag_logic)
+        _scan_logic_rows(hmi_db_name, hmi_logic)
+        _scan_logic_rows(aux_db_name, aux_logic)
+        _scan_logic_rows(io_db_name, io_output_logic)
+        _scan_logic_rows(mode_db_name, mode_logic)
+        _scan_logic_rows(tr_db_name, transitions_logic)
+
+        # Include guard members too (they might be referenced only in other FCs).
+        for category, items in guard_members_by_category.items():
+            db_name, _, _, _, _, _ = _support_block_names(ir.sequence_name, category)
+            for member, comment in items:
+                owner = symbol_home_db_map.get(member, db_name)
+                _record_required(owner, member, comment)
+
+        def _augment(db_members: list[tuple[str, str]], db_name: str) -> list[tuple[str, str]]:
+            existing = {name for name, _ in db_members}
+            extras = required_by_db.get(db_name, {})
+            for name, comment in extras.items():
+                if name in existing:
+                    continue
+                db_members.append((name, comment))
+                existing.add(name)
+            return _dedupe_named_members(db_members)
+
+        diag_db_members = _augment(diag_db_members, diag_db_name)
+        hmi_db_members = _augment(hmi_db_members, hmi_db_name)
+        aux_db_members = _augment(aux_db_members, aux_db_name)
+        transitions_db_members = _augment(transitions_db_members, tr_db_name)
+        output_db_members = _augment(output_db_members, io_db_name)
+        mode_db_members = _augment(mode_db_members, mode_db_name)
+        external_db_members = _augment(external_db_members, ext_db_name)
+        parameters_db_members = _augment(parameters_db_members, par_db_name)
+
     # Always create the full expected block set, even when empty.
     previews.append(
         ArtifactPreview(
@@ -3598,12 +3679,10 @@ def _build_support_lad_fc_xml(
     number_span: int = 200,
 ) -> str:
     fc_number = _stable_block_number(number_seed, base=number_base, span=number_span)
-    temp_members = "\n".join(
-        f'    <Member Name="{escape(member)}" Datatype="Bool" />'
-        for member in dict.fromkeys(db_members)
-    )
-    if not temp_members:
-        temp_members = '    <Member Name="PACKET_READY" Datatype="Bool" />'
+    # Support FCs access data via GlobalVariable symbols, not via interface Temp.
+    # Declaring every referenced symbol as Temp Bool creates inconsistencies
+    # (e.g. IEC_TIMER declared as Bool) and makes "orphan" variables appear in FCs.
+    temp_members = '    <Member Name="PACKET_READY" Datatype="Bool" />'
     compile_units = _build_support_lad_compile_units(
         db_name=db_name,
         support_members=support_members,
@@ -4468,6 +4547,17 @@ def _build_support_logic_flgnet(
             normalized_operand, operand_path = _resolve_logic_symbol_path(operand, member_datatypes)
             if not normalized_operand:
                 continue
+            # Never use an IEC timer/counter instance as a boolean contact.
+            # When a timer is used in AWL boolean logic (e.g. "A T 780"), the
+            # intended semantics is the done bit, so we bind to *_DONE.
+            datatype = _normalize_plc_datatype(member_datatypes.get(normalized_operand, ""))
+            if len(operand_path) == 1 and datatype in {"IEC_TIMER", "IEC_COUNTER"}:
+                normalized_operand = _support_member_name(f"{normalized_operand}_DONE", "", strict_excel_mode=True)
+                operand_path = [normalized_operand]
+            # Avoid self-references (operand == coil) which would create invalid
+            # latch-like behavior in a purely combinational network.
+            if normalized_operand == normalized_result and len(operand_path) == 1:
+                continue
             if active_timer_name and normalized_operand == active_timer_name and len(operand_path) == 1:
                 continue
             access_uid = alloc_uid()
@@ -5099,6 +5189,7 @@ def _build_support_symbol_home_db_map(ir: AwlIR) -> dict[str, str]:
 
     guard_members_by_category = _collect_transition_guard_members_by_category(ir)
     operand_aliases = _build_awl_operand_alias_map(ir)
+    hmi_alias_members = _collect_hmi_command_alias_members(ir)
 
     # 2) Heuristic fallback from support members and inferred collections.
     category_sources: list[tuple[str, list[tuple[str, str]]]] = [
@@ -5139,6 +5230,15 @@ def _build_support_symbol_home_db_map(ir: AwlIR) -> dict[str, str]:
         if address_member and (allowed is None or address_member in allowed):
             mapping.setdefault(address_member, db_name)
 
+    # 3-bis) Hard override: operator/HMI command memories (from symbolic "M:..." tokens)
+    # must live in the HMI DB family, even if the raw operand is an M bit.
+    if hmi_alias_members:
+        hmi_db_name, _, _, _, _, _ = _support_block_names(ir.sequence_name, "hmi")
+        for member in sorted(hmi_alias_members):
+            if allowed is not None and member not in allowed:
+                continue
+            mapping[member] = hmi_db_name
+
     # 4) Synthetic AWL locals: keep them in AUX (DB19..).
     # Detect "L 1.0" style locals in raw lines and reserve their synthesized names.
     aux_db_name, _, _, _, _, _ = _support_block_names(ir.sequence_name, "aux")
@@ -5150,6 +5250,46 @@ def _build_support_symbol_home_db_map(ir: AwlIR) -> dict[str, str]:
                 if synth and (allowed is None or synth in allowed):
                     mapping[synth] = aux_db_name
     return mapping
+
+
+def _collect_hmi_command_alias_members(ir: AwlIR) -> set[str]:
+    """
+    Extract operator/HMI command signals from AWL symbolic tokens.
+
+    Rationale: many projects encode operator commands as symbolic M bits like
+    "M:T1-A:Auto" M49.0 or "M:T1-A:Start:Cycle" M45.0. These should populate
+    the HMI DB family (DB12..) even when the physical operand is an M bit.
+    """
+    members: set[str] = set()
+    pattern = re.compile(
+        r'"([^"]+)"\s*(?:\.\s*([A-Za-z0-9_]+))?\s+'
+        r'(DB\d+\.DB[XBWD]\d+(?:\.\d+)?|[AQEIMT]\d+(?:\.\d+)?)',
+        flags=re.IGNORECASE,
+    )
+    for network in ir.networks:
+        for raw_line in network.raw_lines:
+            body, _, _comment = raw_line.partition("--")
+            match = pattern.search(body)
+            if not match:
+                continue
+            symbolic_base = str(match.group(1) or "").strip()
+            address_raw = str(match.group(3) or "").strip()
+            address_key = _normalize_operand_token(address_raw)
+            if not address_key:
+                continue
+            # Focus on symbolic M:* command naming bound to M bits.
+            if not re.fullmatch(r"M\d+(?:\.\d+)?", address_key, flags=re.IGNORECASE):
+                continue
+            base_upper = symbolic_base.upper()
+            if not base_upper.startswith("M:"):
+                continue
+            alias = _derive_symbol_alias_from_base(symbolic_base)
+            if not alias:
+                continue
+            member = _support_member_name(alias, "", strict_excel_mode=True)
+            if member:
+                members.add(member)
+    return members
 
 
 def _collect_io_support_members(ir: AwlIR) -> list[tuple[str, str]]:
@@ -5193,6 +5333,11 @@ def _collect_timer_trigger_support_members_by_category(
 def _collect_external_support_members(ir: AwlIR) -> list[tuple[str, str]]:
     operand_aliases = _build_awl_operand_alias_map(ir)
     members: list[tuple[str, str]] = []
+
+    def _stable_ref_name(prefix: str, seed: str) -> str:
+        digest = _stable_hash_token(seed, size=8)
+        return _support_member_name(f"{prefix}_{digest}", "", strict_excel_mode=True)
+
     for ext in ir.external_refs:
         if not _is_external_integration_operand(ext):
             continue
@@ -5202,13 +5347,21 @@ def _collect_external_support_members(ir: AwlIR) -> list[tuple[str, str]]:
             shortcut = re.fullmatch(r"DB\d+\.(P\d{3}|L\d{3})", str(ext or "").strip(), flags=re.IGNORECASE)
             if shortcut:
                 alias = shortcut.group(1).upper()
-        symbol = alias or ext
-        members.append(
-            (
-                _support_member_name(symbol, "", strict_excel_mode=True),
-                f"External reference {symbol}",
-            )
-        )
+        # Hard rule: never use raw addresses (e.g. DB81.DBX54.4) as member names.
+        # If we cannot resolve a symbolic leaf/base alias from AWL, fall back to a
+        # stable hashed name and keep the original token only in the comment.
+        if alias:
+            member = _support_member_name(alias, "", strict_excel_mode=True)
+            comment = f"External reference {alias}"
+        else:
+            # Prefer a readable non-DB naming for DI/PE/PA style tokens.
+            if re.fullmatch(r"(?:DI|PE|PA)\d+(?:\.\d+)?", str(ext or "").strip(), flags=re.IGNORECASE):
+                readable = str(ext or "").strip().upper().replace(".", "_")
+                member = _support_member_name(readable, "", strict_excel_mode=True)
+            else:
+                member = _stable_ref_name("EXT_REF", normalized or str(ext))
+            comment = f"External reference {ext}"
+        members.append((member, comment))
     return list(dict.fromkeys(members))
 
 
@@ -5219,7 +5372,7 @@ def _is_external_integration_operand(operand: str) -> bool:
     db_addr = re.fullmatch(r"DB(\d+)\.DB[XBWD]\d+(?:\.\d+)?", token)
     if db_addr:
         return int(db_addr.group(1)) in EXTERNAL_DB_IDS
-    if token.startswith("DB81.") or token.startswith("DB82.") or token.startswith("DB202."):
+    if token.startswith("DB81.") or token.startswith("DB82."):
         return True
     if re.fullmatch(r"(?:DI|PE|PA)\d+(?:\.\d+)?", token):
         return True
@@ -5291,22 +5444,38 @@ def _collect_output_family_members(ir: AwlIR) -> list[tuple[str, str]]:
 def _collect_hmi_support_members(ir: AwlIR) -> list[tuple[str, str]]:
     operand_aliases = _build_awl_operand_alias_map(ir)
     members: list[tuple[str, str]] = []
+
+    def _stable_ref_name(prefix: str, seed: str) -> str:
+        digest = _stable_hash_token(seed, size=8)
+        return _support_member_name(f"{prefix}_{digest}", "", strict_excel_mode=True)
+
     for ext in ir.external_refs:
         candidate = ext.upper()
-        if any(marker in candidate for marker in ("HMI", "OPIN", "OPOUT", "DB81", "DB82")):
+        # Hard rule: OPIN/OPOUT (DB81/DB82) belong to external integration (DB18),
+        # not to the HMI DB family. Keep HMI DB for true HMI-tagged signals only.
+        if "HMI" in candidate:
             normalized = _normalize_operand_token(ext)
             alias = operand_aliases.get(normalized, "")
             if not alias:
                 shortcut = re.fullmatch(r"DB\d+\.(P\d{3}|L\d{3})", str(ext or "").strip(), flags=re.IGNORECASE)
                 if shortcut:
                     alias = shortcut.group(1).upper()
-            symbol = alias or candidate
-            member = _support_member_name(symbol, "", strict_excel_mode=True)
-            members.append((member, f"HMI/Operator reference {symbol}"))
+            # Hard rule: never use raw addresses as HMI member names.
+            if alias:
+                member = _support_member_name(alias, "", strict_excel_mode=True)
+                comment = f"HMI/Operator reference {alias}"
+            else:
+                member = _stable_ref_name("HMI_REF", normalized or str(ext))
+                comment = f"HMI/Operator reference {ext}"
+            members.append((member, comment))
     for memory in ir.memories:
         if str(memory.role).lower() == "hmi":
             member = _support_member_name(memory.name, "HMI", strict_excel_mode=ir.strict_operand_catalog)
             members.append((member, f"HMI tagged memory {memory.name}"))
+
+    # Operator command memories (symbolic "M:...") are treated as HMI family signals.
+    for member in sorted(_collect_hmi_command_alias_members(ir)):
+        members.append((member, f"HMI command {member}"))
     return list(dict.fromkeys(members))
 
 
@@ -5489,14 +5658,15 @@ def _support_category_for_guard_operand(operand: str) -> str:
     if db_match:
         db_no = int(db_match.group(1))
         if db_no in {81, 82}:
-            return "hmi"
+            # OPIN/OPOUT integration DBs: treat as external integration, not HMI.
+            return "external"
         if db_no >= 200:
             return "diag"
         if 100 <= db_no < 200:
             return "io"
         return "io"
     if token.startswith("DB81.") or token.startswith("DB82."):
-        return "hmi"
+        return "external"
     if token.startswith("DB202."):
         return "diag"
     return "transitions"
@@ -5565,7 +5735,6 @@ def _build_awl_operand_alias_map(ir: AwlIR) -> dict[str, str]:
             if not address_key:
                 continue
             base_alias = _derive_symbol_alias_from_base(symbolic_base)
-            comment_alias = _derive_symbol_alias_from_comment(comment)
             # Prefer the *literal* symbolic leaf when present (e.g. "LLALM".DB202_DBX32_0),
             # even if it looks address-like. This keeps generated DB members stable and meaningful.
             if symbolic_leaf:
@@ -5575,8 +5744,6 @@ def _build_awl_operand_alias_map(ir: AwlIR) -> dict[str, str]:
                     alias_candidate = f"{base_alias}_{symbolic_leaf}"
                 else:
                     alias_candidate = symbolic_leaf
-            elif comment_alias:
-                alias_candidate = comment_alias
             else:
                 alias_candidate = base_alias
             alias_norm = _normalize_symbol_name(alias_candidate, "")
@@ -6288,7 +6455,13 @@ def _derive_awl_timer_logic_rows(ir: AwlIR) -> list[dict[str, object]]:
         trigger_ops: list[str] = []
         for raw in trigger_ops_raw:
             alias = operand_aliases.get(_normalize_operand_token(raw), "")
-            trigger_ops.append(_support_member_name(alias or raw, "", strict_excel_mode=True))
+            normalized = _normalize_operand_token(raw)
+            # In AWL, "A Txx" refers to the timer done bit; do not use the IEC_TIMER
+            # instance as a boolean contact in LAD.
+            if TIMER_RE.fullmatch(normalized.upper()):
+                trigger_ops.append(_support_member_name(f"{normalized}_DONE", "", strict_excel_mode=True))
+            else:
+                trigger_ops.append(_support_member_name(alias or raw, "", strict_excel_mode=True))
         trigger_ops = [op for op in trigger_ops if op]
         condition_expression = " AND ".join(trigger_ops) if trigger_ops else "TRUE"
         rows.append(
@@ -7134,12 +7307,33 @@ def _dedupe_timers(items: list[tuple[str, str, str | None]]) -> list[tuple[str, 
 
 
 def _dedupe_named_members(items: list[tuple[str, str]]) -> list[tuple[str, str]]:
+    # Hard rule: TIA treats identifiers as case-insensitive for uniqueness.
+    # Therefore we must dedupe using a case-insensitive key, otherwise imports
+    # can fail with "Element 'X' is not unique".
     ordered: dict[str, str] = {}
     for name, comment in items:
-        if name in ordered:
+        key = str(name or "").strip()
+        if not key:
             continue
-        ordered[name] = comment
-    return list(ordered.items())
+        folded = key.upper()
+        if folded in ordered:
+            continue
+        ordered[folded] = comment
+    # Preserve a stable representative spelling: pick the first occurrence's original name.
+    seen: set[str] = set()
+    unique: list[tuple[str, str]] = []
+    for name, comment in items:
+        key = str(name or "").strip()
+        if not key:
+            continue
+        folded = key.upper()
+        if folded in seen:
+            continue
+        if folded not in ordered:
+            continue
+        unique.append((key, ordered[folded]))
+        seen.add(folded)
+    return unique
 
 
 def _canonicalize_step_token(token: str) -> str:

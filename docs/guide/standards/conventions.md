@@ -91,6 +91,8 @@ Regole pratiche:
 - il naming corretto non e' solo il suffisso finale: senza owner DB e path completo il riferimento non e' realmente collegato;
 - i riferimenti con spazi, numeri o naming storici validati dai tipici non vanno riscritti in forma semplificata se il target del bundle li richiede;
 - un simbolo orfano, abbreviato o serializzato con path incompleto va considerato errore bloccante.
+- il target deve restare **solo simbolico**: non usare indirizzi fisici (`DB202.DBX62.1`, `I30.1`, ...) come nome member o come leaf name; se il sorgente li contiene, vanno usati solo per determinare ownership/mapping.
+- unicita': i nomi member devono essere univoci anche ignorando il case (evitare collisioni tipo `T1_Auto` vs `t1_auto`) e non devono mai risultare vuoti dopo sanitizzazione.
 
 Esempi coerenti coi tipici:
 - `T1-A ARUNC -> Transitions -> Safe`

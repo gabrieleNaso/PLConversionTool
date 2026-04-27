@@ -7,10 +7,11 @@ Aggiornato al `27-04-2026`:
 - il preset usa sempre `operands.control_value` (`PT` per timer, `PV` per contatori).
 - nelle transition GRAPH viene mantenuta la logica booleana reale dell'Excel (non fallback su marker `T1/T2`);
 - nelle transition GRAPH ogni variabile e' risolta sul DB owner corretto dal catalogo `operands` (cross-DB);
-- i blocchi supporto vengono emessi in modo completo per famiglia; se una famiglia risulta priva di member puo' includere placeholder `NoData`.
+- i blocchi supporto vengono emessi in modo completo per famiglia; un placeholder `NoData` e' ammesso solo quando la famiglia non e' referenziata nel bundle (nessun simbolo richiesto da FB/FC/GRAPH).
 - separazione commenti FC/DB: i commenti delle reti FC non vengono copiati nei tag DB.
 - commenti DB non autocompilati: se non presenti in Excel (o in `operands.note`), restano vuoti.
 - righe `support_fc` con stesso `network` e stessa `category` vengono aggregate nella stessa rete FC (con un solo power rail LAD).
+- il target XML deve restare **solo simbolico**: nell'output non devono comparire indirizzi fisici (`I30.1`, `DB202.DBX62.1`, ...) nei nomi dei member o nei path dei riferimenti.
 
 Template consigliato:
 - `docs/templates/ir_excel_template_single_page_with_support_fc.xlsx` (pagina FC completa: `support_fc` obbligatoria)
@@ -34,7 +35,7 @@ Compatibilita':
 
 Regola base:
 - nei fogli supporto usa la colonna `network` (semplice).
-- per il flusso Excel, `operands` e `support_fc` sono obbligatori e devono contenere almeno una riga valida.
+- per il flusso Excel, `sequence`, `operands` e `support_fc` sono obbligatori; `operands` e `support_fc` devono contenere almeno una riga valida.
 
 ## 2) Foglio `sequence`
 Ogni riga puo' descrivere uno step, una transizione, o entrambi.
@@ -59,7 +60,7 @@ Regole importanti:
 Questo foglio e' il catalogo ufficiale dei segnali usati dal caso Excel.
 
 Colonne:
-- `operand`: nome operando (es. `M10.0`, `Q4.0`, `ALM_OVERTEMP`, `DB81.DBX0.0`).
+- `operand`: nome **simbolico** operando (es. `I_START_BTN`, `O_MOTOR_RUN`, `ALM_OVERTEMP`, `P013`, `L045`, `DB202_DBX62_1`).
 - `category`: categoria funzionale.
 - `datatype`: tipo variabile PLC (es. `Bool`, `Int`, `DInt`, `Real`, `Time`, `String`).
 - `control_kind`: tipo blocco controllo, opzionale:
@@ -94,6 +95,7 @@ Nota importante:
 - alias legacy `timer`, `counter`, `manual_mode`, `auto_mode` sono accettati e normalizzati a `aux`.
 - in input Excel per LEV2 usare `lv2` (o `lev2`): `mode` non viene normalizzata automaticamente a LEV2 nel foglio `operands`.
 - timer/contatori si definiscono tramite `datatype` (`IEC_TIMER`/`IEC_COUNTER`) + `control_kind` + `control_value`.
+- nel workflow di progetto si raccomanda di **non** usare indirizzi grezzi (es. `M10.0`, `DB81.DBX0.0`) come `operand`: l'Excel deve modellare il contratto simbolico del pacchetto.
 
 ## 4) Regola Strict DB (Excel)
 Per input Excel, il generatore usa `operands` come catalogo strict:
@@ -103,7 +105,7 @@ Per input Excel, il generatore usa `operands` come catalogo strict:
 - per i timer, `control_value` viene normalizzato automaticamente in formato TIA (`T#...`);
 - variabili non catalogate non vengono aggiunte "a caso" nei DB.
 
-Se una transizione usa operandi non presenti nel catalogo, il report analysis segnala warning dedicati.
+Se una transizione o una rete FC usa operandi non presenti nel catalogo, il report analysis li marca come **non risolti**: un bundle con simboli non risolti non va considerato valido per import/compile in TIA.
 
 ## 5) Compilazione FC (Pagina Unica)
 Tutto cio' che riguarda le FC e' in un solo foglio: `support_fc` (obbligatorio).
@@ -139,7 +141,7 @@ Regole pratiche:
 - se compili `result_member`/condizione, la FC della categoria usa la logica scritta qui.
 - `coil_mode` e' per-riga: `set` genera `SCoil`, `reset` genera `RCoil`, vuoto genera `Coil` normale.
 - i segnali presenti in `operands` vengono collegati ai DB supporto.
-- i segnali NON presenti in `operands` restano comunque usabili nella logica FC come variabili globali non agganciate a DB.
+- non usare segnali assenti da `operands`: aggiungili al catalogo per poterli dichiarare nel DB owner e mantenerli collegati in FC/GRAPH.
 - nelle transition GRAPH i simboli sono risolti per owner DB: una condizione puo' leggere variabili da DB diversi nella stessa rete.
 - se in una rete FC compare una variabile catalogata come controllo:
   - `datatype=IEC_TIMER` -> blocco completo `TON/TOF/TP` con `PT` da `control_value`;
@@ -171,6 +173,7 @@ Checklist compilazione manuale FC:
 2. Inserisci solo categorie reali (`io/output/diag/hmi/aux/transitions/lv2`).
 3. Se vuoi logica custom, compila `result_member` + condizione con `network` numerato.
 4. Mantieni nomi coerenti tra `member_name`, `result_member` e variabili usate in `condition_expression`.
+5. Gate di coerenza: tutte le variabili usate in `condition_expression` devono esistere in `operands` ed essere risolvibili su un DB owner (niente simboli "orfani").
 
 ## 6) Paralleli
 Per modellare un parallelo reale:
