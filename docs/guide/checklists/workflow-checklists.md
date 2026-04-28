@@ -1,7 +1,7 @@
 # Checklist operative (TIA Portal V20 / GRAPH V2)
 
 Queste checklist sono da eseguire sempre prima di perdere tempo su debug casuale.
-Fonte: `docs/reference/reports/report_del_27-04-2026.md` e `docs/reference/specs/Specifica_master_traduzione_AWL_e_generazione_XML_TIA_V20_V2_27_04.md`.
+Fonte: `docs/reference/reports/report_del_28-04-2026.md` e `docs/reference/specs/Specifica_master_traduzione_AWL_e_generazione_XML_TIA_V20_V2_28_04.md`.
 
 Regola trasversale:
 - `FB GRAPH`, `GlobalDB`, `FC LAD` e ogni eventuale blocco aggiuntivo vanno verificati come pacchetto coerente.
@@ -17,7 +17,7 @@ Regola trasversale:
 - **Transition FlgNet "subset sicuro"**: struttura LAD delle transition nel sottoinsieme accettato da TIA.
 - **Step iniziale**: verificare che `Init="true"` sia assegnato al passo corretto (in workflow Excel: `step_number=1`).
 - **Simboli risolvibili**: tutto cio' che e' referenziato nel `FlgNet` deve essere dichiarato (locale FB o `GlobalDB` con riferimento simbolico esplicito).
-- **Solo simbolico**: nei nomi dei member e nei path dei riferimenti non devono comparire indirizzi fisici (`I..`, `Q..`, `M..`, `DB..DBX..`). Gli indirizzi possono esistere nel sorgente AWL ma non nel naming target.
+- **Solo simbolico**: nei nomi dei member e nei path dei riferimenti XML non devono comparire indirizzi fisici (`I..`, `Q..`, `M..`, `DB..DBX..`). Gli indirizzi possono comparire nel sorgente AWL e, a fini diagnostici, in report/IR, ma non devono contaminare il naming target.
 - **Coerenza col pacchetto**: ogni tag, member o nome di blocco referenziato dal `GRAPH` deve esistere e combaciare davvero nel `GlobalDB`/`FC` del pacchetto corrente.
 
 ## B) Checklist rapida — GlobalDB del pacchetto importabile (+ commenti visibili)

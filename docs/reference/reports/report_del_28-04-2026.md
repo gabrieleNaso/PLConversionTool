@@ -99,6 +99,15 @@ A valle del confronto tra i documenti operativi, i report consolidati e i tipici
 - I tipici legacy importabili ma basati su runtime `V6` restano utili per reverse engineering semantico e topologico, ma non sono pattern validi per il serializer finale `V20 / GRAPH V2`.
 - La segmentazione reale dell'AWL tiene conto delle famiglie funzionali ricorrenti osservate nel caso `FC102 / AWL Romania`: allarmi, memorie/ausiliari, sequenza, manuale/automatico, emergenza/fault, uscite.
 
+### 2-bis.1 Aggiornamenti tool consolidati (28-04-2026)
+
+Le seguenti estensioni del convertitore sono da considerare coerenti con la specifica master corrente e utili per aumentare la correttezza della generazione senza introdurre hard-code di caso:
+
+- **Analisi multi-file di progetto**: i blocchi disponibili in `data/input/` vengono indicizzati (FC/FB) e le dipendenze `CALL` vengono risolte quando il blocco chiamato è presente; se manca, viene emesso un warning diagnostico (`missing_called_blocks`) ma la generazione non viene bloccata se la topologia resta dimostrabile.
+- **Correlazione runtime sequenziatore**: quando è presente un runtime esterno (es. `FC32` nel caso didattico), l'analisi può usare quell'informazione per ricondurre alias di vista dei bit passo (es. `Mxx.Syy`) al token canonico `Syy` in modo confinato al prefisso del sequenziatore locale, evitando collisioni con prefissi diversi.
+- **`external_refs` più semantici**: quando esistono alias simbolici affidabili (es. `UP/DOWN/STC/EM`), vengono preferiti come riferimenti esterni; per i DB esterni di integrazione (`DB81-OPIN`, `DB82-OPOUT`) vengono preservati sia alias strutturati (`DB81.Pxxx`, `DB82.Lxxx`) sia l'evidenza raw dell'indirizzo quando serve tracciabilità, senza usare indirizzi fisici come naming nei member target.
+- **Hint `step_roles` nell'IR**: l'IR può includere `step_roles` (mappa `step -> role`) per aiutare il builder a riconoscere ruoli ricorrenti (entry/manual/fault/emergency/end_cycle/...) senza imporre rinomina fissa dei passi.
+
 ## 2-ter. Integrazioni consolidate dal confronto puntuale con i tipici XML del corpus
 
 Il confronto tra i documenti normativi aggiornati e i file XML reali oggi disponibili nel corpus (`T1-A ARUNC`, `DB81-OPIN`, `DB82-OPOUT`, `LEV2`, `HMI`, `I-O`, `AUX`, `PARAMETERS`) ha permesso di fissare con maggiore precisione i seguenti punti.

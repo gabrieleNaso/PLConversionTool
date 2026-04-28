@@ -91,7 +91,8 @@ Regole pratiche:
 - il naming corretto non e' solo il suffisso finale: senza owner DB e path completo il riferimento non e' realmente collegato;
 - i riferimenti con spazi, numeri o naming storici validati dai tipici non vanno riscritti in forma semplificata se il target del bundle li richiede;
 - un simbolo orfano, abbreviato o serializzato con path incompleto va considerato errore bloccante.
-- il target deve restare **solo simbolico**: non usare indirizzi fisici (`DB202.DBX62.1`, `I30.1`, ...) come nome member o come leaf name; se il sorgente li contiene, vanno usati solo per determinare ownership/mapping.
+- il target deve restare **solo simbolico**: non usare indirizzi fisici (`DB202.DBX62.1`, `I30.1`, ...) come nome member o come `serialized_path`; se il sorgente li contiene, vanno usati solo per determinare ownership/mapping.
+- eccezione di tracciabilità (solo IR/report): in `external_refs` può comparire anche l'evidenza raw di un indirizzo (soprattutto per DB esterni tipo `DB81-OPIN` / `DB82-OPOUT`) a fianco di un alias strutturato (`DB81.Pxxx`, `DB82.Lxxx`), ma questo non deve "bucare" nel naming dei member e nei path XML finali.
 - unicita': i nomi member devono essere univoci anche ignorando il case (evitare collisioni tipo `T1_Auto` vs `t1_auto`) e non devono mai risultare vuoti dopo sanitizzazione.
 
 Esempi coerenti coi tipici:

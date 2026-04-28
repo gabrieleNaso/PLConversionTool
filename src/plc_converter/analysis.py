@@ -523,6 +523,7 @@ def _ir_from_payload(
         operand_timer_settings=_as_str_dict_dict(ir_payload.get("operand_timer_settings")),
         support_members=_as_dict_list(ir_payload.get("support_members")),
         support_logic=_as_dict_list(ir_payload.get("support_logic")),
+        step_roles=_as_str_dict(ir_payload.get("step_roles")),
         assumptions=_as_str_list(ir_payload.get("assumptions"))
         or [
             "IR caricato da JSON esterno (es. Excel): verificare coerenza semantica delle guardie prima dell'import TIA."
@@ -1977,6 +1978,7 @@ def _build_ir(sequence_name: str, source_name: str, networks: list[AwlNetwork]) 
         operand_aliases=operand_aliases,
         sequence_db_no=sequence_db_no,
     )
+    step_roles = _infer_step_roles(step_map, transitions)
     support_logic: list[dict[str, object]] = []
     if sequence_db_no is not None:
         support_logic.append(
@@ -2004,8 +2006,55 @@ def _build_ir(sequence_name: str, source_name: str, networks: list[AwlNetwork]) 
         auto_logic_networks=auto_logic_networks,
         external_refs=normalized_external_refs,
         support_logic=support_logic,
+        step_roles=step_roles,
         assumptions=assumptions,
     )
+
+
+def _infer_step_roles(
+    step_map: dict[str, StepCandidate],
+    transitions: list[TransitionCandidate],
+) -> dict[str, str]:
+    """
+    Best-effort semantic roles inferred generically from topology and guard hints.
+    These are hints (not hard rules) to help naming/shaping downstream builders.
+    """
+    roles: dict[str, str] = {}
+    if not step_map:
+        return roles
+
+    context = _derive_translation_context(step_map, transitions)
+    entry = context.get("entry_step", "")
+    if entry:
+        roles[entry] = "entry"
+
+    cycle_target = context.get("cycle_target_step", "")
+    if cycle_target:
+        roles.setdefault(cycle_target, "cycle_target")
+
+    # Manual/emergency/fault: heuristics based on step number and common markers.
+    for name in step_map:
+        step_no = _step_number_from_token(name)
+        upper = str(name).upper()
+        if step_no == 29 or "MAN" in upper:
+            roles.setdefault(name, "manual")
+        if step_no == 32 or "EMERG" in upper:
+            roles.setdefault(name, "emergency")
+        if step_no == 30 or "FAULT" in upper or "ALARM" in upper:
+            roles.setdefault(name, "fault")
+
+    # End-cycle: a high step that returns (TRUE-only) to a low/cycle target.
+    for tr in transitions:
+        if (tr.guard_expression or "").strip().upper() != "TRUE":
+            continue
+        if tr.guard_operands or tr.jump_labels:
+            continue
+        src_no = _step_number_from_token(tr.source_step)
+        tgt_no = _step_number_from_token(tr.target_step)
+        if src_no >= 20 and (0 <= tgt_no <= 3 or tr.target_step == cycle_target):
+            roles.setdefault(tr.source_step, "end_cycle")
+
+    return roles
 
 
 def _rewrite_external_refs_with_aliases(

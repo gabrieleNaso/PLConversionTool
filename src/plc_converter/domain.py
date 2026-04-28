@@ -190,6 +190,10 @@ class AwlIR:
     operand_timer_settings: dict[str, dict[str, str]] = field(default_factory=dict)
     support_members: list[dict[str, object]] = field(default_factory=list)
     support_logic: list[dict[str, object]] = field(default_factory=list)
+    # Generic semantic hints derived from the source that help downstream builders
+    # name/shape the target GRAPH without hardcoding per-project step numbers.
+    # Example roles: entry, manual, emergency, fault, end_cycle, cycle_target.
+    step_roles: dict[str, str] = field(default_factory=dict)
     assumptions: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:

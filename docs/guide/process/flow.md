@@ -18,6 +18,7 @@ Il convertitore non deve mescolare questi piani: il target finale resta `V20 / G
 - I sorgenti AWL vivono in `data/input/`.
 - Formati supportati: `.awl`, `.txt`, `.md` (nei `.md` si usa il primo blocco fenced con `NETWORK`).
 - Il backend legge il file AWL e lo passa al core converter come stringa (`awlSource`).
+- Quando in `data/input/` sono presenti più blocchi correlati (es. FC sequenza + FC runtime chiamate), il tool può eseguire un'analisi **di progetto**: indicizza i blocchi disponibili e prova a risolvere le dipendenze `CALL` durante l'analisi del blocco principale.
 
 ### Variante: input via Codex
 Quando descrivi a Codex il GRAPH/comportamento:
@@ -54,8 +55,8 @@ L'IR nasce da:
 4. **Costruzione IR**: grafo/struttura di nodi (step, transition, timer, mapping DB, ownership delle variabili globali, riferimenti simbolici completi).
 5. **Validazione**: coerenza minima e contratti cross-blocco (riferimenti presenti, topologia consistente, owner DB, branch path, leaf name, cardinalita' del pacchetto).
    - gate hard: nessuna variabile globale "orfana"; tutto cio' che viene referenziato in `FB/FC/GRAPH` deve esistere davvero in un DB owner con naming simbolico coerente.
-   - se l'AWL contiene `CALL` a blocchi non presenti nei sorgenti disponibili, il report segnala una dipendenza mancante (warning `missing_called_blocks`).
-   - quando il sorgente e' monolitico e non include le FC chiamate, alcune diramazioni possono essere ricostruite con regole interne (es. split su presenza), ma non tutte le semantiche esterne sono deducibili.
+   - se l'AWL contiene `CALL` a blocchi non presenti nei sorgenti disponibili, il report segnala una dipendenza mancante (warning `missing_called_blocks`); se invece i blocchi chiamati sono presenti in `data/input/`, la dipendenza viene correlata e riportata come analisi di progetto.
+   - quando è presente un runtime sequenziatore esterno (es. un blocco stile `FC32`), il convertitore può usare tale contesto per migliorare l'estrazione delle transizioni (alias vista bit passo tipo `Mxx.Syy` -> `Syy`, confinata al prefisso del sequenziatore locale) e per produrre un contratto dati sequenziatore più pulito.
 
 ### Cos'e' l'IR (cosa rappresenta)
 L'IR e' il modello dati del sequenziatore:
@@ -65,6 +66,7 @@ L'IR e' il modello dati del sequenziatore:
 - condizioni/guard;
 - simboli e variabili richieste dal `GlobalDB`;
 - owner DB, branch path e leaf name delle variabili globali;
+- hint semantici opzionali (es. `step_roles`) per ruoli ricorrenti (entry/manual/fault/emergency/end_cycle/...), senza hard-code di numeri passo;
 - mapping coerente verso `FB GRAPH`, `GlobalDB`, `FC LAD`.
 
 In pratica e' il **contratto interno** che garantisce coerenza tra i blocchi.

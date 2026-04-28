@@ -132,7 +132,7 @@ Note operative:
 Se in `data/input/` sono presenti piu' blocchi (es. `# FC102`, `# FC32` in file diversi), la generazione indicizza i blocchi disponibili e registra nel report eventuali dipendenze trovate via `CALL`:
 - nel file `<Name>_analysis.json` trovi `ir.support_logic.kind=project_dependencies` con `called_blocks/present_blocks/missing_blocks`.
 - se manca un blocco chiamato, compare un warning `missing_called_blocks`.
- - quando il blocco chiamato e' presente, il report include anche `ir.support_logic.kind=dependency_analyses` con un sommario dell'analisi dei blocchi dipendenti (utile per verificare correlazioni e segnali mancanti).
+- quando il blocco chiamato e' presente, il report include anche `ir.support_logic.kind=dependency_analyses` con un sommario dell'analisi dei blocchi dipendenti (utile per verificare correlazioni e segnali mancanti).
 
 Quando i sorgenti esterni non sono disponibili (caso: AWL monolitico unico), alcune diramazioni possono comunque essere ricostruite con regole interne (es. split su presenza pezzo), ma il tool segnala comunque le chiamate AWL non risolte.
 
@@ -164,23 +164,24 @@ curl -sS -X POST "http://127.0.0.1:8000/api/conversion/export" \
 ```bash
 curl -sS -X POST "http://127.0.0.1:8000/api/conversion/export-ir" \
   -H "Content-Type: application/json" \
-  -d '{
-    "sequenceName":"MySeq_IR_001",
-    "sourceName":"myseq_ir.xlsx",
-    "outputDir":"data/output/generated/myseq_ir_001",
-    "ir":{
-      "networks":[{"index":1,"title":"Init"}],
-      "steps":[{"name":"S1"},{"name":"S2"}],
-      "transitions":[
-        {
-          "transition_id":"T1",
-          "source_step":"S1",
-          "target_step":"S2",
-          "guard_expression":"TRUE"
-        }
-      ]
-    }
-  }'
+	  -d '{
+	    "sequenceName":"MySeq_IR_001",
+	    "sourceName":"myseq_ir.xlsx",
+	    "outputDir":"data/output/generated/myseq_ir_001",
+	    "ir":{
+	      "networks":[{"index":1,"title":"Init"}],
+	      "steps":[{"name":"S1"},{"name":"S2"}],
+	      "step_roles":{"S1":"entry"},
+	      "transitions":[
+	        {
+	          "transition_id":"T1",
+	          "source_step":"S1",
+	          "target_step":"S2",
+	          "guard_expression":"TRUE"
+	        }
+	      ]
+	    }
+	  }'
 ```
 
 ## Generare da Excel manuale (IR -> JSON -> XML)

@@ -8,6 +8,7 @@ Aggiornato al `27-04-2026`:
 - nelle transition GRAPH viene mantenuta la logica booleana reale dell'Excel (non fallback su marker `T1/T2`);
 - nelle transition GRAPH ogni variabile e' risolta sul DB owner corretto dal catalogo `operands` (cross-DB);
 - i blocchi supporto vengono emessi in modo completo per famiglia; un placeholder `NoData` e' ammesso solo quando la famiglia non e' referenziata nel bundle (nessun simbolo richiesto da FB/FC/GRAPH).
+- e' ammesso il campo opzionale `step_roles` nell'IR JSON per hint semantici dei passi (non sostituisce `numero_step=1` per l'ingresso).
 - separazione commenti FC/DB: i commenti delle reti FC non vengono copiati nei tag DB.
 - commenti DB non autocompilati: se non presenti in Excel (o in `operands.note`), restano vuoti.
 - righe `support_fc` con stesso `network` e stessa `category` vengono aggregate nella stessa rete FC (con un solo power rail LAD).

@@ -380,6 +380,21 @@ Quando la topologia non e dimostrabile, il convertitore deve produrre:
 - elenco dei segnali o delle reti ambigue;
 - proposta controllata di interpretazione, separata dall'IR confermato.
 
+### 7-bis.8 Analisi multi-file, CALL e alias step-bit
+
+Il convertitore deve supportare un'analisi **di progetto** quando il sorgente disponibile non è un singolo listato, ma un insieme di blocchi (più FC/FB) che collaborano.
+
+Regole:
+
+- i blocchi disponibili vanno indicizzati per tipo/numero (`FC 32`, `FC 102`, `FB 10`, ...), indipendentemente dal formato di input (`.awl/.txt/.md`);
+- durante l'analisi del blocco principale, i `CALL` devono essere risolti se i blocchi chiamati sono presenti nel progetto; se non sono presenti, la dipendenza va segnalata come warning diagnostico e non deve bloccare la generazione quando la topologia resta dimostrabile;
+- quando è presente un runtime sequenziatore esterno (famiglia 1 in 7-bis.1), il convertitore può usare il runtime per riconoscere **alias** del tipo `Mxx.Syy` / `Mxx".Syy` / `Mxx_Syy` come vista locale del passo `Syy` **solo** se:
+  - l'alias è confinato a un prefisso di sequenziatore coerente (stesso `Mxx` nel caso);
+  - il mapping non collassa sequenziatori esterni o paralleli (prefissi diversi devono rimanere distinti).
+
+Obiettivo:
+- migliorare l'estrazione transizioni e la correlazione tra logica applicativa e meccanismo legacy (es. runtime che genera i bit `Sxx`), senza introdurre hard-code su `FC32` o su offset specifici del DB.
+
 ## 8. Regola di non dipendenza dall'ordine dei segmenti
 
 L'ordine dei segmenti AWL non è una rappresentazione affidabile della topologia finale della macchina a stati.
@@ -454,6 +469,19 @@ Prima della compilazione verso i blocchi TIA, indipendentemente dal fatto che la
 - `outputs`;
 - `hmi_conditions`;
 - `external_refs`.
+- `step_roles` (hint semantici generici per ruoli di passo).
+
+### 13-bis. Step roles (hint semantici, generici)
+
+L'IR può includere un dizionario `step_roles` che mappa `step_name -> role`.
+
+Scopo:
+- fornire al builder GRAPH un'informazione semantica **generica** per riconoscere ruoli ricorrenti (manuale/emergenza/fault/fine ciclo/target ciclo/entry) senza imporre rinomina forzata dei passi.
+
+Regole hard:
+- `step_roles` non deve dipendere da numeri fissi di passo (es. "S28 = END") e non deve essere vincolato a un caso specifico;
+- quando l'IR deriva da Excel, `step_roles` è ammesso come campo opzionale (compilato dall'utente o inferito dal tool), ma non sostituisce `numero_step=1` per l'ingresso;
+- quando l'IR deriva da AWL, `step_roles` può essere inferito con euristiche (token, variabili tipiche, segmenti manual/fault/emergenza) e va trattato come **hint**, non come fatto certo.
 
 ## 14. Regola di separazione tra identità logica e nome finale
 
