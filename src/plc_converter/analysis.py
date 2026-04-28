@@ -5985,14 +5985,25 @@ def _build_awl_operand_alias_map(ir: AwlIR) -> dict[str, str]:
             address_key = _normalize_operand_token(address_raw)
             if not address_key:
                 continue
+            comment_alias = _derive_symbol_alias_from_comment(comment)
             base_alias = _derive_symbol_alias_from_base(symbolic_base)
             # Prefer the *literal* symbolic leaf when present (e.g. "LLALM".DB202_DBX32_0),
             # even if it looks address-like. This keeps generated DB members stable and meaningful.
+            address_like_leaf = False
             if symbolic_leaf:
+                address_like_leaf = bool(
+                    re.fullmatch(r"DB\d+_DB[XBWD]\d+(?:_\d+)?", symbolic_leaf, flags=re.IGNORECASE)
+                    or re.fullmatch(r"DB\d+_DB[XBWD]\d+_\d+", symbolic_leaf, flags=re.IGNORECASE)
+                )
                 # For step-like leaves (Sxx), prefix with the base when it is not the local sequence
                 # to avoid collisions across sequencers (e.g. M03.S03 vs M02.S03).
                 if STEP_RE.fullmatch(symbolic_leaf) and base_alias and local_prefix and base_alias.upper() != local_prefix.upper():
                     alias_candidate = f"{base_alias}_{symbolic_leaf}"
+                elif address_like_leaf:
+                    # Some Siemens exports encode the address into the symbolic leaf
+                    # (e.g. "LLALM".DB202_DBX62_1). Prefer a name derived from the
+                    # comment (when available) so DB members stay symbolic.
+                    alias_candidate = comment_alias or base_alias or symbolic_leaf
                 else:
                     alias_candidate = symbolic_leaf
             else:
@@ -6002,9 +6013,12 @@ def _build_awl_operand_alias_map(ir: AwlIR) -> dict[str, str]:
                 continue
             owner = alias_owner.get(alias_norm)
             if owner and owner != address_key:
-                if symbolic_leaf:
+                if symbolic_leaf and not address_like_leaf:
                     disambiguator = symbolic_leaf
-                elif comment_alias and comment_alias != alias_norm:
+                elif comment_alias:
+                    # If the comment-derived alias is the same for multiple addresses,
+                    # still use it as disambiguation seed (it stays semantic), and add
+                    # a short stable hash suffix when needed.
                     disambiguator = comment_alias
                 else:
                     disambiguator = _stable_hash_token(address_key, size=6)

@@ -3,6 +3,9 @@
 PROJECT_NAME := plconversiontool
 COMPOSE := docker compose -p $(PROJECT_NAME) -f compose.dev.yml
 EXCEL_FILE ?= docs/templates/ir_excel_template_single_page_with_support_fc.xlsx
+# Optional defaults for TIA import (env fallback kept working even when make vars are unset)
+PROJECT_PATH ?= $(TIA_PROJECT_PATH)
+TARGET_PATH ?= $(TIA_TARGET_PATH)
 
 help:
 	@printf "%s\n" \
@@ -79,7 +82,11 @@ generate-excel-ir:
 generate-excel: generate-excel-ir
 
 import-generated:
-	@python3 scripts/import_generated_to_tia.py --output-root data/output/generated --project-path "$(PROJECT_PATH)" --target-path "$(TARGET_PATH)" --prefix "$(IMPORT_PREFIX)" --bundle "$(IMPORT_BUNDLE)"
+	@python3 scripts/import_generated_to_tia.py --output-root data/output/generated \
+	  $(if $(strip $(PROJECT_PATH)),--project-path "$(PROJECT_PATH)",) \
+	  $(if $(strip $(TARGET_PATH)),--target-path "$(TARGET_PATH)",) \
+	  --prefix "$(IMPORT_PREFIX)" \
+	  --bundle "$(IMPORT_BUNDLE)"
 
 generate-and-import: generate-input import-generated
 

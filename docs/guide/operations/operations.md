@@ -99,6 +99,13 @@ make generate-input INPUT_PREFIX="romania_"
 
 ### Import batch di tutto `data/output/generated/`
 
+Prerequisito: stack avviato (backend + tia-bridge).
+
+```bash
+make up
+curl -sS http://127.0.0.1:8000/health
+```
+
 ```bash
 make import-generated \
   PROJECT_PATH="C:\\Users\\Admin\\Desktop\\prova_connessione_openness\\prova_connessione_openness.ap20" \
@@ -106,7 +113,9 @@ make import-generated \
 ```
 
 Nota:
-- `PROJECT_PATH` e `TARGET_PATH` sono obbligatori (se lasciati vuoti, lo script termina con errore).
+- `PROJECT_PATH` e `TARGET_PATH` sono obbligatori, ma puoi passarli anche via variabili ambiente:
+  - `TIA_PROJECT_PATH` (equivale a `PROJECT_PATH`)
+  - `TIA_TARGET_PATH` (equivale a `TARGET_PATH`)
 
 ### Import di una sola cartella bundle (consigliato)
 

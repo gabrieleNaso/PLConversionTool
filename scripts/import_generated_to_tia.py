@@ -29,6 +29,12 @@ def _http_json(method: str, url: str, payload: dict | None = None, timeout: floa
     except urllib.error.HTTPError as exc:
         body = exc.read().decode("utf-8", errors="replace")
         raise RuntimeError(f"HTTP {exc.code} {exc.reason}: {body}") from exc
+    except urllib.error.URLError as exc:
+        raise RuntimeError(
+            f"Cannot reach backend at {url}. "
+            "Is the stack running? Try `make up` and verify `http://127.0.0.1:8000/health`, "
+            "or set BACKEND_URL to the correct backend base URL."
+        ) from exc
 
 
 def _list_bundle_dirs(output_root: Path, prefix: str | None, bundle: str | None) -> list[Path]:
@@ -211,7 +217,11 @@ def main() -> int:
                 "saveProject": bool(args.save_project),
                 "notes": f"batch import {bundle_dir.name}",
             }
-            import_job_id = _queue_import_job(args.backend_url, payload)
+            try:
+                import_job_id = _queue_import_job(args.backend_url, payload)
+            except RuntimeError as exc:
+                print(f"[ERROR] {exc}")
+                return 2
             suffix_note = f" [retry {retry_index}]" if retry_index else ""
             print(f"[QUEUED{suffix_note}] {current_bundle_dir.name} import={import_job_id}")
 
