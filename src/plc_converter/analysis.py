@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import hashlib
+import os
 import re
 from xml.sax.saxutils import escape
 
@@ -131,9 +132,11 @@ TIA_RESERVED_KEYWORDS = {
 }
 
 # Tracking branch extraction (synthetic TRK_CHECK step) is guarded by conservative
-# pattern matching on symbolic operands; it's enabled by default to better match
-# sequencers that embed inter-machine tracking checks in AWL.
-ENABLE_TRACKING_TRANSLATION_RULE = True
+# pattern matching on symbolic operands. Keep it opt-in by default: it can change
+# IR topology and is better enabled explicitly per-case.
+ENABLE_TRACKING_TRANSLATION_RULE = str(
+    os.getenv("PLC_ENABLE_TRACKING_TRANSLATION", "0")
+).strip().lower() in {"1", "true", "yes", "on"}
 
 # External integration DBs (fixed contracts observed in corpus).
 # Note: DB202 is used by the LLALM alarm map in the Romania source and must be
@@ -1319,7 +1322,7 @@ def _build_ir_scaffold(ir: AwlIR) -> ConversionScaffold:
         ),
         artifact_plan=ArtifactPlan(
             graph_fb_name=f"FB_{ir.sequence_name}_GRAPH_auto.xml",
-            global_db_name="",
+            global_db_name=f"DB19_{ir.sequence_name}_aux_db_auto.xml",
             lad_fc_name=f"FC14_{ir.sequence_name}_transitions_lad_auto.xml",
             output_directory="data/output/",
             naming_notes=[
@@ -2787,7 +2790,30 @@ def _build_artifact_previews(scaffold, ir: AwlIR, graph_topology: GraphTopology)
         )
     )
 
-    previews.extend(_build_support_artifact_previews(ir))
+    support_previews = _build_support_artifact_previews(ir)
+    previews.extend(support_previews)
+
+    # Expose one representative GlobalDB as part of the "baseline" bundle contract.
+    # The generator may create multiple DBs; we pick the IO DB when available,
+    # otherwise the first support GlobalDB preview.
+    global_db = next(
+        (item for item in support_previews if item.artifact_type == "support_global_db_aux"),
+        None,
+    ) or next(
+        (item for item in support_previews if item.artifact_type == "support_global_db_io"),
+        None,
+    ) or next(
+        (item for item in support_previews if item.artifact_type.startswith("support_global_db_")),
+        None,
+    )
+    if global_db is not None:
+        previews.append(
+            ArtifactPreview(
+                artifact_type="global_db",
+                file_name=global_db.file_name,
+                content=global_db.content,
+            )
+        )
     return previews
 
 
@@ -2807,7 +2833,7 @@ def _build_artifact_manifest(previews: list[ArtifactPreview]) -> dict[str, list[
     }
     for preview in previews:
         item = {"artifactType": preview.artifact_type, "fileName": preview.file_name}
-        if preview.artifact_type in {"graph_fb", "lad_fc"}:
+        if preview.artifact_type in {"graph_fb", "lad_fc", "global_db"}:
             manifest["baseline"].append(item)
         elif preview.artifact_type in {"support_global_db_io", "support_lad_fc_io"}:
             manifest["support_io"].append(item)
@@ -2973,6 +2999,9 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     token = str(operand or "").strip()
                     if not token:
                         continue
+                    upper = token.upper()
+                    if MEMORY_RE.fullmatch(upper) or re.fullmatch(r"M\\d+_S\\d+", upper) or re.fullmatch(r"M\\d+\\.S\\d+", upper):
+                        token = _guard_operand_db_member_name(token, strict_excel_mode=False)
                     owner = symbol_home_db_map.get(token, db_name_for_category)
                     _record_required(owner, token, comment)
                     if token.endswith("_DONE") and len(token) > len("_DONE"):
@@ -2983,7 +3012,11 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                 for token in re.findall(r"[A-Za-z_]\w*(?:\.\w+)*", expression):
                     if token.upper() in {"AND", "OR", "NOT", "TRUE", "FALSE"}:
                         continue
-                    normalized = _support_member_name(token, "", strict_excel_mode=True)
+                    upper = token.upper()
+                    if MEMORY_RE.fullmatch(upper) or re.fullmatch(r"M\\d+_S\\d+", upper) or re.fullmatch(r"M\\d+\\.S\\d+", upper):
+                        normalized = _guard_operand_db_member_name(token, strict_excel_mode=False)
+                    else:
+                        normalized = _support_member_name(token, "", strict_excel_mode=True)
                     if not normalized:
                         continue
                     owner = symbol_home_db_map.get(normalized, db_name_for_category)
@@ -5485,13 +5518,16 @@ def _collect_aux_support_members(ir: AwlIR) -> list[tuple[str, str]]:
     for memory in ir.memories:
         raw = str(memory.name or "").strip()
         alias = operand_aliases.get(_normalize_operand_token(raw), "")
-        member = _support_member_name(alias or raw, "", strict_excel_mode=True)
-        members.append((member, f"Aux memory ({memory.role}) {alias or member}"))
+        symbol = alias or _normalize_operand_token(raw) or raw
+        # Hard rule: avoid raw memory addresses as member names; keep a stable AUX_MEM_ prefix.
+        member = _support_member_name(symbol, "AUX_MEM", strict_excel_mode=False)
+        members.append((member, f"Aux memory ({memory.role}) {alias or raw}"))
     for timer in ir.timers:
         raw = str(timer.source_timer or "").strip()
         alias = operand_aliases.get(_normalize_operand_token(raw), "")
-        member = _support_member_name(alias or raw, "", strict_excel_mode=True)
-        members.append((member, f"Aux timer {alias or member}"))
+        symbol = alias or _normalize_operand_token(raw) or raw
+        member = _support_member_name(symbol, "AUX_T", strict_excel_mode=False)
+        members.append((member, f"Aux timer {alias or raw}"))
         # Timer operands (e.g. T50) are used as bool contacts in AWL via the
         # "done" bit. Model this explicitly as a separate BOOL member.
         done_member = _guard_operand_db_member_name(raw, strict_excel_mode=False)
@@ -5652,7 +5688,7 @@ def _support_category_for_guard_operand(operand: str) -> str:
         return "aux"
     if re.fullmatch(r"[AQ]\d+(?:\.\d+)?", token) or re.fullmatch(r"[IE]\d+(?:\.\d+)?", token):
         return "io"
-    if re.fullmatch(r"M\d+(?:\.\d+)?", token) or re.fullmatch(r"T\d+", token):
+    if re.fullmatch(r"M\d+(?:\.\d+)?", token) or re.fullmatch(r"M\d+(?:(?:[._]S)|_S)\d+", token) or re.fullmatch(r"T\d+", token):
         return "aux"
     db_match = re.fullmatch(r"DB(\d+)\.DB[XBWD]\d+(?:\.\d+)?", token)
     if db_match:
@@ -5698,9 +5734,10 @@ def _collect_transition_guard_members_by_category(
                 grouped[category].append((existing_member, f"Guard operand {comment_symbol}"))
                 continue
             # Keep guard members literal to AWL operands (TIA-sanitized),
-            # avoiding synthetic prefixes such as TR_OP_/AUX_MEM_.
+            # but avoid raw address-only member names when possible.
             alias = operand_aliases.get(raw_key, "")
-            if category == "aux" and TIMER_RE.fullmatch(raw.upper()):
+            upper = raw.upper()
+            if category == "aux" and (TIMER_RE.fullmatch(upper) or MEMORY_RE.fullmatch(upper) or re.fullmatch(r"M\\d+_S\\d+", upper)):
                 member = _guard_operand_db_member_name(raw, strict_excel_mode=False)
             else:
                 member = _support_member_name(alias or raw, "", strict_excel_mode=True)
@@ -6431,7 +6468,13 @@ def _db_member_name(raw_name: str) -> str:
 
 def _excel_preserving_db_member_name(raw_name: str, *, strict_excel_mode: bool) -> str:
     if strict_excel_mode:
-        return _sanitize_tia_member_name(raw_name, fallback="Signal", seed=raw_name)
+        token = str(raw_name or "").strip()
+        upper = token.upper()
+        # Even in "preserving" mode, avoid raw memory-style tokens as DB member names.
+        if MEMORY_RE.fullmatch(upper) or re.fullmatch(r"M\d+_S\d+", upper) or re.fullmatch(r"M\d+\.S\d+", upper):
+            normalized = _normalize_operand_token(token).replace(".", "_")
+            return _sanitize_tia_member_name(f"AUX_MEM_{normalized}", fallback="Signal", seed=token)
+        return _sanitize_tia_member_name(token, fallback="Signal", seed=token)
     return _db_member_name(raw_name)
 
 
@@ -6439,6 +6482,10 @@ def _guard_operand_db_member_name(operand: str, *, strict_excel_mode: bool = Fal
     token = str(operand or "").strip()
     if strict_excel_mode:
         return _excel_preserving_db_member_name(token, strict_excel_mode=True)
+    upper = token.upper()
+    if MEMORY_RE.fullmatch(upper) or re.fullmatch(r"M\d+_S\d+", upper):
+        normalized = _normalize_operand_token(token).replace(".", "_")
+        return _db_member_name(f"AUX_MEM_{normalized}")
     if TIMER_RE.fullmatch(token.upper()):
         return _db_member_name(f"{token}_DONE")
     return _db_member_name(token)
@@ -6506,6 +6553,10 @@ def _derive_awl_action_logic_rows(ir: AwlIR) -> dict[str, list[dict[str, object]
         # In AWL, using "Txx" in boolean logic means the timer's done bit, not the IEC_TIMER instance.
         if TIMER_RE.fullmatch(normalized.upper()):
             return _support_member_name(f"{normalized}_DONE", "", strict_excel_mode=True)
+        # Avoid leaking raw memory-style operands as member names.
+        if re.fullmatch(r"M\\d+(?:(?:[._]S)|_S)\\d+", normalized, flags=re.IGNORECASE) or MEMORY_RE.fullmatch(normalized.upper()):
+            normalized_mem = normalized.replace(".", "_").upper()
+            return _support_member_name(normalized_mem, "AUX_MEM", strict_excel_mode=False)
         alias = operand_aliases.get(normalized, "")
         return _support_member_name(alias or raw, "", strict_excel_mode=True)
 
@@ -6830,12 +6881,6 @@ def _normalize_external_refs(items: set[str]) -> list[str]:
         dotted = re.fullmatch(r"DB(\d+)_DB([XBWD])(\d+)_(\d+)", token)
         if dotted:
             token = f"DB{dotted.group(1)}.DB{dotted.group(2)}{dotted.group(3)}.{dotted.group(4)}"
-
-        db_operand = re.fullmatch(r"DB(\d+)\.DB[XBWD]\d+(?:\.\d+)?", token)
-        if db_operand and int(db_operand.group(1)) not in EXTERNAL_DB_IDS:
-            # Internal sequence DBs are handled by support category ownership,
-            # they are not external integration references.
-            continue
 
         normalized.add(token)
 

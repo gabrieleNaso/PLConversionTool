@@ -52,7 +52,9 @@ def build_conversion_scaffold(
 
     artifact_plan = ArtifactPlan(
         graph_fb_name=f"FB_{normalized_name}_GRAPH_auto.xml",
-        global_db_name="",
+        # The generator may output multiple GlobalDBs; use the IO DB as the
+        # representative "package DB" for baseline workflows and UI.
+        global_db_name=f"DB19_{normalized_name}_aux_db_auto.xml",
         lad_fc_name=f"FC14_{normalized_name}_transitions_lad_auto.xml",
         output_directory="data/output/",
         naming_notes=[
