@@ -478,6 +478,26 @@ def _read_meta(path: Path) -> dict[str, str]:
     return meta
 
 
+def _read_ir_passthrough(path: Path) -> dict | None:
+    workbook = load_workbook(path, data_only=True)
+    if "ir_passthrough" not in workbook.sheetnames:
+        return None
+    rows = _read_sheet_rows(path, "ir_passthrough")
+    chunks: list[str] = []
+    for row in rows:
+        value = _cell_text(row.get("json_chunk"))
+        if value:
+            chunks.append(value)
+    raw = "".join(chunks).strip()
+    if not raw:
+        return None
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError:
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
 def _build_steps_from_sequence_rows(rows: list[dict[str, object]]) -> list[dict[str, object]]:
     step_map: dict[str, dict[str, object]] = {}
     for row in rows:
@@ -560,6 +580,15 @@ def _build_transitions_from_rows(rows: list[dict[str, object]]) -> list[dict[str
 
 
 def build_ir_from_excel(path: Path, sequence_name: str | None = None) -> tuple[str, str, dict]:
+    passthrough = _read_ir_passthrough(path)
+    if passthrough is not None:
+        original_sequence = _cell_text(passthrough.get("sequence_name")) or path.stem
+        normalized_sequence = _slugify(sequence_name or original_sequence)
+        source_name = _cell_text(passthrough.get("source_name")) or path.name
+        passthrough["sequence_name"] = normalized_sequence
+        passthrough["source_name"] = source_name
+        return normalized_sequence, source_name, passthrough
+
     _ensure_required_excel_format(path)
     # Meta sheet is deprecated: sequence/source come from CLI and filename.
     # Legacy "meta" values are intentionally ignored.
@@ -851,7 +880,7 @@ def main() -> int:
 
     # Keep internal sequence/block naming aligned with package folder name.
     # Default source for both is the Excel filename (sanitized), unless explicitly overridden.
-    effective_sequence_name = args.sequence_name or _slugify(excel_path.stem)
+    effective_sequence_name = args.sequence_name if (args.sequence_name or "").strip() else None
     sequence_name, source_name, ir_payload = build_ir_from_excel(
         path=excel_path,
         sequence_name=effective_sequence_name,

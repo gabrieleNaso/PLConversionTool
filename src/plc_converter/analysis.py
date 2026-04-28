@@ -4436,9 +4436,20 @@ def _build_support_lad_compile_units(
                 condition_operands = _as_str_list(logic_row.get("condition_operands"))
                 coil_mode = str(logic_row.get("coil_mode") or "").strip()
                 explicit_comment = str(logic_row.get("comment") or "").strip()
-                if not comment and explicit_comment:
-                    comment = explicit_comment
-                _ = operand_notes
+                note_hints: list[str] = []
+                for token in [result_member, *condition_operands]:
+                    note = str(operand_notes.get(str(token).strip()) or "").strip()
+                    if note and note not in note_hints:
+                        note_hints.append(note)
+                inferred_comment = " | ".join(note_hints).strip()
+                resolved_comment = explicit_comment
+                if resolved_comment and inferred_comment:
+                    if inferred_comment not in resolved_comment:
+                        resolved_comment = f"{resolved_comment} | {inferred_comment}"
+                else:
+                    resolved_comment = resolved_comment or inferred_comment
+                if not comment and resolved_comment:
+                    comment = resolved_comment
                 flgnet_fragments.append(
                     _build_support_logic_flgnet(
                         db_name=db_name,
