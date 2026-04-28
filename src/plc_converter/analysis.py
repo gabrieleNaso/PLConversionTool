@@ -139,12 +139,26 @@ def _support_root_struct_for_db_name(db_name: str) -> str | None:
         return "Transitions"
     return None
 
-# Tracking branch extraction (synthetic TRK_CHECK step) is guarded by conservative
-# pattern matching on symbolic operands. Keep it opt-in by default: it can change
-# IR topology and is better enabled explicitly per-case.
-ENABLE_TRACKING_TRANSLATION_RULE = str(
-    os.getenv("PLC_ENABLE_TRACKING_TRANSLATION", "0")
-).strip().lower() in {"1", "true", "yes", "on"}
+# Tracking branch extraction (synthetic TRK_CHECK / TRK_TRANSFER steps) relies on
+# conservative pattern matching. By default, enable it automatically only when a
+# seed transition is detected; allow forcing ON/OFF via env.
+#
+# Values:
+# - "0"/"false"/"off": force disable
+# - "1"/"true"/"on": force enable
+# - unset/other: auto (enable when seed detected)
+TRACKING_TRANSLATION_MODE = str(os.getenv("PLC_ENABLE_TRACKING_TRANSLATION", "auto")).strip().lower()
+
+
+def _tracking_translation_is_enabled(
+    step_map: dict[str, StepCandidate],
+    transitions: list[TransitionCandidate],
+) -> bool:
+    if TRACKING_TRANSLATION_MODE in {"0", "false", "no", "off", "disable", "disabled"}:
+        return False
+    if TRACKING_TRANSLATION_MODE in {"1", "true", "yes", "on", "enable", "enabled"}:
+        return True
+    return any(_is_tracking_seed_transition(item) for item in transitions)
 
 # External integration DBs (fixed contracts observed in corpus).
 # Note: DB202 is used by the LLALM alarm map in the Romania source and must be
@@ -649,8 +663,8 @@ def _apply_translation_rules(
         _augment_end_step(step_map, transitions, context)
         _augment_recycle_split_branch(step_map, transitions, context)
 
-    # Rule 2: tracking micro-flow extraction (opt-in).
-    if ENABLE_TRACKING_TRANSLATION_RULE:
+    # Rule 2: tracking micro-flow extraction (auto when seed detected; overridable).
+    if _tracking_translation_is_enabled(step_map, transitions):
         _augment_tracking_branch(step_map, transitions)
 
     # Rule 3: presence-loop branch (general). Some sequencers keep a "starting" step
@@ -2429,11 +2443,18 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
     else:
         entry_step = None
         for step in ordered_steps:
+            # Synthetic tracking steps are never valid entry points.
+            if "TRK_" in str(step.name or "").upper():
+                continue
             if step.name not in transition_targets:
                 entry_step = step.name
                 break
         if entry_step is None:
-            entry_step = ordered_steps[0].name
+            # As a last resort (snippets), fall back to the first non-tracking step.
+            entry_step = next(
+                (s.name for s in ordered_steps if "TRK_" not in str(s.name or "").upper()),
+                ordered_steps[0].name,
+            )
 
     warnings: list[str] = []
     if ir.transitions:

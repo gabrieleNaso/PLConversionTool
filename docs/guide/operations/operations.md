@@ -349,6 +349,13 @@ ls -la data/input/
     2. controlla `<Name>_analysis.json` (`ir.transitions[].guard_expression`);
     3. verifica che l'espressione mantenga `OR` e `NOT` dove presenti in AWL.
 
+### Note su tracking (step 100/101)
+- Il convertitore puo' introdurre automaticamente i passi sintetici `S100_TRK_CHECK` / `S101_TRK_TRANSFER` quando rileva un pattern di tracking (sequenza remota + presenza `PT/PT_END`) nel sorgente.
+- Override via env `PLC_ENABLE_TRACKING_TRANSLATION`:
+  - `0`/`false`/`off` = disabilita;
+  - `1`/`true`/`on` = forza abilitazione;
+  - valore non settato/altro = auto (default).
+
 ## Comandi base utili
 
 ### Logs

@@ -805,7 +805,7 @@ def test_conversion_analyze_augments_s7_recycle_branch_for_traduzione_pattern() 
     )
 
 
-def test_conversion_analyze_does_not_augment_tracking_steps_by_default() -> None:
+def test_conversion_analyze_auto_augments_tracking_steps_when_pattern_detected() -> None:
     client = TestClient(app)
     res = client.post(
         "/api/conversion/analyze",
@@ -836,10 +836,13 @@ def test_conversion_analyze_does_not_augment_tracking_steps_by_default() -> None
     payload = res.json()
     steps = {item["name"]: item for item in payload["ir"]["steps"]}
     transitions = payload["ir"]["transitions"]
-    assert "S100_TRK_CHECK" not in steps
-    assert "S101_TRK_TRANSFER" not in steps
+    assert "S100_TRK_CHECK" in steps
     assert any(
-        item["source_step"] == "S3" and item["target_step"] == "S22"
+        item["source_step"] == "S3" and item["target_step"] == "S100_TRK_CHECK"
+        for item in transitions
+    )
+    assert any(
+        item["source_step"] == "S100_TRK_CHECK" and item["target_step"] == "S22"
         for item in transitions
     )
 
@@ -876,6 +879,34 @@ def test_conversion_analyze_graph_transition_binds_owner_db_and_member_aliases()
     assert '<Component Name="DB18_Owner_DB_Bind_EXT_DB" />' not in graph_preview
     assert '<Component Name="M44_0" />' not in graph_preview
     assert '<Component Name="TR_OP_DB102_DBX25_5" />' not in graph_preview
+
+
+def test_conversion_analyze_auto_enables_tracking_steps_when_seed_detected() -> None:
+    client = TestClient(app)
+    res = client.post(
+        "/api/conversion/analyze",
+        json={
+            "sequenceName": "Tracking Auto",
+            "sourceName": "tracking_auto.awl",
+            "awlSource": "\n".join(
+                [
+                    "NETWORK 1",
+                    "      A     S1",
+                    "      A     S3",
+                    "      A     M03.S03",
+                    "      A     M03.PT",
+                    "      S     S4",
+                ]
+            ),
+        },
+    )
+    assert res.status_code == 200
+    payload = res.json()
+    graph_steps = payload["graph_topology"]["step_nodes"]
+    trk_step = next((item for item in graph_steps if "TRK_CHECK" in item["name"]), None)
+    assert trk_step is not None
+    assert trk_step["step_no"] == 100
+    assert trk_step["init"] is False
 
 
 def test_conversion_analyze_detects_q_outputs_as_output_targets() -> None:
