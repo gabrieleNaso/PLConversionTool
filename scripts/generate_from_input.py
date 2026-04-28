@@ -651,9 +651,6 @@ def main() -> int:
 
         ir_json_path = bundle_dir / f"{sequence_name}_ir.json"
         ir_json_path.write_text(json.dumps(ir_payload, indent=2), encoding="utf-8")
-        excel_path = bundle_dir / f"{sequence_name}_from_awl.xlsx"
-        _export_excel_from_ir(ir_payload, excel_path)
-
         result = export_conversion_bundle_from_ir(
             sequence_name=sequence_name,
             ir_payload=ir_payload,
@@ -667,7 +664,13 @@ def main() -> int:
         generated += 1
         print(f"[OK] {source.name} -> {result['outputDirectory']}")
         print(f"[IR] {ir_json_path}")
-        print(f"[EXCEL] {excel_path}")
+        excel_candidates = [
+            path
+            for path in result.get("writtenFiles", [])
+            if isinstance(path, str) and path.lower().endswith(".xlsx")
+        ]
+        if excel_candidates:
+            print(f"[EXCEL] {excel_candidates[0]}")
 
     print(f"Done. Generated bundles: {generated}")
     return 0

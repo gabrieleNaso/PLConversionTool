@@ -170,6 +170,7 @@ def analyze_awl_source(
     source_label = source_name or f"{scaffold.sequence_name}.awl"
     networks = _parse_networks(awl_source)
     ir = _build_ir(scaffold.sequence_name, source_label, networks)
+    ir = _freeze_ir_for_json_pipeline(ir)
     graph_topology = _build_graph_topology(ir)
     issues = _validate_ir(ir, graph_topology)
     previews = _build_artifact_previews(scaffold, ir, graph_topology)
@@ -2009,6 +2010,149 @@ def _build_ir(sequence_name: str, source_name: str, networks: list[AwlNetwork]) 
         step_roles=step_roles,
         assumptions=assumptions,
     )
+
+
+def _freeze_ir_for_json_pipeline(ir: AwlIR) -> AwlIR:
+    """
+    Make the AWL->IR step the single place where names/logic are derived.
+
+    Downstream steps (IR JSON -> artifacts, and IR Excel -> IR JSON) should behave
+    as pure translations over an already-finalized IR payload.
+    """
+    if ir.strict_operand_catalog:
+        return ir
+
+    guard_members_by_category = _collect_transition_guard_members_by_category(ir)
+    timer_trigger_members_by_category = _collect_timer_trigger_support_members_by_category(ir)
+    derived_actions = _derive_awl_action_logic_rows(ir)
+    timer_logic = _derive_awl_timer_logic_rows(ir)
+
+    diag_logic = derived_actions.get("diag", [])
+    hmi_logic = derived_actions.get("hmi", [])
+    aux_logic = timer_logic + derived_actions.get("aux", [])
+    transitions_logic = derived_actions.get("transitions", [])
+    io_logic = derived_actions.get("io", [])
+
+    # Ensure at least one logic row per transition.
+    existing_tr_ids = {str(row.get("result_member") or "").strip() for row in transitions_logic}
+    for idx, tr in enumerate(ir.transitions, start=1):
+        tid = str(tr.transition_id or f"T{idx}").strip()
+        if not tid or tid in existing_tr_ids:
+            continue
+        transitions_logic.append(
+            {
+                "result_member": tid,
+                "condition_expression": str(tr.guard_expression or "TRUE").strip() or "TRUE",
+                "condition_operands": [str(x).strip() for x in (tr.guard_operands or []) if str(x).strip()],
+                "coil_mode": "",
+                "comment": f"Transition {tr.source_step}->{tr.target_step}",
+                "network_index": int(tr.network_index or idx),
+            }
+        )
+    transitions_logic.sort(key=lambda row: (_as_positive_int(row.get("network_index")) or 10**9, str(row.get("result_member") or "")))
+
+    diag_members = (
+        _collect_diag_support_members(ir)
+        + guard_members_by_category.get("diag", [])
+        + timer_trigger_members_by_category.get("diag", [])
+    )
+    hmi_members = (
+        _collect_hmi_support_members(ir)
+        + guard_members_by_category.get("hmi", [])
+        + timer_trigger_members_by_category.get("hmi", [])
+    )
+    aux_members = (
+        _collect_aux_support_members(ir)
+        + guard_members_by_category.get("aux", [])
+        + timer_trigger_members_by_category.get("aux", [])
+    )
+    transitions_members = (
+        _collect_transitions_support_members(ir, [])
+        + guard_members_by_category.get("transitions", [])
+    )
+    io_output_members = (
+        guard_members_by_category.get("io", [])
+        + timer_trigger_members_by_category.get("io", [])
+    )
+    if not io_output_members:
+        io_output_members = _collect_output_family_members(ir)
+    mode_members = _collect_mode_support_members(ir)
+    external_members = _collect_external_support_members(ir)
+    parameters_members = _collect_parameters_support_members(ir)
+
+    diag_db_members, diag_fc_members = _prepare_support_members(ir, "diag", diag_members, diag_logic)
+    hmi_db_members, hmi_fc_members = _prepare_support_members(ir, "hmi", hmi_members, hmi_logic)
+    aux_db_members, aux_fc_members = _prepare_support_members(ir, "aux", aux_members, aux_logic)
+    transitions_merged_members = _merge_support_members_with_logic(transitions_members, transitions_logic)
+    transitions_db_members = _prepare_support_db_members(ir, "transitions", transitions_merged_members)
+    transitions_fc_members = _dedupe_named_members([(name, comment) for name, comment in transitions_merged_members if str(name or "").strip()])
+    output_db_members, output_fc_members = _prepare_support_members(ir, "io", io_output_members, io_logic)
+    mode_db_members, mode_fc_members = _prepare_support_members(ir, "mode", mode_members, [])
+    external_db_members = _prepare_support_db_members(ir, "external", external_members)
+    parameters_db_members = _prepare_support_db_members(ir, "parameters", parameters_members)
+
+    # Build a strict operand catalog that includes every member that can appear in DB/FC.
+    catalog: list[str] = []
+    category_map: dict[str, str] = {}
+
+    def _add_members(excel_category: str, items: list[tuple[str, str]]) -> None:
+        for name, _comment in items:
+            token = str(name or "").strip()
+            if not token or token in catalog:
+                continue
+            catalog.append(token)
+            category_map.setdefault(token, excel_category)
+
+    _add_members("alarm", diag_db_members + diag_fc_members)
+    _add_members("hmi", hmi_db_members + hmi_fc_members)
+    _add_members("aux", aux_db_members + aux_fc_members + parameters_db_members)
+    _add_members("transitions", transitions_db_members + transitions_fc_members)
+    _add_members("output", output_db_members + output_fc_members)
+    _add_members("lv2", mode_db_members + mode_fc_members)
+    _add_members("external", external_db_members)
+
+    # Populate Excel-facing support sheets in the IR itself.
+    support_members: list[dict[str, object]] = []
+    for category, members in (
+        ("diag", diag_fc_members),
+        ("hmi", hmi_fc_members),
+        ("aux", aux_fc_members),
+        ("transitions", transitions_fc_members),
+        ("io", output_fc_members),
+        ("mode", mode_fc_members),
+        ("external", external_members),
+    ):
+        for name, comment in members:
+            token = str(name or "").strip()
+            if not token:
+                continue
+            support_members.append(
+                {
+                    "category": category,
+                    "member_name": token,
+                    "comment": str(comment or "").strip(),
+                    "network_index": None,
+                    "network_title": "",
+                }
+            )
+
+    support_logic_rows: list[dict[str, object]] = [
+        *[{"category": "diag", **row} for row in diag_logic],
+        *[{"category": "hmi", **row} for row in hmi_logic],
+        *[{"category": "aux", **row} for row in aux_logic],
+        *[{"category": "transitions", **row} for row in transitions_logic],
+        *[{"category": "io", **row} for row in io_logic],
+    ]
+
+    # Preserve any existing metadata-only support_logic entries (no category).
+    preserved_meta = [item for item in (ir.support_logic or []) if isinstance(item, dict) and "category" not in item]
+
+    ir.strict_operand_catalog = True
+    ir.operand_catalog = catalog
+    ir.operand_categories = category_map
+    ir.support_members = support_members
+    ir.support_logic = preserved_meta + support_logic_rows
+    return ir
 
 
 def _infer_step_roles(

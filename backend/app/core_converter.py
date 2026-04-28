@@ -16,6 +16,7 @@ from plc_converter import (  # noqa: E402
     build_conversion_scaffold,
     build_target_profile,
 )
+from plc_converter.excel_export import export_excel_from_ir  # noqa: E402
 
 try:
     # Optional API (may be missing during hot-reload / partial sync).
@@ -141,6 +142,12 @@ def _write_bundle(analysis: dict, output_dir: str) -> dict:
     report_path = destination / f"{analysis['scaffold']['sequence_name']}_analysis.json"
     report_path.write_text(json.dumps(analysis, indent=2), encoding="utf-8")
     written_files.append(str(report_path))
+
+    ir_payload = analysis.get("ir")
+    if isinstance(ir_payload, dict):
+        excel_path = destination / f"{analysis['scaffold']['sequence_name']}_from_ir.xlsx"
+        export_excel_from_ir(ir_payload, excel_path)
+        written_files.append(str(excel_path))
 
     return {
         "sequenceName": analysis["scaffold"]["sequence_name"],
