@@ -299,6 +299,7 @@ curl -sS "http://127.0.0.1:8000/api/tia/jobs/<JOB_ID>"
 Nota sui nomi member DB:
 - i nomi in transizione privilegiano alias semantici derivati dall'AWL (es. da simboli/tag ricorrenti nel sorgente).
 - in caso di alias ambiguo il generatore usa fallback deterministico basato sul token AWL originale (sanitizzato), senza introdurre indirizzi nuovi e senza lasciare nomi vuoti.
+- i member della famiglia transizioni sono sempre emessi e referenziati come path strutturato: `DB14_<Name>_TRANSITIONS_DB -> Transitions -> <member>`.
 
 ## Problemi comuni (e cosa fare)
 

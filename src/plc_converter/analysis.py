@@ -131,6 +131,14 @@ TIA_RESERVED_KEYWORDS = {
     "FALSE",
 }
 
+def _support_root_struct_for_db_name(db_name: str) -> str | None:
+    token = str(db_name or "").strip().upper()
+    if not token:
+        return None
+    if "TRANSITIONS_DB" in token:
+        return "Transitions"
+    return None
+
 # Tracking branch extraction (synthetic TRK_CHECK step) is guarded by conservative
 # pattern matching on symbolic operands. Keep it opt-in by default: it can change
 # IR topology and is better enabled explicitly per-case.
@@ -2083,7 +2091,7 @@ def _freeze_ir_for_json_pipeline(ir: AwlIR) -> AwlIR:
     diag_db_members, diag_fc_members = _prepare_support_members(ir, "diag", diag_members, diag_logic)
     hmi_db_members, hmi_fc_members = _prepare_support_members(ir, "hmi", hmi_members, hmi_logic)
     aux_db_members, aux_fc_members = _prepare_support_members(ir, "aux", aux_members, aux_logic)
-    transitions_merged_members = _merge_support_members_with_logic(transitions_members, transitions_logic)
+    transitions_merged_members = _merge_support_members_with_logic_results_only(transitions_members, transitions_logic)
     transitions_db_members = _prepare_support_db_members(ir, "transitions", transitions_merged_members)
     transitions_fc_members = _dedupe_named_members([(name, comment) for name, comment in transitions_merged_members if str(name or "").strip()])
     output_db_members, output_fc_members = _prepare_support_members(ir, "io", io_output_members, io_logic)
@@ -3293,7 +3301,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
         (_excel_support_members(ir, "transitions") or _collect_transitions_support_members(ir, []))
         + guard_members_by_category.get("transitions", [])
     )
-    transitions_merged_members = _merge_support_members_with_logic(transitions_members, transitions_logic)
+    transitions_merged_members = _merge_support_members_with_logic_results_only(transitions_members, transitions_logic)
     transitions_db_members = _prepare_support_db_members(ir, "transitions", transitions_merged_members)
     transitions_fc_members = _dedupe_named_members(
         [(name, comment) for name, comment in transitions_merged_members if str(name or "").strip()]
@@ -3532,6 +3540,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                 members=transitions_db_members,
                 member_datatypes=member_datatypes,
                 number_seed=f"{ir.sequence_name}_TRANSITIONS_DB",
+                root_struct_name="Transitions",
                 number_base=tr_db_base,
             ),
         )
@@ -3936,6 +3945,7 @@ def _build_support_global_db_xml(
     members: list[tuple[str, str]],
     number_seed: str,
     member_datatypes: dict[str, str] | None = None,
+    root_struct_name: str | None = None,
     number_base: int = 400,
     number_span: int = 200,
 ) -> str:
@@ -3944,7 +3954,7 @@ def _build_support_global_db_xml(
         raise ValueError("DB15xx e' riservato al DB istanza GRAPH generato da TIA.")
     unique_members = _dedupe_named_members(members)
     datatype_map = member_datatypes or {}
-    member_irs = [
+    leaf_member_irs = [
         MemberIR(
             name=member_name,
             datatype=datatype_map.get(member_name, "Bool"),
@@ -3952,8 +3962,20 @@ def _build_support_global_db_xml(
         )
         for member_name, member_comment in unique_members
     ]
-    if not member_irs:
-        member_irs = [MemberIR(name="NoData", datatype="Bool")]
+    if not leaf_member_irs:
+        leaf_member_irs = [MemberIR(name="NoData", datatype="Bool")]
+
+    if root_struct_name:
+        member_irs = [
+            MemberIR(
+                name=root_struct_name,
+                datatype="Struct",
+                remanence="Retain",
+                children=leaf_member_irs,
+            )
+        ]
+    else:
+        member_irs = leaf_member_irs
     members_xml = _render_member_irs(member_irs)
     return (
         '<?xml version="1.0" encoding="utf-8"?>\n'
@@ -4924,11 +4946,17 @@ def _build_support_logic_flgnet(
         target_db_name = _owner_db_name(symbol_name)
 
         if target_db_name:
+            resolved_path = list(symbol_path)
+            root_struct = _support_root_struct_for_db_name(target_db_name)
+            if root_struct and (not resolved_path or resolved_path[0] != root_struct):
+                # Support DBs can expose a mandatory root Struct (e.g. DB14.Transitions.*).
+                # Keep logic rows and operand catalogs leaf-centric, but serialize full paths.
+                resolved_path = [root_struct, *resolved_path]
             return [
                 f'    <Access Scope="GlobalVariable" UId="{access_uid}">\n',
                 "      <Symbol>\n",
                 f'        <Component Name="{escape(target_db_name)}" />\n',
-                "".join(f'        <Component Name="{escape(component)}" />\n' for component in symbol_path),
+                "".join(f'        <Component Name="{escape(component)}" />\n' for component in resolved_path),
                 "      </Symbol>\n",
                 "    </Access>\n",
             ]
@@ -5482,6 +5510,29 @@ def _merge_support_members_with_logic(
     return _dedupe_named_members(merged)
 
 
+def _merge_support_members_with_logic_results_only(
+    members: list[tuple[str, str]],
+    logic_rows: list[dict[str, object]],
+) -> list[tuple[str, str]]:
+    """
+    Merge only the *declared/coiled* symbols from logic rows.
+
+    For some families (notably `DB14 transitions`) the DB must not "monopolize"
+    every operand appearing in a boolean expression: operands can belong to other
+    owner DBs (IO/AUX/HMI/DIAG). Pulling them into the transitions DB breaks the
+    owner DB bind and produces invalid XML references.
+    """
+    merged = list(members)
+    existing = {name for name, _ in merged}
+    for row in logic_rows or []:
+        row_comment = str(row.get("comment") or "").strip()
+        result_member = str(row.get("result_member") or "").strip()
+        if result_member and result_member not in existing:
+            merged.append((result_member, row_comment))
+            existing.add(result_member)
+    return _dedupe_named_members(merged)
+
+
 def _strict_support_db_catalog(ir: AwlIR) -> set[str] | None:
     if not ir.strict_operand_catalog:
         return None
@@ -5895,12 +5946,17 @@ def _collect_aux_support_members(ir: AwlIR) -> list[tuple[str, str]]:
         raw = str(timer.source_timer or "").strip()
         alias = operand_aliases.get(_normalize_operand_token(raw), "")
         symbol = alias or _normalize_operand_token(raw) or raw
-        member = _support_member_name(symbol, "AUX_T", strict_excel_mode=False)
-        members.append((member, f"Aux timer {alias or raw}"))
+        # Keep timer instances as proper IEC_TIMER operands (e.g. T209) so LAD
+        # can bind them to timer FB parts. The boolean "done" bit is modeled as
+        # a separate member because AWL uses `A T xx` as a boolean contact.
+        instance_member = _support_member_name(symbol, "", strict_excel_mode=True)
+        if instance_member:
+            members.append((instance_member, f"Aux timer instance {alias or raw}"))
         # Timer operands (e.g. T50) are used as bool contacts in AWL via the
         # "done" bit. Model this explicitly as a separate BOOL member.
         done_member = _guard_operand_db_member_name(raw, strict_excel_mode=False)
-        members.append((done_member, f"Aux timer done {alias or member}"))
+        done_hint = alias or instance_member or raw
+        members.append((done_member, f"Aux timer done {done_hint}"))
     return list(dict.fromkeys(members))
 
 
@@ -6310,12 +6366,19 @@ def _render_graph_transition(
             owner_db_name, owner_member_name = _operand_binding(operand)
             access_uid = alloc_uid()
             contact_uid = alloc_uid()
+            member_components = [part for part in str(owner_member_name or "").split(".") if part]
+            root_struct = _support_root_struct_for_db_name(owner_db_name)
+            if root_struct and (not member_components or member_components[0] != root_struct):
+                member_components = [root_struct, *member_components]
             parts_lines.extend(
                 [
                     f'            <Access Scope="GlobalVariable" UId="{access_uid}">\n',
                     '              <Symbol>\n',
                     f'                <Component Name="{escape(owner_db_name)}" />\n',
-                    f'                <Component Name="{escape(owner_member_name)}" />\n',
+                    "".join(
+                        f'                <Component Name="{escape(component)}" />\n'
+                        for component in member_components
+                    ),
                     '              </Symbol>\n',
                     '            </Access>\n',
                 ]
@@ -6403,12 +6466,19 @@ def _render_graph_transition(
             owner_db_name, owner_member_name = _operand_binding(operand)
             access_uid = alloc_uid()
             contact_uid = alloc_uid()
+            member_components = [part for part in str(owner_member_name or "").split(".") if part]
+            root_struct = _support_root_struct_for_db_name(owner_db_name)
+            if root_struct and (not member_components or member_components[0] != root_struct):
+                member_components = [root_struct, *member_components]
             parts_lines.extend(
                 [
                     f'            <Access Scope="GlobalVariable" UId="{access_uid}">\n',
                     '              <Symbol>\n',
                     f'                <Component Name="{escape(owner_db_name)}" />\n',
-                    f'                <Component Name="{escape(owner_member_name)}" />\n',
+                    "".join(
+                        f'                <Component Name="{escape(component)}" />\n'
+                        for component in member_components
+                    ),
                     '              </Symbol>\n',
                     '            </Access>\n',
                 ]
