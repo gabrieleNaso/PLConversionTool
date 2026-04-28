@@ -1774,13 +1774,24 @@ def _strip_operands_from_guard_expression(expression: str, operands_to_drop: set
         text = re.sub(rf"\s+AND\s+{token}\b", "", text, flags=re.IGNORECASE)
         text = re.sub(rf"\b{token}\b", "", text, flags=re.IGNORECASE)
 
-    text = re.sub(r"\(\s*\)", "", text)
-    text = re.sub(r"\s+", " ", text).strip()
-    if not text:
-        return "TRUE"
-    text = re.sub(r"^(AND|OR)\b\s*", "", text, flags=re.IGNORECASE).strip()
-    text = re.sub(r"\s*\b(AND|OR)$", "", text, flags=re.IGNORECASE).strip()
-    return text or "TRUE"
+    # Cleanup: remove dangling boolean operators introduced by operand stripping.
+    # Examples to fix:
+    #   "( OR X)" -> "(X)"
+    #   "(X OR )" -> "(X)"
+    #   "X AND  AND Y" -> "X AND Y"
+    for _ in range(5):
+        previous = text
+        text = re.sub(r"\(\s*(AND|OR)\b\s+", "(", text, flags=re.IGNORECASE)
+        text = re.sub(r"\s+\b(AND|OR)\s*\)", ")", text, flags=re.IGNORECASE)
+        text = re.sub(r"\(\s*\)", "", text)
+        text = re.sub(r"\s+", " ", text).strip()
+        text = re.sub(r"^(AND|OR)\b\s*", "", text, flags=re.IGNORECASE).strip()
+        text = re.sub(r"\s*\b(AND|OR)$", "", text, flags=re.IGNORECASE).strip()
+        text = re.sub(r"\b(AND|OR)\s+\b(AND|OR)\b", r"\2", text, flags=re.IGNORECASE)
+        if text == previous:
+            break
+
+    return text.strip() or "TRUE"
 
 
 def _strip_source_step_operands_from_transitions(
