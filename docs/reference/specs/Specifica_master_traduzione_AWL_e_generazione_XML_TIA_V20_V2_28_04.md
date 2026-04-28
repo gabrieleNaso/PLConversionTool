@@ -1,4 +1,4 @@
-Specifica master consolidata del 27-04-2026
+Specifica master consolidata del 28-04-2026
 per le regole di traduzione e generazione XML
 AWL / Excel -> IR -> GRAPH / GlobalDB / FC LAD per TIA Portal V20
 
@@ -275,6 +275,110 @@ Quando questo pattern è presente, il convertitore deve estrarre un edge semanti
 - `source_step`;
 - `guard_condition`;
 - `target_step`.
+
+
+## 7-bis. Regola generale sui runtime sequenziatore legacy
+
+Il convertitore non deve assumere che ogni AWL richiami `FC32`, né che il blocco sequenziatore generico abbia sempre lo stesso numero, lo stesso nome o lo stesso layout dati.
+
+`FC32` è un esempio reale di runtime sequenziatore legacy, non una dipendenza normativa del parser.
+
+### 7-bis.1 Classi di implementazione ammesse
+
+Prima di estrarre la topologia finale, il parser deve classificare il modello sequenziale sorgente in una delle seguenti famiglie:
+
+1. **runtime sequenziatore esterno**: una FC/FB generica apre o riceve il DB sequenza, valida lo step, genera i bit `Sxx`, gestisce timeout e storico;
+2. **word/int di stato**: il passo corrente e/o il passo richiesto sono rappresentati da una word/int e usati nelle condizioni;
+3. **bit di passo diretti**: i passi sono bit gestiti con `S`, `R`, latch o bobine equivalenti;
+4. **salti condizionati**: la sequenza e dispersa in `JC`, `JCN`, `JU`, label e appoggi intermedi;
+5. **forma mista**: due o più meccanismi coesistono nello stesso blocco o nello stesso pacchetto.
+
+Questa classificazione è obbligatoria perché determina il modo di lettura del sorgente, ma non deve modificare il contratto dell'IR né il target finale.
+
+### 7-bis.2 Divieto di hard-code del caso FC32
+
+Sono vietate le seguenti assunzioni rigide:
+
+- `FC32` sempre presente;
+- numero del runtime sequenziatore sempre uguale a `32`;
+- DB sequenza sempre uguale a `DB102`;
+- variabile di transizione sempre chiamata `Trs`;
+- passo richiesto sempre in `DBW2`;
+- passo corrente sempre in `DBW4`;
+- timeout sempre in `DBX24.0`;
+- preset sempre in `DBW26`;
+- bit passo sempre in `DBB6..DBB21`.
+
+Questi elementi possono essere usati come indizi quando compaiono, ma non come schema universale.
+
+### 7-bis.3 Contratto semantico da estrarre da qualunque runtime legacy
+
+Quando il parser rileva un runtime sequenziatore, deve cercare di mappare semanticamente i seguenti ruoli, anche se i nomi e gli offset cambiano:
+
+- `current_step_carrier`: variabile o insieme di bit che rappresenta il passo attivo;
+- `requested_step_carrier`: variabile in cui la logica applicativa scrive il passo destinazione;
+- `step_bits_view`: eventuale vista bit `Sxx` derivata dal passo corrente;
+- `step_change_enable`: condizione di abilitazione cambio passo;
+- `sequence_timer_preset`: preset del timer di passo;
+- `sequence_timeout`: uscita timeout di passo;
+- `timer_inhibit_or_lock`: eventuale blocco o inibizione del timer/cambio passo;
+- `step_history`: storico dei passi;
+- `timestamp_history`: storico temporale dei passi;
+- `range_check`: eventuale correzione o validazione del numero passo.
+
+Il parser deve usare questi ruoli solo per ricostruire la semantica del legacy. Nel target `GRAPH V2`, tali responsabilità non devono essere replicate letteralmente come runtime custom se sono già coperte dal runtime GRAPH o da strutture target normalizzate.
+
+### 7-bis.4 Priorità di estrazione delle transizioni
+
+Il parser deve applicare la seguente priorita, dalla più forte alla più debole:
+
+1. scritture esplicite a una variabile di richiesta passo (`requested_step_carrier`), ad esempio `L n` seguito da `T <carrier>`;
+2. set/reset diretti di bit passo sorgente/destinazione;
+3. assegnazioni dirette a word/int di passo corrente;
+4. salti condizionati che portano a blocchi di assegnazione passo;
+5. pattern di latch o bobine che abilitano azioni esclusivamente in presenza di un passo.
+
+Quando più pattern concordano, il parser deve fonderli nello stesso edge IR. Quando i pattern confliggono, il caso va marcato come `mapping_required` e non va inventata una topologia.
+
+### 7-bis.5 Regola di assorbimento del runtime legacy nel target V2
+
+Un runtime sequenziatore legacy, quando presente, non va generato come blocco equivalente nel target salvo esplicita decisione di compatibilità del progetto.
+
+Regola di traduzione:
+
+- la topologia estratta diventa `FB GRAPH V2`;
+- i bit di passo legacy diventano step GRAPH o, se sono viste ausiliarie, stato leggibile derivato;
+- il passo corrente legacy diventa runtime GRAPH e/o `Seq Status.Step.Actual` se serve visibilità HMI/diagnostica;
+- il passo richiesto legacy diventa edge/transition nell'IR, non tag applicativo da copiare;
+- il timeout di passo diventa proprietà o diagnostica normalizzata della sequenza;
+- timer tecnici, filtri e impulsi restano entità `AUX` e non vanno confusi col timeout runtime di passo;
+- storico passi e timestamp possono essere preservati in DB di stato leggibile se richiesti dal profilo;
+- range check e correzioni silenziose del legacy diventano validazioni del builder, preferibilmente errori bloccanti se un edge punta a uno step inesistente.
+
+### 7-bis.6 Casi senza runtime riconoscibile
+
+Se non esiste un runtime sequenziatore esterno, il parser deve comunque tentare l'estrazione della macchina a stati usando:
+
+- bit di passo letti o scritti;
+- latch e set/reset;
+- word/int di stato;
+- relazioni tra salti condizionati e assegnazioni;
+- azioni eseguite in presenza di un solo stato.
+
+L'assenza di un blocco tipo `FC32` non è un'anomalia. È solo una diversa famiglia di implementazione sorgente.
+
+### 7-bis.7 Requisito di universalità controllata
+
+Il parser deve essere universale rispetto ai pattern AWL, ma conservativo rispetto alla semantica.
+
+È ammesso generalizzare la forma del runtime legacy.
+Non è ammesso generalizzare inventando step, transizioni o timeout non dimostrabili dal sorgente.
+
+Quando la topologia non e dimostrabile, il convertitore deve produrre:
+
+- annotazione `mapping_required`;
+- elenco dei segnali o delle reti ambigue;
+- proposta controllata di interpretazione, separata dall'IR confermato.
 
 ## 8. Regola di non dipendenza dall'ordine dei segmenti
 
@@ -1750,7 +1854,7 @@ Nota operativa di orchestrazione:
 - nel workflow mediato da `tia-bridge`, `import` e `compile` sono operazioni esplicite e separate;
 - il tracciamento end-to-end deve considerare i due `JobId` distinti (import e compile), senza dipendere da compile automatica post-import.
 
-Nota operativa Excel FC (consolidata al 27-04-2026):
+Nota operativa Excel FC (consolidata al 28-04-2026):
 
 - i tag con `datatype=IEC_TIMER` e `control_kind` coerente (`t_on`, `t_off`, `t_p`) devono generare blocchi LAD timer completi con `PT` derivato da `control_value`;
 - i tag con `datatype=IEC_COUNTER` e `control_kind` coerente (`ctu`, `ctd`, `ctud`) devono generare blocchi LAD contatore completi con `PV` derivato da `control_value`;
@@ -1840,6 +1944,20 @@ Il naming finale dei passi GRAPH resta invece una policy del builder, che può:
 
 
 # Appendice B - Integrazioni consolidate al 27-04-2026
+
+
+## A.8 Regola generale derivata dal caso FC32
+
+Nel caso `AWL Romania / FC102`, il blocco `FC32` chiarisce che la logica applicativa scrive una richiesta di passo e che un runtime generico materializza passo corrente, bit `Sxx`, timeout e storico.
+
+Questa regola va generalizzata come segue:
+
+- se un runtime generico esiste, usarlo per interpretare il legacy;
+- se il runtime generico ha altro nome o numero, identificarlo per comportamento e non per sigla;
+- se non esiste, estrarre comunque la sequenza da bit, word, latch, set/reset e salti;
+- in tutti i casi, il target resta `GRAPH V2` e non la replica del runtime storico.
+
+`FC32` resta quindi un esempio di classe, non uno standard obbligatorio.
 
 ## B.1 Regola di prevalenza normativa
 In caso di conflitto tra una convenzione di repository, un'abitudine storica del team o una semplificazione implementativa del tool, prevale sempre la presente specifica.

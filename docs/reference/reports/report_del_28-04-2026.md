@@ -1,4 +1,4 @@
-# Report aggiornato del 27-04-2026
+# Report aggiornato del 28-04-2026
 
 ## Progetto
 Conversione di sequenziatori PLC da AWL a GRAPH in TIA Portal V20 tramite XML.
@@ -16,7 +16,7 @@ L'obiettivo di questa versione consolidata è:
 - mantenere una baseline unica, leggibile e riusabile;
 - integrare in un unico testo sia la parte di reverse engineering XML sia la parte operativa su TIA Portal Openness.
 
-Il documento va quindi usato come riferimento tecnico corrente del progetto alla data del 27-04-2026.
+Il documento va quindi usato come riferimento tecnico corrente del progetto alla data del 28-04-2026.
 
 Nota: diverse regole operative sono state consolidate in revisioni precedenti e poi riallineate/validate nella presente revisione.
 
@@ -64,7 +64,7 @@ Conseguenza architetturale da considerare fissata:
 
 `AWL parser` oppure `Excel strutturato` -> `IR comune` -> `builder GRAPH / GlobalDB / FC` -> `serializer XML`.
 
-Regola operativa consolidata al 27-04-2026 per il flusso Excel:
+Regola operativa consolidata al 28-04-2026 per il flusso Excel:
 
 - `operands` e `support_fc` sono fogli obbligatori;
 - nel foglio `support_fc` devono convivere sia la definizione member (`member_name`) sia la logica FC (`result_member`, `condition_expression`, `coil_mode`, `network`);
@@ -109,7 +109,7 @@ Il confronto tra i documenti normativi aggiornati e i file XML reali oggi dispon
 - Il modello HMI va esplicitato su due livelli: condizioni elementari nel path `Conditions.<gruppo>.Conditions.nX` e metadati/stati di gruppo nello stesso owner DB HMI, con campi del tipo `PopUpNumber`, `ConditionOK`, `Visible`, `FO` o equivalenti previsti dal modello finale.
 - I DB esterni fissi di integrazione, quando presenti, costituiscono un contratto rigido di naming. In particolare i pattern `Pnnn` e `Lnnn` osservati in `DB81-OPIN` e `DB82-OPOUT` non devono essere rinominati liberamente dal generatore.
 - I casi legacy come `T1-A ARUNC LEV2` confermano che nel corpus storico esistono sequenze e strutture dati utili per il reverse engineering semantico, ma non necessariamente allineate alla partizione target chiusa del nuovo convertitore.
-- Mappa famiglie consolidata al 27-04-2026 (forma `XXGG`): `11GG` alarms/diag, `12GG` hmi (`12GG` = DB HMI), `13GG` parameters, `14GG` transitions, `15GG` graph, `16GG` sequenza/I-O, `17GG` LEV2, `18GG` external, `19GG` aux.
+- Mappa famiglie consolidata al 28-04-2026 (forma `XXGG`): `11GG` alarms/diag, `12GG` hmi (`12GG` = DB HMI), `13GG` parameters, `14GG` transitions, `15GG` graph, `16GG` sequenza/I-O, `17GG` LEV2, `18GG` external, `19GG` aux.
 - `DB15GG SEQ` va considerato DB istanza del GRAPH generato da TIA: non deve essere emesso dal convertitore come DB custom.
 - Profilo operativo corretto: `FC11/12/13/14/16/17`, `FB15`, DB custom `11/12/13/14/16/17/18/19` + `DB15` solo istanza TIA.
 - La famiglia `17GG` e' riservata a `LEV2` e va considerata parte del modello target quando prevista dal caso reale.
@@ -129,6 +129,43 @@ Nel percorso Excel risultano consolidate anche le seguenti regole operative:
 - `DB14GG` e' definitivamente il DB transitions e deve essere sempre presente quando il profilo corrente prevede la famiglia transitions;
 - righe `support_fc` con stessa `category` + stesso `network` devono essere aggregate nella stessa rete FC;
 - ogni rete LAD FC deve avere un solo `Powerrail` per garantire importabilita' su TIA.
+
+
+## 2-quater. Generalizzazione consolidata sui runtime sequenziatore legacy
+
+L'analisi del blocco `FC32` ha chiarito un pattern importante del caso `AWL Romania / FC102`: in quel caso la FC applicativa non attiva direttamente i bit di passo, ma scrive una richiesta di cambio passo in una variabile di transizione; un blocco generico successivo valida il passo, aggiorna il passo corrente, genera i bit `Sxx`, gestisce il timeout di passo e aggiorna lo storico.
+
+Questa evidenza non deve però diventare una dipendenza rigida dal nome `FC32`, dal numero del blocco o dal layout esatto del DB storico.
+
+Regola generale consolidata:
+
+- il convertitore deve riconoscere la classe di implementazione del sequenziatore legacy, non un singolo blocco specifico;
+- un sequenziatore AWL può usare un runtime generico esterno come `FC32`, un runtime con altro numero/nome, un word/int di stato senza FC dedicata, bit di passo settati/resettati direttamente, salti condizionati con latch, oppure forme miste;
+- il parser non deve assumere che `FC32` esista sempre;
+- il parser non deve assumere che `Trs`, `Preset`, `TOUT`, `DBW2`, `DBW4` o `DBX24.x` siano sempre presenti con gli stessi nomi o offset;
+- quando un runtime generico è presente, esso va trattato come spiegazione del meccanismo legacy, non come blocco target da replicare;
+- il target finale resta sempre `GRAPH V2`, quindi le responsabilità runtime del sequenziatore storico vengono assorbite dal runtime GRAPH, dallo stato leggibile della sequenza, dai DB di supporto e dalle FC di servizio.
+
+Il convertitore deve classificare il sorgente in una delle seguenti famiglie operative:
+
+1. **runtime sequenziatore esterno**: una FC/FB generica riceve o apre il DB della sequenza, valida lo step richiesto, genera i bit di passo, gestisce timer e storico;
+2. **sequenziatore a word/int di stato**: il passo corrente e/o il passo richiesto sono memorizzati in word/int e usati per abilitare le reti;
+3. **sequenziatore a bit diretti**: i passi sono bit `Sxx` o equivalenti gestiti con set/reset/latch;
+4. **sequenziatore a salti condizionati**: la topologia è dispersa in `JC`, `JCN`, `JU`, label e appoggi intermedi;
+5. **sequenziatore misto**: più meccanismi coesistono e devono convergere nello stesso IR.
+
+Indipendentemente dalla famiglia rilevata, il risultato dell'analisi deve essere sempre lo stesso contratto IR:
+
+- `steps` logici;
+- `transitions` con `source_step`, `target_step`, `guard_condition`;
+- `actions` associate ai passi;
+- `timers` distinti tra timer tecnici, filtri, impulsi e timeout di passo;
+- `memories` distinte tra stati fisici, appoggi, comandi, fault cumulativi e dati runtime legacy;
+- `outputs` come formule semantiche;
+- `hmi_conditions`;
+- `external_refs`.
+
+L'esempio `FC32` viene quindi mantenuto nella documentazione come caso didattico utile per capire una famiglia di runtime legacy, non come requisito o assunzione universale.
 
 ## 3. Target tecnico consolidato
 
@@ -1087,7 +1124,7 @@ I prossimi step non sono più “far parlare il sistema con TIA”, ma:
 
 ## 38. Baseline consolidata
 
-Alla data del 27-04-2026 la baseline consolidata del progetto è la seguente.
+Alla data del 28-04-2026 la baseline consolidata del progetto è la seguente.
 
 ### 38.1 Sul GRAPH
 
@@ -1196,7 +1233,7 @@ Questa indicazione non e' organizzativa: deriva dai vincoli tecnici osservati ne
 
 ## 42. Sintesi finale
 
-Alla data del 27-04-2026 il progetto ha raggiunto una baseline forte su quattro livelli:
+Alla data del 28-04-2026 il progetto ha raggiunto una baseline forte su quattro livelli:
 
 1. reverse engineering strutturale del `GRAPH`;
 2. generazione stabile dei `GlobalDB` applicativi e di supporto;
