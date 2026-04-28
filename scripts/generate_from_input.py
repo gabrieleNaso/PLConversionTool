@@ -83,6 +83,15 @@ def _extract_block_id(path: Path, raw_text: str) -> str | None:
     )
     if header_match:
         return f"{header_match.group(1).upper()}{int(header_match.group(2))}"
+    # Siemens AWL exports often start with FUNCTION/FUNCTION_BLOCK/ORGANIZATION_BLOCK.
+    # Example: "FUNCTION FC 32 : ..." or "FUNCTION_BLOCK FB 10".
+    decl_match = re.search(
+        r"^\s*(?:FUNCTION|FUNCTION_BLOCK|ORGANIZATION_BLOCK)\s+(FC|FB|OB)\s*0*(\d+)\b",
+        raw_text,
+        flags=re.IGNORECASE | re.MULTILINE,
+    )
+    if decl_match:
+        return f"{decl_match.group(1).upper()}{int(decl_match.group(2))}"
     # Fallback to filename if it embeds the block id.
     name_match = re.search(r"\b(FC|FB|OB)\s*0*(\d+)\b", path.stem, flags=re.IGNORECASE)
     if name_match:

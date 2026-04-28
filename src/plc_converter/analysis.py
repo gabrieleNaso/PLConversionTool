@@ -148,6 +148,13 @@ CALL_BLOCK_RE = re.compile(
     re.IGNORECASE,
 )
 
+ENABLE_SEQUENCER_STEPBIT_ALIAS_DECODING = str(
+    os.getenv("PLC_ENABLE_SEQUENCER_STEPBIT_ALIAS_DECODING", "0")
+).strip().lower() in {"1", "true", "yes", "on"}
+
+_SEQUENCER_STEPBIT_ALIAS_DECODING_ACTIVE = False
+_SEQUENCER_STEPBIT_ALIAS_PREFIX: str | None = None
+
 
 def analyze_awl_source(
     sequence_name: str | None,
@@ -189,11 +196,34 @@ def analyze_awl_project(
     multiple blocks (FC/FB/OB). The main converter still generates artifacts for the
     entry block, but the analysis report includes dependency resolution information.
     """
-    analysis = analyze_awl_source(sequence_name=sequence_name, awl_source=awl_source, source_name=source_name)
+    called = _find_called_blocks(awl_source)
+    present = [block for block in called if block in project_blocks]
+
+    global _SEQUENCER_STEPBIT_ALIAS_DECODING_ACTIVE, _SEQUENCER_STEPBIT_ALIAS_PREFIX
+    previous = _SEQUENCER_STEPBIT_ALIAS_DECODING_ACTIVE
+    previous_prefix = _SEQUENCER_STEPBIT_ALIAS_PREFIX
+    _SEQUENCER_STEPBIT_ALIAS_DECODING_ACTIVE = bool(present) and (
+        "FC32" in present or ENABLE_SEQUENCER_STEPBIT_ALIAS_DECODING
+    )
+    _SEQUENCER_STEPBIT_ALIAS_PREFIX = None
+    if _SEQUENCER_STEPBIT_ALIAS_DECODING_ACTIVE:
+        try:
+            nets = _parse_networks(_normalize_awl_source(awl_source))
+            _SEQUENCER_STEPBIT_ALIAS_PREFIX = _infer_sequence_trs_prefix(nets)
+        except Exception:  # pragma: no cover
+            _SEQUENCER_STEPBIT_ALIAS_PREFIX = None
+    try:
+        analysis = analyze_awl_source(
+            sequence_name=sequence_name,
+            awl_source=awl_source,
+            source_name=source_name,
+        )
+    finally:
+        _SEQUENCER_STEPBIT_ALIAS_DECODING_ACTIVE = previous
+        _SEQUENCER_STEPBIT_ALIAS_PREFIX = previous_prefix
     if not project_blocks:
         return analysis
 
-    called = _find_called_blocks(awl_source)
     if not called:
         return analysis
 
@@ -211,6 +241,52 @@ def analyze_awl_project(
             "missing_blocks": missing,
         }
     )
+
+    # Best-effort: analyze dependency blocks too and expose a compact summary.
+    # This does not merge topologies, but it provides extra context (operands, timers, outputs)
+    # and helps the generator materialize shared symbols more consistently.
+    dependency_summaries: list[dict[str, object]] = []
+    dependency_external_refs: set[str] = set()
+    for block_id in present:
+        try:
+            dep_analysis = analyze_awl_source(
+                sequence_name=f"{analysis.ir.sequence_name}_{block_id}",
+                awl_source=project_blocks[block_id],
+                source_name=f"{block_id}.awl",
+            )
+        except Exception as exc:  # pragma: no cover
+            dependency_summaries.append(
+                {
+                    "block_id": block_id,
+                    "status": "error",
+                    "detail": str(exc),
+                }
+            )
+            continue
+        dep_ir = dep_analysis.ir
+        dependency_external_refs.update(dep_ir.external_refs)
+        dependency_summaries.append(
+            {
+                "block_id": block_id,
+                "status": "ok",
+                "network_count": len(dep_ir.networks),
+                "steps": len(dep_ir.steps),
+                "transitions": len(dep_ir.transitions),
+                "timers": len(dep_ir.timers),
+                "memories": len(dep_ir.memories),
+                "outputs": len(dep_ir.outputs),
+            }
+        )
+
+    if dependency_summaries:
+        analysis.ir.support_logic.append(
+            {
+                "kind": "dependency_analyses",
+                "items": dependency_summaries,
+            }
+        )
+    if dependency_external_refs:
+        analysis.ir.external_refs = sorted(set([*analysis.ir.external_refs, *dependency_external_refs]))
     if missing:
         analysis.validation_issues.append(
             ValidationIssue(
@@ -584,6 +660,19 @@ def _collapse_passthrough_steps(
         return
     # Keep synthetic tracking check steps intact when enabled.
     protected = {"S1", "S28_END", "S29", "S30_Fault", "S32"}
+    # Protect explicit "end-cycle" steps (often >=20) that return to low steps,
+    # even if they look like pass-through wires.
+    protected.update(
+        {
+            tr.source_step
+            for tr in transitions
+            if (tr.guard_expression or "").strip().upper() == "TRUE"
+            and not (tr.guard_operands or tr.jump_labels)
+            and _step_number_from_token(tr.source_step) >= 20
+            and 0 <= _step_number_from_token(tr.target_step) <= 3
+        }
+    )
+    protected.update({name for name in step_map if str(name).upper().endswith("_END")})
     protected.update(
         {
             name
@@ -739,6 +828,11 @@ def _augment_end_step(
         None,
     )
     if cycle_seed is None:
+        return
+    # If the AWL already contains an explicit "end/cycle" step, do not rewrite it into
+    # a synthetic S28_END placeholder. (Keep augmentation for cases where the end step
+    # is not explicit and only high-level branches exist.)
+    if STEP_RE.fullmatch(cycle_seed.source_step) and _step_number_from_token(cycle_seed.source_step) >= 0:
         return
 
     end_step_name = "S28_END"
@@ -1878,6 +1972,23 @@ def _build_ir(sequence_name: str, source_name: str, networks: list[AwlNetwork]) 
     ]
 
     normalized_external_refs = _normalize_external_refs(external_refs)
+    normalized_external_refs = _rewrite_external_refs_with_aliases(
+        normalized_external_refs,
+        operand_aliases=operand_aliases,
+        sequence_db_no=sequence_db_no,
+    )
+    support_logic: list[dict[str, object]] = []
+    if sequence_db_no is not None:
+        support_logic.append(
+            {
+                "kind": "sequencer_contract",
+                "sequence_db_no": sequence_db_no,
+                "notes": (
+                    "DB identificato via occorrenze di DB*.DBW2 (step requested/current). "
+                    "Nel caso FC32 i bit passo tipici sono in DBB6..DBB21."
+                ),
+            }
+        )
 
     return AwlIR(
         sequence_name=sequence_name,
@@ -1892,8 +2003,62 @@ def _build_ir(sequence_name: str, source_name: str, networks: list[AwlNetwork]) 
         manual_logic_networks=manual_logic_networks,
         auto_logic_networks=auto_logic_networks,
         external_refs=normalized_external_refs,
+        support_logic=support_logic,
         assumptions=assumptions,
     )
+
+
+def _rewrite_external_refs_with_aliases(
+    external_refs: list[str],
+    *,
+    operand_aliases: dict[str, str],
+    sequence_db_no: int | None,
+) -> list[str]:
+    """
+    Improve external reference list:
+    - Drop local sequencer step-bit addresses (DBx.DBX6..21.*) which are internal to step decoding.
+    - Replace address-like operands with semantic aliases when available (e.g. DB102.DBX25.4 -> STC),
+      avoiding aliases that are just re-encodings of the address (e.g. DB202_DBX32_0).
+    """
+    cleaned: list[str] = []
+    seen: set[str] = set()
+
+    stepbit_re = re.compile(r"^DB(\d+)\.DBX(\d+)\.(\d+)$", flags=re.IGNORECASE)
+    noisy_alias_re = re.compile(r"^DB\d+_DB[XBWD]\d+_\d+$", flags=re.IGNORECASE)
+
+    for item in external_refs or []:
+        token = str(item or "").strip().upper()
+        if not token:
+            continue
+
+        match = stepbit_re.fullmatch(token)
+        if match and sequence_db_no is not None:
+            try:
+                db_no = int(match.group(1))
+                byte_no = int(match.group(2))
+            except ValueError:
+                db_no = -1
+                byte_no = -1
+            # Sequencer FC32 convention: step bits are stored in DBB6..DBB21
+            if db_no == sequence_db_no and 6 <= byte_no <= 21:
+                continue
+
+        # Keep raw OPIN/OPOUT address operands alongside the structured aliases (DB81.Pxxx / DB82.Lxxx).
+        if not re.fullmatch(r"DB(?:81|82)\.DB[XBWD]\d+(?:\.\d+)?", token, flags=re.IGNORECASE):
+            alias = operand_aliases.get(token, "")
+            if alias:
+                alias_token = str(alias).strip().upper()
+                # Keep only semantic aliases (UP/DOWN/STC/EM, Trs, Preset, etc.).
+                # If the alias looks like an address re-encoding, keep the original token.
+                if alias_token and not noisy_alias_re.fullmatch(alias_token):
+                    token = alias_token
+
+        if token in seen:
+            continue
+        seen.add(token)
+        cleaned.append(token)
+
+    return cleaned
 
 
 def _build_network_pattern_transitions(
@@ -7036,6 +7201,9 @@ def _collect_trs_transitions_with_fallback(
             continue
         for raw_arg in instr.args:
             token = _normalize_operand_token(raw_arg)
+            if STEP_RE.fullmatch(token) and token != target_step:
+                source_steps.append(token)
+                continue
             match = re.fullmatch(rf"{re.escape(prefix)}\.S0*(\d+)", token)
             if match:
                 source_steps.append(f"S{int(match.group(1))}")
@@ -7271,12 +7439,30 @@ def _select_instruction_operand(args: list[str]) -> str | None:
 def _normalize_operand_token(token: str) -> str:
     value = token.strip().rstrip(",;").strip("()")
     value = value.strip().strip('"').strip("'")
+    # AWL exports often contain partial-quoted identifiers like: "M02".S03, "M02".Trs.
+    # Remove any remaining quotes before sanitization so patterns can be recognized.
+    value = value.replace('"', "").replace("'", "")
     if not value:
         return ""
     value = value.replace(":", "_").replace("-", "_")
     value = re.sub(r"[^A-Za-z0-9_.]+", "_", value)
     value = re.sub(r"_+", "_", value).strip("_")
-    return value.upper()
+    upper = value.upper()
+    if _SEQUENCER_STEPBIT_ALIAS_DECODING_ACTIVE:
+        prefix = (_SEQUENCER_STEPBIT_ALIAS_PREFIX or "").strip().upper()
+        # Decode symbolic sequencer step-bit aliases like:
+        #   "M02".S03  -> S3
+        #   M02.S03    -> S3
+        #   M02_S03    -> S3
+        pattern = (
+            rf"{re.escape(prefix)}(?:(?:[._]S)|_S)0*(\\d+)"
+            if prefix
+            else r"M\\d+(?:[._]S|_S)0*(\\d+)"
+        )
+        match = re.fullmatch(pattern, upper, flags=re.IGNORECASE)
+        if match:
+            return f"S{int(match.group(1))}"
+    return upper
 
 
 def _is_address_like_operand(value: str) -> bool:

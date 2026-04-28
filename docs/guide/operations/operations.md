@@ -132,6 +132,7 @@ Note operative:
 Se in `data/input/` sono presenti piu' blocchi (es. `# FC102`, `# FC32` in file diversi), la generazione indicizza i blocchi disponibili e registra nel report eventuali dipendenze trovate via `CALL`:
 - nel file `<Name>_analysis.json` trovi `ir.support_logic.kind=project_dependencies` con `called_blocks/present_blocks/missing_blocks`.
 - se manca un blocco chiamato, compare un warning `missing_called_blocks`.
+ - quando il blocco chiamato e' presente, il report include anche `ir.support_logic.kind=dependency_analyses` con un sommario dell'analisi dei blocchi dipendenti (utile per verificare correlazioni e segnali mancanti).
 
 Quando i sorgenti esterni non sono disponibili (caso: AWL monolitico unico), alcune diramazioni possono comunque essere ricostruite con regole interne (es. split su presenza pezzo), ma il tool segnala comunque le chiamate AWL non risolte.
 
