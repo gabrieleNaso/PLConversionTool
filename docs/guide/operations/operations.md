@@ -290,11 +290,16 @@ curl -sS "http://127.0.0.1:8000/api/tia/jobs/<JOB_ID>"
   - sono riconosciute sia in formato `Axx(.x)` sia `Qxx(.x)` quando usate con `=`.
 - **targetPath**: deve partire da `Program blocks/`.
   - Se ometti il prefisso, TIA crea un gruppo con nome letterale (es. `generati da tool/xxx`).
-- **Naming famiglie blocchi**: le FC seguono la famiglia numerica prevista; `15GG` e' riservato al GRAPH (`FB15GG`) e al suo DB istanza TIA (`DB15GG SEQ`) generato automaticamente.
+- **Naming famiglie blocchi**: le FC seguono la famiglia numerica prevista; `15GG` e' riservato al GRAPH (`FB15GG`) e al suo DB istanza (`DB15GG`) associato alla sequenza.
 - **Profilo target corretto**:
   - FC: `FC11` Alarms, `FC12` HMI, `FC13` Aux, `FC14` Transitions, `FC16` Output, `FC17` LEV2
   - DB custom: `DB11` alarms, `DB12` HMI, `DB13` PARAMETERS, `DB14` transitions, `DB16` I/O + output, `DB17` LEV2, `DB18` external, `DB19` AUX
-  - FB/istanza: `FB15` GRAPH + `DB15` SEQ (istanza TIA automatica)
+  - FB/istanza: `FB15` GRAPH + `DB15` SEQ (istanza creata da TIA quando l'FB viene istanziato)
+
+Nota operativa (bootstrap import/compile):
+- per permettere la **prima compilazione** quando le FC referenziano `DB15_<Seq>_GRAPH_DB.Sxx.X`, il tool emette anche un `InstanceDB` di bootstrap `ZZ_DB15_<Seq>_graph_db_auto.xml`.
+- il file ha prefisso `ZZ_` per essere importato **dopo** `FB_<Seq>_GRAPH_auto.xml` (l'import batch del bridge e' ordinato alfabeticamente).
+- questo DB non e' un "DB custom applicativo": serve solo a sbloccare il ciclo import/compile; TIA potra' poi rigenerarlo/aggiornarlo in base all'istanza reale.
 
 Nota sui nomi member DB:
 - i nomi in transizione privilegiano alias semantici derivati dall'AWL (es. da simboli/tag ricorrenti nel sorgente).

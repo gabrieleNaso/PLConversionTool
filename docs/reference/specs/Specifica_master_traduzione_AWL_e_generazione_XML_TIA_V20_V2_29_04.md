@@ -1,4 +1,4 @@
-Specifica master consolidata del 28-04-2026
+Specifica master consolidata del 29-04-2026
 per le regole di traduzione e generazione XML
 AWL / Excel -> IR -> GRAPH / GlobalDB / FC LAD per TIA Portal V20
 
@@ -579,9 +579,14 @@ Mappa famiglie consolidata:
 - `19GG` -> AUX.
 
 Nota operativa vincolante:
-- `DB15GG SEQ` e' il DB istanza FB GRAPH creato da TIA in fase import/runtime;
+- `DB15GG SEQ` e' il DB istanza FB GRAPH creato/gestito da TIA in fase import/runtime;
 - il convertitore non deve emettere `DB15GG` come DB custom applicativo.
 - profilo blocchi correntemente adottato (modo corretto): FC `11/12/13/14/16/17`, FB `15`, DB custom `11/12/13/14/16/17/18/19` con `DB15` riservato alla sola istanza TIA.
+
+Eccezione ammessa (bootstrap import/compile):
+- quando le FC referenziano lo stato step del GRAPH come `DB15_<Seq>_GRAPH_DB.Sxx.X`, il pacchetto puo' includere un `SW.Blocks.InstanceDB` di bootstrap per garantire l'import/compilazione al primo giro.
+- naming consigliato: `ZZ_DB15_<Seq>_graph_db_auto.xml` (prefisso `ZZ_` per import alfabetico dopo l'FB).
+- vincolo: il bootstrap DB non introduce semantica applicativa (serve solo a creare i member runtime step/transition coerenti col FB GRAPH).
 - la famiglia `17GG` e' riservata a `LEV2` e va trattata come famiglia normativa del convertitore quando il caso reale la richiede.
 
 ## 21. Regola sui DB di progetto
@@ -1882,7 +1887,7 @@ Nota operativa di orchestrazione:
 - nel workflow mediato da `tia-bridge`, `import` e `compile` sono operazioni esplicite e separate;
 - il tracciamento end-to-end deve considerare i due `JobId` distinti (import e compile), senza dipendere da compile automatica post-import.
 
-Nota operativa Excel FC (consolidata al 28-04-2026):
+Nota operativa Excel FC (consolidata al 29-04-2026):
 
 - i tag con `datatype=IEC_TIMER` e `control_kind` coerente (`t_on`, `t_off`, `t_p`) devono generare blocchi LAD timer completi con `PT` derivato da `control_value`;
 - i tag con `datatype=IEC_COUNTER` e `control_kind` coerente (`ctu`, `ctd`, `ctud`) devono generare blocchi LAD contatore completi con `PV` derivato da `control_value`;

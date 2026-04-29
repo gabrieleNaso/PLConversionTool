@@ -92,7 +92,7 @@ def test_conversion_analyze_builds_ir_and_artifact_previews() -> None:
     assert payload["ir"]["transitions"][0]["target_step"] == "S29"
     assert payload["ir"]["timers"][0]["source_timer"] == "T1"
     assert payload["ir"]["manual_logic_networks"] == [2]
-    assert len(payload["artifact_manifest"]["baseline"]) == 3
+    assert len(payload["artifact_manifest"]["baseline"]) == 4
     assert len(payload["artifact_manifest"]["support_io"]) >= 1
     assert len(payload["artifact_manifest"]["support_network"]) >= 0
     assert len(payload["artifact_manifest"]["support_transitions"]) >= 2

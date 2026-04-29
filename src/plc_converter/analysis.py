@@ -3173,6 +3173,7 @@ def _build_artifact_previews(scaffold, ir: AwlIR, graph_topology: GraphTopology)
     profile = build_target_profile()
     graph_xml = _build_graph_fb_xml(profile, ir, graph_topology)
     fc_xml = _build_lad_fc_xml(ir, graph_topology)
+    graph_db_xml = _build_graph_instance_db_xml(profile, ir, graph_topology)
 
     previews = [
         ArtifactPreview(
@@ -3181,6 +3182,14 @@ def _build_artifact_previews(scaffold, ir: AwlIR, graph_topology: GraphTopology)
             content=graph_xml,
         ),
     ]
+    previews.append(
+        ArtifactPreview(
+            artifact_type="graph_instance_db",
+            # Ensure import order: InstanceDB must be imported after the FB it instantiates.
+            file_name=f"ZZ_{DB_FAMILY_PREFIX['graph']}_{ir.sequence_name}_graph_db_auto.xml",
+            content=graph_db_xml,
+        )
+    )
 
     previews.append(
         ArtifactPreview(
@@ -3233,7 +3242,7 @@ def _build_artifact_manifest(previews: list[ArtifactPreview]) -> dict[str, list[
     }
     for preview in previews:
         item = {"artifactType": preview.artifact_type, "fileName": preview.file_name}
-        if preview.artifact_type in {"graph_fb", "lad_fc", "global_db"}:
+        if preview.artifact_type in {"graph_fb", "graph_instance_db", "lad_fc", "global_db"}:
             manifest["baseline"].append(item)
         elif preview.artifact_type in {"support_global_db_io", "support_lad_fc_io"}:
             manifest["support_io"].append(item)
@@ -3913,6 +3922,92 @@ def _build_graph_fb_xml(profile, ir: AwlIR, graph_topology: GraphTopology) -> st
         '      </MultilingualText>\n'
         '    </ObjectList>\n'
         '  </SW.Blocks.FB>\n'
+        '</Document>\n'
+    )
+
+
+def _build_graph_instance_db_xml(profile, ir: AwlIR, graph_topology: GraphTopology) -> str:
+    """
+    Emit a bootstrap GRAPH instance DB (DB15.. family) so support FCs can compile.
+
+    In TIA, the instance DB is normally created when the FB is instantiated.
+    Our generated support FCs reference `DB15_<seq>_GRAPH_DB.Sxx.X` for step gating,
+    so we must ensure the DB exists before the first compile/import cycle.
+    """
+    db_name = f"{DB_FAMILY_PREFIX['graph']}_{ir.sequence_name}_GRAPH_DB"
+    db_number = _stable_block_number(f"{ir.sequence_name}_DB_GRAPH", base=DB_FAMILY_NUMBER_BASE["graph"], span=100)
+
+    static_members = [
+        '    <Member Name="RT_DATA" Datatype="G7_RTDataPlus_V2" Version="1.0" />'
+    ]
+    static_members.extend(
+        (
+            f'    <Member Name="{escape(transition.name)}" Datatype="{profile.transition_runtime_type}" Version="1.0" />'
+        )
+        for transition in graph_topology.transition_nodes
+    )
+    static_members.extend(
+        (
+            f'    <Member Name="{escape(step.name)}" Datatype="{profile.step_runtime_type}" Version="1.0" />'
+        )
+        for step in graph_topology.step_nodes
+    )
+
+    return (
+        '<?xml version="1.0" encoding="utf-8"?>\n'
+        '<Document>\n'
+        f'  <Engineering version="{profile.tia_portal_version}" />\n'
+        '  <SW.Blocks.InstanceDB ID="0">\n'
+        '    <AttributeList>\n'
+        '      <AutoNumber>false</AutoNumber>\n'
+        f'      <InstanceOfName>{escape(ir.sequence_name)}</InstanceOfName>\n'
+        '      <InstanceOfType>FB</InstanceOfType>\n'
+        '      <Interface><Sections xmlns="http://www.siemens.com/automation/Openness/SW/Interface/v5">\n'
+        '  <Section Name="Base">\n'
+        '    <Sections Datatype="GRAPH_BASE" Version="1.0">\n'
+        '      <Section Name="Input" />\n'
+        '      <Section Name="Output" />\n'
+        '      <Section Name="InOut" />\n'
+        '      <Section Name="Static" />\n'
+        '    </Sections>\n'
+        '  </Section>\n'
+        '  <Section Name="Input">\n'
+        '    <Member Name="ACK_EF" Datatype="Bool" />\n'
+        '  </Section>\n'
+        '  <Section Name="Output" />\n'
+        '  <Section Name="InOut" />\n'
+        '  <Section Name="Static">\n'
+        f"{_join_lines(static_members)}\n"
+        '  </Section>\n'
+        '</Sections></Interface>\n'
+        f'      <Name>{escape(db_name)}</Name>\n'
+        '      <Namespace />\n'
+        f'      <Number>{db_number}</Number>\n'
+        '      <ProgrammingLanguage>DB</ProgrammingLanguage>\n'
+        '    </AttributeList>\n'
+        '    <ObjectList>\n'
+        '      <MultilingualText ID="1" CompositionName="Comment">\n'
+        '        <ObjectList>\n'
+        '          <MultilingualTextItem ID="2" CompositionName="Items">\n'
+        '            <AttributeList>\n'
+        '              <Culture>en-US</Culture>\n'
+        '              <Text />\n'
+        '            </AttributeList>\n'
+        '          </MultilingualTextItem>\n'
+        '        </ObjectList>\n'
+        '      </MultilingualText>\n'
+        '      <MultilingualText ID="3" CompositionName="Title">\n'
+        '        <ObjectList>\n'
+        '          <MultilingualTextItem ID="4" CompositionName="Items">\n'
+        '            <AttributeList>\n'
+        '              <Culture>en-US</Culture>\n'
+        f'              <Text>{escape(db_name)}</Text>\n'
+        '            </AttributeList>\n'
+        '          </MultilingualTextItem>\n'
+        '        </ObjectList>\n'
+        '      </MultilingualText>\n'
+        '    </ObjectList>\n'
+        '  </SW.Blocks.InstanceDB>\n'
         '</Document>\n'
     )
 

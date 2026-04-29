@@ -1,4 +1,4 @@
-# Report aggiornato del 28-04-2026
+# Report aggiornato del 29-04-2026
 
 ## Progetto
 Conversione di sequenziatori PLC da AWL a GRAPH in TIA Portal V20 tramite XML.
@@ -16,7 +16,7 @@ L'obiettivo di questa versione consolidata è:
 - mantenere una baseline unica, leggibile e riusabile;
 - integrare in un unico testo sia la parte di reverse engineering XML sia la parte operativa su TIA Portal Openness.
 
-Il documento va quindi usato come riferimento tecnico corrente del progetto alla data del 28-04-2026.
+Il documento va quindi usato come riferimento tecnico corrente del progetto alla data del 29-04-2026.
 
 Nota: diverse regole operative sono state consolidate in revisioni precedenti e poi riallineate/validate nella presente revisione.
 
@@ -64,7 +64,7 @@ Conseguenza architetturale da considerare fissata:
 
 `AWL parser` oppure `Excel strutturato` -> `IR comune` -> `builder GRAPH / GlobalDB / FC` -> `serializer XML`.
 
-Regola operativa consolidata al 28-04-2026 per il flusso Excel:
+Regola operativa consolidata al 29-04-2026 per il flusso Excel:
 
 - `operands` e `support_fc` sono fogli obbligatori;
 - nel foglio `support_fc` devono convivere sia la definizione member (`member_name`) sia la logica FC (`result_member`, `condition_expression`, `coil_mode`, `network`);
@@ -99,7 +99,7 @@ A valle del confronto tra i documenti operativi, i report consolidati e i tipici
 - I tipici legacy importabili ma basati su runtime `V6` restano utili per reverse engineering semantico e topologico, ma non sono pattern validi per il serializer finale `V20 / GRAPH V2`.
 - La segmentazione reale dell'AWL tiene conto delle famiglie funzionali ricorrenti osservate nel caso `FC102 / AWL Romania`: allarmi, memorie/ausiliari, sequenza, manuale/automatico, emergenza/fault, uscite.
 
-### 2-bis.1 Aggiornamenti tool consolidati (28-04-2026)
+### 2-bis.1 Aggiornamenti tool consolidati (29-04-2026)
 
 Le seguenti estensioni del convertitore sono da considerare coerenti con la specifica master corrente e utili per aumentare la correttezza della generazione senza introdurre hard-code di caso:
 
@@ -118,9 +118,13 @@ Il confronto tra i documenti normativi aggiornati e i file XML reali oggi dispon
 - Il modello HMI va esplicitato su due livelli: condizioni elementari nel path `Conditions.<gruppo>.Conditions.nX` e metadati/stati di gruppo nello stesso owner DB HMI, con campi del tipo `PopUpNumber`, `ConditionOK`, `Visible`, `FO` o equivalenti previsti dal modello finale.
 - I DB esterni fissi di integrazione, quando presenti, costituiscono un contratto rigido di naming. In particolare i pattern `Pnnn` e `Lnnn` osservati in `DB81-OPIN` e `DB82-OPOUT` non devono essere rinominati liberamente dal generatore.
 - I casi legacy come `T1-A ARUNC LEV2` confermano che nel corpus storico esistono sequenze e strutture dati utili per il reverse engineering semantico, ma non necessariamente allineate alla partizione target chiusa del nuovo convertitore.
-- Mappa famiglie consolidata al 28-04-2026 (forma `XXGG`): `11GG` alarms/diag, `12GG` hmi (`12GG` = DB HMI), `13GG` parameters, `14GG` transitions, `15GG` graph, `16GG` sequenza/I-O, `17GG` LEV2, `18GG` external, `19GG` aux.
-- `DB15GG SEQ` va considerato DB istanza del GRAPH generato da TIA: non deve essere emesso dal convertitore come DB custom.
-- Profilo operativo corretto: `FC11/12/13/14/16/17`, `FB15`, DB custom `11/12/13/14/16/17/18/19` + `DB15` solo istanza TIA.
+- Mappa famiglie consolidata al 29-04-2026 (forma `XXGG`): `11GG` alarms/diag, `12GG` hmi (`12GG` = DB HMI), `13GG` parameters, `14GG` transitions, `15GG` graph, `16GG` sequenza/I-O, `17GG` LEV2, `18GG` external, `19GG` aux.
+- `DB15GG SEQ` va considerato DB istanza del GRAPH generato/gestito da TIA: non deve essere emesso dal convertitore come **DB custom applicativo**.
+- Profilo operativo corretto: `FC11/12/13/14/16/17`, `FB15`, DB custom `11/12/13/14/16/17/18/19` + `DB15` come DB istanza (TIA).
+
+Nota di bootstrap (import/compile):
+- quando le FC generate referenziano lo stato step del GRAPH come `DB15_<Seq>_GRAPH_DB.Sxx.X`, l'import/compile iniziale richiede che il DB esista.
+- il tool emette quindi un `SW.Blocks.InstanceDB` di bootstrap (`ZZ_DB15_<Seq>_graph_db_auto.xml`) importato dopo l'FB, solo per sbloccare il primo ciclo.
 - La famiglia `17GG` e' riservata a `LEV2` e va considerata parte del modello target quando prevista dal caso reale.
 - Nel flusso Excel l'ownership DB e' determinata da `operands`: uso cross-FC ammesso ma senza migrazione del DB owner della variabile.
 
@@ -745,7 +749,7 @@ Regola generale:
 
 Mappa famiglie consolidata: `11GG` alarms/diag, `12GG` hmi (`12GG` = DB HMI), `13GG` parameters, `14GG` transitions, `16GG` sequenza/I-O, `17GG` LEV2, `18GG` external, `19GG` aux, con `15GG` riservato al GRAPH.
 
-Nota: `DB15GG SEQ` e' l'istanza FB GRAPH generata da TIA; il convertitore non deve serializzarla come DB applicativo.
+Nota: `DB15GG SEQ` e' l'istanza FB GRAPH generata/gestita da TIA; il convertitore non deve serializzarla come DB applicativo. E' ammesso solo il DB di bootstrap `ZZ_DB15_<Seq>_graph_db_auto.xml` per import/compile iniziale.
 
 Questa convenzione è normativa per il convertitore, anche se alcuni campioni legacy caricati mostrano distribuzioni storiche diverse dei numeri blocco.
 
@@ -1133,7 +1137,7 @@ I prossimi step non sono più “far parlare il sistema con TIA”, ma:
 
 ## 38. Baseline consolidata
 
-Alla data del 28-04-2026 la baseline consolidata del progetto è la seguente.
+Alla data del 29-04-2026 la baseline consolidata del progetto è la seguente.
 
 ### 38.1 Sul GRAPH
 
@@ -1242,7 +1246,7 @@ Questa indicazione non e' organizzativa: deriva dai vincoli tecnici osservati ne
 
 ## 42. Sintesi finale
 
-Alla data del 28-04-2026 il progetto ha raggiunto una baseline forte su quattro livelli:
+Alla data del 29-04-2026 il progetto ha raggiunto una baseline forte su quattro livelli:
 
 1. reverse engineering strutturale del `GRAPH`;
 2. generazione stabile dei `GlobalDB` applicativi e di supporto;
