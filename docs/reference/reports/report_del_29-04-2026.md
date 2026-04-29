@@ -68,7 +68,7 @@ Regola operativa consolidata al 29-04-2026 per il flusso Excel:
 
 - `operands` e `support_fc` sono fogli obbligatori;
 - nel foglio `support_fc` devono convivere sia la definizione member (`member_name`) sia la logica FC (`result_member`, `condition_expression`, `coil_mode`, `network`);
-- i commenti FC (`support_fc.comment`) restano nelle reti FC e non devono essere copiati nei tag DB;
+- i commenti non vengono emessi nelle reti FC generate: `support_fc.comment` viene ignorato e il commento rete resta vuoto; il testo visibile in TIA e' solo il `Title` della network;
 - in strict Excel i commenti DB devono derivare solo da commenti member espliciti e da `operands.note`;
 - se commenti e note non sono valorizzati, il commento DB deve restare vuoto (nessun testo automatico);
 - non e' piu' previsto un secondo foglio dedicato separato per la logica FC nel formato corrente.
@@ -519,6 +519,10 @@ Nel percorso Excel:
 - i commenti di rete FC non devono propagare nei commenti DB;
 - i commenti DB devono derivare solo da input esplicito (`member comment`) e/o `operands.note`;
 - in assenza di dati espliciti il commento DB resta vuoto.
+
+Aggiornamento operativo (29-04-2026):
+- per evitare errori di import Openness legati alle lingue progetto, i blocchi XML emettono solo `Culture=en-US` (non `it-IT`).
+- nelle FC LAD generate, il commento rete e' tenuto vuoto; il testo visibile in TIA e' solo il `Title` della network (titolo rete).
 
 ## 16. Regole su `StartValue`
 
@@ -974,6 +978,7 @@ Nel flusso AWL (non Excel strict) la `FC 14 Transitions` non deve cadere in moda
 - i contatti della rete devono essere referenziati nel DB owner corretto (IO/AUX/HMI/DIAG) tramite ownership deterministica;
 - quando una guardia contiene un timer `Txx`, il contatto usato deve essere `Txx_DONE` (non l'istanza `IEC_TIMER`).
 - quando una guardia contiene il bit step locale della sequenza (es. `DBxxx.DBX6.y` relativo allo step sorgente), tale termine va rimosso dalla guardia: nel GRAPH essere nello step e' gia' implicito;
+- quando una stessa rete AWL scrive `Trs` ed e' protetta da piu' step alternativi (es. `A( O S29 O S32 ) ... T Trs`), la guardia non deve contenere step "diversi" dal sorgente: vanno rimossi tutti i termini step locali per evitare transizioni impossibili (due step attivi contemporaneamente).
 - se la guardia contiene step di altri sequenziatori (es. `M03.S03`), il nome simbolico deve essere disambiguato col prefisso (es. `M03_S03`) per evitare collisioni con gli step locali.
 
 ### 32.10-quater Tracking: estrazione micro-flusso (S100/S101)
@@ -1005,6 +1010,7 @@ Sintesi consolidata:
 
 - l'ingresso sequenza e' `step_number=1`;
 - manuale/fault/emergenza restano ruoli semantici da riconoscere nell'IR;
+- il catalogo passi GRAPH va derivato dalle transizioni effettive (source/target) e dalle attivazioni esplicite nel sorgente; leggere un bit `S10/S14/...` in una rete non implica che quel passo faccia parte della topologia.
 - il builder GRAPH puo' usare numbering convenzionale quando richiesto dal caso, ma senza imporre nomi hard-coded.
 
 ### 32.12 Uscite macchina

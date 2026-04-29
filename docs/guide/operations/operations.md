@@ -59,6 +59,7 @@ Metti i file in `data/input/` con estensione:
 - `.awl`
 - `.txt`
 - `.md` (vengono estratti i blocchi fenced AWL/STL; se non rilevati, viene usato il testo completo)
+  - nota: per i fenced block in `.md`, il parser prova a usare l'heading markdown piu' vicino (es. `## Segmento ...`) come titolo rete; in TIA verra' mostrato come `Title` della network LAD.
 
 ### 2) Genera i bundle
 
@@ -230,7 +231,8 @@ Regole Excel importanti:
 - i nomi passo sono liberi (`Init`, `StartCiclo`, ecc.);
 - in modalita' Excel, il catalogo `operands` guida la dichiarazione variabili DB (niente inferenze casuali).
 - in modalita' strict Excel, i commenti DB derivano solo da commenti espliciti del member e da `operands.note`; se mancanti, restano vuoti.
-- i commenti di rete FC (`support_fc.comment`) restano nelle FC e non vengono copiati nei DB.
+- i commenti non vengono piu' emessi nelle network LAD generate: il campo `support_fc.comment` viene ignorato (commento rete vuoto).
+- il testo visibile in TIA per ogni network LAD e' solo il **titolo** della network (derivato dal titolo AWL/Excel); in assenza di titolo si usa il numero `network`.
 - in `operands.category` usa solo categorie funzionali (`alarm`, `aux`, `hmi`, `output`, `memory`, `external`, `lv2`/`lev2`, `transition`/`transitions`).
 - alias legacy `timer`/`counter`/`manual_mode`/`auto_mode` sono accettati dal parser e normalizzati a `aux`.
 - per LEV2 usa `lv2`/`lev2`; la categoria `mode` non viene normalizzata automaticamente a LEV2 nel parser `operands`.
@@ -249,6 +251,9 @@ Regole Excel importanti:
 Compatibilita':
 - lo script accetta solo il formato Excel corrente (`sequence`, `operands`, `support_fc`) con colonne canoniche.
 - alias legacy di fogli/colonne non sono supportati.
+
+Nota Openness (lingue progetto):
+- per evitare failure di import, gli XML emettono solo `Culture=en-US` nei `MultilingualText` (non `it-IT`).
 
 ### Import via API backend (inoltro al bridge)
 

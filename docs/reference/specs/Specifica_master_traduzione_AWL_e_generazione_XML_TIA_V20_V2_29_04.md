@@ -1094,6 +1094,10 @@ Ogni Member può contenere AttributeList, Comment, StartValue e figli Member se 
 
 I commenti visibili in TIA devono essere emessi in forma semplice Comment + MultiLanguageText.
 
+Nota operativa (compatibilita' import Openness):
+- per massima portabilita', il serializer emette solo `Culture=en-US`;
+- non emettere `it-IT` (o altre culture) a meno che il progetto TIA contenga esplicitamente quella lingua, altrimenti l'import fallisce.
+
 IEC_TIMER e IEC_COUNTER vanno serializzati con Version="1.0".
 
 Nessun `GlobalDB` del pacchetto deve replicare RT_DATA né gli statici runtime del GRAPH.
@@ -1118,6 +1122,7 @@ Regola aggiuntiva per IR da Excel (modalita' strict):
 - i commenti DB devono derivare solo da commenti member espliciti e/o `operands.note`;
 - i commenti rete FC (`support_fc.comment`) non devono essere propagati nei tag DB;
 - se commenti e note non sono valorizzati, il commento DB resta vuoto.
+- per le FC generate, il commento rete e' tenuto vuoto; solo il `Title` della network viene valorizzato (titolo rete).
 - per le FC di supporto, member e logica devono essere letti dal foglio unico `support_fc` secondo il contratto di cui alla sezione 4-ter.
 
 ### Composizione canonica
@@ -1917,7 +1922,13 @@ Nel caso FC102 il parsing dell'AWL rende leggibile una catena automatica ricorre
 
 con rami separati verso `S29` e `S32`.
 
-Questa catena va trattata come pattern forte del sorgente. In particolare, i passi `1, 2, 3, 4, 7` sono da considerare parte ricorrente dell'ossatura automatica del caso d'uso.
+Questa catena va trattata come pattern forte **solo quando e' effettivamente presente nel sorgente** (transizioni osservate).
+
+Regola anti-bias (generale):
+- non e' ammesso forzare la presenza di passi `S10/S14/S18/...` solo perche' letti come bit in una rete AWL;
+- il catalogo passi GRAPH deriva dalle transizioni effettive (source/target) e dalle attivazioni esplicite; le semplici letture `Sxx` non bastano a creare topologia.
+
+In particolare, i passi `1, 2, 3, 4, 7` sono ricorrenti nel caso FC102, ma non vanno imposti quando una sequenza reale ha meno passi.
 
 ## A.2 Regola di distinzione tra step e stato fisico
 
