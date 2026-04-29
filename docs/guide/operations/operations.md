@@ -361,6 +361,20 @@ ls -la data/input/
 
 ### Note su tracking (step 100/101)
 - Il convertitore puo' introdurre automaticamente i passi sintetici `S100_TRK_CHECK` / `S101_TRK_TRANSFER` quando rileva un pattern di tracking (sequenza remota + presenza `PT/PT_END`) nel sorgente.
+- Regola aggiornata: il pattern viene considerato *remoto* solo se il prefisso/DB della sequenza esterna e' diverso da quello della sequenza locale (evita falsi positivi in sorgenti che usano solo `PT/PT_END` locali).
+
+### Audit bundle (regressione rapida)
+Per verificare velocemente che i bundle generati non contengano:
+- espressioni booleane malformate (`AND )`, parentesi vuote, ecc.)
+- guardie di transizione con step impossibili
+
+usa:
+
+```bash
+node scripts/audit_generated_ir.mjs
+```
+
+Nota: l'audit lavora sui file in `data/output/generated/` e stampa un riepilogo per i bundle `auto_awl_romania*`.
 - Override via env `PLC_ENABLE_TRACKING_TRANSLATION`:
   - `0`/`false`/`off` = disabilita;
   - `1`/`true`/`on` = forza abilitazione;

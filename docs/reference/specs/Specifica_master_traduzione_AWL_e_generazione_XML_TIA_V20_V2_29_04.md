@@ -1123,6 +1123,7 @@ Regola aggiuntiva per IR da Excel (modalita' strict):
 - i commenti rete FC (`support_fc.comment`) non devono essere propagati nei tag DB;
 - se commenti e note non sono valorizzati, il commento DB resta vuoto.
 - per le FC generate, il commento rete e' tenuto vuoto; solo il `Title` della network viene valorizzato (titolo rete).
+- le espressioni booleane emesse (guardie/transizioni e condizioni FC) devono essere sempre sintatticamente valide: se durante la normalizzazione vengono rimossi operandi, bisogna ripulire l'espressione per evitare token pendenti (`AND )`, parentesi vuote).
 - per le FC di supporto, member e logica devono essere letti dal foglio unico `support_fc` secondo il contratto di cui alla sezione 4-ter.
 
 ### Composizione canonica

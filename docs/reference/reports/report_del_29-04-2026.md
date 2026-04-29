@@ -980,6 +980,7 @@ Nel flusso AWL (non Excel strict) la `FC 14 Transitions` non deve cadere in moda
 - quando una guardia contiene il bit step locale della sequenza (es. `DBxxx.DBX6.y` relativo allo step sorgente), tale termine va rimosso dalla guardia: nel GRAPH essere nello step e' gia' implicito;
 - quando una stessa rete AWL scrive `Trs` ed e' protetta da piu' step alternativi (es. `A( O S29 O S32 ) ... T Trs`), la guardia non deve contenere step "diversi" dal sorgente: vanno rimossi tutti i termini step locali per evitare transizioni impossibili (due step attivi contemporaneamente).
 - se la guardia contiene step di altri sequenziatori (es. `M03.S03`), il nome simbolico deve essere disambiguato col prefisso (es. `M03_S03`) per evitare collisioni con gli step locali.
+- le espressioni booleane generate devono essere sempre sintatticamente valide: se durante la normalizzazione vengono rimossi operandi (es. locals `Lx.y`), bisogna ripulire l'espressione per evitare token pendenti (`AND )`, `( OR X)`, parentesi vuote).
 
 ### 32.10-quater Tracking: estrazione micro-flusso (S100/S101)
 
@@ -1139,7 +1140,7 @@ I prossimi step non sono più “far parlare il sistema con TIA”, ma:
 
 ---
 
-# PARTE F - BASELINE FINALE DEL PROGETTO AL 27-04-2026
+# PARTE F - BASELINE FINALE DEL PROGETTO AL 29-04-2026
 
 ## 38. Baseline consolidata
 
