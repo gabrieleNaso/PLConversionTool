@@ -475,24 +475,47 @@ def _slugify(name: str) -> str:
 
 
 def _extract_awl_from_markdown(raw_text: str) -> str:
-    fenced_blocks = re.findall(
+    pattern = re.compile(
         r"```(?:awl|il|stl|text)?\s*\n(.*?)```",
-        raw_text,
         flags=re.IGNORECASE | re.DOTALL,
     )
-    if not fenced_blocks:
+    matches = list(pattern.finditer(raw_text))
+    if not matches:
         return raw_text
 
-    selected_blocks = [block.strip() for block in fenced_blocks if _looks_like_awl_block(block)]
-    if not selected_blocks:
-        selected_blocks = [block.strip() for block in fenced_blocks]
-
-    normalized_blocks: list[str] = []
-    for index, block in enumerate(selected_blocks, start=1):
+    blocks_with_titles: list[tuple[str, str]] = []
+    for match in matches:
+        block = (match.group(1) or "").strip()
         if not block:
             continue
+        prefix = raw_text[: match.start()]
+        title = ""
+        for line in reversed(prefix.splitlines()):
+            stripped = line.strip()
+            if not stripped:
+                continue
+            if stripped.startswith("```"):
+                break
+            if stripped.startswith("#"):
+                title = stripped.lstrip("#").strip()
+                break
+        blocks_with_titles.append((block, title))
+
+    if not blocks_with_titles:
+        return raw_text
+
+    selected = [(b, t) for (b, t) in blocks_with_titles if _looks_like_awl_block(b)]
+    if not selected:
+        selected = blocks_with_titles
+
+    normalized_blocks: list[str] = []
+    for index, (block, title) in enumerate(selected, start=1):
         if re.search(r"^\s*NETWORK\b", block, flags=re.IGNORECASE | re.MULTILINE):
             normalized_blocks.append(block)
+            continue
+        heading = (title or "").strip()
+        if heading:
+            normalized_blocks.append(f"NETWORK {index} {heading}\n{block}")
         else:
             normalized_blocks.append(f"NETWORK {index}\n{block}")
 

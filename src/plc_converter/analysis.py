@@ -1215,12 +1215,17 @@ def _find_tracking_presence_operand(item: TransitionCandidate, source_step_no: i
     # and reads its presence bit (PT / PT_END). Example: M03.S03 + M03.PT.
     ops = [str(op or "").strip() for op in (item.guard_operands or []) if str(op or "").strip()]
     remote_prefixes: set[str] = set()
+    local_prefix = str(_SEQUENCER_STEPBIT_ALIAS_PREFIX or "").strip()
     for op in ops:
         m = re.fullmatch(r"([A-Za-z0-9_]+)\.S0*(\d+)", op, flags=re.IGNORECASE)
         if not m:
             continue
         if int(m.group(2)) == source_step_no:
-            remote_prefixes.add(m.group(1))
+            prefix = m.group(1)
+            # Do not treat the local sequencer prefix as "remote".
+            if local_prefix and prefix.upper() == local_prefix.upper():
+                continue
+            remote_prefixes.add(prefix)
     if not remote_prefixes:
         return None
     for prefix in sorted(remote_prefixes):
@@ -1401,9 +1406,20 @@ def _is_tracking_seed_transition(item: TransitionCandidate) -> bool:
     if _find_tracking_presence_operand(item, source_no) is not None:
         return True
     # Fallback for older/less-symbolic IRs: DB-based detection.
-    has_remote_step = any(re.fullmatch(r"DB\d+\.DBX6\.\d+", op, flags=re.IGNORECASE) for op in operands)
-    has_remote_presence = any(re.fullmatch(r"DB\d+\.DBX23\.\d+", op, flags=re.IGNORECASE) for op in operands)
-    return bool(has_remote_step and has_remote_presence)
+    step_dbs = {
+        int(m.group(1))
+        for op in operands
+        for m in [re.fullmatch(r"DB(\d+)\.DBX6\.\d+", op, flags=re.IGNORECASE)]
+        if m
+    }
+    presence_dbs = {
+        int(m.group(1))
+        for op in operands
+        for m in [re.fullmatch(r"DB(\d+)\.DBX23\.\d+", op, flags=re.IGNORECASE)]
+        if m
+    }
+    # Consider it "remote" only when step and presence refer to different DBs.
+    return bool(step_dbs and presence_dbs and step_dbs.isdisjoint(presence_dbs))
 
 
 def _extract_negated_tracking_presence_operand(item: TransitionCandidate) -> str | None:
@@ -1819,7 +1835,7 @@ def _infer_sequence_trs_prefix(networks: list[AwlNetwork]) -> str | None:
 def _strip_operands_from_guard_expression(expression: str, operands_to_drop: set[str]) -> str:
     text = str(expression or "").strip()
     if not text or text.upper() == "TRUE" or not operands_to_drop:
-        return text or "TRUE"
+        return _cleanup_boolean_expression_text(text) or "TRUE"
 
     # Best-effort: step operands are typically an AND term (A Sxx ...).
     for raw in sorted(operands_to_drop, key=len, reverse=True):
@@ -1848,6 +1864,35 @@ def _strip_operands_from_guard_expression(expression: str, operands_to_drop: set
             break
 
     return text.strip() or "TRUE"
+
+
+def _cleanup_boolean_expression_text(expression: str) -> str:
+    """
+    Best-effort cleanup for boolean expression text when some operands were dropped
+    during normalization (e.g. local stack bits `L1.0`, unsupported flags).
+
+    This is intentionally conservative: it only removes obviously dangling tokens,
+    redundant operators, and empty parentheses. It does not attempt algebraic
+    simplification.
+    """
+    text = str(expression or "").strip()
+    if not text:
+        return ""
+    if text.upper() in {"TRUE", "FALSE"}:
+        return text.upper()
+
+    for _ in range(8):
+        previous = text
+        text = re.sub(r"\(\s*(AND|OR)\b\s+", "(", text, flags=re.IGNORECASE)
+        text = re.sub(r"\s+\b(AND|OR)\s*\)", ")", text, flags=re.IGNORECASE)
+        text = re.sub(r"\b(AND|OR)\s+\b(AND|OR)\b", r"\2", text, flags=re.IGNORECASE)
+        text = re.sub(r"\(\s*\)", "", text)
+        text = re.sub(r"\s+", " ", text).strip()
+        text = re.sub(r"^(AND|OR)\b\s*", "", text, flags=re.IGNORECASE).strip()
+        text = re.sub(r"\s*\b(AND|OR)$", "", text, flags=re.IGNORECASE).strip()
+        if text == previous:
+            break
+    return text.strip()
 
 
 def _strip_source_step_operands_from_transitions(
@@ -2163,6 +2208,7 @@ def _freeze_ir_for_json_pipeline(ir: AwlIR) -> AwlIR:
                 return token.upper() if token.isupper() else token
 
             row["condition_expression"] = step_token_re.sub(_repl, expr)
+            row["condition_expression"] = _cleanup_boolean_expression_text(str(row.get("condition_expression") or "")) or "TRUE"
 
             ops = []
             for op in list(row.get("condition_operands") or []):
@@ -5719,6 +5765,7 @@ def _excel_support_logic_rows(
                 "coil_mode": str(item.get("coil_mode") or "").strip(),
                 "comment": str(item.get("comment") or "").strip(),
                 "network_index": item_network,
+                "network_title": str(item.get("network_title") or "").strip(),
             }
         )
     rows.sort(
@@ -7552,6 +7599,7 @@ def _derive_awl_action_logic_rows(ir: AwlIR) -> dict[str, list[dict[str, object]
             if symbol.upper() not in {"TRUE", "FALSE"}:
                 operands.append(symbol)
         rendered = " ".join(rewritten).strip() or "TRUE"
+        rendered = _cleanup_boolean_expression_text(rendered) or "TRUE"
         return rendered, _dedupe_list(operands)
 
     for network in ir.networks:
