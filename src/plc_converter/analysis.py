@@ -4220,9 +4220,7 @@ def _build_support_lad_fc_xml(
 ) -> str:
     fc_number = _stable_block_number(number_seed, base=number_base, span=number_span)
     # Support FCs access data via GlobalVariable symbols, not via interface Temp.
-    # Declaring every referenced symbol as Temp Bool creates inconsistencies
-    # (e.g. IEC_TIMER declared as Bool) and makes "orphan" variables appear in FCs.
-    temp_members = '    <Member Name="PACKET_READY" Datatype="Bool" />'
+    # Keeping Temp empty aligns with typical TIA exports and avoids orphan members.
     compile_units = _build_support_lad_compile_units(
         db_name=db_name,
         support_members=support_members,
@@ -4241,13 +4239,12 @@ def _build_support_lad_fc_xml(
         '  <Engineering version="V20" />\n'
         '  <SW.Blocks.FC ID="0">\n'
         '    <AttributeList>\n'
+        '      <AutoNumber>false</AutoNumber>\n'
         '      <Interface><Sections xmlns="http://www.siemens.com/automation/Openness/SW/Interface/v5">\n'
         '  <Section Name="Input" />\n'
         '  <Section Name="Output" />\n'
         '  <Section Name="InOut" />\n'
-        '  <Section Name="Temp">\n'
-        f"{temp_members}\n"
-        '  </Section>\n'
+        '  <Section Name="Temp" />\n'
         '  <Section Name="Constant" />\n'
         '  <Section Name="Return">\n'
         '    <Member Name="Ret_Val" Datatype="Void" />\n'
@@ -4269,6 +4266,12 @@ def _build_support_lad_fc_xml(
         '              <Text />\n'
         '            </AttributeList>\n'
         '          </MultilingualTextItem>\n'
+        '          <MultilingualTextItem ID="3" CompositionName="Items">\n'
+        '            <AttributeList>\n'
+        '              <Culture>it-IT</Culture>\n'
+        '              <Text />\n'
+        '            </AttributeList>\n'
+        '          </MultilingualTextItem>\n'
         '        </ObjectList>\n'
         '      </MultilingualText>\n'
         f"{compile_units}\n"
@@ -4278,6 +4281,12 @@ def _build_support_lad_fc_xml(
         '            <AttributeList>\n'
         '              <Culture>en-US</Culture>\n'
         f'              <Text>{escape(title)}</Text>\n'
+        '            </AttributeList>\n'
+        '          </MultilingualTextItem>\n'
+        '          <MultilingualTextItem ID="FFFF2" CompositionName="Items">\n'
+        '            <AttributeList>\n'
+        '              <Culture>it-IT</Culture>\n'
+        '              <Text />\n'
         '            </AttributeList>\n'
         '          </MultilingualTextItem>\n'
         '        </ObjectList>\n'
@@ -4710,8 +4719,11 @@ def _build_support_lad_compile_units(
 ) -> str:
     db_member_set = set(db_members)
     units: list[str] = []
+    # Reserve ID=1/2/3 for the root MultilingualText + bilingual items emitted
+    # by `_build_support_lad_fc_xml` (Comment: 1, Items: 2/3).
+    # CompileUnits must not reuse these IDs.
+    base_id = 4
     if logic_rows:
-        base_id = 3
         grouped_rows: list[tuple[int, list[dict[str, object]]]] = []
         by_network: dict[int, list[dict[str, object]]] = {}
         for row_index, logic_row in enumerate(logic_rows):
@@ -4820,7 +4832,7 @@ def _build_support_lad_compile_units(
     )
     if not unique_members:
         unique_members = [("PACKET_READY", "PACKET_READY support network")]
-    base_id = 3
+    base_id = 4
     for index, (member_name, member_comment) in enumerate(unique_members):
         # Keep fallback network comments strictly explicit from Excel.
         fallback_comment = str(member_comment or "").strip()
