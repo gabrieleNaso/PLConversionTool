@@ -1586,19 +1586,23 @@ def _normalize_awl_source(awl_source: str) -> str:
     if "```" not in awl_source:
         return awl_source
 
-    blocks = _extract_markdown_awl_blocks(awl_source)
-    if not blocks:
+    blocks_with_titles = _extract_markdown_awl_blocks_with_titles(awl_source)
+    if not blocks_with_titles:
         return awl_source
 
     normalized_blocks: list[str] = []
-    for index, block in enumerate(blocks, start=1):
+    for index, (block, title) in enumerate(blocks_with_titles, start=1):
         cleaned_block = block.strip()
         if not cleaned_block:
             continue
         if re.search(r"^\s*NETWORK\b", cleaned_block, flags=re.IGNORECASE | re.MULTILINE):
             normalized_blocks.append(cleaned_block)
             continue
-        normalized_blocks.append(f"NETWORK {index}\n{cleaned_block}")
+        heading = str(title or "").strip()
+        if heading:
+            normalized_blocks.append(f"NETWORK {index} {heading}\n{cleaned_block}")
+        else:
+            normalized_blocks.append(f"NETWORK {index}\n{cleaned_block}")
 
     if not normalized_blocks:
         return awl_source
@@ -1613,6 +1617,44 @@ def _extract_markdown_awl_blocks(raw_text: str) -> list[str]:
 
     awl_like_blocks = [block for block in matches if _looks_like_awl_block(block)]
     return awl_like_blocks or matches
+
+
+def _extract_markdown_awl_blocks_with_titles(raw_text: str) -> list[tuple[str, str]]:
+    """
+    Extract fenced code blocks and a best-effort title inferred from the closest
+    preceding markdown heading.
+
+    This is important for reports and for generating TIA LAD networks that carry
+    only a network title (user requirement: keep comments empty).
+    """
+    pattern = re.compile(r"```(?:awl|il|stl|text)?\s*\n(.*?)```", re.IGNORECASE | re.DOTALL)
+    matches: list[tuple[str, str]] = []
+    for match in pattern.finditer(raw_text):
+        block = match.group(1)
+        if block is None:
+            continue
+        # Look backwards for the closest markdown heading ("## ...", "### ...", etc.).
+        prefix = raw_text[: match.start()]
+        title = ""
+        for line in reversed(prefix.splitlines()):
+            stripped = line.strip()
+            if not stripped:
+                continue
+            if stripped.startswith("```"):
+                # Don't cross other code fences.
+                break
+            if stripped.startswith("#"):
+                heading = stripped.lstrip("#").strip()
+                if heading:
+                    title = heading
+                break
+        matches.append((block, title))
+
+    if not matches:
+        return []
+
+    awl_like = [(block, title) for (block, title) in matches if _looks_like_awl_block(block)]
+    return awl_like or matches
 
 
 def _looks_like_awl_block(block: str) -> bool:
@@ -1820,10 +1862,33 @@ def _strip_source_step_operands_from_transitions(
         if src_no < 0:
             continue
         drop: set[str] = set()
+        # In many AWL sequencers, the logic that writes TRS is guarded by:
+        #   A( O S29 O S32 ) ...  L 1  T Trs
+        # When we generate *two* transitions (S29->S1 and S32->S1) from the same
+        # network, the guard_expression still contains both step operands. If we
+        # strip only the current source step, the other step operand remains and
+        # makes the transition unreachable (because two different steps cannot be
+        # active at the same time in GRAPH).
+        #
+        # Therefore: for TRS-derived transitions (T*), drop *all* step operands
+        # present in the guard that belong to the same sequence DB family.
+        tr_id = str(getattr(tr, "transition_id", "") or "")
+        drop_all_step_operands = tr_id.startswith("T")
         for op in list(tr.guard_operands or []):
             key = _normalize_operand_token(op)
             alias = operand_aliases.get(key, "")
-            if alias and _step_number_from_token(alias) == src_no:
+            alias_step_no = _step_number_from_token(alias) if alias else -1
+            if drop_all_step_operands and alias and alias_step_no >= 0:
+                match = re.match(r"DB(\d+)\.", str(op or "").strip(), flags=re.IGNORECASE)
+                if sequence_db_no is not None:
+                    if match and int(match.group(1)) == sequence_db_no:
+                        drop.add(op)
+                        continue
+                else:
+                    # Without a known sequence DB, still drop step operands conservatively.
+                    drop.add(op)
+                    continue
+            if alias and alias_step_no == src_no:
                 match = re.match(r"DB(\d+)\.", str(op or "").strip(), flags=re.IGNORECASE)
                 if sequence_db_no is not None:
                     if match and int(match.group(1)) == sequence_db_no:
@@ -4309,12 +4374,6 @@ def _build_support_lad_fc_xml(
         '              <Text />\n'
         '            </AttributeList>\n'
         '          </MultilingualTextItem>\n'
-        '          <MultilingualTextItem ID="3" CompositionName="Items">\n'
-        '            <AttributeList>\n'
-        '              <Culture>it-IT</Culture>\n'
-        '              <Text />\n'
-        '            </AttributeList>\n'
-        '          </MultilingualTextItem>\n'
         '        </ObjectList>\n'
         '      </MultilingualText>\n'
         f"{compile_units}\n"
@@ -4324,12 +4383,6 @@ def _build_support_lad_fc_xml(
         '            <AttributeList>\n'
         '              <Culture>en-US</Culture>\n'
         f'              <Text>{escape(title)}</Text>\n'
-        '            </AttributeList>\n'
-        '          </MultilingualTextItem>\n'
-        '          <MultilingualTextItem ID="FFFF2" CompositionName="Items">\n'
-        '            <AttributeList>\n'
-        '              <Culture>it-IT</Culture>\n'
-        '              <Text />\n'
         '            </AttributeList>\n'
         '          </MultilingualTextItem>\n'
         '        </ObjectList>\n'
@@ -4781,7 +4834,10 @@ def _build_support_lad_compile_units(
 
         for index, (_, network_rows) in enumerate(grouped_rows):
             flgnet_fragments: list[str] = []
+            # User requirement: keep network comments empty; use only the network title.
             comment = ""
+            title = ""
+            network_no_for_title = ""
             for logic_row in network_rows:
                 result_member = str(logic_row.get("result_member") or "").strip()
                 if not result_member:
@@ -4789,7 +4845,12 @@ def _build_support_lad_compile_units(
                 condition_expression = str(logic_row.get("condition_expression") or "TRUE")
                 condition_operands = _as_str_list(logic_row.get("condition_operands"))
                 coil_mode = str(logic_row.get("coil_mode") or "").strip()
-                explicit_comment = str(logic_row.get("comment") or "").strip()
+                # Keep per-row comments out of the TIA CompileUnit.
+                explicit_comment = ""
+                if not title:
+                    title = str(logic_row.get("network_title") or "").strip()
+                if not network_no_for_title:
+                    network_no_for_title = str(_as_positive_int(logic_row.get("network_index")) or "").strip()
                 note_hints: list[str] = []
                 for token in [result_member, *condition_operands]:
                     note = str(operand_notes.get(str(token).strip()) or "").strip()
@@ -4802,8 +4863,6 @@ def _build_support_lad_compile_units(
                         resolved_comment = f"{resolved_comment} | {inferred_comment}"
                 else:
                     resolved_comment = resolved_comment or inferred_comment
-                if not comment and resolved_comment:
-                    comment = resolved_comment
                 flgnet_fragments.append(
                     _build_support_logic_flgnet(
                         db_name=db_name,
@@ -4820,6 +4879,9 @@ def _build_support_lad_compile_units(
                 )
             if not flgnet_fragments:
                 continue
+            if not title:
+                # Fallback: when no title is available, at least preserve the network number.
+                title = network_no_for_title
             unit_id = format(base_id + (index * 5), "X")
             comment_id = format(base_id + (index * 5) + 1, "X")
             comment_item_id = format(base_id + (index * 5) + 2, "X")
@@ -4852,7 +4914,7 @@ def _build_support_lad_compile_units(
                 + '" CompositionName="Items">\n'
                 '                <AttributeList>\n'
                 '                  <Culture>en-US</Culture>\n'
-                f'                  <Text>{escape(comment)}</Text>\n'
+                f'                  <Text>{escape(title)}</Text>\n'
                 '                </AttributeList>\n'
                 '              </MultilingualTextItem>\n'
                 '            </ObjectList>\n'
@@ -7372,10 +7434,9 @@ def _derive_awl_action_logic_rows(ir: AwlIR) -> dict[str, list[dict[str, object]
 
     def _network_label(network: AwlNetwork) -> str:
         title = str(network.title or "").strip()
-        # Some AWL exports use numeric-only titles ("26"). Avoid propagating them as-is.
-        if title and not re.fullmatch(r"\d+", title):
-            return title
-        return ""
+        # User requested to keep FC comments empty and rely only on the network title.
+        # Even a numeric-only title is still better than generating our own narrative comment.
+        return title
 
     def _brief_network_purpose(network: AwlNetwork) -> str:
         outputs = _collect_output_targets(network)
@@ -7526,6 +7587,7 @@ def _derive_awl_action_logic_rows(ir: AwlIR) -> dict[str, list[dict[str, object]
                     "condition_expression": condition_expression,
                     "condition_operands": list(condition_operands),
                     "coil_mode": coil_mode,
+                    "network_title": _network_label(network),
                     "comment": _row_comment(
                         network,
                         category="aux",
@@ -7558,6 +7620,7 @@ def _derive_awl_action_logic_rows(ir: AwlIR) -> dict[str, list[dict[str, object]
                     "condition_expression": local_expr,
                     "condition_operands": list(local_ops),
                     "coil_mode": coil_mode,
+                    "network_title": _network_label(network),
                     "comment": _row_comment(
                         network,
                         category="aux",
@@ -7583,6 +7646,7 @@ def _derive_awl_action_logic_rows(ir: AwlIR) -> dict[str, list[dict[str, object]
                     "condition_expression": condition_expression,
                     "condition_operands": list(condition_operands),
                     "coil_mode": coil_mode,
+                    "network_title": _network_label(network),
                     "comment": _row_comment(
                         network,
                         category="io",
@@ -7622,6 +7686,7 @@ def _derive_awl_action_logic_rows(ir: AwlIR) -> dict[str, list[dict[str, object]
                     "condition_expression": condition_expression,
                     "condition_operands": list(condition_operands),
                     "coil_mode": coil_mode,
+                    "network_title": _network_label(network),
                     "comment": _row_comment(
                         network,
                         category=category,
@@ -7656,6 +7721,7 @@ def _derive_awl_action_logic_rows(ir: AwlIR) -> dict[str, list[dict[str, object]
                 "condition_expression": expr or "TRUE",
                 "condition_operands": list(_dedupe_list(ops)),
                 "coil_mode": "",
+                "network_title": str(transition.transition_id or "").strip(),
                 "comment": f"{transition.transition_id}: {transition.source_step}->{transition.target_step}",
                 "network_index": network_index,
             }
