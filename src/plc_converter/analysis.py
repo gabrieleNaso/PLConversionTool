@@ -2061,10 +2061,11 @@ def _freeze_ir_for_json_pipeline(ir: AwlIR) -> AwlIR:
     timer_logic = _derive_awl_timer_logic_rows(ir)
 
     diag_logic = derived_actions.get("diag", [])
-    hmi_logic = derived_actions.get("hmi", [])
+    hmi_logic = derived_actions.get("hmi", []) + _derive_awl_hmi_alias_logic_rows(ir)
     aux_logic = timer_logic + derived_actions.get("aux", [])
     transitions_logic = derived_actions.get("transitions", [])
     io_logic = derived_actions.get("io", [])
+    mode_logic = _derive_awl_mode_logic_rows(ir)
 
     # Ensure at least one logic row per transition.
     existing_tr_ids = {str(row.get("result_member") or "").strip() for row in transitions_logic}
@@ -2175,6 +2176,7 @@ def _freeze_ir_for_json_pipeline(ir: AwlIR) -> AwlIR:
         *[{"category": "aux", **row} for row in aux_logic],
         *[{"category": "transitions", **row} for row in transitions_logic],
         *[{"category": "io", **row} for row in io_logic],
+        *[{"category": "mode", **row} for row in mode_logic],
     ]
 
     # Preserve any existing metadata-only support_logic entries (no category).
@@ -7012,6 +7014,114 @@ def _derive_awl_timer_logic_rows(ir: AwlIR) -> list[dict[str, object]]:
             str(row.get("result_member") or ""),
         )
     )
+    return rows
+
+
+def _derive_awl_hmi_alias_logic_rows(ir: AwlIR) -> list[dict[str, object]]:
+    """
+    Materialize HMI/operator command aliases as explicit logic rows.
+
+    Many sources bind operator commands to M bits via symbolic tokens like:
+      "M:T1-A:Auto" M49.0
+    The converter allocates the *alias* (e.g. T1_Auto) into the HMI DB family,
+    but without an explicit logic row the corresponding FC12 would be empty in
+    strict mode. Here we create deterministic pass-through rows:
+      HMI.<Alias> = AUX_MEM_<Mx_x>
+    """
+    operand_aliases = _build_awl_operand_alias_map(ir)
+    hmi_alias_members = _collect_hmi_command_alias_members(ir)
+    if not hmi_alias_members:
+        return []
+
+    # Invert address->alias for quick lookup (case-insensitive).
+    alias_to_addresses: dict[str, list[str]] = {}
+    for address_key, alias in operand_aliases.items():
+        if not alias:
+            continue
+        alias_to_addresses.setdefault(alias.upper(), []).append(address_key)
+
+    rows: list[dict[str, object]] = []
+    for member in sorted(hmi_alias_members):
+        # Identify the bound physical M operand (prefer exact match).
+        addresses = alias_to_addresses.get(member.upper(), [])
+        address = next(
+            (a for a in addresses if re.fullmatch(r"M\d+(?:\.\d+)?", a, flags=re.IGNORECASE)),
+            "",
+        )
+        if not address:
+            continue
+        # Avoid writing a HMI alias from itself; we always map from AUX memory.
+        normalized_mem = address.replace(".", "_").upper()
+        aux_member = _support_member_name(normalized_mem, "AUX_MEM", strict_excel_mode=False)
+        if not aux_member:
+            continue
+        rows.append(
+            {
+                "result_member": member,
+                "condition_expression": aux_member,
+                "condition_operands": [aux_member],
+                "coil_mode": "",
+                "comment": f"HMI alias {member} <= {address}",
+                "network_index": 1,
+            }
+        )
+
+    # Deterministic ordering.
+    rows.sort(key=lambda r: str(r.get("result_member") or ""))
+    return rows
+
+
+def _derive_awl_mode_logic_rows(ir: AwlIR) -> list[dict[str, object]]:
+    """
+    Provide a minimal, deterministic LEV2/mode arbitration logic.
+
+    This is intentionally conservative: it only derives mode flags when the
+    corresponding HMI alias members exist in the operand catalog.
+    """
+    rows: list[dict[str, object]] = []
+    hmi_members = _collect_hmi_command_alias_members(ir)
+    auto_cmd = "T1_Auto" if "T1_Auto" in hmi_members else ("T1_auto" if "T1_auto" in hmi_members else "")
+    man_cmd = "T1_Manual" if "T1_Manual" in hmi_members else ""
+    z1_ok = "Z1_OK" if "Z1_OK" in hmi_members else ""
+
+    if auto_cmd:
+        expr = auto_cmd if not z1_ok else f"({z1_ok} AND {auto_cmd})"
+        ops = [auto_cmd] + ([z1_ok] if z1_ok else [])
+        rows.append(
+            {
+                "result_member": "MODE_AUTO_ACTIVE",
+                "condition_expression": expr,
+                "condition_operands": ops,
+                "coil_mode": "",
+                "comment": "Derived mode auto active",
+                "network_index": 1,
+            }
+        )
+    if man_cmd:
+        expr = man_cmd if not z1_ok else f"({z1_ok} AND {man_cmd})"
+        ops = [man_cmd] + ([z1_ok] if z1_ok else [])
+        rows.append(
+            {
+                "result_member": "MODE_MANUAL_ACTIVE",
+                "condition_expression": expr,
+                "condition_operands": ops,
+                "coil_mode": "",
+                "comment": "Derived mode manual active",
+                "network_index": 2,
+            }
+        )
+    if auto_cmd and man_cmd:
+        rows.append(
+            {
+                "result_member": "MODE_INTERLOCK_OK",
+                "condition_expression": "NOT (MODE_AUTO_ACTIVE AND MODE_MANUAL_ACTIVE)",
+                "condition_operands": ["MODE_AUTO_ACTIVE", "MODE_MANUAL_ACTIVE"],
+                "coil_mode": "",
+                "comment": "Derived mode arbitration coherence",
+                "network_index": 3,
+            }
+        )
+
     return rows
 
 
