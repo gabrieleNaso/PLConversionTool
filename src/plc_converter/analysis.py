@@ -1992,11 +1992,23 @@ def _build_ir(sequence_name: str, source_name: str, networks: list[AwlNetwork]) 
     _apply_translation_rules(step_map, transitions)
 
     if transitions:
-        referenced_steps = {item.source_step for item in transitions} | {
-            item.target_step for item in transitions
-        }
+        referenced_steps = {item.source_step for item in transitions} | {item.target_step for item in transitions}
+        # Important: do NOT automatically promote every Sxx reference to a GRAPH step.
+        #
+        # Many AWL projects read step-like bits (S10/S14/...) as generic flags or as
+        # "possible" steps, but the effective step set is defined only by transitions.
+        # Keeping orphan steps produces oversized/incorrect graphs and looks like bias
+        # towards richer examples.
+        #
+        # We keep:
+        # - steps referenced by a transition (source/target), and
+        # - steps explicitly activated in AWL (S/=/R on a step bit), and
+        # - protected synthetic/reserved steps.
+        protected_steps = {"S1", "S28_END", "S29", "S30_Fault", "S32"}
         step_map = {
-            name: candidate for name, candidate in step_map.items() if name in referenced_steps
+            name: candidate
+            for name, candidate in step_map.items()
+            if name in referenced_steps or name in protected_steps or candidate.activation_networks
         }
 
     assumptions = [
@@ -2055,6 +2067,50 @@ def _freeze_ir_for_json_pipeline(ir: AwlIR) -> AwlIR:
     if ir.strict_operand_catalog:
         return ir
 
+    def _sanitize_logic_rows_for_graph_steps(rows: list[dict[str, object]]) -> None:
+        """
+        Replace references to non-existent GRAPH steps with FALSE.
+
+        Some AWL sources read step-like bits (S10/S14/...) even when the effective
+        step catalog (derived from transitions) does not contain them. If we let
+        these leak into support FC logic, the generator will emit broken symbols
+        (e.g. S10.X) or misleading conditions. Treat them as FALSE so the output
+        remains compileable and consistent with the derived topology.
+        """
+        allowed_steps = {
+            str(step.name or "").strip().upper()
+            for step in (ir.steps or [])
+            if str(step.name or "").strip()
+        }
+        if not allowed_steps:
+            return
+
+        step_token_re = re.compile(r"\bS\d+(?:\.X)?\b", flags=re.IGNORECASE)
+
+        for row in rows:
+            expr = str(row.get("condition_expression") or "").strip() or "TRUE"
+
+            def _repl(match: re.Match) -> str:
+                token = match.group(0)
+                base = token.split(".", 1)[0].upper()
+                if base not in allowed_steps:
+                    return "FALSE"
+                return token.upper() if token.isupper() else token
+
+            row["condition_expression"] = step_token_re.sub(_repl, expr)
+
+            ops = []
+            for op in list(row.get("condition_operands") or []):
+                token = str(op or "").strip()
+                if not token:
+                    continue
+                if STEP_RE.fullmatch(token.split(".", 1)[0]):
+                    base = token.split(".", 1)[0].upper()
+                    if base not in allowed_steps:
+                        continue
+                ops.append(token)
+            row["condition_operands"] = ops
+
     guard_members_by_category = _collect_transition_guard_members_by_category(ir)
     timer_trigger_members_by_category = _collect_timer_trigger_support_members_by_category(ir)
     derived_actions = _derive_awl_action_logic_rows(ir)
@@ -2066,6 +2122,14 @@ def _freeze_ir_for_json_pipeline(ir: AwlIR) -> AwlIR:
     transitions_logic = derived_actions.get("transitions", [])
     io_logic = derived_actions.get("io", [])
     mode_logic = _derive_awl_mode_logic_rows(ir)
+
+    # Ensure no references to steps outside the derived GRAPH topology leak into support FC logic.
+    _sanitize_logic_rows_for_graph_steps(diag_logic)
+    _sanitize_logic_rows_for_graph_steps(hmi_logic)
+    _sanitize_logic_rows_for_graph_steps(aux_logic)
+    _sanitize_logic_rows_for_graph_steps(transitions_logic)
+    _sanitize_logic_rows_for_graph_steps(io_logic)
+    _sanitize_logic_rows_for_graph_steps(mode_logic)
 
     # Ensure at least one logic row per transition.
     existing_tr_ids = {str(row.get("result_member") or "").strip() for row in transitions_logic}
@@ -2410,23 +2474,8 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
             warnings=["Nessun passo disponibile per costruire il GRAPH target."],
         )
 
-    # Drop orphan steps that are not referenced by any transition.
-    # TIA GRAPH import rejects disconnected elements (e.g. "Init has no connection").
-    if ir.transitions:
-        referenced_steps = {
-            str(item.source_step)
-            for item in ir.transitions
-            if str(item.source_step)
-        } | {
-            str(item.target_step)
-            for item in ir.transitions
-            if str(item.target_step)
-        }
-        orphan_steps = [item.name for item in ordered_steps if item.name not in referenced_steps]
-        if orphan_steps:
-            ordered_steps = [item for item in ordered_steps if item.name in referenced_steps]
-            if not ordered_steps:
-                ordered_steps = list(ir.steps)
+    # Do not drop orphan steps here: for partial AWL sources we can still preserve
+    # the step catalog and later connect them with synthetic FALSE transitions.
 
     transition_targets = {transition.target_step for transition in ir.transitions}
     explicit_s1 = next((step for step in ordered_steps if step.name == "S1"), None)
@@ -2460,19 +2509,13 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
 
     warnings: list[str] = []
     if ir.transitions:
-        referenced_steps = {
-            str(item.source_step)
-            for item in ir.transitions
-            if str(item.source_step)
-        } | {
-            str(item.target_step)
-            for item in ir.transitions
-            if str(item.target_step)
+        referenced_steps = {str(item.source_step) for item in ir.transitions if str(item.source_step)} | {
+            str(item.target_step) for item in ir.transitions if str(item.target_step)
         }
         orphan_steps = [item.name for item in ir.steps if item.name not in referenced_steps]
         if orphan_steps:
             warnings.append(
-                "Rimossi step non connessi dal GRAPH: " + ", ".join(orphan_steps)
+                "Step orfani preservati (collegati con transizioni FALSE): " + ", ".join(orphan_steps)
             )
 
     working_transitions = [
@@ -7314,6 +7357,11 @@ def _derive_awl_action_logic_rows(ir: AwlIR) -> dict[str, list[dict[str, object]
     into the correct support FC (AUX for M bits, OUTPUT for Q/A bits).
     """
     operand_aliases = _build_awl_operand_alias_map(ir)
+    graph_steps = {
+        str(step.name or "").strip().upper()
+        for step in (ir.steps or [])
+        if str(step.name or "").strip()
+    }
     rows_by_category: dict[str, list[dict[str, object]]] = {
         "aux": [],
         "io": [],
@@ -7395,9 +7443,12 @@ def _derive_awl_action_logic_rows(ir: AwlIR) -> dict[str, list[dict[str, object]
         if TIMER_RE.fullmatch(normalized.upper()):
             return _support_member_name(f"{normalized}_DONE", "", strict_excel_mode=True)
         if STEP_RE.fullmatch(normalized):
-            # Bind step conditions to the GRAPH runtime DB step-active bit.
-            # We keep "Sxx.X" as the symbolic path; owner DB is resolved via symbol_home_db_map.
-            return f"{normalized}.X"
+            # Bind step conditions to the GRAPH runtime DB only when the step exists in the
+            # derived step catalog. Otherwise we treat it as a non-GRAPH flag and let the
+            # expression rewriter replace it with FALSE (to avoid emitting broken Sxx.X).
+            if normalized.upper() in graph_steps:
+                return f"{normalized}.X"
+            return normalized
         # Avoid leaking raw memory-style operands as member names.
         if re.fullmatch(r"M\\d+(?:(?:[._]S)|_S)\\d+", normalized, flags=re.IGNORECASE) or MEMORY_RE.fullmatch(normalized.upper()):
             normalized_mem = normalized.replace(".", "_").upper()
@@ -7406,7 +7457,9 @@ def _derive_awl_action_logic_rows(ir: AwlIR) -> dict[str, list[dict[str, object]
         if alias:
             alias_member = _support_member_name(alias, "", strict_excel_mode=True)
             if alias_member and STEP_RE.fullmatch(alias_member):
-                return f"{alias_member}.X"
+                if alias_member.upper() in graph_steps:
+                    return f"{alias_member}.X"
+                return alias_member
         return _support_member_name(alias or raw, "", strict_excel_mode=True)
 
     def _rewrite_expression(expr: str, network_index: int, *, strip_locals: bool) -> tuple[str, list[str]]:
@@ -7426,11 +7479,17 @@ def _derive_awl_action_logic_rows(ir: AwlIR) -> dict[str, list[dict[str, object]
             normalized = _normalize_operand_token(raw)
             if strip_locals and re.fullmatch(r"L\d+(?:\.\d+)?", normalized, flags=re.IGNORECASE):
                 continue
+            # Prevent emitting step-active references for steps that are not part of the GRAPH
+            # topology (common when AWL reads "possible" Sxx bits but never transitions to them).
+            if STEP_RE.fullmatch(normalized) and normalized.upper() not in graph_steps:
+                rewritten.append("FALSE")
+                continue
             symbol = _map_symbol(raw, network_index)
             if not symbol:
                 continue
             rewritten.append(symbol)
-            operands.append(symbol)
+            if symbol.upper() not in {"TRUE", "FALSE"}:
+                operands.append(symbol)
         rendered = " ".join(rewritten).strip() or "TRUE"
         return rendered, _dedupe_list(operands)
 
