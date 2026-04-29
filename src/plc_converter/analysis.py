@@ -6285,9 +6285,17 @@ def _derive_symbol_alias_from_base(symbolic_base: str) -> str:
     parts = [item for item in parts if item]
     if not parts:
         return ""
-    meaningful = [item for item in parts if len(item) > 1]
+
+    def _normalize_part(part: str) -> str:
+        # Keep acronyms as-is (INS/OK/LM), but normalize lowercase words
+        # (auto -> Auto) so case variants do not create distinct members.
+        if part.isalpha() and part.islower():
+            return part[:1].upper() + part[1:]
+        return part
+
+    meaningful = [_normalize_part(item) for item in parts if len(item) > 1]
     if not meaningful:
-        return parts[-1]
+        return _normalize_part(parts[-1])
     if len(meaningful) == 1:
         return meaningful[0]
     return "_".join(meaningful[-2:])
