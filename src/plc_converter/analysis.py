@@ -7157,13 +7157,23 @@ def _derive_awl_timer_logic_rows(ir: AwlIR) -> list[dict[str, object]]:
                 trigger_ops.append(_support_member_name(alias or raw, "", strict_excel_mode=True))
         trigger_ops = [op for op in trigger_ops if op]
         condition_expression = " AND ".join(trigger_ops) if trigger_ops else "TRUE"
+        preset = str(timer.preset or "").strip()
+        kind = str(timer.kind or "").strip()
+        meta: list[str] = []
+        if kind:
+            meta.append(kind)
+        if preset:
+            meta.append(f"preset={preset}")
+        if trigger_ops:
+            meta.append(f"triggers={len(trigger_ops)}")
+        meta_txt = f" ({', '.join(meta)})" if meta else ""
         rows.append(
             {
                 "result_member": _guard_operand_db_member_name(timer_name, strict_excel_mode=False),
                 "condition_expression": condition_expression,
                 "condition_operands": trigger_ops,
                 "coil_mode": "",
-                "comment": f"Aux timer {timer_name}",
+                "comment": f"timer {timer_name}{meta_txt}",
                 "network_index": int(timer.network_index or 0),
             }
         )
@@ -7300,13 +7310,69 @@ def _derive_awl_action_logic_rows(ir: AwlIR) -> dict[str, list[dict[str, object]
         "transitions": [],
     }
 
-    def _network_comment(network: AwlNetwork) -> str:
+    def _network_label(network: AwlNetwork) -> str:
         title = str(network.title or "").strip()
-        # Some AWL exports use numeric-only titles ("26"). Avoid propagating them
-        # as-is into DB member comments and FC network titles.
+        # Some AWL exports use numeric-only titles ("26"). Avoid propagating them as-is.
         if title and not re.fullmatch(r"\d+", title):
             return title
-        return f"NETWORK {network.index}"
+        return ""
+
+    def _brief_network_purpose(network: AwlNetwork) -> str:
+        outputs = _collect_output_targets(network)
+        memories = _collect_memory_targets(network)
+        locals_ = _collect_local_targets(network)
+        timer_calls = [
+            instr
+            for instr in (network.instructions or [])
+            if str(getattr(instr, "opcode", "") or "").upper() in TIMER_OPCODES
+        ]
+        # Timer references (contacts) are not the same as timer calls; a network can
+        # reference `Txx` in its condition without instantiating/starting the timer.
+        timer_refs = sorted(
+            {
+                match.upper()
+                for instr in (network.instructions or [])
+                for match in TIMER_RE.findall(str(getattr(instr, "raw", "") or ""))
+            }
+        )
+        faults = _collect_fault_tokens(network)
+
+        tags: list[str] = []
+        if outputs:
+            tags.append(f"outputs={len(outputs)}")
+        if memories or locals_:
+            tags.append(f"memory={len(memories) + len(locals_)}")
+        if timer_calls:
+            tags.append(f"timer_calls={len(timer_calls)}")
+        if timer_refs:
+            tags.append(f"timer_refs={len(timer_refs)}")
+        if faults:
+            tags.append(f"faults={len(faults)}")
+        return ", ".join(tags)
+
+    def _row_comment(network: AwlNetwork, *, category: str, result_member: str, action: str) -> str:
+        label = _network_label(network)
+        purpose = _brief_network_purpose(network)
+        prefix = f"{label} " if label else ""
+        if category == "io":
+            kind = "output"
+        elif category == "aux":
+            kind = "memory"
+        else:
+            kind = category or "logic"
+        act = str(action or "").strip().upper()
+        if act == "S":
+            verb = "set"
+        elif act == "R":
+            verb = "reset"
+        elif act == "=":
+            verb = "assign"
+        else:
+            verb = "derive"
+        tail = f"{kind} {result_member} ({verb})"
+        if purpose:
+            return f"{prefix}{tail} [{purpose}]".strip()
+        return f"{prefix}{tail}".strip()
 
     def _map_symbol(raw: str, network_index: int) -> str:
         normalized = _normalize_operand_token(raw)
@@ -7389,7 +7455,12 @@ def _derive_awl_action_logic_rows(ir: AwlIR) -> dict[str, list[dict[str, object]
                     "condition_expression": condition_expression,
                     "condition_operands": list(condition_operands),
                     "coil_mode": coil_mode,
-                    "comment": _network_comment(network),
+                    "comment": _row_comment(
+                        network,
+                        category="aux",
+                        result_member=result_member,
+                        action=action,
+                    ),
                     "network_index": network.index,
                 }
             )
@@ -7416,7 +7487,12 @@ def _derive_awl_action_logic_rows(ir: AwlIR) -> dict[str, list[dict[str, object]
                     "condition_expression": local_expr,
                     "condition_operands": list(local_ops),
                     "coil_mode": coil_mode,
-                    "comment": _network_comment(network),
+                    "comment": _row_comment(
+                        network,
+                        category="aux",
+                        result_member=result_member,
+                        action=action,
+                    ),
                     "network_index": network.index,
                 }
             )
@@ -7436,7 +7512,12 @@ def _derive_awl_action_logic_rows(ir: AwlIR) -> dict[str, list[dict[str, object]
                     "condition_expression": condition_expression,
                     "condition_operands": list(condition_operands),
                     "coil_mode": coil_mode,
-                    "comment": _network_comment(network),
+                    "comment": _row_comment(
+                        network,
+                        category="io",
+                        result_member=result_member,
+                        action=action,
+                    ),
                     "network_index": network.index,
                 }
             )
@@ -7470,7 +7551,12 @@ def _derive_awl_action_logic_rows(ir: AwlIR) -> dict[str, list[dict[str, object]
                     "condition_expression": condition_expression,
                     "condition_operands": list(condition_operands),
                     "coil_mode": coil_mode,
-                    "comment": _network_comment(network),
+                    "comment": _row_comment(
+                        network,
+                        category=category,
+                        result_member=result_member,
+                        action=instr.opcode,
+                    ),
                     "network_index": network.index,
                 }
             )
