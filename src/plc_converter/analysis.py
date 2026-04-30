@@ -664,12 +664,16 @@ def _apply_translation_rules(
         _augment_recycle_split_branch(step_map, transitions, context)
 
     # Rule 2: tracking micro-flow extraction (auto when seed detected; overridable).
-    if _tracking_translation_is_enabled(step_map, transitions):
+    tracking_enabled = _tracking_translation_is_enabled(step_map, transitions)
+    if tracking_enabled:
         _augment_tracking_branch(step_map, transitions)
 
-    # Rule 3: presence-loop branch (general). Some sequencers keep a "starting" step
-    # that forks: proceed if piece is present, otherwise jump back to a check step.
-    _augment_presence_loop_branch(step_map, transitions)
+    # Rule 3: presence-loop branch (general). This heuristic is only safe when we
+    # do not already have a tracking micro-flow in play; otherwise it can overfit
+    # and propagate a presence operand (e.g. PT) to unrelated steps, creating
+    # duplicated/repeated conditions.
+    if not tracking_enabled:
+        _augment_presence_loop_branch(step_map, transitions)
 
     # Final simplification: remove pure pass-through steps (TRUE-only outgoing)
     # so the resulting GRAPH is closer to typical TIA structures.
@@ -913,6 +917,14 @@ def _augment_recycle_split_branch(
     # - forward when presence is TRUE
     # - back (recycle) when presence is FALSE
     presence_operand = _pick_presence_operand_for_branch(transitions)
+    seed_mentions_presence = False
+    if seed is not None and presence_operand:
+        seed_mentions_presence = presence_operand in (seed.guard_operands or []) or _guard_mentions_operand(
+            str(seed.guard_expression or ""), presence_operand
+        )
+    # Hard safety gate: do not inject presence conditions into unrelated transitions.
+    if not seed_mentions_presence:
+        return
     if seed is not None and presence_operand and (seed.guard_expression or "").strip().upper() == "TRUE":
         seed.guard_expression = f"({presence_operand})"
         seed.guard_operands = [presence_operand]
@@ -923,7 +935,7 @@ def _augment_recycle_split_branch(
             source_step=recycle_source,
             target_step=recycle_back,
             network_index=network_index,
-            guard_expression=f"NOT {presence_operand}" if presence_operand else "TRUE",
+            guard_expression=f"NOT {presence_operand}",
             guard_operands=[presence_operand] if presence_operand else [],
             jump_labels=[],
         )
@@ -1149,6 +1161,14 @@ def _augment_presence_loop_branch(
     if any(
         tr.source_step == starting_step and _guard_mentions_operand(str(tr.guard_expression or ""), presence_operand)
         for tr in outgoing.get(starting_step, [])
+    ):
+        return
+
+    # Safety gate: do not inject a presence operand into an unconditional transition unless
+    # that operand is already part of the seed. Otherwise this heuristic tends to overfit
+    # and replicate a presence condition across unrelated steps.
+    if presence_operand not in (forward_tr.guard_operands or []) and not _guard_mentions_operand(
+        str(forward_tr.guard_expression or ""), presence_operand
     ):
         return
 
@@ -2770,6 +2790,8 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
     step_nodes: list[GraphStepNode] = []
     next_sequential = 1
 
+    inferred_step_preset_times = _infer_step_supervision_times_from_preset_networks(ir.networks)
+
     for step in all_steps:
         explicit_step_no = step.step_number if step.step_number and step.step_number > 0 else None
         if explicit_step_no is None:
@@ -2799,6 +2821,17 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
             step_no = candidate
         used_step_numbers.add(step_no)
 
+        maximum_step_time = "T#10S"
+        warning_time = "T#7S"
+        inferred = inferred_step_preset_times.get(str(step.name or "").strip().upper())
+        if inferred:
+            maximum_step_time = inferred
+            ms = _parse_tia_time_literal_to_ms(inferred)
+            if ms is not None:
+                warning_time = _format_ms_as_tia_time_literal(int(ms * 0.7))
+            else:
+                warning_time = "T#0MS" if inferred.upper() == "T#0MS" else "T#7S"
+
         step_nodes.append(
             GraphStepNode(
                 name=step.name,
@@ -2806,6 +2839,8 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
                 init=step.name == entry_step,
                 source_step=step.name,
                 action_networks=step.action_networks,
+                maximum_step_time=maximum_step_time,
+                warning_time=warning_time,
             )
         )
 
@@ -3936,8 +3971,8 @@ def _build_graph_fb_xml(profile, ir: AwlIR, graph_topology: GraphTopology) -> st
             '      <Sections>\n'
             '        <Section Name="None">\n'
             f'          <Member Name="SNO" Datatype="Int"><StartValue Informative="true">{step.step_no}</StartValue></Member>\n'
-            '          <Member Name="T_MAX" Datatype="Time"><StartValue Informative="true">T#10S</StartValue></Member>\n'
-            '          <Member Name="T_WARN" Datatype="Time"><StartValue Informative="true">T#7S</StartValue></Member>\n'
+            f'          <Member Name="T_MAX" Datatype="Time"><StartValue Informative="true">{escape(step.maximum_step_time)}</StartValue></Member>\n'
+            f'          <Member Name="T_WARN" Datatype="Time"><StartValue Informative="true">{escape(step.warning_time)}</StartValue></Member>\n'
             '          <Member Name="H_SV_FLT" Datatype="Byte"><StartValue Informative="true">16#04</StartValue></Member>\n'
             '        </Section>\n'
             '      </Sections>\n'
@@ -7086,7 +7121,7 @@ def _render_graph_step(step: GraphStepNode) -> str:
     step_name = step.name or str(step.step_no)
     return (
         f'      <Step Number="{step.step_no}" Init="{str(step.init).lower()}" '
-        f'Name="{escape(step_name)}" MaximumStepTime="T#10S" WarningTime="T#7S">\n'
+        f'Name="{escape(step_name)}" MaximumStepTime="{escape(step.maximum_step_time)}" WarningTime="{escape(step.warning_time)}">\n'
         '        <Actions>\n'
         '          <Action />\n'
         '        </Actions>\n'
@@ -8492,6 +8527,104 @@ def _graph_step_sort_key(name: str) -> tuple[int, int, str]:
 
     step_no, raw_name = _step_sort_key(name)
     return step_no, 1, raw_name
+
+
+def _parse_tia_time_literal_to_ms(value: str) -> int | None:
+    """
+    Parse a basic TIA Time literal (e.g. T#700MS, T#7S, T#1M, T#2H) into ms.
+
+    This helper is intentionally limited to the literals emitted by this tool.
+    """
+    token = str(value or "").strip().upper()
+    if not token.startswith("T#"):
+        return None
+    body = token[2:]
+    match = re.fullmatch(r"(\d+)(MS|S|M|H)", body)
+    if not match:
+        return None
+    amount = int(match.group(1))
+    unit = match.group(2)
+    if unit == "MS":
+        return amount
+    if unit == "S":
+        return amount * 1000
+    if unit == "M":
+        return amount * 60_000
+    if unit == "H":
+        return amount * 3_600_000
+    return None
+
+
+def _format_ms_as_tia_time_literal(ms: int) -> str:
+    value = max(0, int(ms))
+    if value == 0:
+        return "T#0MS"
+    if value % 3_600_000 == 0:
+        return f"T#{value // 3_600_000}H"
+    if value % 60_000 == 0:
+        return f"T#{value // 60_000}M"
+    if value % 1000 == 0:
+        return f"T#{value // 1000}S"
+    return f"T#{value}MS"
+
+
+def _infer_step_supervision_times_from_preset_networks(networks: list[AwlNetwork]) -> dict[str, str]:
+    """
+    Infer per-step supervision times from AWL networks that assign a sequencer Preset.
+
+    Typical Step7 pattern:
+      A <prefix>.S18
+      L S5T#10S
+      JC <label>
+      ...
+      <label>: NOP 0
+      T <prefix>.Preset DBxxx.DBWyy
+
+    We interpret (step, preset) pairs guarded by a jump as static step->timeout hints.
+    """
+    step_to_preset: dict[str, str] = {}
+    for network in networks:
+        has_preset_store = any(
+            instr.opcode == "T"
+            and any("PRESET" in str(arg or "").upper() for arg in (instr.args or []))
+            for instr in (network.instructions or [])
+        )
+        if not has_preset_store:
+            continue
+
+        active_step: str | None = None
+        active_preset: str | None = None
+        for instr in network.instructions or []:
+            op = str(instr.opcode or "").upper()
+            if op in CONDITION_OPCODES and instr.args:
+                # Step condition uses symbolic "<prefix>.Snn" or raw "Snn".
+                for raw_arg in instr.args:
+                    token = _normalize_operand_token(raw_arg)
+                    match = re.fullmatch(r"[A-Z0-9_]+\.S0*(\d+)", token, flags=re.IGNORECASE)
+                    if match:
+                        active_step = f"S{int(match.group(1))}"
+                        active_preset = None
+                        break
+                    if STEP_RE.fullmatch(token):
+                        active_step = _canonicalize_step_token(token.upper())
+                        active_preset = None
+                        break
+                continue
+
+            if op == "L" and instr.args:
+                raw_blob = " ".join(str(x) for x in instr.args if str(x).strip())
+                match = PRESET_RE.search(raw_blob)
+                if match:
+                    active_preset = _normalize_timer_preset_literal(match.group(0).upper())
+                continue
+
+            if op in {"JC", "JCN"} and active_step and active_preset:
+                step_to_preset.setdefault(active_step, active_preset)
+                active_step = None
+                active_preset = None
+                continue
+
+    return step_to_preset
 
 
 def _collect_matches(network: AwlNetwork, pattern: re.Pattern[str]) -> set[str]:

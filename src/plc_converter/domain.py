@@ -243,6 +243,8 @@ class GraphStepNode:
     init: bool
     source_step: str
     action_networks: list[int] = field(default_factory=list)
+    maximum_step_time: str = "T#10S"
+    warning_time: str = "T#7S"
 
     def to_dict(self) -> dict:
         return asdict(self)
