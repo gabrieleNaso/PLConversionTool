@@ -882,6 +882,9 @@ Deve quindi usare preferenzialmente:
 - fault ed emergency già normalizzati;
 - strutture popup del DB HMI.
 
+Nota operativa:
+- le scritture non booleane derivate dall'AWL (pattern `L ...` / `T ...`, cioè `MOVE`) vanno serializzate come box LAD `Move` in `FC 12 HMI` (non in `FC 13 Aux`), mantenendo l'enable coerente con la logica AWL e con la canonicalizzazione dei token step (`S01` → `S1`) quando necessario.
+
 ## 31. Regola sul GRAPH
 
 Il GRAPH non deve contenere tutta la complessità storica dell'AWL in forma grezza.
@@ -1919,7 +1922,7 @@ Il backend FC deve emettere solo pattern LAD già convalidati e combinazioni aut
 
 Nel caso FC102 il parsing dell'AWL rende leggibile una catena automatica ricorrente della forma:
 
-`S01 -> S02 -> S03 -> S04 -> S07 -> S10 -> S14 -> S18 -> S22 -> S26 -> S03`
+`S1 -> S2 -> S3 -> S4 -> S7 -> S10 -> S14 -> S18 -> S22 -> S26 -> S3`
 
 con rami separati verso `S29` e `S32`.
 

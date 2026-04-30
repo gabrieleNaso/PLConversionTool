@@ -44,6 +44,7 @@ L'IR nasce da:
 - Il parser identifica:
   - step e transizioni;
   - logiche LAD/GRAPH equivalenti (incluse guardie booleane con `AND/OR/NOT`);
+  - scritture non booleane (pattern `L ... / T ...`) da tradurre come box LAD `Move` nel backend HMI;
   - simboli e riferimenti che devono esistere nel `GlobalDB`;
   - famiglie funzionali ricorrenti: allarmi, memorie/ausiliari, sequenza, manuale/automatico, emergenza/fault, uscite.
 
@@ -52,6 +53,7 @@ L'IR nasce da:
 2. **Parsing semantico**: ogni network diventa logica sequenziale (step, transizioni, guard, timer, set/reset).
    - Per le transizioni pilotate da `Trs` viene preservata la struttura booleana delle condizioni (`A/AN/O/ON` e gruppi con parentesi).
 3. **Normalizzazione**: naming deterministico e riferimenti uniformati.
+   - include canonicalizzazione dei token step quando il sorgente usa forme zero‑padded (`S01` -> `S1`) per mantenere coerenza con il catalogo step derivato dal GRAPH.
 4. **Costruzione IR**: grafo/struttura di nodi (step, transition, timer, mapping DB, ownership delle variabili globali, riferimenti simbolici completi).
 5. **Validazione**: coerenza minima e contratti cross-blocco (riferimenti presenti, topologia consistente, owner DB, branch path, leaf name, cardinalita' del pacchetto).
    - gate hard: nessuna variabile globale "orfana"; tutto cio' che viene referenziato in `FB/FC/GRAPH` deve esistere davvero in un DB owner con naming simbolico coerente.

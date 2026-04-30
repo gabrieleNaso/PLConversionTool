@@ -238,6 +238,7 @@ Regole Excel importanti:
 - per LEV2 usa `lv2`/`lev2`; la categoria `mode` non viene normalizzata automaticamente a LEV2 nel parser `operands`.
 - non usare variabili FC assenti da `operands`: se compaiono in una `condition_expression` vengono considerate **non risolte** (mancanza di owner DB) e il bundle non va considerato valido per import/compile.
 - timer/contatori definiti in `operands` e usati in `support_fc` vengono emessi come blocchi LAD completi, con preset da `control_value`.
+- per le scritture non booleane (pattern AWL `L ... / T ...`) il backend genera box LAD `Move` in `FC12 HMI` con enable coerente con la rete sorgente (no enable sempre a `Powerrail`).
 - se piu' righe `support_fc` hanno stessa `category` e stesso `network`, vengono aggregate in una sola network FC.
 - ogni network FC deve avere un solo `Powerrail` LAD (vincolo import TIA).
 - `coil_mode` per riga: `set` -> `SCoil`, `reset` -> `RCoil`, vuoto -> bobina normale (`Coil`).
@@ -310,6 +311,9 @@ Nota sui nomi member DB:
 - i nomi in transizione privilegiano alias semantici derivati dall'AWL (es. da simboli/tag ricorrenti nel sorgente).
 - in caso di alias ambiguo il generatore usa fallback deterministico basato sul token AWL originale (sanitizzato), senza introdurre indirizzi nuovi e senza lasciare nomi vuoti.
 - i member della famiglia transizioni sono sempre emessi e referenziati come path strutturato: `DB14_<Name>_TRANSITIONS_DB -> Transitions -> <member>`.
+
+Nota timer (AWL):
+- quando in AWL compaiono `Txx` in logica booleana, il significato e' il done del timer: in XML deve diventare `Txx.Q` oppure un box IEC in-line. Il token `Txx_DONE` e' solo una rappresentazione interna e non deve diventare un member BOOL nei DB.
 
 ## Problemi comuni (e cosa fare)
 

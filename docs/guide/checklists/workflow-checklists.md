@@ -1,7 +1,7 @@
 # Checklist operative (TIA Portal V20 / GRAPH V2)
 
 Queste checklist sono da eseguire sempre prima di perdere tempo su debug casuale.
-Fonte: `docs/reference/reports/report_del_29-04-2026.md` e `docs/reference/specs/Specifica_master_traduzione_AWL_e_generazione_XML_TIA_V20_V2_29_04.md`.
+Fonte: `docs/reference/reports/report_del_30-04-2026.md` e `docs/reference/specs/Specifica_master_traduzione_AWL_e_generazione_XML_TIA_V20_V2_29_04.md`.
 
 Regola trasversale:
 - `FB GRAPH`, `GlobalDB`, `FC LAD` e ogni eventuale blocco aggiuntivo vanno verificati come pacchetto coerente.
@@ -41,7 +41,7 @@ Regola trasversale:
 - **Power rail unico**: ogni network LAD deve avere un solo `Powerrail`.
 - **GlobalVariable**: ok usarle nel `FlgNet` (riferimenti simbolici espliciti), purché risolvibili.
 - **Coerenza col pacchetto**: la `FC LAD` non deve introdurre riferimenti, mapping o nomi di member che non esistono davvero nel `GlobalDB` o che divergono dal `GRAPH`.
-- **Coerenza tipo/uso**: timer e contatori devono avere datatype coerente (es. `IEC_TIMER`/`IEC_COUNTER`) e, se usati come contatti booleani, devono essere referenziati tramite bit/field corretto (es. `Txx_DONE` o `.Q`), non come variabile booleana inventata.
+- **Coerenza tipo/uso**: timer e contatori devono avere datatype coerente (es. `IEC_TIMER`/`IEC_COUNTER`) e, se usati come contatti booleani, devono essere referenziati tramite bit/field corretto (`Txx.Q`). Nel flusso AWL il token `Txx_DONE` e' solo una rappresentazione **virtuale** interna: in XML deve risolversi a `.Q` oppure a un box IEC in-line, senza dichiarare un BOOL `Txx_DONE` nel DB.
 
 ## D) Diagnosi quando l'import fallisce
 - **Prima**: validare struttura XML (hard) prima dei metadati runtime (soft).

@@ -2212,7 +2212,7 @@ def _freeze_ir_for_json_pipeline(ir: AwlIR) -> AwlIR:
         remains compileable and consistent with the derived topology.
         """
         allowed_steps = {
-            str(step.name or "").strip().upper()
+            _canonicalize_step_token(str(step.name or "").strip().upper())
             for step in (ir.steps or [])
             if str(step.name or "").strip()
         }
@@ -2227,9 +2227,14 @@ def _freeze_ir_for_json_pipeline(ir: AwlIR) -> AwlIR:
             def _repl(match: re.Match) -> str:
                 token = match.group(0)
                 base = token.split(".", 1)[0].upper()
-                if base not in allowed_steps:
+                canonical = _canonicalize_step_token(base)
+                suffix = ""
+                if ".X" in token.upper():
+                    suffix = ".X"
+                if canonical not in allowed_steps:
                     return "FALSE"
-                return token.upper() if token.isupper() else token
+                rendered = f"{canonical}{suffix}"
+                return rendered.upper() if token.isupper() else rendered
 
             row["condition_expression"] = step_token_re.sub(_repl, expr)
             row["condition_expression"] = _cleanup_boolean_expression_text(str(row.get("condition_expression") or "")) or "TRUE"
@@ -2241,8 +2246,13 @@ def _freeze_ir_for_json_pipeline(ir: AwlIR) -> AwlIR:
                     continue
                 if STEP_RE.fullmatch(token.split(".", 1)[0]):
                     base = token.split(".", 1)[0].upper()
-                    if base not in allowed_steps:
+                    canonical = _canonicalize_step_token(base)
+                    suffix = ""
+                    if ".X" in token.upper():
+                        suffix = ".X"
+                    if canonical not in allowed_steps:
                         continue
+                    token = f"{canonical}{suffix}"
                 ops.append(token)
             row["condition_operands"] = ops
 
@@ -2250,7 +2260,9 @@ def _freeze_ir_for_json_pipeline(ir: AwlIR) -> AwlIR:
     timer_trigger_members_by_category = _collect_timer_trigger_support_members_by_category(ir)
     derived_actions = _derive_awl_action_logic_rows(ir)
     diag_logic = derived_actions.get("diag", [])
-    hmi_logic = derived_actions.get("hmi", []) + _derive_awl_hmi_alias_logic_rows(ir)
+    # Note: OPIN/OPOUT (DB81/DB82) are classified as "external", but the user expects
+    # the corresponding status mapping logic to live in the HMI support FC.
+    hmi_logic = derived_actions.get("hmi", []) + derived_actions.get("external", []) + _derive_awl_hmi_alias_logic_rows(ir)
     aux_logic = derived_actions.get("aux", [])
     transitions_logic = derived_actions.get("transitions", [])
     io_logic = derived_actions.get("io", [])
@@ -3492,7 +3504,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
 
     hmi_logic = _excel_support_logic_rows(ir, "hmi")
     if not ir.strict_operand_catalog:
-        hmi_logic = hmi_logic + derived_actions.get("hmi", [])
+        hmi_logic = hmi_logic + derived_actions.get("hmi", []) + derived_actions.get("external", [])
     hmi_members = (
         (_excel_support_members(ir, "hmi") or _collect_hmi_support_members(ir))
         + guard_members_by_category.get("hmi", [])
@@ -4644,6 +4656,31 @@ def _support_operand_datatypes(ir: AwlIR) -> dict[str, str]:
         if not normalized_name:
             continue
         mapping[normalized_name] = _normalize_plc_datatype(raw_datatype)
+    # Best-effort inference from symbolic alias map:
+    # when AWL references DBx.DBW/DBD/DBB via a symbolic leaf (e.g. "M02".Trs DB102.DBW2),
+    # we want the generated support DB member (Trs) to have a non-Bool datatype so MOVE
+    # blocks can compile correctly.
+    alias_map = _build_awl_operand_alias_map(ir)
+    for address_key, alias in alias_map.items():
+        if not alias:
+            continue
+        member = _support_member_name(alias, "", strict_excel_mode=True)
+        if not member or member in mapping:
+            continue
+        token = str(address_key or "").strip().upper()
+        match = re.fullmatch(r"DB\d+\.DB([XBWD])(\d+)(?:\.\d+)?", token)
+        if not match:
+            continue
+        kind = match.group(1).upper()
+        if kind == "X":
+            datatype = "Bool"
+        elif kind == "B":
+            datatype = "Byte"
+        elif kind == "W":
+            datatype = "Int"
+        else:
+            datatype = "DInt"
+        mapping[member] = datatype
     # AWL path: timers are implicit and must be typed explicitly, otherwise
     # support DBs default to Bool and LAD ends up wiring timer instances into coils.
     for timer in ir.timers:
@@ -4919,15 +4956,13 @@ def _build_support_lad_compile_units(
             network_no_for_title = ""
             for logic_row in network_rows:
                 result_member = str(logic_row.get("result_member") or "").strip()
-                if not result_member:
-                    continue
                 condition_expression = str(logic_row.get("condition_expression") or "TRUE")
                 condition_operands = _as_str_list(logic_row.get("condition_operands"))
                 coil_mode = str(logic_row.get("coil_mode") or "").strip()
                 # Keep per-row comments out of the TIA CompileUnit.
                 explicit_comment = ""
                 if not title:
-                    title = str(logic_row.get("network_title") or "").strip()
+                    title = _normalize_network_title_for_tia(str(logic_row.get("network_title") or "").strip())
                 if not network_no_for_title:
                     network_no_for_title = str(_as_positive_int(logic_row.get("network_index")) or "").strip()
                 note_hints: list[str] = []
@@ -4942,21 +4977,42 @@ def _build_support_lad_compile_units(
                         resolved_comment = f"{resolved_comment} | {inferred_comment}"
                 else:
                     resolved_comment = resolved_comment or inferred_comment
-                flgnet_fragments.append(
-                    _build_support_logic_flgnet(
-                        db_name=db_name,
-                        result_member=result_member,
-                        condition_expression=condition_expression,
-                        condition_operands=condition_operands,
-                        db_members=db_member_set,
-                        symbol_home_db_map=symbol_home_db_map,
-                        member_datatypes=member_datatypes,
-                        timer_configs=timer_configs,
-                        coil_mode=coil_mode,
-                        prefer_current_db_for_unmapped=prefer_current_db_for_unmapped,
-                        network_index=_as_positive_int(logic_row.get("network_index")),
+                if str(logic_row.get("kind") or "").strip().lower() == "move":
+                    move_in = logic_row.get("move_in") if isinstance(logic_row.get("move_in"), dict) else {}
+                    move_outs = _as_str_list(logic_row.get("move_out_members"))
+                    if not move_outs:
+                        continue
+                    flgnet_fragments.append(
+                        _build_support_move_flgnet(
+                            db_name=db_name,
+                            enable_expression=condition_expression,
+                            enable_operands=condition_operands,
+                            move_in={str(k): str(v) for k, v in (move_in or {}).items()},
+                            move_out_members=move_outs,
+                            db_members=db_member_set,
+                            symbol_home_db_map=symbol_home_db_map,
+                            member_datatypes=member_datatypes,
+                            prefer_current_db_for_unmapped=prefer_current_db_for_unmapped,
+                        )
                     )
-                )
+                else:
+                    if not result_member:
+                        continue
+                    flgnet_fragments.append(
+                        _build_support_logic_flgnet(
+                            db_name=db_name,
+                            result_member=result_member,
+                            condition_expression=condition_expression,
+                            condition_operands=condition_operands,
+                            db_members=db_member_set,
+                            symbol_home_db_map=symbol_home_db_map,
+                            member_datatypes=member_datatypes,
+                            timer_configs=timer_configs,
+                            coil_mode=coil_mode,
+                            prefer_current_db_for_unmapped=prefer_current_db_for_unmapped,
+                            network_index=_as_positive_int(logic_row.get("network_index")),
+                        )
+                    )
             if not flgnet_fragments:
                 continue
             if not title:
@@ -5707,6 +5763,315 @@ def _build_support_logic_flgnet(
     )
 
 
+def _build_support_move_flgnet(
+    db_name: str,
+    enable_expression: str,
+    enable_operands: list[str],
+    move_in: dict[str, str],
+    move_out_members: list[str],
+    db_members: set[str],
+    symbol_home_db_map: dict[str, str],
+    member_datatypes: dict[str, str],
+    prefer_current_db_for_unmapped: bool = False,
+) -> str:
+    """
+    Serialize a TIA LAD `Move` box (with optional boolean enable logic).
+
+    `move_in` expects:
+      - {"kind": "symbol", "value": "<operand>"}
+      - {"kind": "literal_int", "value": "2"}
+      - {"kind": "literal_time", "value": "T#1S"}
+      - {"kind": "literal_string", "value": \"'text'\"}
+      - {"kind": "literal_bool", "value": "TRUE"/"FALSE"}
+    """
+    next_uid = 21
+
+    def alloc_uid() -> int:
+        nonlocal next_uid
+        current = next_uid
+        next_uid += 1
+        return current
+
+    parts_lines: list[str] = []
+    wires_lines: list[str] = []
+
+    def _owner_db_name(symbol_name: str) -> str:
+        if symbol_name in db_members:
+            return db_name
+        if symbol_name in symbol_home_db_map:
+            return symbol_home_db_map[symbol_name]
+        if prefer_current_db_for_unmapped:
+            return db_name
+        return ""
+
+    def _render_access(symbol_name: str, symbol_path: list[str], access_uid: int) -> list[str]:
+        target_db_name = _owner_db_name(symbol_name)
+        if target_db_name:
+            resolved_path = list(symbol_path)
+            root_struct = _support_root_struct_for_db_name(target_db_name)
+            if root_struct and (not resolved_path or resolved_path[0] != root_struct):
+                resolved_path = [root_struct, *resolved_path]
+            return [
+                f'    <Access Scope="GlobalVariable" UId="{access_uid}">\n',
+                "      <Symbol>\n",
+                f'        <Component Name="{escape(target_db_name)}" />\n',
+                "".join(f'        <Component Name="{escape(component)}" />\n' for component in resolved_path),
+                "      </Symbol>\n",
+                "    </Access>\n",
+            ]
+        return [
+            f'    <Access Scope="GlobalVariable" UId="{access_uid}">\n',
+            "      <Symbol>\n",
+            "".join(f'        <Component Name="{escape(component)}" />\n' for component in symbol_path),
+            "      </Symbol>\n",
+            "    </Access>\n",
+        ]
+
+    guard_clauses = _parse_guard_clauses(enable_expression, enable_operands)
+    guard_clauses, common_terms = _factor_common_guard_terms(guard_clauses)
+    has_true_clause = any(not clause for clause in guard_clauses)
+
+    clause_contact_uids: list[list[int]] = []
+    for clause in guard_clauses:
+        if not clause:
+            continue
+        contact_uids: list[int] = []
+        for operand, negated in clause:
+            normalized_operand, operand_path = _resolve_logic_symbol_path(operand, member_datatypes)
+            if not normalized_operand:
+                continue
+            datatype = _normalize_plc_datatype(member_datatypes.get(normalized_operand, ""))
+            if len(operand_path) == 1 and datatype in {"IEC_TIMER", "IEC_COUNTER"}:
+                operand_path = [normalized_operand, "Q"]
+            access_uid = alloc_uid()
+            contact_uid = alloc_uid()
+            parts_lines.extend(_render_access(normalized_operand, operand_path, access_uid))
+            if negated:
+                parts_lines.extend(
+                    [
+                        f'    <Part Name="Contact" UId="{contact_uid}">\n',
+                        '      <Negated Name="operand" />\n',
+                        "    </Part>\n",
+                    ]
+                )
+            else:
+                parts_lines.append(f'    <Part Name="Contact" UId="{contact_uid}" />\n')
+
+            wire_uid = alloc_uid()
+            wires_lines.extend(
+                [
+                    f'    <Wire UId="{wire_uid}">\n',
+                    f'      <IdentCon UId="{access_uid}" />\n',
+                    f'      <NameCon UId="{contact_uid}" Name="operand" />\n',
+                    "    </Wire>\n",
+                ]
+            )
+            contact_uids.append(contact_uid)
+        if contact_uids:
+            clause_contact_uids.append(contact_uids)
+
+    clause_outs: list[int] = []
+    if clause_contact_uids and not has_true_clause:
+        powerrail_wire_uid = alloc_uid()
+        wires_lines.extend(
+            [
+                f'    <Wire UId="{powerrail_wire_uid}">\n',
+                "      <Powerrail />\n",
+            ]
+        )
+        for branch in clause_contact_uids:
+            if branch:
+                wires_lines.append(f'      <NameCon UId="{branch[0]}" Name="in" />\n')
+        wires_lines.append("    </Wire>\n")
+
+    for branch in clause_contact_uids:
+        for prev_uid, next_contact_uid in zip(branch, branch[1:]):
+            serial_wire_uid = alloc_uid()
+            wires_lines.extend(
+                [
+                    f'    <Wire UId="{serial_wire_uid}">\n',
+                    f'      <NameCon UId="{prev_uid}" Name="out" />\n',
+                    f'      <NameCon UId="{next_contact_uid}" Name="in" />\n',
+                    "    </Wire>\n",
+                ]
+            )
+        if branch:
+            clause_outs.append(branch[-1])
+
+    logic_output_uid: int | None = None
+    if len(clause_outs) > 1:
+        or_uid = alloc_uid()
+        parts_lines.extend(
+            [
+                f'    <Part Name="O" UId="{or_uid}">\n',
+                f'      <TemplateValue Name="Card" Type="Cardinality">{len(clause_outs)}</TemplateValue>\n',
+                "    </Part>\n",
+            ]
+        )
+        for index, out_uid in enumerate(clause_outs, start=1):
+            in_wire_uid = alloc_uid()
+            wires_lines.extend(
+                [
+                    f'    <Wire UId="{in_wire_uid}">\n',
+                    f'      <NameCon UId="{out_uid}" Name="out" />\n',
+                    f'      <NameCon UId="{or_uid}" Name="in{index}" />\n',
+                    "    </Wire>\n",
+                ]
+            )
+        logic_output_uid = or_uid
+    elif clause_outs:
+        logic_output_uid = clause_outs[0]
+
+    for operand, negated in common_terms:
+        normalized_operand, operand_path = _resolve_logic_symbol_path(operand, member_datatypes)
+        if not normalized_operand:
+            continue
+        datatype = _normalize_plc_datatype(member_datatypes.get(normalized_operand, ""))
+        if len(operand_path) == 1 and datatype in {"IEC_TIMER", "IEC_COUNTER"}:
+            operand_path = [normalized_operand, "Q"]
+        access_uid = alloc_uid()
+        contact_uid = alloc_uid()
+        parts_lines.extend(_render_access(normalized_operand, operand_path, access_uid))
+        if negated:
+            parts_lines.extend(
+                [
+                    f'    <Part Name="Contact" UId="{contact_uid}">\n',
+                    '      <Negated Name="operand" />\n',
+                    "    </Part>\n",
+                ]
+            )
+        else:
+            parts_lines.append(f'    <Part Name="Contact" UId="{contact_uid}" />\n')
+
+        operand_wire_uid = alloc_uid()
+        wires_lines.extend(
+            [
+                f'    <Wire UId="{operand_wire_uid}">\n',
+                f'      <IdentCon UId="{access_uid}" />\n',
+                f'      <NameCon UId="{contact_uid}" Name="operand" />\n',
+                "    </Wire>\n",
+            ]
+        )
+
+        in_wire_uid = alloc_uid()
+        if logic_output_uid is None:
+            wires_lines.extend(
+                [
+                    f'    <Wire UId="{in_wire_uid}">\n',
+                    "      <Powerrail />\n",
+                    f'      <NameCon UId="{contact_uid}" Name="in" />\n',
+                    "    </Wire>\n",
+                ]
+            )
+        else:
+            wires_lines.extend(
+                [
+                    f'    <Wire UId="{in_wire_uid}">\n',
+                    f'      <NameCon UId="{logic_output_uid}" Name="out" />\n',
+                    f'      <NameCon UId="{contact_uid}" Name="in" />\n',
+                    "    </Wire>\n",
+                ]
+            )
+        logic_output_uid = contact_uid
+
+    move_in_access_uid = alloc_uid()
+    move_uid = alloc_uid()
+
+    in_kind = str(move_in.get("kind") or "").strip().lower()
+    in_value = str(move_in.get("value") or "").strip()
+
+    if in_kind == "symbol":
+        normalized_operand, operand_path = _resolve_logic_symbol_path(in_value, member_datatypes)
+        if not normalized_operand:
+            normalized_operand = _support_member_name(in_value, "", strict_excel_mode=True)
+        if not operand_path:
+            operand_path = [normalized_operand]
+        parts_lines.extend(_render_access(normalized_operand, operand_path, move_in_access_uid))
+    else:
+        scope = "TypedConstant" if in_kind == "literal_time" else "LiteralConstant"
+        constant_lines: list[str] = [
+            f'    <Access Scope="{scope}" UId="{move_in_access_uid}">\n',
+            "      <Constant>\n",
+        ]
+        if in_kind == "literal_int":
+            constant_lines.append("        <ConstantType>Int</ConstantType>\n")
+        elif in_kind == "literal_string":
+            constant_lines.append("        <ConstantType>String</ConstantType>\n")
+        constant_lines.append(f"        <ConstantValue>{escape(in_value)}</ConstantValue>\n")
+        constant_lines.extend(
+            [
+                "      </Constant>\n",
+                "    </Access>\n",
+            ]
+        )
+        parts_lines.extend(constant_lines)
+
+    parts_lines.extend(
+        [
+            f'    <Part Name="Move" UId="{move_uid}" DisabledENO="true">\n',
+            f'      <TemplateValue Name="Card" Type="Cardinality">{max(1, len(move_out_members))}</TemplateValue>\n',
+            "    </Part>\n",
+        ]
+    )
+
+    enable_wire_uid = alloc_uid()
+    if logic_output_uid is None:
+        wires_lines.extend(
+            [
+                f'    <Wire UId="{enable_wire_uid}">\n',
+                "      <Powerrail />\n",
+                f'      <NameCon UId="{move_uid}" Name="en" />\n',
+                "    </Wire>\n",
+            ]
+        )
+    else:
+        wires_lines.extend(
+            [
+                f'    <Wire UId="{enable_wire_uid}">\n',
+                f'      <NameCon UId="{logic_output_uid}" Name="out" />\n',
+                f'      <NameCon UId="{move_uid}" Name="en" />\n',
+                "    </Wire>\n",
+            ]
+        )
+
+    in_wire_uid = alloc_uid()
+    wires_lines.extend(
+        [
+            f'    <Wire UId="{in_wire_uid}">\n',
+            f'      <IdentCon UId="{move_in_access_uid}" />\n',
+            f'      <NameCon UId="{move_uid}" Name="in" />\n',
+            "    </Wire>\n",
+        ]
+    )
+
+    for index, out_member in enumerate(move_out_members or [], start=1):
+        normalized_out, out_path = _resolve_logic_symbol_path(out_member, member_datatypes)
+        if not normalized_out:
+            continue
+        out_access_uid = alloc_uid()
+        parts_lines.extend(_render_access(normalized_out, out_path or [normalized_out], out_access_uid))
+        out_wire_uid = alloc_uid()
+        wires_lines.extend(
+            [
+                f'    <Wire UId="{out_wire_uid}">\n',
+                f'      <NameCon UId="{move_uid}" Name="out{index}" />\n',
+                f'      <IdentCon UId="{out_access_uid}" />\n',
+                "    </Wire>\n",
+            ]
+        )
+
+    return (
+        '          <NetworkSource><FlgNet xmlns="http://www.siemens.com/automation/Openness/SW/NetworkSource/FlgNet/v5">\n'
+        "  <Parts>\n"
+        f'{"".join(parts_lines)}'
+        "  </Parts>\n"
+        "  <Wires>\n"
+        f'{"".join(wires_lines)}'
+        "  </Wires>\n"
+        "</FlgNet></NetworkSource>"
+    )
+
+
 _LAD_PATTERN_LIBRARY = {"guard_chain", "single_contact_coil"}
 
 
@@ -5849,6 +6214,7 @@ def _excel_support_logic_rows(
             continue
 
         item_network = _as_positive_int(item.get("network_index"))
+        item_kind = str(item.get("kind") or "").strip().lower()
 
         result_raw = str(item.get("result_member") or "").strip()
         if not result_raw:
@@ -5867,17 +6233,25 @@ def _excel_support_logic_rows(
         if not condition_expression:
             condition_expression = "TRUE"
 
-        rows.append(
-            {
-                "result_member": result_member,
-                "condition_expression": condition_expression,
-                "condition_operands": operands,
-                "coil_mode": str(item.get("coil_mode") or "").strip(),
-                "comment": str(item.get("comment") or "").strip(),
-                "network_index": item_network,
-                "network_title": str(item.get("network_title") or "").strip(),
-            }
-        )
+        row: dict[str, object] = {
+            "result_member": result_member,
+            "condition_expression": condition_expression,
+            "condition_operands": operands,
+            "coil_mode": str(item.get("coil_mode") or "").strip(),
+            "comment": str(item.get("comment") or "").strip(),
+            "network_index": item_network,
+            "network_title": str(item.get("network_title") or "").strip(),
+        }
+        if item_kind == "move":
+            row["kind"] = "move"
+            move_in = item.get("move_in") if isinstance(item.get("move_in"), dict) else {}
+            row["move_in"] = {str(k): str(v) for k, v in (move_in or {}).items()}
+            row["move_out_members"] = [
+                _support_member_name(str(token).strip(), "", strict_excel_mode=True)
+                for token in _as_str_list(item.get("move_out_members"))
+                if str(token).strip()
+            ]
+        rows.append(row)
     rows.sort(
         key=lambda row: (
             _as_positive_int(row.get("network_index")) or 10**9,
@@ -5904,6 +6278,13 @@ def _merge_support_members_with_logic(
         if result_member and result_member not in existing:
             merged.append((result_member, row_comment))
             existing.add(result_member)
+        for out_member in _as_str_list(row.get("move_out_members")):
+            token = str(out_member or "").strip()
+            if _is_virtual_timer_done(token):
+                continue
+            if token and token not in existing:
+                merged.append((token, row_comment))
+                existing.add(token)
         for operand in _as_str_list(row.get("condition_operands")):
             token = str(operand or "").strip()
             if _is_virtual_timer_done(token):
@@ -7394,6 +7775,21 @@ def _normalize_symbol_name(guard_expression: str, fallback: str) -> str:
     return cleaned or fallback
 
 
+def _normalize_network_title_for_tia(title: str) -> str:
+    """
+    Normalize network titles before serializing into TIA CompileUnit Title.
+
+    Source markdown often prefixes headings with "Segmento N: ...".
+    The user requested network titles in generated FCs to contain only the
+    descriptive part, without the "Segmento N" prefix.
+    """
+    text = str(title or "").strip()
+    if not text:
+        return ""
+    text = re.sub(r"^\s*Segmento\s+\d+\s*[:\\-]\s*", "", text, flags=re.IGNORECASE).strip()
+    return text
+
+
 def _db_member_name(raw_name: str) -> str:
     sanitized = raw_name.replace(".", "_")
     return _sanitize_tia_member_name(sanitized, fallback="Signal", seed=raw_name)
@@ -7596,7 +7992,7 @@ def _derive_awl_action_logic_rows(ir: AwlIR) -> dict[str, list[dict[str, object]
     operand_aliases = _build_awl_operand_alias_map(ir)
     sequence_db_no = _infer_sequence_db_no(ir.networks)
     graph_steps = {
-        str(step.name or "").strip().upper()
+        _canonicalize_step_token(str(step.name or "").strip().upper())
         for step in (ir.steps or [])
         if str(step.name or "").strip()
     }
@@ -7606,6 +8002,7 @@ def _derive_awl_action_logic_rows(ir: AwlIR) -> dict[str, list[dict[str, object]
         "hmi": [],
         "diag": [],
         "transitions": [],
+        "external": [],
     }
 
     def _network_label(network: AwlNetwork) -> str:
@@ -7680,12 +8077,13 @@ def _derive_awl_action_logic_rows(ir: AwlIR) -> dict[str, list[dict[str, object]
         if TIMER_RE.fullmatch(normalized.upper()):
             return _support_member_name(f"{normalized}_DONE", "", strict_excel_mode=True)
         if STEP_RE.fullmatch(normalized):
+            canonical_step = _canonicalize_step_token(normalized)
             # Bind step conditions to the GRAPH runtime DB only when the step exists in the
             # derived step catalog. Otherwise we treat it as a non-GRAPH flag and let the
             # expression rewriter replace it with FALSE (to avoid emitting broken Sxx.X).
-            if normalized.upper() in graph_steps:
-                return f"{normalized}.X"
-            return normalized
+            if canonical_step.upper() in graph_steps:
+                return f"{canonical_step}.X"
+            return canonical_step
         # Avoid leaking raw memory-style operands as member names.
         if re.fullmatch(r"M\\d+(?:(?:[._]S)|_S)\\d+", normalized, flags=re.IGNORECASE) or MEMORY_RE.fullmatch(normalized.upper()):
             normalized_mem = normalized.replace(".", "_").upper()
@@ -7694,9 +8092,10 @@ def _derive_awl_action_logic_rows(ir: AwlIR) -> dict[str, list[dict[str, object]
         if alias:
             alias_member = _support_member_name(alias, "", strict_excel_mode=True)
             if alias_member and STEP_RE.fullmatch(alias_member):
-                if alias_member.upper() in graph_steps:
-                    return f"{alias_member}.X"
-                return alias_member
+                canonical_alias_step = _canonicalize_step_token(alias_member)
+                if canonical_alias_step.upper() in graph_steps:
+                    return f"{canonical_alias_step}.X"
+                return canonical_alias_step
         return _support_member_name(alias or raw, "", strict_excel_mode=True)
 
     def _rewrite_expression(expr: str, network_index: int, *, strip_locals: bool) -> tuple[str, list[str]]:
@@ -7718,9 +8117,11 @@ def _derive_awl_action_logic_rows(ir: AwlIR) -> dict[str, list[dict[str, object]
                 continue
             # Prevent emitting step-active references for steps that are not part of the GRAPH
             # topology (common when AWL reads "possible" Sxx bits but never transitions to them).
-            if STEP_RE.fullmatch(normalized) and normalized.upper() not in graph_steps:
-                rewritten.append("FALSE")
-                continue
+            if STEP_RE.fullmatch(normalized):
+                canonical_step = _canonicalize_step_token(normalized.upper())
+                if canonical_step not in graph_steps:
+                    rewritten.append("FALSE")
+                    continue
             symbol = _map_symbol(raw, network_index)
             if not symbol:
                 continue
@@ -7730,6 +8131,59 @@ def _derive_awl_action_logic_rows(ir: AwlIR) -> dict[str, list[dict[str, object]
         rendered = " ".join(rewritten).strip() or "TRUE"
         rendered = _cleanup_boolean_expression_text(rendered) or "TRUE"
         return rendered, _dedupe_list(operands)
+
+    def _extract_move_groups(network: AwlNetwork) -> list[tuple[dict[str, str], list[str]]]:
+        """
+        Extract `L ...` / `T ...` sequences from an AWL network.
+
+        Returns a list of (move_in, raw_targets) where:
+          move_in is a dict {kind,value} suitable for `_build_support_move_flgnet`
+          raw_targets are raw AWL operands passed through `_map_symbol` later.
+        """
+        groups: list[tuple[dict[str, str], list[str]]] = []
+        active_in: dict[str, str] | None = None
+        active_targets: list[str] = []
+
+        def _flush() -> None:
+            nonlocal active_in, active_targets
+            if active_in and active_targets:
+                groups.append((active_in, list(active_targets)))
+            active_in = None
+            active_targets = []
+
+        for instr in network.instructions or []:
+            if instr.opcode == "L" and instr.args:
+                _flush()
+                raw_blob = " ".join(str(x) for x in instr.args if str(x).strip())
+                preset = None
+                if PRESET_RE.search(raw_blob):
+                    preset = PRESET_RE.search(raw_blob).group(0).upper()  # type: ignore[union-attr]
+                if preset:
+                    active_in = {"kind": "literal_time", "value": _normalize_timer_preset_literal(preset)}
+                    continue
+                if raw_blob.strip().startswith("'") and raw_blob.strip().endswith("'") and len(raw_blob.strip()) >= 2:
+                    active_in = {"kind": "literal_string", "value": raw_blob.strip()}
+                    continue
+                token = _normalize_operand_token(raw_blob)
+                if token.upper() in {"TRUE", "FALSE"}:
+                    active_in = {"kind": "literal_bool", "value": token.upper()}
+                    continue
+                if re.fullmatch(r"[-+]?\d+", token):
+                    active_in = {"kind": "literal_int", "value": token}
+                    continue
+                operand = _select_instruction_operand(instr.args)
+                if operand:
+                    active_in = {"kind": "symbol", "value": operand}
+                continue
+
+            if instr.opcode == "T" and instr.args and active_in:
+                target = _select_instruction_operand(instr.args)
+                if target:
+                    active_targets.append(target)
+                continue
+
+        _flush()
+        return groups
 
     for network in ir.networks:
         condition_expression, condition_operands_raw = _collect_condition_logic(network)
@@ -7868,6 +8322,40 @@ def _derive_awl_action_logic_rows(ir: AwlIR) -> dict[str, list[dict[str, object]
                         category=category,
                         result_member=result_member,
                         action=instr.opcode,
+                    ),
+                    "network_index": network.index,
+                }
+            )
+
+        # MOVE (L/T) support: translate load/transfer sequences into TIA `Move` boxes.
+        # This captures status words and sequencer fields (Seq/Trs/Preset...) that are not boolean.
+        for move_in, raw_targets in _extract_move_groups(network):
+            mapped_targets: list[str] = []
+            for raw_target in raw_targets:
+                mapped = _map_symbol(raw_target, network.index)
+                if mapped:
+                    mapped_targets.append(mapped)
+            mapped_targets = _dedupe_list(mapped_targets)
+            if not mapped_targets:
+                continue
+
+            # In the reference Siemens project, MOVE boxes live in the HMI backend FC.
+            # Keep them in FC12 and let symbol ownership decide the target DB.
+            rows_by_category["hmi"].append(
+                {
+                    "kind": "move",
+                    "result_member": mapped_targets[0],
+                    "move_in": move_in,
+                    "move_out_members": mapped_targets,
+                    "condition_expression": condition_expression,
+                    "condition_operands": list(condition_operands),
+                    "coil_mode": "",
+                    "network_title": _network_label(network),
+                    "comment": _row_comment(
+                        network,
+                        category="hmi",
+                        result_member=mapped_targets[0],
+                        action="MOVE",
                     ),
                     "network_index": network.index,
                 }

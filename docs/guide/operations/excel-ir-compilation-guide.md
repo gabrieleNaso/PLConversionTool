@@ -2,7 +2,7 @@
 
 Obiettivo: compilare un Excel leggibile per generare `IR JSON` e XML TIA (`FB/DB/FC`) senza passare da AWL.
 
-Aggiornato al `27-04-2026`:
+Aggiornato al `30-04-2026`:
 - timer e contatori in `support_fc` vengono generati come blocchi LAD completi (non come contatti semplici);
 - il preset usa sempre `operands.control_value` (`PT` per timer, `PV` per contatori).
 - nelle transition GRAPH viene mantenuta la logica booleana reale dell'Excel (non fallback su marker `T1/T2`);
@@ -13,6 +13,7 @@ Aggiornato al `27-04-2026`:
 - commenti DB non autocompilati: se non presenti in Excel (o in `operands.note`), restano vuoti.
 - righe `support_fc` con stesso `network` e stessa `category` vengono aggregate nella stessa rete FC (con un solo power rail LAD).
 - il target XML deve restare **solo simbolico**: nell'output non devono comparire indirizzi fisici (`I30.1`, `DB202.DBX62.1`, ...) nei nomi dei member o nei path dei riferimenti.
+- supporto AWL: le sequenze non booleane `L ... / T ...` vengono serializzate come box LAD `Move` in `FC12 HMI`, con enable coerente (niente `Powerrail -> Move.en` quando in AWL esiste una condizione).
 
 Template consigliato:
 - `docs/templates/ir_excel_template_single_page_with_support_fc.xlsx` (pagina FC completa: `support_fc` obbligatoria)
@@ -190,12 +191,12 @@ Il generatore emette:
 `sequence`:
 - colonne: `step_name | numero_step | from_step | transition_id | to_step | condition_expression | flow_type | parallel_group`
 - `Init | 1 | Init | T1 | Dosaggio | M_START | alternative |`
-- `Dosaggio | 2 | Dosaggio | T2 | Fine | M_DONE | alternative |`
+- `Dosaggio | 2 | Dosaggio | T2 | Fine | M_END_OK | alternative |`
 - `Fine | 3 |  |  |  |  |  |`
 
 `operands`:
 - `M_START | aux | | | | | consenso avvio`
-- `M_DONE | aux | | | | | consenso fine`
+- `M_END_OK | aux | | | | | consenso fine`
 - `ALM_TEMP | alarm | | | | | allarme temperatura`
 
 ## 8) Generazione
@@ -211,7 +212,7 @@ make import-generated \
   IMPORT_BUNDLE="<nome_bundle>"
 ```
 
-Regole consolidate (27-04-2026):
+Regole consolidate (30-04-2026):
 - `import-generated` esegue polling automatico del job import.
 - i numeri blocco sono il valore reale XML `<Number>` (non il prefisso nel nome file).
 - il suffisso finale e' il numero comune di gruppo (`GG`): `03` e' un esempio, non un valore obbligatorio.

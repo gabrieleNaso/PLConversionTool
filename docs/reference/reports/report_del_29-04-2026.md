@@ -1,5 +1,7 @@
 # Report aggiornato del 29-04-2026
 
+Nota: per i delta successivi (es. `MOVE`/`L...T...` in `FC12 HMI`, canonicalizzazione step `S01 -> S1` e allineamenti di enable), vedi anche `docs/reference/reports/report_del_30-04-2026.md`.
+
 ## Progetto
 Conversione di sequenziatori PLC da AWL a GRAPH in TIA Portal V20 tramite XML.
 
@@ -1285,7 +1287,7 @@ Di conseguenza il parsing della sequenza può essere considerato più robusto se
 
 Nel caso FC102 il nuovo AWL rende leggibile una catena automatica ricorrente della forma:
 
-`S01 -> S02 -> S03 -> S04 -> S07 -> S10 -> S14 -> S18 -> S22 -> S26 -> S03`
+`S1 -> S2 -> S3 -> S4 -> S7 -> S10 -> S14 -> S18 -> S22 -> S26 -> S3`
 
 con rami separati verso:
 
