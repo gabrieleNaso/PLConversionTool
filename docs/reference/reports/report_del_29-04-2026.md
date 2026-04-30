@@ -955,11 +955,12 @@ I timer AWL `Txx`, i preset `S5T`, i bit di appoggio pulsati e le memorie tecnic
 Nella pipeline corrente vengono convertiti in:
 
 - istanze IEC nel `DB 19..`;
-- per ogni timer AWL `Txx` viene esposto anche un bit booleano `Txx_DONE` (usato come contatto nelle guardie e nella logica);
-- reti LAD nella `FC 13 Aux`;
+- il “done” AWL (`A Txx`) viene rappresentato nel JSON/IR come token virtuale `Txx_DONE`, ma in XML viene serializzato come:
+  - blocco timer IEC (`TON/TOF/TP`) **in-line** nella stessa network quando il timer viene avviato in quella network (es. `SD Txx` + `A Txx` nello stesso segmento AWL), con `Q -> bobina`;
+  - oppure come contatto del pin `Txx.Q` quando il timer e' avviato altrove;
 - eventuali memorie semantiche derivate nel DB sequenza/I-O `16..`.
 
-La `FC 13 Aux` ha quindi il ruolo di ricostruire in forma leggibile e importabile la parte di AWL che nel sorgente faceva da appoggio tecnico alla sequenza.
+La `FC 13 Aux` resta il contenitore per appoggi e memorie tecniche (no timer “proxy” con bobine DONE), mantenendo i timer come istanze globali IEC nel DB AUX.
 
 ### 32.10-bis Regola naming simbolico (AWL -> DB supporto)
 
@@ -976,7 +977,7 @@ Nel flusso AWL (non Excel strict) la `FC 14 Transitions` non deve cadere in moda
 
 - per ogni transizione `Tn` viene emessa una rete che calcola `TR_Tn` a partire da `guard_expression`/`guard_operands`;
 - i contatti della rete devono essere referenziati nel DB owner corretto (IO/AUX/HMI/DIAG) tramite ownership deterministica;
-- quando una guardia contiene un timer `Txx`, il contatto usato deve essere `Txx_DONE` (non l'istanza `IEC_TIMER`).
+- quando una guardia contiene un timer `Txx`, il contatto usato deve essere il pin `Txx.Q` oppure (se il timer e' avviato nella stessa network) un blocco IEC in-line con `Q` cablato sulla logica.
 - quando una guardia contiene il bit step locale della sequenza (es. `DBxxx.DBX6.y` relativo allo step sorgente), tale termine va rimosso dalla guardia: nel GRAPH essere nello step e' gia' implicito;
 - quando una stessa rete AWL scrive `Trs` ed e' protetta da piu' step alternativi (es. `A( O S29 O S32 ) ... T Trs`), la guardia non deve contenere step "diversi" dal sorgente: vanno rimossi tutti i termini step locali per evitare transizioni impossibili (due step attivi contemporaneamente).
 - se la guardia contiene step di altri sequenziatori (es. `M03.S03`), il nome simbolico deve essere disambiguato col prefisso (es. `M03_S03`) per evitare collisioni con gli step locali.

@@ -1693,8 +1693,9 @@ def _parse_networks(awl_source: str) -> list[AwlNetwork]:
     current: list[str] = []
     current_title: str | None = None
     current_index = 1
+    auto_index = 1
     def flush() -> None:
-        nonlocal current, current_title, current_index
+        nonlocal current, current_title, current_index, auto_index
         if not current:
             return
         networks.append(
@@ -1707,7 +1708,9 @@ def _parse_networks(awl_source: str) -> list[AwlNetwork]:
         )
         current = []
         current_title = None
-        current_index += 1
+        # Advance the auto index beyond any explicitly specified index.
+        auto_index = max(auto_index, current_index + 1)
+        current_index = auto_index
 
     for raw_line in lines:
         stripped = raw_line.strip()
@@ -1715,8 +1718,29 @@ def _parse_networks(awl_source: str) -> list[AwlNetwork]:
             continue
         if stripped.upper().startswith("NETWORK"):
             flush()
-            title = stripped[len("NETWORK") :].strip(" :\t")
-            current_title = title or None
+            rest = stripped[len("NETWORK") :].strip()
+            # Accept both:
+            # - "NETWORK 12" (no title)
+            # - "NETWORK 12 Some title" (markdown-normalized)
+            # In the second case, keep index=12 and title="Some title".
+            index: int | None = None
+            title = ""
+            match = re.match(r"^(\d+)\b(.*)$", rest)
+            if match:
+                try:
+                    index = int(match.group(1))
+                except ValueError:
+                    index = None
+                title = (match.group(2) or "").strip(" :\t")
+
+            if index is None:
+                current_index = auto_index
+                auto_index += 1
+                current_title = rest.strip(" :\t") or None
+            else:
+                current_index = index
+                auto_index = max(auto_index, index + 1)
+                current_title = title or None
             continue
         current.append(raw_line)
 
@@ -2225,11 +2249,9 @@ def _freeze_ir_for_json_pipeline(ir: AwlIR) -> AwlIR:
     guard_members_by_category = _collect_transition_guard_members_by_category(ir)
     timer_trigger_members_by_category = _collect_timer_trigger_support_members_by_category(ir)
     derived_actions = _derive_awl_action_logic_rows(ir)
-    timer_logic = _derive_awl_timer_logic_rows(ir)
-
     diag_logic = derived_actions.get("diag", [])
     hmi_logic = derived_actions.get("hmi", []) + _derive_awl_hmi_alias_logic_rows(ir)
-    aux_logic = timer_logic + derived_actions.get("aux", [])
+    aux_logic = derived_actions.get("aux", [])
     transitions_logic = derived_actions.get("transitions", [])
     io_logic = derived_actions.get("io", [])
     mode_logic = _derive_awl_mode_logic_rows(ir)
@@ -3479,10 +3501,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
     hmi_db_members, hmi_fc_members = _prepare_support_members(ir, "hmi", hmi_members, hmi_logic)
 
     aux_logic = _excel_support_logic_rows(ir, "aux")
-    # For AWL sources, emit timer FB calls in AUX LAD so that timer operands
-    # used in guards map coherently to IEC_TIMER instances + *_DONE bits.
     if not ir.strict_operand_catalog:
-        aux_logic = aux_logic + _derive_awl_timer_logic_rows(ir)
         aux_logic = aux_logic + derived_actions.get("aux", [])
     aux_members = (
         (_excel_support_members(ir, "aux") or _collect_aux_support_members(ir))
@@ -4726,6 +4745,20 @@ def _support_timer_configs(ir: AwlIR) -> dict[str, dict[str, str]]:
             "value": preset,
             "control_family": "timer",
         }
+    # Record the AWL networks that actually *call* the timer (SD/SE/SP/...) so
+    # we can safely inline the timer block only when it is started in the same
+    # network where its done bit is evaluated.
+    timer_calls: dict[str, set[int]] = {}
+    for timer in ir.timers:
+        normalized_name = _support_member_name(timer.source_timer, "", strict_excel_mode=True)
+        if not normalized_name:
+            continue
+        timer_calls.setdefault(normalized_name, set()).add(int(timer.network_index or 0))
+    for name, indices in timer_calls.items():
+        cfg = configs.get(name)
+        if not cfg or not indices:
+            continue
+        cfg.setdefault("network_indices", ",".join(str(i) for i in sorted(indices) if i))
     return configs
 
 
@@ -4921,6 +4954,7 @@ def _build_support_lad_compile_units(
                         timer_configs=timer_configs,
                         coil_mode=coil_mode,
                         prefer_current_db_for_unmapped=prefer_current_db_for_unmapped,
+                        network_index=_as_positive_int(logic_row.get("network_index")),
                     )
                 )
             if not flgnet_fragments:
@@ -5155,6 +5189,7 @@ def _build_support_logic_flgnet(
     timer_configs: dict[str, dict[str, str]],
     coil_mode: str = "",
     prefer_current_db_for_unmapped: bool = False,
+    network_index: int | None = None,
 ) -> str:
     next_uid = 21
 
@@ -5194,9 +5229,53 @@ def _build_support_logic_flgnet(
             return None
         if len(operand_path) != 1:
             return None
+
+        def _timer_called_here(timer_name: str) -> bool:
+            if network_index is None:
+                return True
+            cfg = timer_configs.get(timer_name) or {}
+            raw_indices = str(cfg.get("network_indices") or "").strip()
+            if not raw_indices:
+                return True
+            allowed: set[int] = set()
+            for raw in raw_indices.split(","):
+                raw = raw.strip()
+                if not raw:
+                    continue
+                try:
+                    allowed.add(int(raw))
+                except ValueError:
+                    continue
+            if not allowed:
+                return True
+            return int(network_index or 0) in allowed
+
+        # Support the common AWL-derived representation where boolean logic uses a
+        # synthetic done bit (e.g. T47_DONE). When possible, inline the timer/counter
+        # block in the current network by resolving the underlying instance name.
+        if normalized_operand.endswith("_DONE") and len(normalized_operand) > len("_DONE"):
+            base = normalized_operand[: -len("_DONE")]
+            base_cfg = timer_configs.get(base) or {}
+            base_datatype = _normalize_plc_datatype(member_datatypes.get(base, ""))
+            if base_cfg or base_datatype in {"IEC_TIMER", "IEC_COUNTER"} or "COUNTER" in base_datatype.upper():
+                if not _timer_called_here(base):
+                    return None
+                control_family = base_cfg.get("control_family") or (
+                    "counter" if "COUNTER" in base_datatype.upper() else "timer"
+                )
+                if control_family == "counter":
+                    part_name = base_cfg.get("part_name") or "CTU"
+                    value = base_cfg.get("value") or "1"
+                else:
+                    part_name = base_cfg.get("part_name") or "TON"
+                    value = base_cfg.get("value") or "T#1S"
+                return base, part_name, value, control_family
+
         cfg = timer_configs.get(normalized_operand) or {}
         datatype = _normalize_plc_datatype(member_datatypes.get(normalized_operand, ""))
         if not cfg and datatype != "IEC_TIMER" and datatype != "IEC_COUNTER" and "COUNTER" not in datatype.upper():
+            return None
+        if not _timer_called_here(normalized_operand):
             return None
         control_family = cfg.get("control_family") or ("counter" if "COUNTER" in datatype.upper() else "timer")
         if control_family == "counter":
@@ -5219,7 +5298,12 @@ def _build_support_logic_flgnet(
         cfg = timer_configs.get(base_candidate) or {}
         datatype = _normalize_plc_datatype(member_datatypes.get(base_candidate, ""))
         control_family = cfg.get("control_family") or ("counter" if "COUNTER" in datatype.upper() else "timer")
-        if datatype in {"IEC_TIMER", "IEC_COUNTER"} or cfg:
+        raw_indices = str(cfg.get("network_indices") or "").strip()
+        called_here = True
+        if network_index is not None and raw_indices:
+            allowed = {int(x) for x in raw_indices.split(",") if x.strip().isdigit()}
+            called_here = (not allowed) or int(network_index or 0) in allowed
+        if called_here and (datatype in {"IEC_TIMER", "IEC_COUNTER"} or cfg):
             active_timer_name = base_candidate
             active_timer_part = cfg.get("part_name") or ("CTU" if control_family == "counter" else "TON")
             active_timer_preset = cfg.get("value") or ("1" if control_family == "counter" else "T#1S")
@@ -5265,6 +5349,9 @@ def _build_support_logic_flgnet(
         ]
 
     has_true_clause = any(not clause for clause in guard_clauses)
+    active_timer_done_member = (
+        _support_member_name(f"{active_timer_name}_DONE", "", strict_excel_mode=True) if active_timer_name else ""
+    )
     for clause in guard_clauses:
         if not clause:
             continue
@@ -5273,13 +5360,24 @@ def _build_support_logic_flgnet(
             normalized_operand, operand_path = _resolve_logic_symbol_path(operand, member_datatypes)
             if not normalized_operand:
                 continue
+            if active_timer_done_member and normalized_operand == active_timer_done_member and len(operand_path) == 1:
+                # Inline timer block (use Q -> coil) instead of a done-bit contact.
+                continue
+            if len(operand_path) == 1 and normalized_operand.endswith("_DONE") and len(normalized_operand) > len("_DONE"):
+                # Virtual done bit: if this looks like a timer/counter, bind the contact directly
+                # to the instance output pin (Txx.Q) so we don't need to declare a BOOL.
+                base = normalized_operand[: -len("_DONE")]
+                base_cfg = timer_configs.get(base) or {}
+                base_datatype = _normalize_plc_datatype(member_datatypes.get(base, ""))
+                if base_cfg or base_datatype in {"IEC_TIMER", "IEC_COUNTER"} or "COUNTER" in base_datatype.upper():
+                    normalized_operand = base
+                    operand_path = [base, "Q"]
             # Never use an IEC timer/counter instance as a boolean contact.
             # When a timer is used in AWL boolean logic (e.g. "A T 780"), the
-            # intended semantics is the done bit, so we bind to *_DONE.
+            # intended semantics is the done output, so we bind to `.Q`.
             datatype = _normalize_plc_datatype(member_datatypes.get(normalized_operand, ""))
             if len(operand_path) == 1 and datatype in {"IEC_TIMER", "IEC_COUNTER"}:
-                normalized_operand = _support_member_name(f"{normalized_operand}_DONE", "", strict_excel_mode=True)
-                operand_path = [normalized_operand]
+                operand_path = [normalized_operand, "Q"]
             # Avoid self-references (operand == coil) which would create invalid
             # latch-like behavior in a purely combinational network.
             if normalized_operand == normalized_result and len(operand_path) == 1:
@@ -5383,6 +5481,18 @@ def _build_support_logic_flgnet(
         normalized_operand, operand_path = _resolve_logic_symbol_path(operand, member_datatypes)
         if not normalized_operand:
             continue
+        if active_timer_done_member and normalized_operand == active_timer_done_member and len(operand_path) == 1:
+            continue
+        if len(operand_path) == 1 and normalized_operand.endswith("_DONE") and len(normalized_operand) > len("_DONE"):
+            base = normalized_operand[: -len("_DONE")]
+            base_cfg = timer_configs.get(base) or {}
+            base_datatype = _normalize_plc_datatype(member_datatypes.get(base, ""))
+            if base_cfg or base_datatype in {"IEC_TIMER", "IEC_COUNTER"} or "COUNTER" in base_datatype.upper():
+                normalized_operand = base
+                operand_path = [base, "Q"]
+        datatype = _normalize_plc_datatype(member_datatypes.get(normalized_operand, ""))
+        if len(operand_path) == 1 and datatype in {"IEC_TIMER", "IEC_COUNTER"}:
+            operand_path = [normalized_operand, "Q"]
         if active_timer_name and normalized_operand == active_timer_name and len(operand_path) == 1:
             continue
         access_uid = alloc_uid()
@@ -5783,6 +5893,11 @@ def _merge_support_members_with_logic(
 ) -> list[tuple[str, str]]:
     merged = list(members)
     existing = {name for name, _ in merged}
+    virtual_done_re = re.compile(r"^T\d+_DONE$", flags=re.IGNORECASE)
+
+    def _is_virtual_timer_done(token: str) -> bool:
+        return bool(token and virtual_done_re.fullmatch(token))
+
     for row in logic_rows:
         row_comment = str(row.get("comment") or "").strip()
         result_member = str(row.get("result_member") or "").strip()
@@ -5791,6 +5906,8 @@ def _merge_support_members_with_logic(
             existing.add(result_member)
         for operand in _as_str_list(row.get("condition_operands")):
             token = str(operand or "").strip()
+            if _is_virtual_timer_done(token):
+                continue
             if token and token not in existing:
                 merged.append((token, row_comment))
                 existing.add(token)
@@ -5801,6 +5918,8 @@ def _merge_support_members_with_logic(
             if token.upper() in {"AND", "OR", "NOT", "TRUE", "FALSE"}:
                 continue
             normalized = _support_member_name(token, "", strict_excel_mode=True)
+            if _is_virtual_timer_done(normalized):
+                continue
             if normalized and normalized not in existing:
                 merged.append((normalized, row_comment))
                 existing.add(normalized)
@@ -5940,6 +6059,7 @@ def _build_support_symbol_home_db_map(ir: AwlIR) -> dict[str, str]:
     guard_members_by_category = _collect_transition_guard_members_by_category(ir)
     operand_aliases = _build_awl_operand_alias_map(ir)
     hmi_alias_members = _collect_hmi_command_alias_members(ir)
+    sequence_db_no = _infer_sequence_db_no(ir.networks)
 
     # 2) Heuristic fallback from support members and inferred collections.
     category_sources: list[tuple[str, list[tuple[str, str]]]] = [
@@ -5970,7 +6090,7 @@ def _build_support_symbol_home_db_map(ir: AwlIR) -> dict[str, str]:
     # correct owner DB even when logic rows reference the alias instead of the
     # raw address operand.
     for address_key, alias_norm in operand_aliases.items():
-        category = _support_category_for_guard_operand(address_key)
+        category = _support_category_for_guard_operand(address_key, sequence_db_no=sequence_db_no)
         db_name, _, _, _, _, _ = _support_block_names(ir.sequence_name, category)
         alias_member = _support_member_name(alias_norm, "", strict_excel_mode=True)
         if alias_member and (allowed is None or alias_member in allowed):
@@ -6061,6 +6181,7 @@ def _collect_timer_trigger_support_members_by_category(
     ir: AwlIR,
 ) -> dict[str, list[tuple[str, str]]]:
     operand_aliases = _build_awl_operand_alias_map(ir)
+    sequence_db_no = _infer_sequence_db_no(ir.networks)
     grouped: dict[str, list[tuple[str, str]]] = {
         "io": [],
         "aux": [],
@@ -6074,7 +6195,7 @@ def _collect_timer_trigger_support_members_by_category(
             operand = str(raw or "").strip()
             if not operand:
                 continue
-            category = _support_category_for_guard_operand(operand)
+            category = _support_category_for_guard_operand(operand, sequence_db_no=sequence_db_no)
             alias = operand_aliases.get(_normalize_operand_token(operand), "")
             member = _support_member_name(alias or operand, "", strict_excel_mode=True)
             if not member:
@@ -6247,16 +6368,13 @@ def _collect_aux_support_members(ir: AwlIR) -> list[tuple[str, str]]:
         alias = operand_aliases.get(_normalize_operand_token(raw), "")
         symbol = alias or _normalize_operand_token(raw) or raw
         # Keep timer instances as proper IEC_TIMER operands (e.g. T209) so LAD
-        # can bind them to timer FB parts. The boolean "done" bit is modeled as
-        # a separate member because AWL uses `A T xx` as a boolean contact.
+        # can bind them to TON/TOF/TP FB parts. AWL reads "A Txx" as a done-bit
+        # contact; we model that contact virtually as `Txx_DONE` and resolve it
+        # directly to `Txx.Q` (or inline the timer FB in the same network) so we
+        # don't need to declare a separate BOOL done member in the DB.
         instance_member = _support_member_name(symbol, "", strict_excel_mode=True)
         if instance_member:
             members.append((instance_member, f"Aux timer instance {alias or raw}"))
-        # Timer operands (e.g. T50) are used as bool contacts in AWL via the
-        # "done" bit. Model this explicitly as a separate BOOL member.
-        done_member = _guard_operand_db_member_name(raw, strict_excel_mode=False)
-        done_hint = alias or instance_member or raw
-        members.append((done_member, f"Aux timer done {done_hint}"))
     return list(dict.fromkeys(members))
 
 
@@ -6403,7 +6521,7 @@ def _classify_operand_family(operand: str) -> str:
     return "SIG"
 
 
-def _support_category_for_guard_operand(operand: str) -> str:
+def _support_category_for_guard_operand(operand: str, *, sequence_db_no: int | None = None) -> str:
     token = str(operand or "").strip().upper()
     if not token:
         return "transitions"
@@ -6423,6 +6541,10 @@ def _support_category_for_guard_operand(operand: str) -> str:
             return "external"
         if db_no >= 200:
             return "diag"
+        # Internal sequencer DB: treat as AUX (memory/state), not as IO.
+        if sequence_db_no is not None and db_no == int(sequence_db_no):
+            return "aux"
+        # Other DBs in the 100..199 range are typically process/IO DBs.
         if 100 <= db_no < 200:
             return "io"
         return "io"
@@ -6437,6 +6559,7 @@ def _collect_transition_guard_members_by_category(
     ir: AwlIR,
 ) -> dict[str, list[tuple[str, str]]]:
     operand_aliases = _build_awl_operand_alias_map(ir)
+    sequence_db_no = _infer_sequence_db_no(ir.networks)
     grouped: dict[str, list[tuple[str, str]]] = {
         "io": [],
         "aux": [],
@@ -6451,7 +6574,7 @@ def _collect_transition_guard_members_by_category(
             raw = str(operand or "").strip()
             if not raw:
                 continue
-            category = _support_category_for_guard_operand(raw)
+            category = _support_category_for_guard_operand(raw, sequence_db_no=sequence_db_no)
             raw_key = raw.upper()
             existing_member = raw_to_member_by_category[category].get(raw_key)
             if existing_member:
@@ -7337,6 +7460,7 @@ def _derive_awl_timer_logic_rows(ir: AwlIR) -> list[dict[str, object]]:
                 "condition_expression": condition_expression,
                 "condition_operands": trigger_ops,
                 "coil_mode": "",
+                "network_title": f"Timer {timer_name}",
                 "comment": f"timer {timer_name}{meta_txt}",
                 "network_index": int(timer.network_index or 0),
             }
@@ -7394,6 +7518,7 @@ def _derive_awl_hmi_alias_logic_rows(ir: AwlIR) -> list[dict[str, object]]:
                 "condition_expression": aux_member,
                 "condition_operands": [aux_member],
                 "coil_mode": "",
+                "network_title": f"HMI alias {member}",
                 "comment": f"HMI alias {member} <= {address}",
                 "network_index": 1,
             }
@@ -7426,6 +7551,7 @@ def _derive_awl_mode_logic_rows(ir: AwlIR) -> list[dict[str, object]]:
                 "condition_expression": expr,
                 "condition_operands": ops,
                 "coil_mode": "",
+                "network_title": "Mode auto active",
                 "comment": "Derived mode auto active",
                 "network_index": 1,
             }
@@ -7439,6 +7565,7 @@ def _derive_awl_mode_logic_rows(ir: AwlIR) -> list[dict[str, object]]:
                 "condition_expression": expr,
                 "condition_operands": ops,
                 "coil_mode": "",
+                "network_title": "Mode manual active",
                 "comment": "Derived mode manual active",
                 "network_index": 2,
             }
@@ -7450,6 +7577,7 @@ def _derive_awl_mode_logic_rows(ir: AwlIR) -> list[dict[str, object]]:
                 "condition_expression": "NOT (MODE_AUTO_ACTIVE AND MODE_MANUAL_ACTIVE)",
                 "condition_operands": ["MODE_AUTO_ACTIVE", "MODE_MANUAL_ACTIVE"],
                 "coil_mode": "",
+                "network_title": "Mode interlock",
                 "comment": "Derived mode arbitration coherence",
                 "network_index": 3,
             }
@@ -7466,6 +7594,7 @@ def _derive_awl_action_logic_rows(ir: AwlIR) -> dict[str, list[dict[str, object]
     into the correct support FC (AUX for M bits, OUTPUT for Q/A bits).
     """
     operand_aliases = _build_awl_operand_alias_map(ir)
+    sequence_db_no = _infer_sequence_db_no(ir.networks)
     graph_steps = {
         str(step.name or "").strip().upper()
         for step in (ir.steps or [])
@@ -7718,8 +7847,7 @@ def _derive_awl_action_logic_rows(ir: AwlIR) -> dict[str, list[dict[str, object]
                 continue
             if not _is_address_like_operand(normalized) and not normalized.startswith("DB"):
                 continue
-            category = _support_category_for_guard_operand(normalized)
-            # Route internal DB writes to IO when they belong to the sequence family.
+            category = _support_category_for_guard_operand(normalized, sequence_db_no=sequence_db_no)
             result_member = _map_symbol(raw_operand, network.index)
             if not result_member:
                 continue
