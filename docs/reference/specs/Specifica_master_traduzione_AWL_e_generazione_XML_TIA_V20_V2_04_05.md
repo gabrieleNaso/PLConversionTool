@@ -1,4 +1,4 @@
-Specifica master consolidata del 30-04-2026
+Specifica master consolidata del 04-05-2026
 per le regole di traduzione e generazione XML
 AWL / Excel -> IR -> GRAPH / GlobalDB / FC LAD per TIA Portal V20
 
@@ -93,6 +93,38 @@ Il generatore deve poter emettere almeno le seguenti famiglie architetturali:
 - `FC 16 Output`;
 - `FC 17 LEV2` quando previsto dal profilo;
 - eventuali blocchi addizionali di servizio coerenti col progetto.
+
+## 2.5 Regola hard: `Move` e status HMI (allineamento all'esempio)
+
+Il target non deve riprodurre letteralmente il runtime Step7 legacy del sequenziatore.
+
+In particolare, nel caso `AWL Romania` il sorgente storico usa frequentemente pattern tipo:
+
+- `L n` seguito da `T "<prefix>".Trs DBxxx.DBW2` (richiesta passo);
+- `T "<prefix>".Seq DBxxx.DBW0` (word stato sequenziatore);
+- `T "<prefix>".Preset DBxxx.DBW26` (preset timeout).
+
+Regole hard:
+
+- il convertitore deve supportare la serializzazione LAD dei `Move` per catturare scritture non booleane AWL (`L/T`) quando sono semanticamente significative;
+- il convertitore **non** deve generare decine di `Move` a costanti solo perché il sorgente Step7 scrive `Trs/Seq/Preset` in molte reti: questi pattern sono dettagli del runtime legacy e nel target GRAPH diventano rumore;
+- i `Move` di status devono essere **comparabili** al progetto esempio, non proporzionali al numero di scritture `Trs` nel sorgente.
+
+Allineamento all'esempio (HMI status):
+
+- deve esistere un `Int` HMI per lo stato step del sequenziatore (pattern `HMI.ST.ST Sequencer step`);
+- la `FC 12 HMI` deve popolare lo status con pochi `Move`: quando uno step è attivo (`DB15_<Seq>_GRAPH_DB.Sxx.X`), scrive il numero step nello status HMI;
+- i `Move` legacy `Trs/Seq/Preset` sono ammessi solo se sono copie simbolo->simbolo (informativi), non come scritture di codice costante (`L n`).
+
+## 2.6 Regola hard: member gerarchici nei GlobalDB
+
+I `GlobalDB` di supporto possono contenere member con path gerarchico (es. `HMI.ST.ST Sequencer step`).
+
+Regole hard:
+
+- quando un member viene espresso con nome puntato, il DB generator deve creare automaticamente le `Struct` intermedie nel DB;
+- le `FC` che referenziano questi member devono sempre includere il DB owner come primo componente del simbolo, altrimenti TIA interpreta il simbolo come “senza DB” e l'import/compile fallisce;
+- la risoluzione owner DB deve considerare anche member gerarchici: se nel DB esiste `HMI.ST.*`, un accesso a `HMI` in una FC deve essere risolto come appartenente a quel DB.
 
 ### 2.4 Esempio verificativo sui file XML di riferimento
 

@@ -1,4 +1,4 @@
-# Report aggiornato del 30-04-2026
+# Report aggiornato del 04-05-2026
 
 ## Progetto
 Conversione di sequenziatori PLC da AWL a GRAPH in TIA Portal V20 tramite XML.
@@ -16,7 +16,7 @@ L'obiettivo di questa versione consolidata è:
 - mantenere una baseline unica, leggibile e riusabile;
 - integrare in un unico testo sia la parte di reverse engineering XML sia la parte operativa su TIA Portal Openness.
 
-Il documento va quindi usato come riferimento tecnico corrente del progetto alla data del 30-04-2026.
+Il documento va quindi usato come riferimento tecnico corrente del progetto alla data del 04-05-2026.
 
 Nota: diverse regole operative sono state consolidate in revisioni precedenti e poi riallineate/validate nella presente revisione.
 
@@ -971,10 +971,16 @@ Nel flusso AWL (non Excel strict) il generatore deve leggere **letteralmente** i
 
 Regola integrata al 30-04-2026 sulle scritture AWL `L ...` / `T ...`:
 
-- le sequenze di caricamento e trasferimento AWL che producono scritture word/int/time/string devono essere compilate come box LAD `Move` nella `FC 12 HMI`;
-- `FC 13 Aux` non deve ricevere questi `Move`, anche quando il target scritto risiede in un DB ausiliario o in un owner diverso;
-- l'owner del target non viene migrato: il `Move` resta nella logica HMI, mentre il riferimento simbolico di destinazione continua a puntare al DB owner corretto;
-- questa regola va applicata come criterio di partizionamento del backend FC, non come eccezione locale del serializer.
+- le sequenze AWL `L ...` / `T ...` che producono scritture non booleane (word/int/time/string) devono essere compilate come box LAD `Move`;
+- i `Move` appartengono alla `FC 12 HMI` (status/interfaccia), anche quando il target scritto risiede in un DB con owner diverso;
+- l'owner del target non viene migrato: la `FC 12` scrive verso il DB owner corretto via simbolo completo;
+- eccezione hard (anti-bias): le scritture legacy di runtime sequenziatore tipo `Trs/Seq/Preset` (tipicamente costanti `L n -> T Trs`) non devono esplodere in decine di `Move` come nel sorgente Step7; vanno filtrate e sostituite da un set di `Move` **comparabile al progetto esempio**.
+
+Allineamento all'esempio validato:
+
+- la HMI deve esporre uno status sequenziatore leggibile tramite un `Int` (pattern `ST Sequencer step`);
+- la `FC 12 HMI` deve compilare lo status come pochi `Move` (non 30): quando uno step è attivo (`DB15...Sxx.X`), scrive il numero step nello status `HMI.ST.ST Sequencer step`;
+- eventuali `Move` legacy `Trs/Seq/Preset` devono essere emessi solo se realmente semantici (copia simbolo->simbolo) e non come scrittura di codice costante.
 
 Regola consolidata:
 
@@ -1052,6 +1058,10 @@ Il target corretto è:
 - uso preferenziale di transizioni e memorie semantiche già calcolate.
 
 La HMI va quindi trattata come consumer del modello semantico e non come duplicazione indipendente della logica AWL.
+
+Nota operativa consolidata (04-05-2026):
+
+- i member HMI possono essere gerarchici (`HMI.ST.ST Sequencer step`): il DB generator deve creare le `Struct` intermedie e le FC devono referenziare sempre il path completo (con DB owner) per evitare simboli "senza DB".
 
 ### 32.14 Fault ed emergenze
 
@@ -1153,7 +1163,7 @@ I prossimi step non sono più “far parlare il sistema con TIA”, ma:
 
 ---
 
-# PARTE F - BASELINE FINALE DEL PROGETTO AL 30-04-2026
+# PARTE F - BASELINE FINALE DEL PROGETTO AL 04-05-2026
 
 ## 38. Baseline consolidata
 

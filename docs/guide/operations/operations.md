@@ -83,6 +83,8 @@ Comportamento importante:
 - il target XML resta **solo simbolico**: gli indirizzi fisici eventualmente presenti nel sorgente (I/Q/M/DBX/...) sono usati solo come input di mapping, ma non devono comparire nel naming dei member o nei path serializzati;
 - il bundle va letto come pacchetto coerente e non come somma casuale di file;
 - il file `<Name>_analysis.json` va conservato come diagnosi primaria del mapping AWL -> IR -> XML.
+ - i DB supporto possono contenere member gerarchici (es. `HMI.ST.ST Sequencer step`): in questo caso il generatore crea automaticamente le `Struct` intermedie e le FC referenziano sempre il path completo includendo il DB owner.
+ - la `FC12 HMI` contiene `Move` di status comparabili al progetto esempio (non decine di `Move` legacy `Trs/Seq/Preset`).
 
 ### Genera da un solo file
 
