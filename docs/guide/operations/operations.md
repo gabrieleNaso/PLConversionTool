@@ -1,7 +1,6 @@
 # Operazioni e comandi (PLConversionTool)
 
-Questo documento sostituisce `HOW_TO_USE.md` e `docs/AI_HANDOFF_GENERATOR.md`.
-Raccoglie setup, comandi base, workflow end-to-end e debug rapido.
+Questo documento raccoglie setup, comandi base, workflow end-to-end e debug rapido.
 
 ## Prerequisiti
 - Linux con `docker` e `docker compose`
