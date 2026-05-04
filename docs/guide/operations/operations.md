@@ -11,7 +11,22 @@ Raccoglie setup, comandi base, workflow end-to-end e debug rapido.
 
 ## Setup rapido (dev)
 
-### 1) Avvia lo stack
+### 1) Configura il bridge verso l'agent Windows
+La configurazione sta nelle variabili ambiente del compose (`compose.dev.yml` / `.env` / `.env.example`).
+Valorizza l'URL dell'agent Windows, ad esempio:
+
+```text
+TIA_WINDOWS_AGENT_URL=http://192.168.1.41:8050
+```
+
+Controllo rapido dallo status:
+
+```bash
+curl -sS http://127.0.0.1:8010/api/status
+```
+
+
+### 2) Avvia lo stack
 Da root repo:
 
 ```bash
@@ -28,20 +43,6 @@ Verifica:
 curl -sS http://127.0.0.1:8000/health
 curl -sS http://127.0.0.1:8010/health
 curl -sS http://127.0.0.1:8000/api/tia/overview
-```
-
-### 2) Configura il bridge verso l'agent Windows
-La configurazione sta nelle variabili ambiente del compose (`compose.dev.yml` / `.env` / `.env.example`).
-Valorizza l'URL dell'agent Windows, ad esempio:
-
-```text
-TIA_WINDOWS_AGENT_URL=http://192.168.1.41:8050
-```
-
-Controllo rapido dallo status:
-
-```bash
-curl -sS http://127.0.0.1:8010/api/status
 ```
 
 
