@@ -3547,6 +3547,61 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
     )
     hmi_db_members, hmi_fc_members = _prepare_support_members(ir, "hmi", hmi_members, hmi_logic)
 
+    # Reference-aligned HMI status moves:
+    # Keep the HMI FC lean by exposing only a small set of status fields, similar to the
+    # validated example project (sequencer status moved to an Int in the HMI DB).
+    #
+    # We do not mirror legacy Step7 runtime words (Trs/Seq) 1:1 as dozens of constant writes;
+    # instead we provide a comparable "actual step" status.
+    sequencer_status_member = "HMI.ST.ST Sequencer step"
+    if all(name.upper() != sequencer_status_member.upper() for name, _ in hmi_db_members):
+        hmi_db_members.append((sequencer_status_member, "Sequencer status (actual step)"))
+    member_datatypes.setdefault(sequencer_status_member, "Int")
+
+    # Emit one MOVE per step bit: when step is active, move its step number into the status Int.
+    step_rows: list[dict[str, object]] = []
+    seen_step_names: set[str] = set()
+
+    def _infer_step_no(step: StepCandidate) -> int:
+        if step.step_number:
+            try:
+                return int(step.step_number)
+            except Exception:
+                return 0
+        raw = str(step.name or "").strip()
+        match = re.match(r"^S(\d+)(?:\b|_)", raw, flags=re.IGNORECASE)
+        if not match:
+            return 0
+        try:
+            return int(match.group(1))
+        except Exception:
+            return 0
+
+    for step in sorted(ir.steps, key=lambda item: (_infer_step_no(item), str(item.name or ""))):
+        step_name = str(step.name or "").strip()
+        if not step_name or step_name.upper() in seen_step_names:
+            continue
+        seen_step_names.add(step_name.upper())
+        step_no = _infer_step_no(step)
+        if step_no <= 0:
+            continue
+        step_rows.append(
+            {
+                "kind": "move",
+                "result_member": sequencer_status_member,
+                "move_in": {"kind": "literal_int", "value": str(step_no)},
+                "move_out_members": [sequencer_status_member],
+                "condition_expression": f"{step_name}.X",
+                "condition_operands": [f"{step_name}.X"],
+                "coil_mode": "",
+                "network_title": "Sequencer status",
+                "comment": "",
+                "network_index": 12000 + step_no,
+            }
+        )
+    if step_rows:
+        hmi_logic = hmi_logic + step_rows
+
     aux_logic = _excel_support_logic_rows(ir, "aux")
     if not ir.strict_operand_catalog:
         aux_logic = aux_logic + derived_actions.get("aux", [])
@@ -4301,16 +4356,71 @@ def _build_support_global_db_xml(
         raise ValueError("DB15xx e' riservato al DB istanza GRAPH generato da TIA.")
     unique_members = _dedupe_named_members(members)
     datatype_map = member_datatypes or {}
-    leaf_member_irs = [
-        MemberIR(
-            name=member_name,
-            datatype=datatype_map.get(member_name, "Bool"),
-            comment=member_comment,
+
+    def _datatype_for_full_name(full_name: str, leaf_name: str) -> str:
+        token = str(full_name or "").strip()
+        if token in datatype_map:
+            return datatype_map[token]
+        token = str(leaf_name or "").strip()
+        if token in datatype_map:
+            return datatype_map[token]
+        return "Bool"
+
+    # Build a stable member tree, supporting dotted names such as `HMI.ST.ST Sequencer step`.
+    # This lets support DBs expose nested structs similar to the validated reference exports.
+    root_members: list[MemberIR] = []
+
+    def _ensure_member(parent: MemberIR | None, name: str) -> MemberIR:
+        container = root_members if parent is None else parent.children
+        key = (str(name or "").strip() or "").upper()
+        if not key:
+            return MemberIR(name="NoData", datatype="Bool")
+        # Linear scan preserves insertion order and avoids building per-parent dicts.
+        for item in container:
+            if item.name.strip().upper() == key:
+                return item
+        member = MemberIR(name=str(name).strip(), datatype="Struct")
+        container.append(member)
+        return member
+
+    for full_name, member_comment in unique_members:
+        token = str(full_name or "").strip()
+        if not token:
+            continue
+        parts = [part.strip() for part in token.split(".") if part.strip()]
+        if not parts:
+            continue
+        if len(parts) == 1:
+            folded = parts[0].upper()
+            if any(item.name.strip().upper() == folded for item in root_members):
+                continue
+            root_members.append(
+                MemberIR(
+                    name=parts[0],
+                    datatype=_datatype_for_full_name(token, parts[0]),
+                    comment=member_comment,
+                )
+            )
+            continue
+        parent: MemberIR | None = None
+        for part in parts[:-1]:
+            parent = _ensure_member(parent, part)
+        leaf_name = parts[-1]
+        # Ensure no duplicate leaf under the same parent.
+        container = root_members if parent is None else parent.children
+        folded_leaf = leaf_name.upper()
+        if any(child.name.strip().upper() == folded_leaf for child in container):
+            continue
+        container.append(
+            MemberIR(
+                name=leaf_name,
+                datatype=_datatype_for_full_name(token, leaf_name),
+                comment=member_comment,
+            )
         )
-        for member_name, member_comment in unique_members
-    ]
-    if not leaf_member_irs:
-        leaf_member_irs = [MemberIR(name="NoData", datatype="Bool")]
+
+    if not root_members:
+        root_members = [MemberIR(name="NoData", datatype="Bool")]
 
     if root_struct_name:
         member_irs = [
@@ -4318,11 +4428,11 @@ def _build_support_global_db_xml(
                 name=root_struct_name,
                 datatype="Struct",
                 remanence="Retain",
-                children=leaf_member_irs,
+                children=root_members,
             )
         ]
     else:
-        member_irs = leaf_member_irs
+        member_irs = root_members
     members_xml = _render_member_irs(member_irs)
     return (
         '<?xml version="1.0" encoding="utf-8"?>\n'
@@ -5304,7 +5414,14 @@ def _build_support_logic_flgnet(
     wires_lines: list[str] = []
 
     def _owner_db_name(symbol_name: str) -> str:
-        if symbol_name in db_members:
+        token = str(symbol_name or "").strip()
+        if not token:
+            return ""
+        if token in db_members:
+            return db_name
+        folded = token.upper()
+        prefix = f"{folded}."
+        if any(str(member or "").strip().upper().startswith(prefix) for member in db_members):
             return db_name
         if symbol_name in symbol_home_db_map:
             return symbol_home_db_map[symbol_name]
@@ -5831,7 +5948,17 @@ def _build_support_move_flgnet(
     wires_lines: list[str] = []
 
     def _owner_db_name(symbol_name: str) -> str:
-        if symbol_name in db_members:
+        token = str(symbol_name or "").strip()
+        if not token:
+            return ""
+        if token in db_members:
+            return db_name
+        folded = token.upper()
+        # Dotted members (e.g. `HMI.ST.X`) may be present in the DB member list only
+        # as fully-qualified strings; treat any member with this prefix as hosted in
+        # the current DB so generated Access nodes include the DB component.
+        prefix = f"{folded}."
+        if any(str(member or "").strip().upper().startswith(prefix) for member in db_members):
             return db_name
         if symbol_name in symbol_home_db_map:
             return symbol_home_db_map[symbol_name]
@@ -8220,6 +8347,59 @@ def _derive_awl_action_logic_rows(ir: AwlIR) -> dict[str, list[dict[str, object]
         _flush()
         return groups
 
+    def _is_legacy_sequencer_move_target(raw_operand: str) -> bool:
+        """
+        Detect AWL L/T targets that belong to a legacy sequencer runtime (FC32-like).
+
+        Example patterns in Step7 sources:
+          T "<prefix>".Trs   DBxxx.DBW2
+          T "<prefix>".Seq   DBxxx.DBW0
+          T "<prefix>".Preset DBxxx.DBW26
+
+        In the GRAPH target, these words are not part of the functional model:
+        - transitions are modeled as GRAPH transitions (no TRS word writes),
+        - sequence number is represented by the active step/runtime,
+        - preset-based timeouts are absorbed into step supervision times.
+        """
+        normalized = _normalize_operand_token(raw_operand)
+        if not normalized:
+            return False
+        # Only consider DB word/dword/byte targets.
+        if not re.fullmatch(r"DB\d+\.DB[WDB]\d+(?:\.\d+)?", normalized, flags=re.IGNORECASE):
+            return False
+        alias = operand_aliases.get(normalized, "")
+        leaf = ""
+        if alias:
+            leaf = str(alias).split(".")[-1].strip().upper()
+        if leaf in {"TRS", "SEQ", "PRESET"}:
+            return True
+        # Conservative fallback on common offsets observed in sequencer DBs.
+        if re.fullmatch(r"DB\d+\.DBW(0|2|26)", normalized, flags=re.IGNORECASE):
+            return True
+        return False
+
+    def _legacy_move_role(raw_operand: str) -> str:
+        """
+        Classify legacy sequencer L/T targets into a coarse role:
+        - 'status'  : words that represent current/requested step/state (HMI-facing)
+        - 'preset'  : preset/timeout configuration (technical/aux)
+        - 'other'   : default legacy
+        """
+        normalized = _normalize_operand_token(raw_operand)
+        alias = operand_aliases.get(normalized, "")
+        leaf = str(alias).split(".")[-1].strip().upper() if alias else ""
+        if leaf in {"TRS", "SEQ"}:
+            return "status"
+        if leaf == "PRESET":
+            return "preset"
+        if re.fullmatch(r"DB\d+\.DBW0", normalized, flags=re.IGNORECASE) or re.fullmatch(
+            r"DB\d+\.DBW2", normalized, flags=re.IGNORECASE
+        ):
+            return "status"
+        if re.fullmatch(r"DB\d+\.DBW26", normalized, flags=re.IGNORECASE):
+            return "preset"
+        return "other"
+
     for network in ir.networks:
         condition_expression, condition_operands_raw = _collect_condition_logic(network)
         if not condition_expression:
@@ -8363,7 +8543,7 @@ def _derive_awl_action_logic_rows(ir: AwlIR) -> dict[str, list[dict[str, object]
             )
 
         # MOVE (L/T) support: translate load/transfer sequences into TIA `Move` boxes.
-        # This captures status words and sequencer fields (Seq/Trs/Preset...) that are not boolean.
+        # This captures non-boolean writes (words/ints/time/string) that would otherwise be lost.
         for move_in, raw_targets in _extract_move_groups(network):
             mapped_targets: list[str] = []
             for raw_target in raw_targets:
@@ -8374,9 +8554,32 @@ def _derive_awl_action_logic_rows(ir: AwlIR) -> dict[str, list[dict[str, object]
             if not mapped_targets:
                 continue
 
-            # In the reference Siemens project, MOVE boxes live in the HMI backend FC.
-            # Keep them in FC12 and let symbol ownership decide the target DB.
-            rows_by_category["hmi"].append(
+            # Safety: only keep MOVE groups that actually write to a DB operand.
+            # Some AWL sources use L/T with local intermediates or unsupported operands;
+            # we do not want to emit "moves" that effectively have no meaningful target.
+            if not any(str(t or "").strip().upper().startswith("DB") for t in raw_targets):
+                continue
+
+            # Keep MOVE networks in a dedicated backend FC.
+            #
+            # Rule:
+            # - legacy sequencer moves (Trs/Seq/Preset words) are implementation details of the
+            #   Step7 runtime (FC32-like). Emitting them 1:1 from AWL tends to explode into many
+            #   MOVE boxes (dozens) that do not exist in the reference TIA example.
+            # - keep them only when they are actually informative (symbol -> symbol copy),
+            #   skip them when they are just constant writes (e.g. `L 3` -> `T Trs`).
+            # - other moves default to HMI (status/interface).
+            all_legacy = bool(raw_targets) and all(_is_legacy_sequencer_move_target(t) for t in raw_targets)
+            if all_legacy:
+                # Keep only semantic copies (not constant status codes / requested-step numbers).
+                if not isinstance(move_in, dict) or move_in.get("kind") != "symbol":
+                    continue
+                roles = {_legacy_move_role(t) for t in raw_targets}
+                move_category = "hmi" if "status" in roles else "aux"
+            else:
+                move_category = "hmi"
+
+            rows_by_category[move_category].append(
                 {
                     "kind": "move",
                     "result_member": mapped_targets[0],
@@ -8388,7 +8591,7 @@ def _derive_awl_action_logic_rows(ir: AwlIR) -> dict[str, list[dict[str, object]
                     "network_title": _network_label(network),
                     "comment": _row_comment(
                         network,
-                        category="hmi",
+                        category=move_category,
                         result_member=mapped_targets[0],
                         action="MOVE",
                     ),
