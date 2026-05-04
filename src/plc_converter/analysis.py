@@ -1246,19 +1246,41 @@ def _find_tracking_presence_operand(item: TransitionCandidate, source_step_no: i
             if local_prefix and prefix.upper() == local_prefix.upper():
                 continue
             remote_prefixes.add(prefix)
-    if not remote_prefixes:
-        return None
-    for prefix in sorted(remote_prefixes):
+    if remote_prefixes:
+        for prefix in sorted(remote_prefixes):
+            presence = next(
+                (
+                    op
+                    for op in ops
+                    if re.fullmatch(
+                        rf"{re.escape(prefix)}\.PT(?:_END)?",
+                        op,
+                        flags=re.IGNORECASE,
+                    )
+                ),
+                None,
+            )
+            if presence:
+                return presence
+    # DB-based fallback (when symbolic prefixes are not available in the IR):
+    # detect a remote DB that appears both as a step-bit DBX6.* and a presence DBX23.*.
+    step_dbs = {
+        int(m.group(1))
+        for op in ops
+        for m in [re.fullmatch(r"DB(\d+)\.DBX6\.\d+", op, flags=re.IGNORECASE)]
+        if m
+    }
+    presence_dbs = {
+        int(m.group(1))
+        for op in ops
+        for m in [re.fullmatch(r"DB(\d+)\.DBX23\.\d+", op, flags=re.IGNORECASE)]
+        if m
+    }
+    intersection = sorted(step_dbs & presence_dbs)
+    if intersection:
+        db_no = intersection[0]
         presence = next(
-            (
-                op
-                for op in ops
-                if re.fullmatch(
-                    rf"{re.escape(prefix)}\.PT(?:_END)?",
-                    op,
-                    flags=re.IGNORECASE,
-                )
-            ),
+            (op for op in ops if re.fullmatch(rf"DB{db_no}\.DBX23\.\d+", op, flags=re.IGNORECASE)),
             None,
         )
         if presence:
@@ -1286,6 +1308,11 @@ def _augment_tracking_branch(
     if source_no <= 0:
         return
 
+    # When a remote presence operand exists, the tracking check step must become a real
+    # alternative split (OK/KO). In that case we must NOT collapse/redirect the
+    # intermediate step away, otherwise we'd overwrite its real guard logic.
+    presence_operand = _find_tracking_presence_operand(seed, source_no)
+
     check_no = _pick_tracking_check_step_number(step_map)
     check_step = f"S{check_no}_TRK_CHECK"
     step_map[check_step] = StepCandidate(
@@ -1295,27 +1322,10 @@ def _augment_tracking_branch(
         activation_networks=[seed.network_index],
     )
 
-    # Reference-style rewrite:
-    # replace the original target step with the tracking check step when safe to do so
-    # (single incoming: seed, single outgoing: gate).
-    outgoing = [item for item in transitions if item.source_step == original_target]
-    incoming = [item for item in transitions if item.target_step == original_target]
-    if len(outgoing) == 1 and len(incoming) == 1 and incoming[0] is seed:
-        gate = outgoing[0]
-        # Redirect: source_step -> check_step -> gate.target_step
-        seed.target_step = check_step
-        gate.source_step = check_step
-
-        # Remove the replaced step if present.
-        step_map.pop(original_target, None)
-        # Drop any residual transitions still pointing at the removed step.
-        transitions[:] = [
-            item
-            for item in transitions
-            if item.source_step != original_target and item.target_step != original_target
-        ]
-    else:
-        # Fallback: just insert the check step between source and original target.
+    if presence_operand:
+        # Split: Snn -> TRK_CHECK, then:
+        # - OK: TRK_CHECK -> original_target when presence is true
+        # - KO: TRK_CHECK -> source_step when presence is false
         seed.target_step = check_step
         if not _has_transition_between(transitions, check_step, original_target):
             transitions.append(
@@ -1324,26 +1334,58 @@ def _augment_tracking_branch(
                     source_step=check_step,
                     target_step=original_target,
                     network_index=seed.network_index,
-                    guard_expression="TRUE",
-                    guard_operands=[],
+                    guard_expression=f"({presence_operand})",
+                    guard_operands=[presence_operand],
                     jump_labels=[],
                 )
             )
-
-    # Optional KO branch: when a remote presence operand exists, allow a jump-back.
-    presence_operand = _find_tracking_presence_operand(seed, source_no)
-    if presence_operand and not _has_transition_between(transitions, check_step, source_step):
-        transitions.append(
-            TransitionCandidate(
-                transition_id=_next_transition_id(transitions),
-                source_step=check_step,
-                target_step=source_step,
-                network_index=seed.network_index,
-                guard_expression=f"NOT {presence_operand}",
-                guard_operands=[presence_operand],
-                jump_labels=[],
+        if not _has_transition_between(transitions, check_step, source_step):
+            transitions.append(
+                TransitionCandidate(
+                    transition_id=_next_transition_id(transitions),
+                    source_step=check_step,
+                    target_step=source_step,
+                    network_index=seed.network_index,
+                    guard_expression=f"NOT {presence_operand}",
+                    guard_operands=[presence_operand],
+                    jump_labels=[],
+                )
             )
-        )
+    else:
+        # Reference-style rewrite:
+        # replace the original target step with the tracking check step when safe to do so
+        # (single incoming: seed, single outgoing: gate).
+        outgoing = [item for item in transitions if item.source_step == original_target]
+        incoming = [item for item in transitions if item.target_step == original_target]
+        if len(outgoing) == 1 and len(incoming) == 1 and incoming[0] is seed:
+            gate = outgoing[0]
+            # Redirect: source_step -> check_step -> gate.target_step
+            seed.target_step = check_step
+            gate.source_step = check_step
+
+            # Remove the replaced step if present.
+            step_map.pop(original_target, None)
+            # Drop any residual transitions still pointing at the removed step.
+            transitions[:] = [
+                item
+                for item in transitions
+                if item.source_step != original_target and item.target_step != original_target
+            ]
+        else:
+            # Fallback: just insert the check step between source and original target.
+            seed.target_step = check_step
+            if not _has_transition_between(transitions, check_step, original_target):
+                transitions.append(
+                    TransitionCandidate(
+                        transition_id=_next_transition_id(transitions),
+                        source_step=check_step,
+                        target_step=original_target,
+                        network_index=seed.network_index,
+                        guard_expression="TRUE",
+                        guard_operands=[],
+                        jump_labels=[],
+                    )
+                )
 
     # Optional transfer step insertion (TRK_TRANSFER): if we find a later mid/high-step transition
     # gated by a *remote* presence operand, insert a dedicated step between it and its target.
@@ -1438,8 +1480,16 @@ def _is_tracking_seed_transition(item: TransitionCandidate) -> bool:
         for m in [re.fullmatch(r"DB(\d+)\.DBX23\.\d+", op, flags=re.IGNORECASE)]
         if m
     }
-    # Consider it "remote" only when step and presence refer to different DBs.
-    return bool(step_dbs and presence_dbs and step_dbs.isdisjoint(presence_dbs))
+    if not (step_dbs and presence_dbs):
+        return False
+    # Consider it "remote" when at least one DB appears as both step-bit DBX6 and presence DBX23
+    # *and* there is more than one distinct DB involved in the guard. This captures common
+    # Step7 patterns like `DB103.DBX6.*` + `DB103.DBX23.*` embedded inside a local transition
+    # (local step-bit term is removed from guards by design).
+    if (step_dbs & presence_dbs) and len(step_dbs | presence_dbs) > 1:
+        return True
+    # Conservative fallback: remote when step and presence refer to disjoint DBs.
+    return step_dbs.isdisjoint(presence_dbs)
 
 
 def _extract_negated_tracking_presence_operand(item: TransitionCandidate) -> str | None:
