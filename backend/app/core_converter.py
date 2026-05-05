@@ -90,7 +90,7 @@ def export_conversion_bundle(
     sequence_name: str | None,
     awl_source: str,
     source_name: str | None = None,
-    output_dir: str = "data/output/generated",
+    output_dir: str = "work/output/generated",
 ) -> dict:
     analysis = analyze_awl_source(
         sequence_name=sequence_name,
@@ -103,7 +103,7 @@ def export_conversion_bundle_from_ir(
     sequence_name: str | None,
     ir_payload: dict,
     source_name: str | None = None,
-    output_dir: str = "data/output/generated",
+    output_dir: str = "work/output/generated",
 ) -> dict:
     analysis = analyze_ir_payload(
         ir_payload=ir_payload,
@@ -114,22 +114,24 @@ def export_conversion_bundle_from_ir(
 
 
 def _write_bundle(analysis: dict, output_dir: str) -> dict:
-    data_output_root = (PROJECT_ROOT / "data" / "output").resolve()
+    data_output_root = (PROJECT_ROOT / "work" / "output").resolve()
     relative_output = Path(output_dir)
     if relative_output.is_absolute():
         relative_output = Path(*relative_output.parts[1:])
 
-    # Normalizza path legacy/varianti mantenendo sempre output sotto data/output.
+    # Normalizza path legacy/varianti mantenendo sempre output sotto work/output/.
     parts_lower = [part.lower() for part in relative_output.parts]
     if len(parts_lower) >= 2 and parts_lower[0] == "data" and parts_lower[1] == "output":
         relative_output = Path(*relative_output.parts[2:])
     elif parts_lower and parts_lower[0] == "output":
         relative_output = Path(*relative_output.parts[1:])
+    elif len(parts_lower) >= 2 and parts_lower[0] == "work" and parts_lower[1] == "output":
+        relative_output = Path(*relative_output.parts[2:])
 
     destination = (data_output_root / relative_output).resolve()
     if data_output_root not in destination.parents and destination != data_output_root:
         raise ValueError(
-            "outputDir deve rimanere dentro la cartella data/output/ del progetto."
+            "outputDir deve rimanere dentro la cartella work/output/ del progetto."
         )
     destination.mkdir(parents=True, exist_ok=True)
 

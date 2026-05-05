@@ -1528,7 +1528,7 @@ def _build_ir_scaffold(ir: AwlIR) -> ConversionScaffold:
             graph_fb_name=f"FB_{ir.sequence_name}_GRAPH_auto.xml",
             global_db_name=f"DB19_{ir.sequence_name}_aux_db_auto.xml",
             lad_fc_name=f"FC14_{ir.sequence_name}_transitions_lad_auto.xml",
-            output_directory="data/output/",
+            output_directory="work/output/",
             naming_notes=[
                 "Naming allineato al flusso standard AWL per mantenere import e diff consistenti.",
             ],
@@ -1541,7 +1541,7 @@ def _build_ir_scaffold(ir: AwlIR) -> ConversionScaffold:
         global_db_sections=["Cmd", "Fb", "Par", "En", "Diag", "Hmi", "Map"],
         orchestration_flow=[
             "excel/json source -> backend -> artifact previews",
-            "backend genera bundle XML in data/output/",
+            "backend genera bundle XML in work/output/",
             "tia-bridge importa e compila via windows agent",
         ],
         roadmap=ConversionRoadmap(

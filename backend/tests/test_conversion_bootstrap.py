@@ -977,7 +977,7 @@ def test_conversion_analyze_ir_accepts_manual_ir_payload() -> None:
 
 def test_conversion_export_ir_writes_bundle() -> None:
     client = TestClient(app)
-    output_dir = "data/output/generated/test_ir_export"
+    output_dir = "work/output/generated/test_ir_export"
     output_path = Path(__file__).resolve().parents[2] / output_dir
     if output_path.exists():
         shutil.rmtree(output_path)

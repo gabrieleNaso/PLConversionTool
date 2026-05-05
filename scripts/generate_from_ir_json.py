@@ -30,8 +30,8 @@ def main() -> int:
     parser.add_argument("--ir-json", required=True, help="Path to IR JSON file.")
     parser.add_argument(
         "--output-root",
-        default="data/output/generated",
-        help="Output root folder (default: data/output/generated).",
+        default="work/output/generated",
+        help="Output root folder (default: work/output/generated).",
     )
     parser.add_argument(
         "--sequence-name",
@@ -81,4 +81,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

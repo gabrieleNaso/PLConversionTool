@@ -589,13 +589,13 @@ def main() -> int:
     )
     parser.add_argument(
         "--input-dir",
-        default="data/input",
-        help="Input folder containing .awl/.txt/.md sources (default: data/input).",
+        default="work/input",
+        help="Input folder containing .awl/.txt/.md sources (default: work/input).",
     )
     parser.add_argument(
         "--output-root",
-        default="data/output/generated",
-        help="Output root folder (default: data/output/generated).",
+        default="work/output/generated",
+        help="Output root folder (default: work/output/generated).",
     )
     parser.add_argument(
         "--name-prefix",

@@ -29,7 +29,7 @@ help:
 	"  import-generated - import bundles into TIA (use IMPORT_BUNDLE/IMPORT_PREFIX)" \
 	"  generate-and-import - generate-input + import-generated" \
 	"  generate-import - alias of generate-and-import" \
-	"  clean   - remove data/tmp/ and data/output/*" \
+	"  clean   - remove work/tmp/ and work/output/*" \
 	"  down    - stop compose services"
 
 doctor:
@@ -74,15 +74,15 @@ lint-backend:
 	@$(COMPOSE) run --rm backend bash -lc "ruff check ."
 
 generate-input:
-	@python3 scripts/generate_from_input.py --input-dir data/input --output-root data/output/generated --name-prefix Auto --source "$(INPUT_FILE)" --prefix "$(INPUT_PREFIX)"
+	@python3 scripts/generate_from_input.py --input-dir work/input --output-root work/output/generated --name-prefix Auto --source "$(INPUT_FILE)" --prefix "$(INPUT_PREFIX)"
 
 generate-excel-ir:
-	@python3 scripts/generate_from_excel_ir.py --excel "$(EXCEL_FILE)" --output-root data/output/generated --sequence-name "$(SEQUENCE_NAME)"
+	@python3 scripts/generate_from_excel_ir.py --excel "$(EXCEL_FILE)" --output-root work/output/generated --sequence-name "$(SEQUENCE_NAME)"
 
 generate-excel: generate-excel-ir
 
 import-generated:
-	@python3 scripts/import_generated_to_tia.py --output-root data/output/generated \
+	@python3 scripts/import_generated_to_tia.py --output-root work/output/generated \
 	  $(if $(strip $(PROJECT_PATH)),--project-path "$(PROJECT_PATH)",) \
 	  $(if $(strip $(TARGET_PATH)),--target-path "$(TARGET_PATH)",) \
 	  --prefix "$(IMPORT_PREFIX)" \
@@ -93,10 +93,10 @@ generate-and-import: generate-input import-generated
 generate-import: generate-and-import
 
 clean:
-	@mkdir -p ./data/tmp
-	@rm -rf ./data/tmp/*
-	@rm -rf ./data/output/*
-	@echo "Pulito: data/tmp/* e data/output/*"
+	@mkdir -p ./work/tmp
+	@rm -rf ./work/tmp/*
+	@rm -rf ./work/output/*
+	@echo "Pulito: work/tmp/* e work/output/*"
 
 down:
 	@$(COMPOSE) down --remove-orphans

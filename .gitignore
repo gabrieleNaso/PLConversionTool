@@ -22,8 +22,9 @@ frontend/node_modules
 .vscode/
 .idea/
 .DS_Store
-data/output/*
-!data/output/output.md
-data/tmp/*
-data/input/*
-!data/input/.gitkeep
+work/input/*
+!work/input/.gitkeep
+work/output/*
+!work/output/.gitkeep
+work/tmp/*
+!work/tmp/.gitkeep

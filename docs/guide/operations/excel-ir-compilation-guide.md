@@ -24,7 +24,7 @@ Regola di allineamento:
 Output:
 1. `<Sequence>_ir.json`
 2. `<Sequence>_analysis.json`
-3. bundle XML TIA in `data/output/generated/<sequence_name>/` (`FB + DB + FC`)
+3. bundle XML TIA in `work/output/generated/<sequence_name>/` (`FB + DB + FC`)
 
 Compatibilita':
 - il parser supporta solo il formato corrente a pagina singola (`sequence`, `operands`, `support_fc`).

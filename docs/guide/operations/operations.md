@@ -50,12 +50,12 @@ curl -sS http://127.0.0.1:8000/api/tia/overview
 - Ricordare che il bundle atteso non e' `1 + 1 + 1`, ma `1 x FB GRAPH + N x GlobalDB + M x FC LAD`.
 - Verificare che il caso abbia una policy chiara per il naming globale: owner DB, branch path e leaf name devono essere determinabili prima della serializzazione.
 - Se il caso deriva da un AWL monolitico, segmentarlo almeno nelle famiglie ricorrenti: allarmi, memorie/ausiliari, sequenza, manuale/automatico, emergenza/fault, uscite.
-- Se esiste una traduzione gia' fatta nel corpus (`data/datasets/corpus/traduzione/`), usarla come baseline di regressione: le regole vanno estratte da li' e generalizzate, evitando fix "ad hoc" solo per un caso.
+- Se esiste una traduzione gia' fatta nel corpus (`datasets/corpus/traduzione_xml/`, con sorgenti/contesto in `datasets/corpus/traduzione_awl/`), usarla come baseline di regressione: le regole vanno estratte da li' e generalizzate, evitando fix "ad hoc" solo per un caso.
 
-## Generare XML senza AI (da file in `data/input/`)
+## Generare XML senza AI (da file in `work/input/`)
 
 ### 1) Metti i sorgenti AWL
-Metti i file in `data/input/` con estensione:
+Metti i file in `work/input/` con estensione:
 - `.awl`
 - `.txt`
 - `.md` (vengono estratti i blocchi fenced AWL/STL; se non rilevati, viene usato il testo completo)
@@ -68,7 +68,7 @@ make generate-input
 ```
 
 Output:
-- un bundle per file in `data/output/generated/<nome>/`
+- un bundle per file in `work/output/generated/<nome>/`
 - file baseline sempre presenti:
   - `FB_<Name>_GRAPH_auto.xml`
   - `FC14_<Name>_transitions_lad_auto.xml`
@@ -100,7 +100,7 @@ make generate-input INPUT_PREFIX="romania_"
 
 ## Import in TIA (via bridge)
 
-### Import batch di tutto `data/output/generated/`
+### Import batch di tutto `work/output/generated/`
 
 Prerequisito: stack avviato (backend + tia-bridge).
 
@@ -130,7 +130,7 @@ make import-generated \
 ```
 
 Alternative:
-- `IMPORT_BUNDLE`: match esatto del nome cartella in `data/output/generated/`
+- `IMPORT_BUNDLE`: match esatto del nome cartella in `work/output/generated/`
 - `IMPORT_PREFIX`: importa solo cartelle che iniziano con quel prefisso
 
 Note operative:
@@ -141,7 +141,7 @@ Note operative:
 
 ## Multi-blocco (best effort)
 
-Se in `data/input/` sono presenti piu' blocchi (es. `# FC102`, `# FC32` in file diversi), la generazione indicizza i blocchi disponibili e registra nel report eventuali dipendenze trovate via `CALL`:
+Se in `work/input/` sono presenti piu' blocchi (es. `# FC102`, `# FC32` in file diversi), la generazione indicizza i blocchi disponibili e registra nel report eventuali dipendenze trovate via `CALL`:
 - nel file `<Name>_analysis.json` trovi `ir.support_logic.kind=project_dependencies` con `called_blocks/present_blocks/missing_blocks`.
 - se manca un blocco chiamato, compare un warning `missing_called_blocks`.
 - quando il blocco chiamato e' presente, il report include anche `ir.support_logic.kind=dependency_analyses` con un sommario dell'analisi dei blocchi dipendenti (utile per verificare correlazioni e segnali mancanti).
@@ -167,7 +167,7 @@ curl -sS -X POST "http://127.0.0.1:8000/api/conversion/export" \
     "sequenceName":"MySeq_001",
     "sourceName":"myseq_001.awl",
     "awlSource":"NETWORK 1\n      U     S1\n      U     \\\"START_REQ\\\"\\n      S     S29\\n",
-    "outputDir":"data/output/generated/myseq_001"
+    "outputDir":"work/output/generated/myseq_001"
   }'
 ```
 
@@ -179,7 +179,7 @@ curl -sS -X POST "http://127.0.0.1:8000/api/conversion/export-ir" \
 	  -d '{
 	    "sequenceName":"MySeq_IR_001",
 	    "sourceName":"myseq_ir.xlsx",
-	    "outputDir":"data/output/generated/myseq_ir_001",
+	    "outputDir":"work/output/generated/myseq_ir_001",
 	    "ir":{
 	      "networks":[{"index":1,"title":"Init"}],
 	      "steps":[{"name":"S1"},{"name":"S2"}],
@@ -264,7 +264,7 @@ Nota Openness (lingue progetto):
 curl -sS -X POST "http://127.0.0.1:8000/api/tia/jobs/import" \
   -H "Content-Type: application/json" \
   -d '{
-    "artifactPath":"data/output/generated/myseq_001",
+    "artifactPath":"work/output/generated/myseq_001",
     "projectPath":"C:\\Users\\Admin\\Desktop\\prova_connessione_openness\\prova_connessione_openness.ap20",
     "targetPath":"Program blocks/generati da tool",
     "targetName":null,
@@ -340,13 +340,13 @@ Verifica in `http://127.0.0.1:8010/api/status` che `remoteAgentStatus` sia popol
 
 ### `make generate-input INPUT_FILE="..."` non genera nulla
 Cause tipiche:
-- nome file non esatto rispetto a `data/input/` (maiuscole/spazi inclusi);
+- nome file non esatto rispetto a `input/` (maiuscole/spazi inclusi);
 - file presente ma estensione non supportata;
 - file `.md` senza blocchi riconoscibili come AWL e testo non interpretabile.
 
 Verifica rapida:
 ```bash
-ls -la data/input/
+ls -la work/input/
 ```
 
 ## Debug rapido (errore -> causa -> fix)
@@ -380,7 +380,7 @@ usa:
 node scripts/audit_generated_ir.mjs
 ```
 
-Nota: l'audit lavora sui file in `data/output/generated/` e stampa un riepilogo per i bundle `auto_awl_romania*`.
+Nota: l'audit lavora sui file in `work/output/generated/` e stampa un riepilogo per i bundle `auto_awl_romania*`.
 - Override via env `PLC_ENABLE_TRACKING_TRANSLATION`:
   - `0`/`false`/`off` = disabilita;
   - `1`/`true`/`on` = forza abilitazione;
@@ -408,7 +408,7 @@ make shell-backend
 make shell-tia
 ```
 
-### Clean data/output e data/tmp (attenzione: cancella)
+### Clean output e tmp (attenzione: cancella)
 
 ```bash
 make clean

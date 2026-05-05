@@ -56,7 +56,7 @@ def build_conversion_scaffold(
         # representative "package DB" for baseline workflows and UI.
         global_db_name=f"DB19_{normalized_name}_aux_db_auto.xml",
         lad_fc_name=f"FC14_{normalized_name}_transitions_lad_auto.xml",
-        output_directory="data/output/",
+        output_directory="work/output/",
         naming_notes=[
             "Il naming resta deterministico e allineato alle convenzioni di repository.",
             "Usare suffissi semanticamente utili solo quando distinguono una variante reale.",

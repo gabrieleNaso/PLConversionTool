@@ -32,13 +32,14 @@ def build_project_summary() -> dict:
                 "purpose": "Core converter deterministico: modello intermedio, profili target e generatori.",
             },
             {
-                "name": "data/datasets/typicals/",
+                "name": "datasets/typicals/",
                 "purpose": "XML di riferimento per reverse engineering.",
             },
             {
-                "name": "data/datasets/golden/",
+                "name": "datasets/golden/",
                 "purpose": "Campioni validati da usare per regression test.",
             },
-            {"name": "data/output/", "purpose": "XML e report generati dal tool."},
+            {"name": "examples/", "purpose": "Casi riproducibili versionati (input + expected)."},
+            {"name": "work/output/", "purpose": "XML e report generati dal tool (workspace non versionato)."},
         ],
     }

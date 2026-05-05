@@ -1,9 +1,11 @@
 # Datasets
 
 Questa cartella contiene i campioni usati per studio, confronto e regressione.
-Regole e naming: `../../docs/guide/conventions.md`.
+Regole e naming: `../../docs/guide/standards/conventions.md`.
 
 ## Struttura
+
+Nota: i casi riproducibili (input + expected) stanno in `examples/`, non in `datasets/`.
 
 ### `corpus/`
 File grezzi usati per studio, classificazione o reverse engineering.
@@ -11,7 +13,8 @@ File grezzi usati per studio, classificazione o reverse engineering.
 - non usare per output generati
 - promuovere in `golden/` solo i campioni verificati con import riuscito
 Esempi:
-- `corpus/traduzione/` (materiale AWL e XML di traduzione)
+- `corpus/traduzione_awl/` (sorgenti AWL / note di traduzione)
+- `corpus/traduzione_xml/` (XML di traduzione di riferimento)
 
 ### `typicals/`
 Tipici usati per reverse engineering e confronto (non necessariamente golden).
@@ -22,7 +25,7 @@ Sottocartelle consigliate:
 
 Regole:
 - se un file e' un import riuscito e diventa riferimento stabile -> spostarlo in `golden/`
-- se e' un output prodotto dal tool -> deve stare in `../output/`
+- se e' un output prodotto dal tool -> deve stare in `work/output/`
 
 ### `golden/`
 Riferimenti stabili usati per validare generatori e regression test.

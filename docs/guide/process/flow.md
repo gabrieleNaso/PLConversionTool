@@ -15,15 +15,15 @@ Il convertitore non deve mescolare questi piani: il target finale resta `V20 / G
 
 ## 1) Input (AWL)
 
-- I sorgenti AWL vivono in `data/input/`.
+- I sorgenti AWL vivono in `work/input/`.
 - Formati supportati: `.awl`, `.txt`, `.md` (nei `.md` si usa il primo blocco fenced con `NETWORK`).
 - Il backend legge il file AWL e lo passa al core converter come stringa (`awlSource`).
-- Quando in `data/input/` sono presenti più blocchi correlati (es. FC sequenza + FC runtime chiamate), il tool può eseguire un'analisi **di progetto**: indicizza i blocchi disponibili e prova a risolvere le dipendenze `CALL` durante l'analisi del blocco principale.
+- Quando in `work/input/` sono presenti più blocchi correlati (es. FC sequenza + FC runtime chiamate), il tool può eseguire un'analisi **di progetto**: indicizza i blocchi disponibili e prova a risolvere le dipendenze `CALL` durante l'analisi del blocco principale.
 
 ### Variante: input via Codex
 Quando descrivi a Codex il GRAPH/comportamento:
 1. Codex traduce la richiesta in un input strutturato (AWL o parametri compatibili col core converter).
-2. Salva il sorgente in `data/input/` oppure invia `awlSource` via API.
+2. Salva il sorgente in `work/input/` oppure invia `awlSource` via API.
 3. Il flusso resta identico: analisi -> IR -> XML.
 
 ## 2) Analisi e IR (Python)
@@ -37,7 +37,7 @@ L'IR nasce da:
 - testo AWL completo;
 - regole di mapping (AWL -> GRAPH/DB/FC);
 - vincoli di coerenza (naming e contratti cross‑blocco).
-- corpus di riferimento quando disponibile (es. `data/datasets/corpus/traduzione/`) usato per estrarre regole generali e fare regressione sul generatore.
+- corpus di riferimento quando disponibile (es. `datasets/corpus/traduzione_xml/`, con sorgenti in `datasets/corpus/traduzione_awl/`) usato per estrarre regole generali e fare regressione sul generatore.
 
 ### Come l'AWL viene interpretato
 - L'AWL viene letto come testo e segmentato per `NETWORK` e per famiglie logiche ricorrenti del sequenziatore.
@@ -57,7 +57,7 @@ L'IR nasce da:
 4. **Costruzione IR**: grafo/struttura di nodi (step, transition, timer, mapping DB, ownership delle variabili globali, riferimenti simbolici completi).
 5. **Validazione**: coerenza minima e contratti cross-blocco (riferimenti presenti, topologia consistente, owner DB, branch path, leaf name, cardinalita' del pacchetto).
    - gate hard: nessuna variabile globale "orfana"; tutto cio' che viene referenziato in `FB/FC/GRAPH` deve esistere davvero in un DB owner con naming simbolico coerente.
-   - se l'AWL contiene `CALL` a blocchi non presenti nei sorgenti disponibili, il report segnala una dipendenza mancante (warning `missing_called_blocks`); se invece i blocchi chiamati sono presenti in `data/input/`, la dipendenza viene correlata e riportata come analisi di progetto.
+   - se l'AWL contiene `CALL` a blocchi non presenti nei sorgenti disponibili, il report segnala una dipendenza mancante (warning `missing_called_blocks`); se invece i blocchi chiamati sono presenti in `work/input/`, la dipendenza viene correlata e riportata come analisi di progetto.
    - quando è presente un runtime sequenziatore esterno (es. un blocco stile `FC32`), il convertitore può usare tale contesto per migliorare l'estrazione delle transizioni (alias vista bit passo tipo `Mxx.Syy` -> `Syy`, confinata al prefisso del sequenziatore locale) e per produrre un contratto dati sequenziatore più pulito.
 
 ### Cos'e' l'IR (cosa rappresenta)
@@ -77,7 +77,7 @@ In pratica e' il **contratto interno** che garantisce coerenza tra i blocchi.
 1. **Builder**: genera `FB GRAPH`, `GlobalDB`, `FC LAD` (e blocchi extra se servono).
 2. **Allineamento**: simboli/guard replicati coerentemente tra FB/DB/FC.
 3. **Serializzazione**: output XML compatibile TIA con naming member deterministico e owner DB coerente.
-4. **Scrittura**: `data/output/generated/<nome_bundle>/`.
+4. **Scrittura**: `work/output/generated/<nome_bundle>/`.
 
 ## 3) Generazione XML (pacchetto coerente)
 
@@ -102,15 +102,15 @@ Endpoint principali:
 Flusso tipico:
 1. `analyze` riceve `awlSource`.
 2. Il core produce IR + anteprime XML.
-3. `export` scrive i file in `data/output/generated/<bundle>/`.
+3. `export` scrive i file in `work/output/generated/<bundle>/`.
    - Prima della scrittura, il bundle target viene ricreato pulito per evitare residui XML di run precedenti.
 
 ## 5) Bridge TIA e Windows Agent
 
 ### TIA Bridge (`tia_bridge/`)
 - Servizio Linux che parla con Openness.
-- Usa `data/output/` per leggere gli XML.
-- Usa `data/tmp/` per staging (creata on-demand).
+- Usa `work/output/` per leggere gli XML.
+- Usa `work/tmp/` per staging (creata on-demand).
 
 ### Windows Agent (`tia_windows_agent/`)
 - Processo .NET vicino a TIA (VM Windows).
@@ -133,13 +133,13 @@ Il risultato corretto e' un progetto TIA che:
 ## 7) Cosa serve ai container Python
 
 ### Backend (Python)
-- `data/input/` per leggere AWL.
-- `data/output/` per scrivere XML e report.
+- `work/input/` per leggere AWL.
+- `work/output/` per scrivere XML e report.
 - accesso al core converter (`src/plc_converter/`).
 
 ### TIA Bridge (Python)
-- `data/output/` per leggere XML da importare.
-- `data/tmp/` per staging.
+- `work/output/` per leggere XML da importare.
+- `work/tmp/` per staging.
 - accesso al Windows Agent via HTTP.
 
 ## 8) Dove guardare rapidamente
@@ -148,4 +148,4 @@ Il risultato corretto e' un progetto TIA che:
 - Checklists: `docs/guide/checklists/workflow-checklists.md`
 - Convenzioni: `docs/guide/standards/conventions.md`
 - Integrazione TIA: `docs/guide/integration/tia-integration.md`
-- Corpus traduzione/regressione: `data/datasets/corpus/traduzione/`
+- Corpus traduzione/regressione: `datasets/corpus/traduzione_xml/`

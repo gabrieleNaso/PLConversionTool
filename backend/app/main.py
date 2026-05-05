@@ -94,7 +94,7 @@ def conversion_export(payload: dict) -> dict:
             sequence_name=payload.get("sequenceName"),
             awl_source=awl_source,
             source_name=payload.get("sourceName"),
-            output_dir=payload.get("outputDir", "data/output/generated"),
+            output_dir=payload.get("outputDir", "work/output/generated"),
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -111,7 +111,7 @@ def conversion_export_ir(payload: dict) -> dict:
             sequence_name=payload.get("sequenceName"),
             ir_payload=ir_payload,
             source_name=payload.get("sourceName"),
-            output_dir=payload.get("outputDir", "data/output/generated"),
+            output_dir=payload.get("outputDir", "work/output/generated"),
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

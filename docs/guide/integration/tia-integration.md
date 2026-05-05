@@ -15,7 +15,7 @@ Questa separazione evita di mescolare nel backend applicativo dettagli runtime e
 Nel setup dev il container `tia-bridge`:
 - e' sulla stessa rete Compose di `backend` e `frontend`
 - espone una API minima di health/status
-- monta `data/output/` e `data/tmp/` (creata on-demand) come aree condivise di scambio artefatti
+- monta `work/output/` e `work/tmp/` (creata on-demand) come aree condivise di scambio artefatti
 - prepara il punto di integrazione verso una VM Windows che ospita TIA Portal
 - inoltra i job `import`/`compile`/`export` senza accodare compile automatiche post-import
 

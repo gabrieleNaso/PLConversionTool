@@ -154,10 +154,10 @@ def _queue_import_job(base_url: str, payload: dict) -> str | None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Import generated bundles in data/output/generated into a TIA project via backend API."
+        description="Import generated bundles in work/output/generated into a TIA project via backend API."
     )
     parser.add_argument("--backend-url", default=os.getenv("BACKEND_URL", "http://127.0.0.1:8000"))
-    parser.add_argument("--output-root", default="data/output/generated")
+    parser.add_argument("--output-root", default="work/output/generated")
     parser.add_argument(
         "--project-path",
         default=os.getenv("TIA_PROJECT_PATH", ""),
