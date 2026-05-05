@@ -164,6 +164,24 @@ make generate-and-import \
 make gen-ir IR_JSON="work/input/ir_json/<file>_ir.json" SEQUENCE_NAME="MySeq_001"
 ```
 
+## Creare IR JSON manualmente (da markdown AWL)
+
+Quando vuoi costruire l'IR **senza** usare il parser AWL automatico (es. perché stai ricostruendo le regole a mano),
+puoi generare un IR JSON “manuale” a partire da un documento `.md` con segmenti e tabelle.
+
+```bash
+python3 scripts/manual_awl_md_to_ir.py \
+  --source "work/input/awl romania 4.md" \
+  --sequence-name "Input_AWL_romania_4" \
+  --out "work/input/ir_json/Input_AWL_romania_4_ir.json"
+```
+
+Poi usi solo `gen-ir` per produrre gli XML:
+
+```bash
+make gen-ir IR_JSON="work/input/ir_json/Input_AWL_romania_4_ir.json" SEQUENCE_NAME="Input_AWL_romania_4"
+```
+
 ## API (equivalenti ai comandi make)
 
 ### Export (generazione bundle) via API backend
