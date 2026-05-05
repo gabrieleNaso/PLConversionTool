@@ -1,47 +1,37 @@
-# Cases (input -> expected_output)
+# Cases (inputN -> expected_outputN)
 
-Cartella per **casi riproducibili**: AWL in input + output atteso.
+Cartella per **casi riproducibili**: AWL in input + expected output curato a mano.
 
 Obiettivo:
 - contesto stabile per discutere regole (diff chiaro)
-- rigenerare l'output del tool e confrontare con `expected_output/`
+- confrontare l'output del tool con un expected (JSON o XML) messo nel repo
 
-## Struttura (lineare)
+## Struttura (a coppie)
 
-Ogni file in `cases/input/` ha una cartella gemella in `cases/expected_output/`.
+Ogni cartella `inputN/` corrisponde a una cartella `expected_outputN/` con lo stesso numero:
 
-- `cases/input/<input_name>.(awl|md|txt)` (versionato)
-- `cases/expected_output/<case_id>/` (versionato)
-  - `ir.json`
-  - `analysis.json`
+- `cases/input/input1/`  -> `cases/expected_output/expected_output1/`
+- `cases/input/input2/`  -> `cases/expected_output/expected_output2/`
+- ...
 
-Dove:
-- `<case_id>` = versione "slug" di `<input_name>` (minuscolo, spazi/simboli -> `_`)
+Nota: `cases/` e' versionato (commitare sia input che expected_output).
 
-Nota: `cases/` e' versionato (commitare `input/` + `expected_output/`).
+## Generare output dal tool (per confronto)
 
-## Rigenerazione
+Esempio per `input1`:
 
 ```bash
 python3 scripts/generate_from_input.py \
-  --input-dir cases/input \
-  --output-root work/output/generated
+  --input-dir cases/input/input1 \
+  --output-root work/output/generated \
+  --name-prefix Case1
 ```
 
-Poi confrontare almeno:
-- `work/output/generated/<bundle>/<Name>_ir.json` vs `cases/expected_output/<case_id>/ir.json`
-- `work/output/generated/<bundle>/<Name>_analysis.json` vs `cases/expected_output/<case_id>/analysis.json`
+Poi confronta i JSON/XML generati nel bundle con quelli che hai messo in:
+- `cases/expected_output/expected_output1/`
 
-## Aggiornare un expected_output (consigliato)
+## Regola pratica
 
-Per creare/aggiornare automaticamente `expected_output` di un singolo input:
-
-```bash
-python3 scripts/update_case_expected.py --input "cases/input/<input_name>.md"
-```
-
-Per aggiornare tutti i casi (uno per file in `cases/input/`):
-
-```bash
-for f in cases/input/*; do python3 scripts/update_case_expected.py --input "$f"; done
-```
+In `expected_outputN/` puoi mettere:
+- JSON (`*_ir.json`, `*_analysis.json`) se vuoi fissare l'IR/diagnosi attesa
+- e/o XML se vuoi fissare direttamente gli artefatti TIA attesi

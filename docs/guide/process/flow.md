@@ -37,7 +37,7 @@ L'IR nasce da:
 - testo AWL completo;
 - regole di mapping (AWL -> GRAPH/DB/FC);
 - vincoli di coerenza (naming e contratti cross‑blocco).
-- casi di riferimento quando disponibili (es. `cases/expected_output/<case_id>/`) usati per estrarre regole generali e fare regressione sul generatore.
+- casi di riferimento quando disponibili (es. `cases/expected_output/expected_outputN/`) usati per estrarre regole generali e fare regressione sul generatore.
 
 ### Come l'AWL viene interpretato
 - L'AWL viene letto come testo e segmentato per `NETWORK` e per famiglie logiche ricorrenti del sequenziatore.
@@ -148,4 +148,4 @@ Il risultato corretto e' un progetto TIA che:
 - Checklists: `docs/guide/checklists/workflow-checklists.md`
 - Convenzioni: `docs/guide/standards/conventions.md`
 - Integrazione TIA: `docs/guide/integration/tia-integration.md`
-- Casi traduzione/regressione: `cases/expected_output/<case_id>/`
+- Casi traduzione/regressione: `cases/expected_output/expected_outputN/`
