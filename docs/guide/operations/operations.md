@@ -166,7 +166,8 @@ make gen-ir IR_JSON="work/input/ir_json/<file>_ir.json" SEQUENCE_NAME="MySeq_001
 
 ### Target profile (opzionale)
 
-Puoi forzare un profilo di target (convenzioni di naming/euristiche) passando `TARGET_PROFILE`.
+Puoi forzare un profilo di target (convenzioni IR -> XML: naming/numbering/serializer) passando `TARGET_PROFILE`.
+Nota: non deve cambiare l’estrazione **AWL -> IR** (che resta generica).
 
 Esempio (profilo Romania / FC32):
 

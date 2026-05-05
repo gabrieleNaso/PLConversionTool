@@ -96,8 +96,9 @@ A valle del confronto tra i documenti operativi, i report consolidati e i tipici
 - La regola corretta di cardinalita' resta: `1 sequenza AWL -> 1 x FB GRAPH + N x GlobalDB + M x FC LAD`.
 - Il naming globale non puo' essere ridotto a un semplice suffisso finale: owner DB, branch path e leaf name costituiscono un contratto bloccante tra IR, serializer e bundle XML.
 - L'IR comune del progetto puo' ora essere alimentato sia da parsing AWL sia da Excel strutturato, pur restando invariati i contratti semantici richiesti dai backend.
+- Le regole di estrazione generiche **AWL -> IR** vanno mantenute in un riferimento unico aggiornabile caso dopo caso (`cases/translation_rules.md`), senza introdurre hard-code legati a un singolo esempio.
 - I tipici legacy importabili ma basati su runtime `V6` restano utili per reverse engineering semantico e topologico, ma non sono pattern validi per il serializer finale `V20 / GRAPH V2`.
-- La segmentazione reale dell'AWL tiene conto delle famiglie funzionali ricorrenti osservate nel caso `FC102 / AWL Romania`: allarmi, memorie/ausiliari, sequenza, manuale/automatico, emergenza/fault, uscite.
+- La segmentazione reale dell'AWL tiene conto delle famiglie funzionali ricorrenti osservate nel caso `FC102` (sequenziatore legacy): allarmi, memorie/ausiliari, sequenza, manuale/automatico, emergenza/fault, uscite.
 
 ### 2-bis.1 Aggiornamenti tool consolidati (29-04-2026)
 
@@ -146,7 +147,7 @@ Nel percorso Excel risultano consolidate anche le seguenti regole operative:
 
 ## 2-quater. Generalizzazione consolidata sui runtime sequenziatore legacy
 
-L'analisi del blocco `FC32` ha chiarito un pattern importante del caso `AWL Romania / FC102`: in quel caso la FC applicativa non attiva direttamente i bit di passo, ma scrive una richiesta di cambio passo in una variabile di transizione; un blocco generico successivo valida il passo, aggiorna il passo corrente, genera i bit `Sxx`, gestisce il timeout di passo e aggiorna lo storico.
+L'analisi del blocco `FC32` ha chiarito un pattern importante del caso `FC102`: in quel caso la FC applicativa non attiva direttamente i bit di passo, ma scrive una richiesta di cambio passo in una variabile di transizione; un blocco generico successivo valida il passo, aggiorna il passo corrente, genera i bit `Sxx`, gestisce il timeout di passo e aggiorna lo storico.
 
 Questa evidenza non deve però diventare una dipendenza rigida dal nome `FC32`, dal numero del blocco o dal layout esatto del DB storico.
 
@@ -1291,11 +1292,11 @@ Il problema centrale del progetto non è più capire se il workflow sia praticab
 
 ---
 
-# PARTE G - INTEGRAZIONI CONSOLIDATE DAL NUOVO AWL ROMANIA (FC102)
+# PARTE G - INTEGRAZIONI CONSOLIDATE DAL NUOVO AWL DEL CASO STUDIO FC102
 
 ## 43. Valore metodologico del nuovo sorgente AWL
 
-Il file `AWL Romania` conferma in modo più leggibile la struttura reale della FC102 perché espone segmenti numerati, titoli funzionali e commenti che separano chiaramente:
+Il file AWL del caso studio FC102 conferma in modo più leggibile la struttura reale della FC102 perché espone segmenti numerati, titoli funzionali e commenti che separano chiaramente:
 
 - logiche di servizio;
 - filtri e timer di dispositivo;

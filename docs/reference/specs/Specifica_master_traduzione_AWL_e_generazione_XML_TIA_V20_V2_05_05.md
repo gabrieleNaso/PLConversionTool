@@ -12,6 +12,7 @@ Gerarchia documentale fissata:
 - questa specifica prevale sui documenti operativi derivati;
 - il report consolidato descrive baseline, evidenze e architettura del progetto;
 - `docs/guide/standards/conventions.md`, `docs/guide/process/flow.md`, `docs/guide/operations/operations.md`, `docs/guide/integration/tia-integration.md` e `docs/guide/checklists/workflow-checklists.md` devono restare coerenti con questa specifica e non possono allentarne le regole hard.
+- `cases/translation_rules.md` è un documento operativo di lavoro (estrazione regole AWL -> IR): non è normativo, ma deve rimanere coerente con le regole hard qui definite.
 
 Le Parti I-VI definiscono le regole di traduzione della sorgente di partenza (AWL oppure Excel strutturato), la costruzione dell'IR, il partizionamento nei blocchi TIA e le regole operative finali del convertitore.
 Le Parti VII-IX definiscono la grammatica XML consolidata, il template operativo e lo pseudo-codice del serializer.
@@ -98,7 +99,7 @@ Il generatore deve poter emettere almeno le seguenti famiglie architetturali:
 
 Il target non deve riprodurre letteralmente il runtime Step7 legacy del sequenziatore.
 
-In particolare, nel caso `AWL Romania` il sorgente storico usa frequentemente pattern tipo:
+In particolare, nel caso studio `FC102` (sequenziatore legacy / runtime esterno) il sorgente storico usa frequentemente pattern tipo:
 
 - `L n` seguito da `T "<prefix>".Trs DBxxx.DBW2` (richiesta passo);
 - `T "<prefix>".Seq DBxxx.DBW0` (word stato sequenziatore);
@@ -314,6 +315,7 @@ Quando questo pattern è presente, il convertitore deve estrarre un edge semanti
 Il convertitore non deve assumere che ogni AWL richiami `FC32`, né che il blocco sequenziatore generico abbia sempre lo stesso numero, lo stesso nome o lo stesso layout dati.
 
 `FC32` è un esempio reale di runtime sequenziatore legacy, non una dipendenza normativa del parser.
+Il parser deve riconoscere la **classe** di implementazione (runtime esterno, word/int, bit diretti, salti, misto) senza hard-code su un progetto specifico.
 
 ### 7-bis.1 Classi di implementazione ammesse
 
@@ -1950,6 +1952,9 @@ Il backend FC deve emettere solo pattern LAD già convalidati e combinazioni aut
 
 # Appendice A - Integrazioni consolidate dal caso `AWL Romania / FC102`
 
+Nota: questa appendice è un consolidato **da caso reale** e serve a estrarre regole generali.
+Non introduce dipendenze rigide dal nome “Romania”, dal numero `FC102` o dal runtime `FC32`.
+
 ## A.1 Regola sul backbone automatico ricorrente
 
 Nel caso FC102 il parsing dell'AWL rende leggibile una catena automatica ricorrente della forma:
@@ -2029,6 +2034,7 @@ Il naming finale dei passi GRAPH resta invece una policy del builder, che può:
 ## A.8 Regola generale derivata dal caso FC32
 
 Nel caso `AWL Romania / FC102`, il blocco `FC32` chiarisce che la logica applicativa scrive una richiesta di passo e che un runtime generico materializza passo corrente, bit `Sxx`, timeout e storico.
+Questa evidenza va letta come pattern di classe (runtime esterno), non come dipendenza dal progetto o dal nome del blocco.
 
 Questa regola va generalizzata come segue:
 

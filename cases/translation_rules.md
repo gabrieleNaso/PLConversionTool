@@ -7,9 +7,9 @@ Obiettivo:
 - evitare fix “ad hoc”: ogni divergenza va ricondotta a una regola qui
 
 Ambito (importante):
-- **Parte A (AWL -> IR):** regole **generiche** di parsing/normalizzazione (indipendenti dal progetto target).
-- **Parte B (IR -> XML):** convenzioni di target (naming/numbering) **solo se abilitate via profilo**.
-  Queste non devono influenzare l’estrazione IR.
+- Questo file definisce **solo regole AWL -> IR** (parsing/normalizzazione).
+- Le convenzioni di target (IR -> XML: naming/numbering/serializer) sono **fuori scope** qui e non devono
+  influenzare l’estrazione IR.
 
 ---
 
@@ -28,8 +28,8 @@ Ambito (importante):
    Gli indirizzi fisici (I/Q/M/DBx.DBX…) possono comparire nel sorgente AWL e come evidenza diagnostica,
    ma il naming dei member e i path serializzati negli XML devono restare **simbolici**.
 
-Nota: i principi sopra descrivono il “contratto” complessivo, ma le sezioni successive distinguono sempre
-le regole **AWL->IR** (generiche) dalle regole **IR->XML** (profilo target).
+Nota: i principi sopra descrivono il “contratto” complessivo; qui fissiamo solo cosa significa
+estrarre un IR coerente, verificabile e riusabile su casi diversi.
 
 ---
 
@@ -97,9 +97,9 @@ Regola: distinguere chiaramente fra:
 - `ON` -> `OR NOT`
 - gruppi `A(...)` / `O(...)` vanno mantenuti come sottogruppi (no flatten distruttivo)
 
-### 5.1.1 Derivare transizioni da `Trs` (sequenziatore FC32)
+### 5.1.1 Derivare transizioni da `Trs` (pattern sequenziatore / FC32)
 
-Nei casi Romania il passo target viene spesso deciso scrivendo `Trs` nel DB sequenza:
+Nei casi basati su sequenziatore (es. FC32-style) il passo target viene spesso deciso scrivendo `Trs` nel DB sequenza:
 
 ```awl
 L 18
@@ -111,10 +111,10 @@ Regola per costruire l’IR JSON manuale:
 - la guardia è l’insieme delle condizioni tra la riga `A "...".Sxx` e il relativo `JNB` (includendo `A/AN` e gruppi `A(` / `O(`)
 - evitare wildcard: per transizioni tipo “Any -> S29/S32” espandere la sorgente su tutti gli step noti nel case
 
-Regola (pattern progetto Romania):
+Regola (pattern “sequenziatore” osservato nei casi):
 - oltre ai passi “di processo” (`S01`, `S02`, ...), il GRAPH include anche passi standard di progetto come `S28_END`, `S30_Fault`, `S100_TRK CHECK`, `S101_TRK TRANSFER` con transizioni dedicate (tracking/ritorni).
 
-Regola (quando l’expected include XML):
+Regola (quando l’expected include XML, per validare l’IR):
 - se in `cases/expected_output/...` sono presenti gli XML (es. `05 ... Sequence.xml`), per costruire l’IR manuale le guardie e le negazioni vanno ricostruite **leggendo i contatti del FlgNet** nella transizione (Access + Contact + Negated), non solo dal testo AWL.
 
 ### 5.2 Timer AWL
@@ -216,7 +216,7 @@ Regole base:
 - `step_number` è l’intero del passo (`S01` → 1)
 - se il progetto usa naming descrittivo (`S01_Init`, `S03_Check Piece Presence`), il nome step deve rispettare lo standard del dominio:
   - **senza expected**, usa un naming deterministico: `S01`, `S02`, … e aggiungi `assumptions` che i descrittivi non sono disponibili
-  - **con standard fisso di progetto** (es. Romania): applica le regole di naming standard (vedi sezione 9.4)
+  - **con standard fisso di progetto**: applica le regole di normalizzazione simbolica (vedi sezione 9.4)
 
 ### 8.5 Transizioni (`transitions`)
 
@@ -231,14 +231,14 @@ Vedi sezione 5.1.1: `L <n>; T "...".Trs` implica target step `Snn`.
 
 #### 8.5.2 Pattern branch “Any → Manual/Emergency/Fault”
 
-Nei casi Romania spesso esiste un “AltBegin” dal passo Init con transizioni tipo:
+In molti progetti basati su sequenziatore esiste un “AltBegin” dal passo Init con transizioni tipo:
 - Safe
 - Manual
 - Fault
 - Emergency
 
 Regole:
-- **non** espandere “Any → Manual/Emergency/Fault” su tutti i passi: nello standard Romania queste richieste sono modellate come **branch dal passo Init** (AltBegin).
+- **non** espandere “Any → Manual/Emergency/Fault” su tutti i passi: queste richieste vanno modellate come **branch dal passo Init** (AltBegin).
 - quindi, quando l’AWL ha reti dedicate che forzano `Trs=29` (manuale) o `Trs=32` (emergenza) o condizioni fault/safe, mappa a transizioni **da Init** verso gli step standard (`S29_Manual`, `S32_Emergency`, `S30_Fault`, …).
 - le transizioni “back-to-begin” sono transizioni **da** `S29_Manual`/`S30_Fault`/`S32_Emergency` **a** `S01_Init` con guardia negata (`NOT Manual`, ecc.).
 
@@ -256,13 +256,15 @@ Regola hard (già vista): `A Txx` è contatto done bit, mai istanza timer.
 
 ---
 
-## 9) Regole “Romania / FC32” per ottenere JSON corretti senza expected
+## 9) Pattern “sequenziatore / FC32” (estrazione IR senza expected)
 
-Questa sezione codifica uno standard “di progetto” che permette di produrre JSON coerenti anche senza avere gli XML reference.
+Questa sezione raccoglie un pattern ricorrente: la FC applicativa **non** attiva direttamente tutti i bit step,
+ma scrive una richiesta di step (`Trs`) che viene materializzata da un runtime esterno (spesso in `FC32` o equivalente).
+Le regole qui sono **di estrazione IR** (non naming target) e servono per costruire transizioni coerenti anche senza XML reference.
 
-### 9.1 DB sequenza e campi standard
+### 9.1 Riconoscere il DB sequenza e i campi standard
 
-Nel progetto Romania la sequenza tipicamente ha:
+Nei casi osservati la sequenza tipicamente ha:
 - `Seq` (DBW0)
 - `Trs` (DBW2) = prossimo step richiesto
 - `COUNT_STEP` (DBW4) / stato step
@@ -290,7 +292,7 @@ Pattern più ricorrenti:
 - starting conditions split: `StartingCond → (StartMov|Back)` (AltBegin 2)
 - back-to-begin: `Manual/Fault/Emergency → Init` con guardie negate (`NOT Manual`, ecc.)
 
-### 9.4 Naming simbolico delle guardie (Transitions/Memory/LEV2)
+### 9.4 Normalizzazione simbolica delle guardie (Transitions/Memory/LEV2)
 
 Per evitare di rimanere “attaccati” agli indirizzi (M/I/Q/DBX), usa un mapping deterministico basato su:
 - alias dal testo (`"M02".EM`, `"M:T1-A:Auto"`, ecc.)

@@ -52,4 +52,4 @@ python3 scripts/new_case_trace.py --n 2
 ## Regole generali
 
 Le regole “valide per tutti i casi” vivono in:
-- `cases/translation_rules.md`
+- `cases/translation_rules.md` (solo **AWL -> IR**, generiche e riusabili)
