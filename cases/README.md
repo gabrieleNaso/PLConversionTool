@@ -22,4 +22,6 @@ python3 scripts/generate_from_input.py \
   --output-root work/output/generated
 ```
 
-Poi confrontare i file generati con `cases/expected_output/`.
+Poi confrontare almeno:
+- `work/output/generated/<bundle>/<Name>_ir.json` vs `cases/expected_output/<Name>_ir.json`
+- `work/output/generated/<bundle>/<Name>_analysis.json` vs `cases/expected_output/<Name>_analysis.json`
