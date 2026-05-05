@@ -95,7 +95,8 @@ Pattern AWL:
 - `L S5T#...` + `SD T xx` + `A T xx`
 
 Regola:
-- in AWL, `A Txx` è il “done bit”; nel target va reso coerente con i costrutti IEC/TIA (`.Q` o equivalente) senza creare BOOL fittizi instabili.
+- in AWL, `A Txx` è il “done bit”: **mai** usare l’istanza `IEC_TIMER` (es. `T218`) come contatto booleano in LAD/GRAPH.
+- nel target il contatto deve puntare a un booleano equivalente (es. `Txx.Q` oppure un alias stabile tipo `Txx_DONE`).
 
 ### 5.3 SET/RESET/ASSIGN
 
@@ -127,4 +128,3 @@ Regola: l’output deve segmentare e serializzare per famiglia come da reference
 2. Metti i reference corretti in `cases/expected_output/expected_outputN/`
 3. Scrivi una traccia dedicata in `cases/traces/inputN_expected_outputN.md`
 4. Ogni divergenza trovata in diff deve diventare una regola qui (o una precisazione di una regola esistente).
-

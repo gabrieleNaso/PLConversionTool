@@ -8021,14 +8021,18 @@ def _excel_preserving_db_member_name(raw_name: str, *, strict_excel_mode: bool) 
 
 def _guard_operand_db_member_name(operand: str, *, strict_excel_mode: bool = False) -> str:
     token = str(operand or "").strip()
+    # In AWL, a bare timer token (e.g. `A T218`) refers to the done bit, not the
+    # IEC timer instance itself. This must hold regardless of strict/excel mode,
+    # otherwise TIA will reject the generated LAD/GRAPH because an `IEC_TIMER`
+    # instance cannot be used as a boolean contact.
+    if TIMER_RE.fullmatch(token.upper()):
+        return _db_member_name(f"{token}_DONE")
     if strict_excel_mode:
         return _excel_preserving_db_member_name(token, strict_excel_mode=True)
     upper = token.upper()
     if MEMORY_RE.fullmatch(upper) or re.fullmatch(r"M\d+_S\d+", upper):
         normalized = _normalize_operand_token(token).replace(".", "_")
         return _db_member_name(f"AUX_MEM_{normalized}")
-    if TIMER_RE.fullmatch(token.upper()):
-        return _db_member_name(f"{token}_DONE")
     return _db_member_name(token)
 
 
