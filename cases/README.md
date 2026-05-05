@@ -35,3 +35,21 @@ Poi confronta i JSON/XML generati nel bundle con quelli che hai messo in:
 In `expected_outputN/` puoi mettere:
 - JSON (`*_ir.json`, `*_analysis.json`) se vuoi fissare l'IR/diagnosi attesa
 - e/o XML se vuoi fissare direttamente gli artefatti TIA attesi
+
+## Tracce (analisi caso)
+
+Ogni caso ha **la sua** traccia dedicata in `cases/traces/`:
+- `cases/traces/input1_expected_output1.md`
+- `cases/traces/input2_expected_output2.md`
+- ...
+
+Puoi partire dal template `cases/traces/TEMPLATE.md` oppure generare uno stub con:
+
+```bash
+python3 scripts/new_case_trace.py --n 2
+```
+
+## Regole generali
+
+Le regole “valide per tutti i casi” vivono in:
+- `cases/translation_rules.md`
