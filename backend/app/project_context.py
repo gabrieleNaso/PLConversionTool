@@ -35,11 +35,7 @@ def build_project_summary() -> dict:
                 "name": "datasets/typicals/",
                 "purpose": "XML di riferimento per reverse engineering.",
             },
-            {
-                "name": "datasets/golden/",
-                "purpose": "Campioni validati da usare per regression test.",
-            },
-            {"name": "examples/", "purpose": "Casi riproducibili versionati (input + expected)."},
+            {"name": "cases/", "purpose": "Casi riproducibili versionati (input + expected_output)."},
             {"name": "work/output/", "purpose": "XML e report generati dal tool (workspace non versionato)."},
         ],
     }

@@ -7,6 +7,6 @@ Struttura:
   - `work/input/`  sorgenti AWL da convertire (run locali)
   - `work/output/` artefatti generati dal tool
   - `work/tmp/`    staging e file temporanei
-- `examples/` (versionato)
-  - `examples/cases/` casi riproducibili con `input/` + `expected/`
+- `cases/` (versionato)
+  - `cases/input/` + `cases/expected_output/` per casi riproducibili
 - `datasets/` (versionato) campioni di riferimento (corpus, typicals, golden)

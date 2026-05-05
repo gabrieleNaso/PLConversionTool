@@ -8,7 +8,7 @@ Script principali:
   - genera un bundle in `work/output/generated/<bundle>/` a partire dai sorgenti in `work/input/`.
   - nei `.md` estrae i blocchi fenced AWL/STL.
   - scrive sempre `<Name>_ir.json` e `<Name>_analysis.json` (diagnosi primaria).
-  - per estrarre regole e fare regressione, confrontare l'output con le traduzioni gia' presenti in `datasets/corpus/traduzione_xml/` (e relativo AWL in `datasets/corpus/traduzione_awl/`) quando disponibili.
+  - per estrarre regole e fare regressione, confrontare l'output con i casi versionati in `cases/expected_output/` quando disponibili.
 - `generate_from_excel_ir.py`
 - `import_generated_to_tia.py`
   - importa solo file `*.xml` del bundle (i `.json` non vengono inviati a TIA).
