@@ -50,7 +50,13 @@ curl -sS http://127.0.0.1:8000/api/tia/overview
 - Ricordare che il bundle atteso non e' `1 + 1 + 1`, ma `1 x FB GRAPH + N x GlobalDB + M x FC LAD`.
 - Verificare che il caso abbia una policy chiara per il naming globale: owner DB, branch path e leaf name devono essere determinabili prima della serializzazione.
 - Se il caso deriva da un AWL monolitico, segmentarlo almeno nelle famiglie ricorrenti: allarmi, memorie/ausiliari, sequenza, manuale/automatico, emergenza/fault, uscite.
-- Se esiste un caso gia' tracciato in `cases/expected_output/`, usarlo come baseline di regressione: le regole vanno estratte da li' e generalizzate, evitando fix "ad hoc" solo per un caso.
+- Se esiste un caso gia' tracciato in `cases/expected_output/<case_id>/`, usarlo come baseline di regressione: le regole vanno estratte da li' e generalizzate, evitando fix "ad hoc" solo per un caso.
+
+Per aggiornare l'expected di un singolo input (consigliato):
+
+```bash
+python3 scripts/update_case_expected.py --input "cases/input/<nome_file>.md"
+```
 
 ## Generare XML senza AI (da file in `work/input/`)
 

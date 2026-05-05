@@ -39,3 +39,9 @@ Per creare/aggiornare automaticamente `expected_output` di un singolo input:
 ```bash
 python3 scripts/update_case_expected.py --input "cases/input/<input_name>.md"
 ```
+
+Per aggiornare tutti i casi (uno per file in `cases/input/`):
+
+```bash
+for f in cases/input/*; do python3 scripts/update_case_expected.py --input "$f"; done
+```
