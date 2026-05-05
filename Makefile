@@ -1,4 +1,4 @@
-.PHONY: help doctor build pull up logs shell-backend shell-frontend shell-tia run-backend run-tia test-backend lint-backend fmt-backend generate-input generate-excel-ir generate-excel import-generated generate-and-import generate-import clean down
+.PHONY: help doctor build pull up logs shell-backend shell-frontend shell-tia run-backend run-tia test-backend lint-backend fmt-backend generate-input generate-excel-ir generate-excel generate-ir gen gen-ir import-generated generate-and-import generate-import clean down
 
 PROJECT_NAME := plconversiontool
 COMPOSE := docker compose -p $(PROJECT_NAME) -f compose.dev.yml
@@ -24,6 +24,9 @@ help:
 	"  fmt-backend    - format backend (ruff)" \
 	"  lint-backend   - lint backend (ruff)" \
 	"  generate-input - generate XML (use INPUT_FILE/INPUT_PREFIX filters)" \
+	"  generate-ir - generate XML from an IR JSON file (use IR_JSON/SEQUENCE_NAME)" \
+	"  gen - alias of generate-input" \
+	"  gen-ir - alias of generate-ir" \
 	"  generate-excel-ir - generate XML from Excel IR template (use EXCEL_FILE)" \
 	"  generate-excel - alias of generate-excel-ir" \
 	"  import-generated - import bundles into TIA (use IMPORT_BUNDLE/IMPORT_PREFIX)" \
@@ -75,6 +78,13 @@ lint-backend:
 
 generate-input:
 	@python3 scripts/generate_from_input.py --input-dir work/input --output-root work/output/generated --name-prefix Auto --source "$(INPUT_FILE)" --prefix "$(INPUT_PREFIX)"
+
+generate-ir:
+	@python3 scripts/generate_from_ir_json.py --ir-json "$(IR_JSON)" --output-root work/output/generated --sequence-name "$(SEQUENCE_NAME)"
+
+gen: generate-input
+
+gen-ir: generate-ir
 
 generate-excel-ir:
 	@python3 scripts/generate_from_excel_ir.py --excel "$(EXCEL_FILE)" --output-root work/output/generated --sequence-name "$(SEQUENCE_NAME)"

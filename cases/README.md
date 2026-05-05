@@ -24,7 +24,7 @@ Esempio per `input1`:
 python3 scripts/generate_from_input.py \
   --input-dir cases/input/input1 \
   --output-root work/output/generated \
-  --name-prefix Case1
+  --name-prefix Case
 ```
 
 Poi confronta i JSON/XML generati nel bundle con quelli che hai messo in:

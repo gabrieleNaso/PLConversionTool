@@ -66,7 +66,7 @@ Metti i file in `work/input/` con estensione:
 ### 2) Genera i bundle
 
 ```bash
-make generate-input
+make gen
 ```
 
 Output:
@@ -91,13 +91,13 @@ Comportamento importante:
 ### Genera da un solo file
 
 ```bash
-make generate-input INPUT_FILE="AWL romania.md"
+make gen INPUT_FILE="AWL romania.md"
 ```
 
 ### Genera solo file con prefisso
 
 ```bash
-make generate-input INPUT_PREFIX="romania_"
+make gen INPUT_PREFIX="romania_"
 ```
 
 ## Import in TIA (via bridge)
@@ -156,6 +156,12 @@ Quando i sorgenti esterni non sono disponibili (caso: AWL monolitico unico), alc
 make generate-and-import \
   PROJECT_PATH="C:\\Users\\Admin\\Desktop\\prova_connessione_openness\\prova_connessione_openness.ap20" \
   TARGET_PATH="Program blocks/generati da tool"
+```
+
+## Generare da IR JSON (senza riparsare AWL)
+
+```bash
+make gen-ir IR_JSON="work/input/ir_json/<file>_ir.json" SEQUENCE_NAME="MySeq_001"
 ```
 
 ## API (equivalenti ai comandi make)
@@ -340,7 +346,7 @@ Strategie:
 ### Windows agent non raggiungibile
 Verifica in `http://127.0.0.1:8010/api/status` che `remoteAgentStatus` sia popolato e che l'URL sia corretto.
 
-### `make generate-input INPUT_FILE="..."` non genera nulla
+### `make gen INPUT_FILE="..."` non genera nulla
 Cause tipiche:
 - nome file non esatto rispetto a `input/` (maiuscole/spazi inclusi);
 - file presente ma estensione non supportata;
@@ -363,7 +369,7 @@ ls -la work/input/
 - Logica XML "diversa" dall'AWL su transizioni:
   - Causa tipica: sorgente con condizioni complesse `OR/NOT` o gruppi non verificata dopo rigenerazione.
   - Fix rapido:
-    1. rigenera (`make generate-input INPUT_FILE="..."`);
+    1. rigenera (`make gen INPUT_FILE="..."`);
     2. controlla `<Name>_analysis.json` (`ir.transitions[].guard_expression`);
     3. verifica che l'espressione mantenga `OR` e `NOT` dove presenti in AWL.
 
