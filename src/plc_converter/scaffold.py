@@ -11,7 +11,10 @@ from .domain import (
 )
 
 
-def build_target_profile() -> TargetProfile:
+def build_target_profile(profile_name: str = "default") -> TargetProfile:
+    profile = (profile_name or "default").strip().lower()
+    if profile not in {"default", "romania"}:
+        profile = "default"
     return TargetProfile(
         tia_portal_version="V20",
         graph_version="GRAPH V2",
@@ -37,6 +40,12 @@ def build_target_profile() -> TargetProfile:
             "Il GRAPH deve mantenere gli statici runtime interni obbligatori.",
             "Il GlobalDB del pacchetto va generato in aggiunta, non in sostituzione degli statici GRAPH.",
             "La conversione include il trio baseline (FB GRAPH + GlobalDB + FC LAD) e puo' aggiungere DB/FC di supporto quando l'AWL richiede separazione funzionale.",
+            (
+                "Profilo Romania: applica naming/struttura di progetto per sequenze basate su FC32 "
+                "(Init/Manual/Emergency/Fault/END/TRK) e segnali logici in namespace Transitions/Memory/LEV2."
+            )
+            if profile == "romania"
+            else "Profilo default: naming deterministico auto_* del tool.",
         ],
     )
 
@@ -45,10 +54,12 @@ def build_conversion_scaffold(
     sequence_name: str | None,
     awl_source: str,
     source_name: str | None = None,
+    *,
+    target_profile_name: str = "default",
 ) -> ConversionScaffold:
     normalized_name = _normalize_sequence_name(sequence_name or source_name or "Sequence")
     source_analysis = _analyze_awl_source(awl_source, source_name or f"{normalized_name}.awl")
-    target_profile = build_target_profile()
+    target_profile = build_target_profile(target_profile_name)
 
     artifact_plan = ArtifactPlan(
         graph_fb_name=f"FB_{normalized_name}_GRAPH_auto.xml",

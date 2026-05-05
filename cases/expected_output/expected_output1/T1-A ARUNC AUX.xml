@@ -1,0 +1,85 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Document>
+  <Engineering version="V20" />
+  <SW.Blocks.GlobalDB ID="0">
+    <AttributeList>
+      <AutoNumber>false</AutoNumber>
+      <Interface><Sections xmlns="http://www.siemens.com/automation/Openness/SW/Interface/v5">
+  <Section Name="Static">
+    <Member Name="AUX" Datatype="Struct">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Auxiliary memory, not retentive memory</MultiLanguageText>
+        <MultiLanguageText Lang="it-IT">Auxiliary memory, not retentive memory</MultiLanguageText>
+      </Comment>
+      <Member Name="TIMER" Datatype="Array[1..50] of IEC_TIMER" Version="1.0">
+        <Sections>
+          <Section Name="None" />
+        </Sections>
+        <Subelement Path="1">
+          <Comment>
+            <MultiLanguageText Lang="en-US">Timer to delay the signal of the change diameter preset by LV2</MultiLanguageText>
+          </Comment>
+        </Subelement>
+      </Member>
+      <Member Name="OS" Datatype="Array[0..50] of Bool" />
+      <Member Name="FO1" Datatype="&quot;FirstOut_aux&quot;">
+        <AttributeList>
+          <BooleanAttribute Name="SetPoint" SystemDefined="true">true</BooleanAttribute>
+        </AttributeList>
+      </Member>
+    </Member>
+    <Member Name="AUX_MEMORY" Datatype="Struct" Remanence="Retain">
+      <Comment>
+        <MultiLanguageText Lang="en-US">Auxiliary memory, retentive memory</MultiLanguageText>
+        <MultiLanguageText Lang="it-IT">Auxiliary memory, retentive memory</MultiLanguageText>
+      </Comment>
+      <Member Name="BOOL" Datatype="Array[0..50] of Bool" />
+      <Member Name="INT" Datatype="Array[0..20] of Int" />
+      <Member Name="DINT" Datatype="Array[0..20] of DInt" />
+      <Member Name="REAL" Datatype="Array[0..20] of Real" />
+    </Member>
+  </Section>
+</Sections></Interface>
+      <MemoryLayout>Optimized</MemoryLayout>
+      <MemoryReserve>100</MemoryReserve>
+      <Name>T1-A ARUNC AUX</Name>
+      <Namespace />
+      <Number>1902</Number>
+      <ProgrammingLanguage>DB</ProgrammingLanguage>
+    </AttributeList>
+    <ObjectList>
+      <MultilingualText ID="1" CompositionName="Comment">
+        <ObjectList>
+          <MultilingualTextItem ID="2" CompositionName="Items">
+            <AttributeList>
+              <Culture>en-US</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+          <MultilingualTextItem ID="3" CompositionName="Items">
+            <AttributeList>
+              <Culture>it-IT</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+        </ObjectList>
+      </MultilingualText>
+      <MultilingualText ID="4" CompositionName="Title">
+        <ObjectList>
+          <MultilingualTextItem ID="5" CompositionName="Items">
+            <AttributeList>
+              <Culture>en-US</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+          <MultilingualTextItem ID="6" CompositionName="Items">
+            <AttributeList>
+              <Culture>it-IT</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+        </ObjectList>
+      </MultilingualText>
+    </ObjectList>
+  </SW.Blocks.GlobalDB>
+</Document>

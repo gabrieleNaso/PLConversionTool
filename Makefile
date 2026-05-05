@@ -6,6 +6,7 @@ EXCEL_FILE ?= docs/templates/ir_excel_template_single_page_with_support_fc.xlsx
 # Optional defaults for TIA import (env fallback kept working even when make vars are unset)
 PROJECT_PATH ?= $(TIA_PROJECT_PATH)
 TARGET_PATH ?= $(TIA_TARGET_PATH)
+TARGET_PROFILE ?= $(PLC_TARGET_PROFILE)
 
 help:
 	@printf "%s\n" \
@@ -77,10 +78,12 @@ lint-backend:
 	@$(COMPOSE) run --rm backend bash -lc "ruff check ."
 
 generate-input:
-	@python3 scripts/generate_from_input.py --input-dir work/input --output-root work/output/generated --name-prefix Auto --source "$(INPUT_FILE)" --prefix "$(INPUT_PREFIX)"
+	@python3 scripts/generate_from_input.py --input-dir work/input --output-root work/output/generated --name-prefix Auto --source "$(INPUT_FILE)" --prefix "$(INPUT_PREFIX)" \
+	  $(if $(strip $(TARGET_PROFILE)),--target-profile "$(TARGET_PROFILE)",)
 
 generate-ir:
-	@python3 scripts/generate_from_ir_json.py --ir-json "$(IR_JSON)" --output-root work/output/generated --sequence-name "$(SEQUENCE_NAME)"
+	@python3 scripts/generate_from_ir_json.py --ir-json "$(IR_JSON)" --output-root work/output/generated --sequence-name "$(SEQUENCE_NAME)" \
+	  $(if $(strip $(TARGET_PROFILE)),--target-profile "$(TARGET_PROFILE)",)
 
 gen: generate-input
 

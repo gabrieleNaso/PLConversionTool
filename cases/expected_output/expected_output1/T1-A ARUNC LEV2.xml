@@ -1,0 +1,135 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Document>
+  <Engineering version="V20" />
+  <SW.Blocks.GlobalDB ID="0">
+    <AttributeList>
+      <AutoNumber>false</AutoNumber>
+      <HeaderAuthor>SAS</HeaderAuthor>
+      <Interface><Sections xmlns="http://www.siemens.com/automation/Openness/SW/Interface/v5">
+  <Section Name="Static">
+    <Member Name="ITF" Datatype="Struct" Remanence="Retain">
+      <Member Name="Production Lock" Datatype="Bool" />
+      <Member Name="Check OK" Datatype="Bool" />
+      <Member Name="Check not OK" Datatype="Bool" />
+      <Member Name="Transfer OK" Datatype="Bool" />
+      <Member Name="Transfer not OK" Datatype="Bool" />
+      <Member Name="Skip" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Coupling not to work (0=to work, 1= not to work)</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Status" Datatype="Int" />
+    </Member>
+    <Member Name="MEMORY" Datatype="Struct" Remanence="Retain">
+      <Member Name="PP_Man_Mov" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Pipe presence for manual movement</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Cond move Fwd" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Cond move Fwd</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Unlock LEV.2 ANSWER" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Unlock LEV.2 ANSWER (1=Unlock)</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Trc_disabled" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Traceability Disabled</MultiLanguageText>
+        </Comment>
+      </Member>
+    </Member>
+    <Member Name="SEQ" Datatype="&quot;SEQ LIV2&quot;">
+      <AttributeList>
+        <BooleanAttribute Name="SetPoint" SystemDefined="true">true</BooleanAttribute>
+      </AttributeList>
+      <Sections>
+        <Section Name="None">
+          <Member Name="SEQ" Datatype="Struct">
+            <Member Name="S01" Datatype="Bool">
+              <Comment>
+                <MultiLanguageText Lang="it-IT">STARTUP</MultiLanguageText>
+              </Comment>
+            </Member>
+            <Member Name="S28" Datatype="Bool">
+              <Comment>
+                <MultiLanguageText Lang="it-IT">FINE</MultiLanguageText>
+              </Comment>
+            </Member>
+            <Member Name="S29" Datatype="Bool">
+              <Comment>
+                <MultiLanguageText Lang="it-IT">MANUALE</MultiLanguageText>
+              </Comment>
+            </Member>
+            <Member Name="S30" Datatype="Bool">
+              <Comment>
+                <MultiLanguageText Lang="it-IT">FAULT</MultiLanguageText>
+              </Comment>
+            </Member>
+            <Member Name="S32" Datatype="Bool">
+              <Comment>
+                <MultiLanguageText Lang="it-IT">EMERGENZA</MultiLanguageText>
+              </Comment>
+            </Member>
+          </Member>
+        </Section>
+      </Sections>
+    </Member>
+    <Member Name="AUX" Datatype="Struct">
+      <Member Name="TIMER" Datatype="Array[1..50] of IEC_TIMER" Version="1.0">
+        <AttributeList>
+          <BooleanAttribute Name="SetPoint" SystemDefined="true">true</BooleanAttribute>
+        </AttributeList>
+      </Member>
+      <Member Name="OS" Datatype="Array[0..50] of Bool" />
+    </Member>
+  </Section>
+</Sections></Interface>
+      <IsRetainMemResEnabled>true</IsRetainMemResEnabled>
+      <MemoryLayout>Optimized</MemoryLayout>
+      <MemoryReserve>100</MemoryReserve>
+      <Name>T1-A ARUNC LEV2</Name>
+      <Namespace />
+      <Number>1702</Number>
+      <ProgrammingLanguage>DB</ProgrammingLanguage>
+      <RetainMemoryReserve>100</RetainMemoryReserve>
+    </AttributeList>
+    <ObjectList>
+      <MultilingualText ID="1" CompositionName="Comment">
+        <ObjectList>
+          <MultilingualTextItem ID="2" CompositionName="Items">
+            <AttributeList>
+              <Culture>en-US</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+          <MultilingualTextItem ID="3" CompositionName="Items">
+            <AttributeList>
+              <Culture>it-IT</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+        </ObjectList>
+      </MultilingualText>
+      <MultilingualText ID="4" CompositionName="Title">
+        <ObjectList>
+          <MultilingualTextItem ID="5" CompositionName="Items">
+            <AttributeList>
+              <Culture>en-US</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+          <MultilingualTextItem ID="6" CompositionName="Items">
+            <AttributeList>
+              <Culture>it-IT</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+        </ObjectList>
+      </MultilingualText>
+    </ObjectList>
+  </SW.Blocks.GlobalDB>
+</Document>

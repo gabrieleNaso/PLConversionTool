@@ -184,16 +184,20 @@ def analyze_awl_source(
     source_name: str | None = None,
 ) -> ConversionAnalysis:
     awl_source = _normalize_awl_source(awl_source)
+    target_profile_name = _resolve_target_profile_name()
     scaffold = build_conversion_scaffold(
         sequence_name=sequence_name,
         awl_source=awl_source,
         source_name=source_name,
+        target_profile_name=target_profile_name,
     )
     source_label = source_name or f"{scaffold.sequence_name}.awl"
     networks = _parse_networks(awl_source)
+    # AWL -> IR deve rimanere generico: il target profile influenza solo la
+    # generazione XML (naming/numbering/serializer), non le euristiche di parsing.
     ir = _build_ir(scaffold.sequence_name, source_label, networks)
     ir = _freeze_ir_for_json_pipeline(ir)
-    graph_topology = _build_graph_topology(ir)
+    graph_topology = _build_graph_topology(ir, target_profile_name=target_profile_name)
     issues = _validate_ir(ir, graph_topology)
     previews = _build_artifact_previews(scaffold, ir, graph_topology)
     manifest = _build_artifact_manifest(previews)
@@ -373,8 +377,13 @@ def analyze_ir_payload(
     source_name: str | None = None,
 ) -> ConversionAnalysis:
     ir = _ir_from_payload(ir_payload=ir_payload, sequence_name=sequence_name, source_name=source_name)
-    scaffold = _build_ir_scaffold(ir)
-    graph_topology = _build_graph_topology(ir)
+    target_profile_name = _resolve_target_profile_name(
+        _as_optional_str(ir_payload.get("target_profile_name"))
+        or _as_optional_str(ir_payload.get("target_profile"))
+    )
+    _apply_profile_rules_to_ir(ir, target_profile_name=target_profile_name)
+    scaffold = _build_ir_scaffold(ir, target_profile_name=target_profile_name)
+    graph_topology = _build_graph_topology(ir, target_profile_name=target_profile_name)
     issues = _validate_ir(ir, graph_topology)
     previews = _build_artifact_previews(scaffold, ir, graph_topology)
     manifest = _build_artifact_manifest(previews)
@@ -678,6 +687,40 @@ def _apply_translation_rules(
     # Final simplification: remove pure pass-through steps (TRUE-only outgoing)
     # so the resulting GRAPH is closer to typical TIA structures.
     _collapse_passthrough_steps(step_map, transitions)
+
+
+def _apply_translation_rules_romania(
+    step_map: dict[str, StepCandidate],
+    transitions: list[TransitionCandidate],
+) -> None:
+    """
+    Romania profile: keep the topology closer to FC32 project conventions.
+
+    Key differences vs default:
+    - still synthesize fault/end/recycle and tracking when detectable
+    - do NOT apply the generic presence-loop heuristic (it tends to explode branches)
+    """
+    if not transitions:
+        return
+
+    context = _derive_translation_context(step_map, transitions)
+
+    entry_step = context.get("entry_step", "")
+    has_high_entry_outgoing = any(
+        item.source_step == entry_step and _step_number_from_token(item.target_step) >= 29
+        for item in transitions
+    )
+    if entry_step and context.get("cycle_target_step") and has_high_entry_outgoing:
+        _augment_fault_branch(step_map, transitions, context)
+        _augment_end_step(step_map, transitions, context)
+        _augment_recycle_split_branch(step_map, transitions, context)
+
+    tracking_enabled = _tracking_translation_is_enabled(step_map, transitions)
+    if tracking_enabled:
+        _augment_tracking_branch(step_map, transitions)
+
+    # Do not collapse pass-through steps in the Romania profile: FC32 projects
+    # often keep explicit intermediate steps for readability/debug (e.g. S10/S12/S22).
 
 
 def _collapse_passthrough_steps(
@@ -1504,7 +1547,7 @@ def _extract_negated_tracking_presence_operand(item: TransitionCandidate) -> str
     return None
 
 
-def _build_ir_scaffold(ir: AwlIR) -> ConversionScaffold:
+def _build_ir_scaffold(ir: AwlIR, *, target_profile_name: str = "default") -> ConversionScaffold:
     network_count = len(ir.networks)
     line_count = sum(max(len(network.raw_lines), len(network.instructions), 1) for network in ir.networks)
     set_reset_count = sum(1 for output in ir.outputs if output.action in {"S", "R", "="})
@@ -1512,7 +1555,7 @@ def _build_ir_scaffold(ir: AwlIR) -> ConversionScaffold:
 
     return ConversionScaffold(
         sequence_name=ir.sequence_name,
-        target_profile=build_target_profile(),
+        target_profile=build_target_profile(target_profile_name),
         source_analysis=SourceAnalysis(
             source_kind="ir_json",
             source_name=ir.source_name,
@@ -1564,6 +1607,51 @@ def _build_ir_scaffold(ir: AwlIR) -> ConversionScaffold:
             "IR compilato manualmente: verificare sempre i warning topologici prima dell'import.",
         ],
     )
+
+
+def _resolve_target_profile_name(explicit: str | None = None) -> str:
+    """
+    Resolve a target profile name for the conversion pipeline.
+
+    Precedence:
+    1) explicit argument (e.g. IR payload field)
+    2) environment variable PLC_TARGET_PROFILE
+    3) "default"
+    """
+    if explicit and explicit.strip():
+        return explicit.strip().lower()
+    env_value = str(os.getenv("PLC_TARGET_PROFILE", "")).strip()
+    if env_value:
+        return env_value.lower()
+    return "default"
+
+
+def _apply_profile_rules_to_ir(ir: AwlIR, *, target_profile_name: str) -> None:
+    """
+    Apply profile-specific topology heuristics to an IR payload.
+
+    This is intentionally conservative: it should *not* rewrite well-formed IRs,
+    but it can normalize/collapse synthetic steps similarly to the AWL pipeline,
+    keeping generated GRAPH closer to project conventions.
+    """
+    profile = str(target_profile_name or "default").strip().lower()
+    if profile not in {"romania"}:
+        return
+    if not ir.transitions:
+        return
+    # If the IR already contains curated step names (e.g. S01_Init), assume it is
+    # project-aligned and avoid additional heuristics that could rewrite naming.
+    if any(re.match(r"^S\d{2}_", str(step.name or ""), flags=re.IGNORECASE) for step in ir.steps):
+        return
+
+    steps: list[StepCandidate] = [copy.deepcopy(step) for step in ir.steps if step.name]
+    transitions: list[TransitionCandidate] = [copy.deepcopy(item) for item in ir.transitions]
+
+    step_map: dict[str, StepCandidate] = {step.name: step for step in steps if step.name}
+    _apply_translation_rules_romania(step_map, transitions)
+
+    ir.steps = list(step_map.values())
+    ir.transitions = transitions
 
 
 def _as_optional_str(value: object) -> str | None:
@@ -2054,7 +2142,11 @@ def _strip_source_step_operands_from_transitions(
             tr.guard_expression = " AND ".join(tr.guard_operands)
 
 
-def _build_ir(sequence_name: str, source_name: str, networks: list[AwlNetwork]) -> AwlIR:
+def _build_ir(
+    sequence_name: str,
+    source_name: str,
+    networks: list[AwlNetwork],
+) -> AwlIR:
     step_map: dict[str, StepCandidate] = {}
     transitions: list[TransitionCandidate] = []
     timers: list[TimerCandidate] = []
@@ -2667,7 +2759,7 @@ def _merge_guard_operands(groups: list[list[str]]) -> list[str]:
     return merged
 
 
-def _build_graph_topology(ir: AwlIR) -> GraphTopology:
+def _build_graph_topology(ir: AwlIR, *, target_profile_name: str = "default") -> GraphTopology:
     if any(step.step_number is not None for step in ir.steps):
         ordered_steps = sorted(
             ir.steps,
@@ -2808,22 +2900,47 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
                 f"Parallel join su {target_step}: consolidate {len(items)} transizioni in {keeper.transition_id}."
             )
 
-    transition_nodes = [
-        GraphTransitionNode(
-            name=transition.transition_id,
-            transition_no=index + 1,
-            source_step=transition.source_step,
-            target_step=transition.target_step,
-            guard_expression=transition.guard_expression or "TRUE",
-            guard_operands=list(transition.guard_operands or []),
-            network_index=transition.network_index,
-            db_block_name=_transitions_db_block_name(ir),
-            db_member_name=_support_member_name(
-                transition.transition_id, "TR", strict_excel_mode=ir.strict_operand_catalog
-            ),
+    profile = str(target_profile_name or "default").strip().lower()
+
+    transition_nodes: list[GraphTransitionNode] = []
+    for index, transition in enumerate(working_transitions, start=1):
+        raw_id = str(transition.transition_id or "").strip()
+        transition_no = index
+        name = raw_id or f"T{index}"
+
+        if profile == "romania":
+            # Convention: allow encoding transition number + display name in transition_id.
+            # Examples:
+            # - "T002_T AutoSemiSafeCond" -> number=2, name="T AutoSemiSafeCond"
+            # - "Trans26"                -> number=26, name="Trans26"
+            match = re.match(r"^T(\d{1,4})_(.+)$", raw_id)
+            if match:
+                transition_no = int(match.group(1))
+                name = match.group(2).strip() or name
+            else:
+                match = re.match(r"^Trans(\d+)$", raw_id, flags=re.IGNORECASE)
+                if match:
+                    transition_no = int(match.group(1))
+                    name = raw_id
+
+        transition_nodes.append(
+            GraphTransitionNode(
+                name=name,
+                transition_no=transition_no,
+                source_step=transition.source_step,
+                target_step=transition.target_step,
+                guard_expression=transition.guard_expression or "TRUE",
+                guard_operands=list(transition.guard_operands or []),
+                network_index=transition.network_index,
+                db_block_name=_transitions_db_block_name(ir),
+                db_member_name=_support_member_name(
+                    name, "TR", strict_excel_mode=ir.strict_operand_catalog
+                ),
+            )
         )
-        for index, transition in enumerate(working_transitions)
-    ]
+    if profile == "romania":
+        transition_nodes.sort(key=lambda item: item.transition_no)
+
     next_synthetic_network = (
         max((transition.network_index for transition in transition_nodes if transition.network_index), default=0)
         + 1
@@ -2831,7 +2948,8 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
 
     branch_nodes: list[GraphBranchNode] = []
     next_branch_no = 1
-    next_transition_no = len(transition_nodes) + 1
+    next_transition_no = max((item.transition_no for item in transition_nodes), default=0) + 1
+    used_branch_numbers: set[int] = set()
 
     all_steps = list(ordered_steps)
     special_step_numbers = {1, 29, 30, 32}
@@ -2997,17 +3115,18 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
             )
         ]
 
-    # Keep the initial flow explicit: first transition must leave the init step.
-    # This avoids Graph imports where the sequencer appears to start from a
-    # non-init branch node.
+    # Ordering/numbering policy:
+    # - default profile re-numbers transitions sequentially after sorting
+    # - romania profile preserves explicit numbering encoded in the IR (e.g. T002_/Trans26)
     transition_nodes.sort(
         key=lambda item: (
             0 if item.source_step == entry_step else 1,
             item.transition_no,
         )
     )
-    for index, item in enumerate(transition_nodes, start=1):
-        item.transition_no = index
+    if profile != "romania":
+        for index, item in enumerate(transition_nodes, start=1):
+            item.transition_no = index
 
     _assign_unique_transition_db_member_names(transition_nodes)
 
@@ -3039,6 +3158,7 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
                     outgoing_refs=targets,
                 )
                 next_branch_no += 1
+                used_branch_numbers.add(branch.branch_no)
                 branch_nodes.append(branch)
                 parallel_start_by_source[source_step] = branch
                 parallel_start_keeper_by_transition[keeper_name] = branch
@@ -3047,15 +3167,31 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
 
         if len(items) <= 1:
             continue
+        branch_no = next_branch_no
+        if profile == "romania":
+            source_no = step_no_by_name.get(source_step) or _step_number_from_token(source_step)
+            desired: int | None = None
+            if source_no == 1:
+                desired = 1
+            elif source_no == 100 or "TRK" in str(source_step or "").upper():
+                desired = 9
+            elif source_no == 7:
+                desired = 8
+            if desired is not None and desired not in used_branch_numbers:
+                branch_no = desired
+            else:
+                while branch_no in used_branch_numbers:
+                    branch_no += 1
         branch = GraphBranchNode(
             name=f"B_{source_step}",
-            branch_no=next_branch_no,
+            branch_no=branch_no,
             branch_type="AltBegin",
             owner_step=source_step,
             incoming_refs=[source_step],
             outgoing_refs=[item.name for item in items],
         )
-        next_branch_no += 1
+        used_branch_numbers.add(branch_no)
+        next_branch_no = max(next_branch_no, branch_no + 1)
         branch_nodes.append(branch)
         branch_by_source_step[source_step] = branch
 
@@ -3075,6 +3211,7 @@ def _build_graph_topology(ir: AwlIR) -> GraphTopology:
             outgoing_refs=[keeper_name],
         )
         next_branch_no += 1
+        used_branch_numbers.add(branch.branch_no)
         branch_nodes.append(branch)
         parallel_join_keeper_by_transition[keeper_name] = branch
         parallel_join_sources_by_transition[keeper_name] = sources

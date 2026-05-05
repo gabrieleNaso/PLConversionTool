@@ -1,14 +1,19 @@
-# Regole di traduzione (AWL -> IR -> XML TIA)
+# Regole di traduzione (focus: AWL -> IR)
 
 Questo documento raccoglie **regole generali** estratte dai casi in `cases/` (input + expected_output).
 
 Obiettivo:
-- avere un riferimento unico e stabile per capire *cosa* deve produrre il tool
-- evitare fix “ad hoc”: ogni differenza va ricondotta a una regola qui
+- avere un riferimento unico e stabile per capire *come* estrarre un IR corretto partendo da AWL
+- evitare fix “ad hoc”: ogni divergenza va ricondotta a una regola qui
+
+Ambito (importante):
+- **Parte A (AWL -> IR):** regole **generiche** di parsing/normalizzazione (indipendenti dal progetto target).
+- **Parte B (IR -> XML):** convenzioni di target (naming/numbering) **solo se abilitate via profilo**.
+  Queste non devono influenzare l’estrazione IR.
 
 ---
 
-## 1) Principi
+## 1) Principi (genericità)
 
 1. **Expected = verità assoluta**  
    Gli artefatti in `cases/expected_output/expected_outputN/` sono la reference corretta.  
@@ -22,6 +27,9 @@ Obiettivo:
 3. **Target simbolico**  
    Gli indirizzi fisici (I/Q/M/DBx.DBX…) possono comparire nel sorgente AWL e come evidenza diagnostica,
    ma il naming dei member e i path serializzati negli XML devono restare **simbolici**.
+
+Nota: i principi sopra descrivono il “contratto” complessivo, ma le sezioni successive distinguono sempre
+le regole **AWL->IR** (generiche) dalle regole **IR->XML** (profilo target).
 
 ---
 
@@ -89,6 +97,26 @@ Regola: distinguere chiaramente fra:
 - `ON` -> `OR NOT`
 - gruppi `A(...)` / `O(...)` vanno mantenuti come sottogruppi (no flatten distruttivo)
 
+### 5.1.1 Derivare transizioni da `Trs` (sequenziatore FC32)
+
+Nei casi Romania il passo target viene spesso deciso scrivendo `Trs` nel DB sequenza:
+
+```awl
+L 18
+T "M02".Trs DB102.DBW2
+```
+
+Regola per costruire l’IR JSON manuale:
+- se dentro un segmento `Sxx` compare `T "...".Trs` con un valore `L <n>`, allora esiste una transizione `Sxx -> Snn`
+- la guardia è l’insieme delle condizioni tra la riga `A "...".Sxx` e il relativo `JNB` (includendo `A/AN` e gruppi `A(` / `O(`)
+- evitare wildcard: per transizioni tipo “Any -> S29/S32” espandere la sorgente su tutti gli step noti nel case
+
+Regola (pattern progetto Romania):
+- oltre ai passi “di processo” (`S01`, `S02`, ...), il GRAPH include anche passi standard di progetto come `S28_END`, `S30_Fault`, `S100_TRK CHECK`, `S101_TRK TRANSFER` con transizioni dedicate (tracking/ritorni).
+
+Regola (quando l’expected include XML):
+- se in `cases/expected_output/...` sono presenti gli XML (es. `05 ... Sequence.xml`), per costruire l’IR manuale le guardie e le negazioni vanno ricostruite **leggendo i contatti del FlgNet** nella transizione (Access + Contact + Negated), non solo dal testo AWL.
+
 ### 5.2 Timer AWL
 
 Pattern AWL:
@@ -128,3 +156,169 @@ Regola: l’output deve segmentare e serializzare per famiglia come da reference
 2. Metti i reference corretti in `cases/expected_output/expected_outputN/`
 3. Scrivi una traccia dedicata in `cases/traces/inputN_expected_outputN.md`
 4. Ogni divergenza trovata in diff deve diventare una regola qui (o una precisazione di una regola esistente).
+
+---
+
+## 8) Come generare IR JSON “a mano” (senza expected)
+
+Obiettivo: dato **solo** l’AWL (spesso in markdown con `## Segmento ...` + blocchi fenced), produrre un `AwlIR` che il tool possa convertire in XML coerenti con lo standard dei casi.
+
+### 8.1 Struttura minima del payload IR
+
+Campi essenziali (gli altri possono essere vuoti se non ricostruibili):
+- `sequence_name`: nome sequenza target (stabile)
+- `source_name`: filename sorgente AWL
+- `networks[]`: una entry per segmento/network
+  - `index`: numero network/segmento (1-based)
+  - `title`: titolo leggibile
+  - `raw_lines[]`: righe AWL “pulite” (senza linee vuote; commenti ok)
+- `steps[]`: catalogo passi (nome + numero)
+- `transitions[]`: collegamenti step→step con guardie
+- `timers[]`: elenco timer/counter con preset e trigger
+- `external_refs[]`: blocchi chiamati (es. `FC32`)
+- `step_roles{}`: ruoli semantici (entry/manual/emergency/fault/end_cycle/tracking…)
+- `assumptions[]`: tutto ciò che hai “assunto” perché non deducibile in modo certo
+
+Regola: se non riesci a ricostruire una sezione (es. `operand_catalog`), lasciala vuota ma **non inventare** valori.
+
+### 8.2 Network extraction (markdown → `networks`)
+
+Pattern tipico in input:
+- heading: `## Segmento N: ...`
+- blocco: fenced ` ```awl ... ``` `
+
+Regole:
+- ogni `Segmento N` diventa una `AwlNetwork(index=N, title=..., raw_lines=...)`
+- `raw_lines` contiene SOLO le righe dentro il fenced block `awl`
+- preserva l’ordine delle righe (serve per ricostruire logica come `L ... / SD ... / A Txx`)
+
+### 8.3 Alias/operand extraction (per naming simbolico)
+
+Molte righe hanno forma:
+
+```awl
+A "M:T1-A:Auto" M49.0
+= "M02".EM DB102.DBX25.5
+```
+
+Regole:
+- quando trovi `"SOMETHING".Leaf <address>`:
+  - salva un alias map `address → Leaf` (es. `DB102.DBX25.5 → EM`)
+  - salva anche `address → SOMETHING.Leaf` quando serve distinguere domini diversi
+- evita di usare l’indirizzo come leaf name nei path finali (a meno che manchi un alias)
+
+### 8.4 Catalogo step (`steps`)
+
+Regole base:
+- il set di step deriva da:
+  - bit step nel DB sequenza (es. `"M02".S01 DB102.DBX6.0`, `"M02".S29 DB102.DBX9.4`, ecc.)
+  - scritture a `Trs` (target step) e/o tabelle di mapping se presenti
+- `step_number` è l’intero del passo (`S01` → 1)
+- se il progetto usa naming descrittivo (`S01_Init`, `S03_Check Piece Presence`), il nome step deve rispettare lo standard del dominio:
+  - **senza expected**, usa un naming deterministico: `S01`, `S02`, … e aggiungi `assumptions` che i descrittivi non sono disponibili
+  - **con standard fisso di progetto** (es. Romania): applica le regole di naming standard (vedi sezione 9.4)
+
+### 8.5 Transizioni (`transitions`)
+
+Regola: una transizione esiste solo se puoi stabilire:
+- `source_step`
+- `target_step`
+- guardia (anche `TRUE` se chiaramente incondizionata)
+
+#### 8.5.1 Pattern `Trs` (FC32)
+
+Vedi sezione 5.1.1: `L <n>; T "...".Trs` implica target step `Snn`.
+
+#### 8.5.2 Pattern branch “Any → Manual/Emergency/Fault”
+
+Nei casi Romania spesso esiste un “AltBegin” dal passo Init con transizioni tipo:
+- Safe
+- Manual
+- Fault
+- Emergency
+
+Regole:
+- **non** espandere “Any → Manual/Emergency/Fault” su tutti i passi: nello standard Romania queste richieste sono modellate come **branch dal passo Init** (AltBegin).
+- quindi, quando l’AWL ha reti dedicate che forzano `Trs=29` (manuale) o `Trs=32` (emergenza) o condizioni fault/safe, mappa a transizioni **da Init** verso gli step standard (`S29_Manual`, `S32_Emergency`, `S30_Fault`, …).
+- le transizioni “back-to-begin” sono transizioni **da** `S29_Manual`/`S30_Fault`/`S32_Emergency` **a** `S01_Init` con guardia negata (`NOT Manual`, ecc.).
+
+### 8.6 Timer (`timers`)
+
+Regole:
+- quando vedi un preset `L S5T#...` seguito da `SD T xx` (o `SE "Tnn" Tnn`), crea un `TimerCandidate`:
+  - `source_timer = "Txx"` / `"Tnn"`
+  - `network_index` = network corrente
+  - `kind` = `SD` / `SE`
+  - `preset` = stringa `S5T#...`
+- `trigger_operands[]`: raccogli gli operandi booleani che abilitano il timer (es. contatti `A/AN/O/ON` prima dell’istruzione timer)
+
+Regola hard (già vista): `A Txx` è contatto done bit, mai istanza timer.
+
+---
+
+## 9) Regole “Romania / FC32” per ottenere JSON corretti senza expected
+
+Questa sezione codifica uno standard “di progetto” che permette di produrre JSON coerenti anche senza avere gli XML reference.
+
+### 9.1 DB sequenza e campi standard
+
+Nel progetto Romania la sequenza tipicamente ha:
+- `Seq` (DBW0)
+- `Trs` (DBW2) = prossimo step richiesto
+- `COUNT_STEP` (DBW4) / stato step
+- bit step `Sxx` in area DBX (es. `DBX6.0`..)
+
+Regola: riconosci il DB sequenza osservando pattern ripetuti su `DB?.DBW2` e bit `Sxx`.
+
+### 9.2 Step “standard” oltre ai passi di processo
+
+Nel GRAPH compaiono spesso (nome/numero standard):
+- `S01_Init` (entry)
+- `S29_Manual` (manual)
+- `S32_Emergency` (emergency)
+- `S30_Fault` (fault)
+- `S28_END` (end_cycle)
+- `S100_TRK CHECK`, `S101_TRK TRANSFER` (tracking)
+
+Regola: se il sorgente contiene elementi tracking/LEV2 o blocchi di interfaccia, crea anche gli step tracking.
+
+### 9.3 Transizioni standard (tipiche)
+
+Pattern più ricorrenti:
+- `Init → Safe/Emergency/Manual/Fault` (AltBegin 4)
+- tracking split: `TRK CHECK → (OK|not OK)` (AltBegin 2)
+- starting conditions split: `StartingCond → (StartMov|Back)` (AltBegin 2)
+- back-to-begin: `Manual/Fault/Emergency → Init` con guardie negate (`NOT Manual`, ecc.)
+
+### 9.4 Naming simbolico delle guardie (Transitions/Memory/LEV2)
+
+Per evitare di rimanere “attaccati” agli indirizzi (M/I/Q/DBX), usa un mapping deterministico basato su:
+- alias dal testo (`"M02".EM`, `"M:T1-A:Auto"`, ecc.)
+- convenzioni di progetto:
+  - condizioni globali in `Transitions.*`
+  - stati/feedback macchina in `Memory.*`
+  - interfacce tracking in `LEV2.ITF.*`
+
+Regola: se l’alias è ambiguo o mancante, mantieni l’operando grezzo (es. `DB102.DBX25.5`) ma segnala in `assumptions` che manca la normalizzazione simbolica.
+
+### 9.5 Come ricostruire guardie equivalenti senza XML
+
+Regole:
+- preserva grouping `A(` / `O(` generando un albero booleano (non una lista piatta)
+- `AN/ON` diventano negazioni sul termine o sul gruppo
+- se il segmento costruisce `Trs` con `JNB`:
+  - la guardia vera è “condizione che *non* salta” (cioè il blocco tra `A ...` e `JNB` è TRUE)
+- se più condizioni diverse portano allo stesso `Trs`, uniscile con `OR` (stesso `source_step` → stesso `target_step`)
+
+---
+
+## 10) Validazioni “senza expected” (autoconsistenza)
+
+Anche senza XML reference, un IR corretto deve soddisfare:
+- ogni `transition.source_step/target_step` esiste in `steps`
+- almeno uno step ha ruolo `entry` (o `Init=true` nel GRAPH derivato)
+- nessuna guardia usa token non rappresentabile (timer istanza come contatto, address raw come member name “sporco”, ecc.)
+- i timer hanno `preset` valido e `kind` coerente
+- le transizioni di ritorno (manual/fault/emergency) non creano dead-end non voluti
+
+---

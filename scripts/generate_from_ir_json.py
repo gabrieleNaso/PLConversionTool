@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import shutil
 import sys
 from pathlib import Path
@@ -38,7 +39,15 @@ def main() -> int:
         default=None,
         help="Override sequence_name inside the IR JSON.",
     )
+    parser.add_argument(
+        "--target-profile",
+        default=None,
+        help="Target profile name (e.g. romania). Overrides env PLC_TARGET_PROFILE.",
+    )
     args = parser.parse_args()
+
+    if args.target_profile:
+        os.environ["PLC_TARGET_PROFILE"] = str(args.target_profile).strip()
 
     ir_path = Path(args.ir_json)
     if not ir_path.is_absolute():
@@ -55,6 +64,8 @@ def main() -> int:
         raise SystemExit("Missing sequence_name (set it in JSON or pass --sequence-name).")
     ir_payload["sequence_name"] = sequence_name
     source_name = str(ir_payload.get("source_name") or ir_path.name).strip() or ir_path.name
+    if args.target_profile:
+        ir_payload["target_profile_name"] = str(args.target_profile).strip().lower()
 
     output_root = (PROJECT_ROOT / args.output_root).resolve()
     output_root.mkdir(parents=True, exist_ok=True)

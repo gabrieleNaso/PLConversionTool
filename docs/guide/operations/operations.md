@@ -164,6 +164,16 @@ make generate-and-import \
 make gen-ir IR_JSON="work/input/ir_json/<file>_ir.json" SEQUENCE_NAME="MySeq_001"
 ```
 
+### Target profile (opzionale)
+
+Puoi forzare un profilo di target (convenzioni di naming/euristiche) passando `TARGET_PROFILE`.
+
+Esempio (profilo Romania / FC32):
+
+```bash
+make gen-ir IR_JSON="work/input/ir_json/<file>_ir.json" SEQUENCE_NAME="MySeq_001" TARGET_PROFILE=romania
+```
+
 ## Creare IR JSON manualmente (da markdown AWL)
 
 Quando vuoi costruire l'IR **senza** usare il parser AWL automatico (es. perché stai ricostruendo le regole a mano),

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import shutil
 import sys
@@ -612,7 +613,15 @@ def main() -> int:
         default=None,
         help="Generate only sources whose filename starts with this prefix.",
     )
+    parser.add_argument(
+        "--target-profile",
+        default=None,
+        help="Target profile name (e.g. romania). Overrides env PLC_TARGET_PROFILE.",
+    )
     args = parser.parse_args()
+
+    if args.target_profile:
+        os.environ["PLC_TARGET_PROFILE"] = str(args.target_profile).strip()
 
     input_dir = (PROJECT_ROOT / args.input_dir).resolve()
     output_root = (PROJECT_ROOT / args.output_root).resolve()
