@@ -238,6 +238,18 @@ Regola di naming (derivata dai casi):
 2) Se manca il simbolico, usare un alias derivato dal commento (se affidabile) o dal token fisico (`Q172_5`).
 3) L’indirizzo fisico non deve mai diventare “path” strutturale nel DB target, ma puo' restare come evidenza/nota.
 
+### 7.1-bis Cosa include davvero `FC 16 Output` (dai casi)
+
+Nei casi reference, la `FC 16 Output` **non** contiene solo “uscite fisiche”.
+Contiene un mix di:
+- interlock e condizioni di movimento (es. `... HMI.Conditions.MOV_FW.Conditions.n1`, `... Memory.Interlocks FW`);
+- comandi macchina “interni” (bit in `Memory.*` come `FW_ON`, `BW_ON`, `EX_AUTO_FW`, `FW_MANUAL`);
+- uscite fisiche (`I/O.DO.*`) che corrispondono a `Q...` (es. `TF2 T5-K53.4/5/6`, `K56.1`, `A24.3`);
+- stato sequencer (`Seq Status.*`: `ReadyToAuto`, `AutoON`, `WaitPiece`, `Stopped`).
+
+Regola: quando si parla di “output” nel contesto del tool, si intende **tutto** ciò che viene pilotato in `FC16`
+(comandi, interlock e status), non solo le `Q`.
+
 ### 7.2 Da quale condizione dipende un output
 
 Per ogni istruzione di azione:
@@ -277,10 +289,23 @@ Regole:
 
 ### 7.5 LEV2: cosa appartiene a LEV2 senza XML
 
-Regola conservativa (solo AWL):
-- se nell’AWL compaiono segnali/DB chiaramente LEV2 (es. `...LEV2...`, `HSK...`, `BYPASS LEVEL2`, `ITF.Check OK/Transfer OK`, ecc.),
-  allora quelle azioni/alias vanno in famiglia `LEV2`.
-- se l’AWL **non contiene** queste informazioni, il convertitore non deve inventare logica LEV2 “di progetto”.
+Nei reference `expected_output1/2` la LEV2 ha una **struttura contrattuale** stabile (DB `... LEV2`) con:
+- `ITF.*` (Check OK/not OK, Transfer OK/not OK, Production Lock, Skip, Status);
+- `MEMORY.*` (es. `CheckRequestMemory`, `Cond move Fwd`, `PP_Man_Mov`, …);
+- opzionale handshake `HSK TABLE.*` / `HSK Answer OK` (global tags esterni, non “memory” della sequenza).
+
+Regole (derivazione generica, senza usare gli expected come sorgente):
+- se dall’AWL/IR emerge un **tracking micro-flow** (tipicamente step sintetici `S100_TRK_CHECK` / `S101_TRK_TRANSFER`
+  oppure pattern equivalente), allora:
+  - `LEV2.MEMORY.CheckRequestMemory` deve essere TRUE mentre la sequenza e' in fase di tracking/check
+    (minimo: TRUE quando `S100_TRK_CHECK` e' attivo; reset quando si esce dalla fase tracking);
+  - `LEV2.ITF.Check OK` deve essere TRUE quando il check ha esito OK (cioe' quando la transizione “OK” da TRK_CHECK avanza);
+  - `LEV2.ITF.Check not OK` deve essere TRUE nel caso complementare (transizione di ritorno/loop da TRK_CHECK);
+  - `LEV2.ITF.Transfer OK` deve essere TRUE quando il transfer e' completato (minimo: quando `S101_TRK_TRANSFER` e' attivo
+    o quando un flag tipo `Pipe Transfered`/`Cond move Fwd` diventa TRUE).
+- se nell’AWL compaiono segnali chiaramente LEV2 (`...LEV2...`, `ITF.*`, `HSK*`, `BYPASS LEVEL2`, …), quelle azioni/alias
+  vanno in famiglia `LEV2` con ownership nel DB LEV2 (DB `17..` nel profilo).
+- se l’AWL **non contiene** indicatori LEV2 e **non** esiste tracking micro-flow, il convertitore non deve inventare logica LEV2.
 
 Conseguenza: se una sequenza ha segmenti output/LEV2 vuoti, l’unico modo corretto per ricostruirli da AWL e'
 che la logica sia comunque presente “sparsa” in altre reti (azioni su Q/alias LEV2); altrimenti serve sorgente aggiuntiva.

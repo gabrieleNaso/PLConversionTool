@@ -358,6 +358,7 @@ curl -sS "http://127.0.0.1:8000/api/tia/jobs/<JOB_ID>"
   - nei DB vengono dichiarati solo segnali presenti nel catalogo `operands` (e categorie derivate).
 - **Output fisiche**:
   - sono riconosciute sia in formato `Axx(.x)` sia `Qxx(.x)` quando usate con `=`.
+  - attenzione: nel modello dei casi, la `FC16 Output` non contiene solo `Q`: include anche `Seq Status.*`, interlock e comandi interni (`Memory.*`). Quando diciamo “output” del tool, intendiamo l’insieme di coil/materializzazioni di `FC16`, non solo le uscite fisiche.
 - **targetPath**: deve partire da `Program blocks/`.
   - Se ometti il prefisso, TIA crea un gruppo con nome letterale (es. `generati da tool/xxx`).
 - **Naming famiglie blocchi**: le FC seguono la famiglia numerica prevista; `15GG` e' riservato al GRAPH (`FB15GG`) e al suo DB istanza (`DB15GG`) associato alla sequenza.

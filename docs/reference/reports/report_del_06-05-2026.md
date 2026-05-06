@@ -1049,6 +1049,9 @@ Nel target TIA le uscite devono nascere dalla composizione di:
 
 La `FC 16 Output` e' quindi un backend combinatorio separato che riceve segnali semantici dal DB transitions `14..`, dal DB sequenza/I-O `16..`, dal GRAPH, dai DB fissi e dai DB I/O.
 
+Nota (consolidata dai casi `expected_output1/2`):
+- `FC16` non e' “solo Q”: include anche `Seq Status.*` (ReadyToAuto/AutoON/WaitPiece/Stopped), interlock (`Memory.Interlocks *`), condizioni HMI (`HMI.Conditions.*`) e comandi interni (`Memory.*` come `FW_ON/BW_ON/EX_AUTO_FW/FW_MANUAL`).
+
 ### 32.13 HMI
 
 Le condizioni HMI non vanno costruite direttamente da segnali grezzi I/Q/T dell'AWL se esiste già una forma semantica normalizzata.

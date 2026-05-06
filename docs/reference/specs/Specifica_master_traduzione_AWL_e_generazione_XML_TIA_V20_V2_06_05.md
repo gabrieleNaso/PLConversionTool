@@ -909,6 +909,35 @@ Le uscite devono nascere dalla composizione di:
 - consensi permanenti;
 - condizioni macchina normalizzate.
 
+### 29-bis. Cosa include `FC16` nei casi reference
+
+Nei casi reference (`expected_output1/2`) `FC16` non e' “solo Q”.
+
+Include anche:
+- interlock e condizioni movimento (`...HMI.Conditions.*` e `...Memory.Interlocks *`);
+- comandi macchina interni (bit semantici in `DB16..Memory.*` come `FW_ON`, `BW_ON`, `EX_AUTO_FW`, `FW_MANUAL`);
+- stato sequencer (`DB16..Seq Status.*`: `ReadyToAuto`, `AutoON`, `WaitPiece`, `Stopped`);
+- uscite fisiche (`DB I-O.DO.*`) derivate da azioni su `Q...` con naming simbolico.
+
+Regola: l'IR deve poter esprimere queste 4 famiglie di coil come “output logic”, senza forzare tutte le azioni su Q.
+
+## 29-ter. Regola sul backend `FC 17 LEV2`
+
+Quando previsto dal profilo, `FC17` deve materializzare il contratto LEV2 nel `DB17..` (area LEV2) e fornire logiche minime
+coerenti con i casi reference:
+
+- `LEV2.ITF.*` (Check/Transfer OK/not OK, Production Lock, Skip, Status);
+- `LEV2.MEMORY.*` (es. `CheckRequestMemory`, condizioni movimento forward, ecc.);
+- handshake opzionale (`HSK TABLE.*`, `HSK Answer OK`) trattato come integrazione esterna (global tags), non come memoria locale.
+
+Regola: se il sorgente contiene un micro-flow di tracking (step `S100_TRK_CHECK` / `S101_TRK_TRANSFER` o equivalente),
+`FC17` deve almeno:
+- alzare `LEV2.MEMORY.CheckRequestMemory` durante la fase tracking/check;
+- valorizzare `LEV2.ITF.Check OK / Check not OK` in base all'esito del check;
+- valorizzare `LEV2.ITF.Transfer OK` quando la fase transfer e' completata.
+
+Se non esistono segnali LEV2 nel sorgente e non si rileva tracking, `FC17` non deve inventare logiche “di progetto”.
+
 ## 30. Regola sul backend `FC 12 HMI`
 
 La `FC 12 HMI` deve trattare la HMI come consumer del modello semantico.
