@@ -220,6 +220,73 @@ Regola: l’output deve segmentare e serializzare per famiglia come da reference
 
 ---
 
+## 7) Derivare gli output “di progetto” (solo da AWL, usando i casi come regole)
+
+Obiettivo: riuscire a ricavare `Output`/`LEV2` anche quando una rete “uscite” dedicata e' vuota o mancante,
+senza usare gli XML expected come sorgente (gli expected restano solo verifica).
+
+### 7.1 Identificare cosa e' “output”
+
+Regola base:
+- in AWL le uscite “fisiche” compaiono come azioni su indirizzi `Q...` (e talvolta `A...`).
+- nel markdown ricostruito spesso esiste sia il simbolico sia l’indirizzo:
+  - simbolico: `"TF2 T5-K53.6"`
+  - fisico: `Q172.5`
+
+Regola di naming (derivata dai casi):
+1) **Preferire il simbolico tra virgolette** quando presente (`"TF2 T5-K53.6"`), perche' e' stabile e leggibile.
+2) Se manca il simbolico, usare un alias derivato dal commento (se affidabile) o dal token fisico (`Q172_5`).
+3) L’indirizzo fisico non deve mai diventare “path” strutturale nel DB target, ma puo' restare come evidenza/nota.
+
+### 7.2 Da quale condizione dipende un output
+
+Per ogni istruzione di azione:
+- `= <dest>` (assign)
+- `S <dest>` (set)
+- `R <dest>` (reset)
+
+la **guardia** dell’output e' la RLO calcolata immediatamente prima dell’azione, includendo:
+- gruppi `A(` / `O(` (parentesi logiche),
+- negazioni (`AN`, `ON`),
+- eventuali pattern “fan-out” (`= L 1.0` + `A L 1.0`), dove la guardia vera resta quella calcolata prima del `= L 1.0`.
+
+Regola pratica (solo AWL):
+- costruire una `condition_expression` booleana a partire dalle istruzioni `A/AN/O/ON/...` fino al punto in cui avviene l’azione.
+- se la rete contiene riferimenti a `Sxx` (o alias step-bit), questi diventano “step attivo” nel modello (tipicamente `.X` a livello runtime GRAPH).
+
+### 7.3 Output “per step” (dedurre cosa fa ogni step)
+
+I casi mostrano che molti output sono “step-driven”, cioe' validi solo quando un passo e' attivo.
+
+Regola di inferenza:
+- se nella guardia compare `S10`/`S14`/`S22` ecc (o i loro alias), allora l’output e' associabile allo step corrispondente.
+- quando un output e' comandato in piu' reti/step:
+  - il JSON deve contenere **piu righe logiche** (una per rete) oppure una guardia con OR dei casi,
+  - ma non bisogna perdere `S/R/=` (la semantica cambia).
+
+### 7.4 Timer usati per abilitare output
+
+Pattern tipici (dai casi):
+- `L S5T#...` + `SD/SF/... Txxx` + `A Txxx` usato come condizione prima dell’azione.
+
+Regole:
+- `A Txxx` e' “done bit” => nel modello booleano e' un leaf tipo `Txxx_DONE`.
+- il timer va modellato come timer (non come bobina):
+  - o come membro timer dedicato con preset,
+  - o come blocco TON/TOF inline quando chiamata e uso avvengono nella stessa rete.
+
+### 7.5 LEV2: cosa appartiene a LEV2 senza XML
+
+Regola conservativa (solo AWL):
+- se nell’AWL compaiono segnali/DB chiaramente LEV2 (es. `...LEV2...`, `HSK...`, `BYPASS LEVEL2`, `ITF.Check OK/Transfer OK`, ecc.),
+  allora quelle azioni/alias vanno in famiglia `LEV2`.
+- se l’AWL **non contiene** queste informazioni, il convertitore non deve inventare logica LEV2 “di progetto”.
+
+Conseguenza: se una sequenza ha segmenti output/LEV2 vuoti, l’unico modo corretto per ricostruirli da AWL e'
+che la logica sia comunque presente “sparsa” in altre reti (azioni su Q/alias LEV2); altrimenti serve sorgente aggiuntiva.
+
+---
+
 ## 7) Come usare questa pagina quando aggiungi un nuovo case
 
 1. Metti AWL in `cases/input/inputN/`
@@ -415,5 +482,6 @@ Anche senza XML reference, un IR corretto deve soddisfare:
 - nessuna guardia usa token non rappresentabile (timer istanza come contatto, address raw come member name “sporco”, ecc.)
 - i timer hanno `preset` valido e `kind` coerente
 - le transizioni di ritorno (manual/fault/emergency) non creano dead-end non voluti
+- i segnali **referenziati** come condizioni in un support-FC (es. un `Q...` usato dentro un allarme) devono restare “di proprietà” del loro DB famiglia (tipicamente `IO_DB`) e **non** essere riclassificati come `alarm/hmi/aux` solo perché compaiono nella logica di quel FC
 
 ---

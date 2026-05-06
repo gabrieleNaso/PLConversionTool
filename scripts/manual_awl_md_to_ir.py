@@ -30,7 +30,47 @@ class Segment:
         return [line for line in raw if line.strip()]
 
 
-SEGMENT_RE = re.compile(r"^##\s+Segmento\s+(\d+)\s*-\s*(.+?)\s*$", flags=re.IGNORECASE)
+SEGMENT_RE = re.compile(
+    r"^##\s+Segmento\s+(\d+)\s*(?:-|\:)\s*(.+?)\s*$",
+    flags=re.IGNORECASE,
+)
+
+_LABEL_RE = re.compile(r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(.*)$")
+# Note: '=' does not form a word-boundary; keep it as a special-case opcode.
+_OP_RE = re.compile(r"^\s*(=|[A-Za-z]{1,4})\s*(.*)$")
+
+
+def _parse_awl_instruction_line(line: str) -> dict[str, object] | None:
+    raw = str(line or "").rstrip("\n")
+    stripped = raw.strip()
+    if not stripped:
+        return None
+    if stripped.startswith("//"):
+        return None
+    # Strip common inline comments.
+    if "//" in raw:
+        raw = raw.split("//", 1)[0].rstrip()
+    if "--" in raw:
+        raw = raw.split("--", 1)[0].rstrip()
+    if not raw.strip():
+        return None
+
+    label: str | None = None
+    match = _LABEL_RE.match(raw)
+    if match:
+        label = match.group(1)
+        raw = match.group(2)
+
+    match = _OP_RE.match(raw)
+    if not match:
+        return None
+    opcode = match.group(1).upper()
+    rest = match.group(2).strip()
+    # Keep args split but preserve quoted strings.
+    args = re.findall(r"\"[^\"]*\"|\([^\)]*\)|\S+", rest) if rest else []
+    rendered_args = f" {' '.join(args)}" if args else ""
+    rendered = f"{opcode}{rendered_args}".strip()
+    return {"label": label, "opcode": opcode, "args": args, "raw": rendered}
 
 
 def _read_segments(md_text: str) -> list[Segment]:
@@ -234,12 +274,26 @@ def build_manual_ir(md_path: Path, *, sequence_name: str) -> dict[str, object]:
         raw_lines = seg.awl_raw_lines()
         if not raw_lines:
             continue
+        instructions: list[dict[str, object]] = []
+        line_no = 1
+        for line in raw_lines:
+            parsed = _parse_awl_instruction_line(line)
+            if not parsed:
+                continue
+            instructions.append(
+                {
+                    "line_no": line_no,
+                    "network_index": seg.number,
+                    **parsed,
+                }
+            )
+            line_no += 1
         networks.append(
             {
                 "index": seg.number,
                 "title": seg.title,
                 "raw_lines": raw_lines,
-                "instructions": [],
+                "instructions": instructions,
             }
         )
 

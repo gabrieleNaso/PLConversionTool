@@ -382,6 +382,11 @@ def analyze_ir_payload(
         or _as_optional_str(ir_payload.get("target_profile"))
     )
     _apply_profile_rules_to_ir(ir, target_profile_name=target_profile_name)
+    # Ensure IR JSON inputs behave like the AWL pipeline: derive support members/logic
+    # once, then treat downstream artifact generation as a pure translation.
+    # This prevents placeholder PACKET_READY networks when the payload provides
+    # enough raw AWL instructions to derive AUX/DIAG/HMI logic rows.
+    ir = _freeze_ir_for_json_pipeline(ir)
     scaffold = _build_ir_scaffold(ir, target_profile_name=target_profile_name)
     graph_topology = _build_graph_topology(ir, target_profile_name=target_profile_name)
     issues = _validate_ir(ir, graph_topology)
@@ -2500,32 +2505,54 @@ def _freeze_ir_for_json_pipeline(ir: AwlIR) -> AwlIR:
     catalog: list[str] = []
     category_map: dict[str, str] = {}
 
-    def _add_members(excel_category: str, items: list[tuple[str, str]]) -> None:
+    def _add_members(excel_category: str, items: list[tuple[str, str]], *, assign_category: bool) -> None:
         for name, _comment in items:
             token = str(name or "").strip()
             if not token or token in catalog:
                 continue
             catalog.append(token)
-            category_map.setdefault(token, excel_category)
+            if assign_category:
+                category_map.setdefault(token, excel_category)
 
-    _add_members("alarm", diag_db_members + diag_fc_members)
-    _add_members("hmi", hmi_db_members + hmi_fc_members)
-    _add_members("aux", aux_db_members + aux_fc_members + parameters_db_members)
-    _add_members("transitions", transitions_db_members + transitions_fc_members)
-    _add_members("output", output_db_members + output_fc_members)
-    _add_members("lv2", mode_db_members + mode_fc_members)
-    _add_members("external", external_db_members)
+    # Ownership categories must reflect where a symbol is declared, not where it is referenced.
+    # Therefore, only DB-owned members assign `operand_categories`. FC-only references are
+    # still part of the strict catalog, but left uncategorized so ownership inference can
+    # fall back to aliases/heuristics.
+    _add_members("alarm", diag_db_members, assign_category=True)
+    _add_members("alarm", diag_fc_members, assign_category=False)
+    _add_members("hmi", hmi_db_members, assign_category=True)
+    _add_members("hmi", hmi_fc_members, assign_category=False)
+    _add_members("aux", aux_db_members + parameters_db_members, assign_category=True)
+    _add_members("aux", aux_fc_members, assign_category=False)
+    _add_members("transitions", transitions_db_members, assign_category=True)
+    _add_members("transitions", transitions_fc_members, assign_category=False)
+    _add_members("output", output_db_members, assign_category=True)
+    _add_members("output", output_fc_members, assign_category=False)
+    _add_members("lv2", mode_db_members, assign_category=True)
+    _add_members("lv2", mode_fc_members, assign_category=False)
+    _add_members("external", external_db_members, assign_category=True)
 
     # Populate Excel-facing support sheets in the IR itself.
+    # Persist support members as **DB-owned declarations** (not FC-local references).
+    #
+    # Rationale:
+    # - FC logic can legitimately reference members that live in other DB families
+    #   (e.g. an alarm rung conditioned by a physical output Q tag).
+    # - If we store FC-local references as "members" of the current category, the
+    #   ownership inference (`_build_support_symbol_home_db_map`) can incorrectly
+    #   pin those foreign symbols to the wrong DB (because it prefers earlier
+    #   categories via `setdefault`).
+    # - Keeping only DB-owned members here matches the intent of "support sheets":
+    #   what must be declared so the TIA import/compile succeeds.
     support_members: list[dict[str, object]] = []
     for category, members in (
-        ("diag", diag_fc_members),
-        ("hmi", hmi_fc_members),
-        ("aux", aux_fc_members),
-        ("transitions", transitions_fc_members),
-        ("io", output_fc_members),
-        ("mode", mode_fc_members),
-        ("external", external_members),
+        ("diag", diag_db_members),
+        ("hmi", hmi_db_members),
+        ("aux", aux_db_members),
+        ("transitions", transitions_db_members),
+        ("io", output_db_members),
+        ("mode", mode_db_members),
+        ("external", external_db_members),
     ):
         for name, comment in members:
             token = str(name or "").strip()
@@ -9488,7 +9515,14 @@ def _select_instruction_operand(args: list[str]) -> str | None:
     if merged:
         cleaned = [merged, *cleaned]
 
-    preferred = next((item for item in cleaned if _is_address_like_operand(item)), None)
+    # Prefer DB-style addresses when present. In reconstructed AWL from LAD, a line like:
+    #   = "M18".FW_ON  DB118.DBX22.7
+    # yields tokens ["M18", "FW_ON", "DB118.DBX22.7"] and both "M18" and "DB118.DBX22.7"
+    # are address-like. Picking the first would lose the leaf alias (FW_ON) and break
+    # support logic derivation. Always prefer the DB operand when available.
+    preferred = next((item for item in cleaned if re.fullmatch(r"DB\d+\..+", item, flags=re.IGNORECASE)), None)
+    if preferred is None:
+        preferred = next((item for item in cleaned if _is_address_like_operand(item)), None)
     selected = preferred or cleaned[0]
     return _canonicalize_step_token(selected)
 
