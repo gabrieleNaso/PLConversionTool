@@ -1,0 +1,140 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Document>
+  <Engineering version="V20" />
+  <SW.Blocks.GlobalDB ID="0">
+    <AttributeList>
+      <AutoNumber>false</AutoNumber>
+      <HeaderAuthor>SAS</HeaderAuthor>
+      <Interface><Sections xmlns="http://www.siemens.com/automation/Openness/SW/Interface/v5">
+  <Section Name="Static">
+    <Member Name="DI" Datatype="Struct">
+      <Member Name="LM5 T5-S44.5" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E93.4) T5 Excentricentric Comanda 'Inainte'</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="LM5 T5-S44.6" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E93.5) T5 Excentricentric Comanda 'Inapoi'</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="LM5-T5-B48.3" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E97.2) T5 Excentricentric Senzor Pozitie 'Initial'</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="LM5-T5-B48.4" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E97.3) T5 Excentricentric Senzor Pozitie 'Vertical'</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="TF2 T5-E102 F6.6" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E170.0) T5 Excentricentric Tensiune Comanda</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="TF2 T5-E102 Q6.1" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E170.1) T5 Excentricentric Disjunctor Alimentare SoftStarter SIKO</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="TF2 T5-E102 F6.1" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E170.2) T5 Excentricentric Protectie Termica Motor</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="TF2 T5-E102 K6.7no" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E170.3) T5 Excentricentric Confirmare Rotire 'Inainte'</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="TF2 T5-E102 K6.8no" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E170.4) T5 Excentricentric Confirmare Rotire 'Inapoi'</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="TF2 T5-E102 G6.1'OK'" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E170.5) T5 Excentricentric SoftStarter SIKO 'OK'</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="TF2 T5-E102 F6.3" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E170.7) T5 Excentricentric Prezenta Tensiune Alimentare Frana</MultiLanguageText>
+        </Comment>
+      </Member>
+    </Member>
+    <Member Name="DO" Datatype="Struct">
+      <Member Name="LM5-T5-H57.2" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(A93.1) T5 Excentric Semnalizare 'Ok'</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="LM5-T5-H57.3" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(A93.2) T5 Excentric Semnalizare Pozitie 'Initial'</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="TF2 T5-K53.4" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(A172.3) T5 Excentric Contactor Deplasare 'Inainte'</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="TF2 T5-K53.5" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(A172.4) T5 Excentric Contactor Deplasare 'Inapoi'</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="TF2 T5-K53.6" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(A172.5) T5 Excentric Contactor SoftStarter SIKO 'Start'</MultiLanguageText>
+        </Comment>
+      </Member>
+    </Member>
+  </Section>
+</Sections></Interface>
+      <IsRetainMemResEnabled>true</IsRetainMemResEnabled>
+      <MemoryLayout>Optimized</MemoryLayout>
+      <MemoryReserve>100</MemoryReserve>
+      <Name>T5 EXCENTRIC I-O</Name>
+      <Namespace />
+      <Number>1618</Number>
+      <ProgrammingLanguage>DB</ProgrammingLanguage>
+      <RetainMemoryReserve>100</RetainMemoryReserve>
+    </AttributeList>
+    <ObjectList>
+      <MultilingualText ID="1" CompositionName="Comment">
+        <ObjectList>
+          <MultilingualTextItem ID="2" CompositionName="Items">
+            <AttributeList>
+              <Culture>en-US</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+          <MultilingualTextItem ID="3" CompositionName="Items">
+            <AttributeList>
+              <Culture>it-IT</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+        </ObjectList>
+      </MultilingualText>
+      <MultilingualText ID="4" CompositionName="Title">
+        <ObjectList>
+          <MultilingualTextItem ID="5" CompositionName="Items">
+            <AttributeList>
+              <Culture>en-US</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+          <MultilingualTextItem ID="6" CompositionName="Items">
+            <AttributeList>
+              <Culture>it-IT</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+        </ObjectList>
+      </MultilingualText>
+    </ObjectList>
+  </SW.Blocks.GlobalDB>
+</Document>

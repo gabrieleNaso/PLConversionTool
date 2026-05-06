@@ -1,0 +1,210 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Document>
+  <Engineering version="V20" />
+  <SW.Blocks.GlobalDB ID="0">
+    <AttributeList>
+      <AutoNumber>false</AutoNumber>
+      <HeaderAuthor>SAS</HeaderAuthor>
+      <Interface><Sections xmlns="http://www.siemens.com/automation/Openness/SW/Interface/v5">
+  <Section Name="Static">
+    <Member Name="Seq Status" Datatype="Struct" Remanence="Retain">
+      <Member Name="ReadyToAuto" Datatype="Bool" />
+      <Member Name="AutoON" Datatype="Bool" />
+      <Member Name="WaitPiece" Datatype="Bool" />
+      <Member Name="Stopped" Datatype="Bool" />
+      <Member Name="Step" Datatype="Struct">
+        <Member Name="Actual" Datatype="Int" />
+        <Member Name="-1" Datatype="Int" />
+        <Member Name="-2" Datatype="Int" />
+        <Member Name="-3" Datatype="Int" />
+        <Member Name="-4" Datatype="Int" />
+        <Member Name="-5" Datatype="Int" />
+        <Member Name="-6" Datatype="Int" />
+        <Member Name="-7" Datatype="Int" />
+        <Member Name="-8" Datatype="Int" />
+        <Member Name="-9" Datatype="Int" />
+        <Member Name="Actual time" Datatype="Time_Of_Day" />
+        <Member Name="-1 Time" Datatype="Time_Of_Day" />
+        <Member Name="-2 Time" Datatype="Time_Of_Day" />
+        <Member Name="-3 Time" Datatype="Time_Of_Day" />
+        <Member Name="-4 Time" Datatype="Time_Of_Day" />
+        <Member Name="-5 Time" Datatype="Time_Of_Day" />
+        <Member Name="-6 Time" Datatype="Time_Of_Day" />
+        <Member Name="-7 Time" Datatype="Time_Of_Day" />
+        <Member Name="-8 Time" Datatype="Time_Of_Day" />
+        <Member Name="-9 Time" Datatype="Time_Of_Day" />
+      </Member>
+    </Member>
+    <Member Name="Transitions" Datatype="Struct" Remanence="Retain">
+      <Member Name="Safe" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Emergency</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Fault" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Fault</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Auto" Datatype="Bool" />
+      <Member Name="Manual" Datatype="Bool" />
+      <Member Name="Pause" Datatype="Bool" />
+      <Member Name="Stop" Datatype="Bool" />
+      <Member Name="Cycle start request" Datatype="Bool" />
+      <Member Name="First Piece" Datatype="Bool" />
+      <Member Name="Piece presence" Datatype="Bool" />
+      <Member Name="Adjacent Machines" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Adjacent for start from initial position</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Adjacent Machines Vertical" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Adjacent for start from vertical position</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Init_Sequence" Datatype="Bool" />
+      <Member Name="Movement conditions 1" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Pozitia 'Initial'</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Movement conditions 2" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Pozitia 'Vertical'</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Movement conditions 3" Datatype="Bool" />
+      <Member Name="Movement conditions 4" Datatype="Bool" />
+      <Member Name="Reset Fault" Datatype="Bool" />
+      <Member Name="Bypass ilock" Datatype="Bool" />
+    </Member>
+    <Member Name="Memory" Datatype="Struct" Remanence="Retain">
+      <Member Name="Piece presence" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Cumulative piece presence</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Piece absence" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">No sensor triggered</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Pipe Transfered" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Pipe transfered</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Permanent Condition" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Permanent condition</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Movement Fault" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Cumulative of Machine Fault condition </MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Local StopAuto" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Local StopAuto</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Interlocks FW" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Interlocks for FORWARD</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Interlocks BW" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Interlocks for BACKWARD</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="FW_ON" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Rotire 'Inainte'</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="BW_ON" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Rotire 'Inapoi'</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="EX_AUTO_FW" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Excentric Rotire 'Inainte' in Mod Automat</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="FW_MANUAL" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Rotire 'Inainte' in Mod Manual - Single Cycle Run</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="OS_POSITION" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">OS NOTE POSITION</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="EX_INITIAL" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Pozitia 'Initial'</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="EX_VERT" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Pozitie 'Vertical'</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="STEP_DONE_LANT" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">T5 Lant has done a Step</MultiLanguageText>
+        </Comment>
+      </Member>
+    </Member>
+  </Section>
+</Sections></Interface>
+      <IsRetainMemResEnabled>true</IsRetainMemResEnabled>
+      <MemoryLayout>Optimized</MemoryLayout>
+      <MemoryReserve>100</MemoryReserve>
+      <Name>T5 EXCENTRIC</Name>
+      <Namespace />
+      <Number>1118</Number>
+      <ProgrammingLanguage>DB</ProgrammingLanguage>
+      <RetainMemoryReserve>100</RetainMemoryReserve>
+    </AttributeList>
+    <ObjectList>
+      <MultilingualText ID="1" CompositionName="Comment">
+        <ObjectList>
+          <MultilingualTextItem ID="2" CompositionName="Items">
+            <AttributeList>
+              <Culture>en-US</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+          <MultilingualTextItem ID="3" CompositionName="Items">
+            <AttributeList>
+              <Culture>it-IT</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+        </ObjectList>
+      </MultilingualText>
+      <MultilingualText ID="4" CompositionName="Title">
+        <ObjectList>
+          <MultilingualTextItem ID="5" CompositionName="Items">
+            <AttributeList>
+              <Culture>en-US</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+          <MultilingualTextItem ID="6" CompositionName="Items">
+            <AttributeList>
+              <Culture>it-IT</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+        </ObjectList>
+      </MultilingualText>
+    </ObjectList>
+  </SW.Blocks.GlobalDB>
+</Document>
