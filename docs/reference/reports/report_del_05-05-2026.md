@@ -96,6 +96,7 @@ A valle del confronto tra i documenti operativi, i report consolidati e i tipici
 - La regola corretta di cardinalita' resta: `1 sequenza AWL -> 1 x FB GRAPH + N x GlobalDB + M x FC LAD`.
 - Il naming globale non puo' essere ridotto a un semplice suffisso finale: owner DB, branch path e leaf name costituiscono un contratto bloccante tra IR, serializer e bundle XML.
 - L'IR comune del progetto puo' ora essere alimentato sia da parsing AWL sia da Excel strutturato, pur restando invariati i contratti semantici richiesti dai backend.
+- Flusso operativo corrente (AI-first): `AWL -> Codex/AI (IR manuale) -> IR JSON -> tool -> XML (TIA)`. Il parser AWL automatico resta disponibile come alternativa/diagnostica, ma non e' il percorso principale per i casi curati.
 - Le regole di estrazione generiche **AWL -> IR** vanno mantenute in un riferimento unico aggiornabile caso dopo caso (`cases/translation_rules.md`), senza introdurre hard-code legati a un singolo esempio.
 - I tipici legacy importabili ma basati su runtime `V6` restano utili per reverse engineering semantico e topologico, ma non sono pattern validi per il serializer finale `V20 / GRAPH V2`.
 - La segmentazione reale dell'AWL tiene conto delle famiglie funzionali ricorrenti osservate nel caso `FC102` (sequenziatore legacy): allarmi, memorie/ausiliari, sequenza, manuale/automatico, emergenza/fault, uscite.

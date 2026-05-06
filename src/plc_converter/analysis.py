@@ -3218,6 +3218,30 @@ def _build_graph_topology(ir: AwlIR, *, target_profile_name: str = "default") ->
 
     connections: list[GraphConnection] = []
     direct_incoming_counts: dict[str, int] = {step.name: 0 for step in ordered_steps}
+    # When multiple transitions point to the same target step, only one incoming
+    # edge should be serialized as Direct; the others become Jump. Relying on
+    # iteration order makes the result unstable and can diverge from curated
+    # project XMLs. Pick a preferred Direct incoming transition per target.
+    preferred_direct_incoming: dict[str, str] = {}
+    incoming_by_target: dict[str, list[GraphTransitionNode]] = {}
+    for item in transition_nodes:
+        if not item.target_step or item.target_step == entry_step:
+            continue
+        incoming_by_target.setdefault(item.target_step, []).append(item)
+    for target_step, incoming in incoming_by_target.items():
+        if len(incoming) < 2:
+            continue
+        target_no = step_no_by_name.get(target_step, 10**9)
+
+        def _incoming_score(node: GraphTransitionNode) -> tuple[int, int]:
+            source_label = str(node.source_step or "").upper()
+            wait_penalty = 1 if "WAIT" in source_label else 0
+            source_no = step_no_by_name.get(node.source_step, -1)
+            distance = abs(target_no - source_no) if source_no >= 0 and target_no < 10**9 else 10**9
+            return (-wait_penalty, -distance)
+
+        preferred = sorted(incoming, key=_incoming_score, reverse=True)[0]
+        preferred_direct_incoming[target_step] = preferred.name
     for transition in transition_nodes:
         if transition.name in parallel_start_keeper_by_transition:
             branch = parallel_start_keeper_by_transition[transition.name]
@@ -3321,6 +3345,9 @@ def _build_graph_topology(ir: AwlIR, *, target_profile_name: str = "default") ->
         has_direct_incoming = direct_incoming_counts.get(transition.target_step, 0) > 0
         if transition.target_step != entry_step and has_direct_incoming:
             target_link_type = "Jump"
+        preferred_incoming = preferred_direct_incoming.get(transition.target_step)
+        if preferred_incoming:
+            target_link_type = "Direct" if transition.name == preferred_incoming else "Jump"
         if (
             target_link_type == "Direct"
             and has_direct_incoming

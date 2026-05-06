@@ -2,6 +2,20 @@
 
 Questo documento raccoglie setup, comandi base, workflow end-to-end e debug rapido.
 
+## Workflow (aggiornato)
+
+Nel progetto convivono due flussi:
+
+1) **Flusso consigliato (AI-first)**  
+`AWL -> Codex/AI -> IR JSON -> tool -> XML (TIA)`
+
+2) **Flusso automatico (parser AWL)**  
+`AWL -> tool (parser) -> IR JSON -> tool -> XML (TIA)`
+
+Nota: il secondo resta utile per smoke-test e regressioni sul parser, ma il metodo di lavoro corrente per i casi
+curati in `cases/` e' **scrivere/curare l’IR JSON manualmente** (con Codex/AI) e usare il tool **solo** per
+`IR JSON -> XML`.
+
 ## Prerequisiti
 - Linux con `docker` e `docker compose`
 - Repo clonata (esempio: `/home/administrator/PLConversionTool`)
@@ -56,6 +70,9 @@ Gli expected dei casi vengono curati a mano in `cases/expected_output/expected_o
 
 ## Generare XML senza AI (da file in `work/input/`)
 
+Questo e' il flusso **automatico** basato su parsing AWL. Se stai seguendo il flusso AI-first, vai a
+`Creare IR JSON manualmente` e poi usa `gen-ir`.
+
 ### 1) Metti i sorgenti AWL
 Metti i file in `work/input/` con estensione:
 - `.awl`
@@ -81,7 +98,7 @@ Output:
 Comportamento importante:
 - la cartella del bundle target viene **pulita automaticamente** prima della nuova generazione;
 - non restano file XML "stale" di run precedenti nello stesso bundle;
-- il percorso AWL passa esplicitamente da IR (`AWL -> IR JSON -> XML`), allineato al flusso Excel;
+- il percorso AWL passa esplicitamente da IR (`AWL -> (parser) IR JSON -> XML`), allineato al flusso Excel;
 - il target XML resta **solo simbolico**: gli indirizzi fisici eventualmente presenti nel sorgente (I/Q/M/DBX/...) sono usati solo come input di mapping, ma non devono comparire nel naming dei member o nei path serializzati;
 - il bundle va letto come pacchetto coerente e non come somma casuale di file;
 - il file `<Name>_analysis.json` va conservato come diagnosi primaria del mapping AWL -> IR -> XML.
@@ -164,6 +181,9 @@ make generate-and-import \
 make gen-ir IR_JSON="work/input/ir_json/<file>_ir.json" SEQUENCE_NAME="MySeq_001"
 ```
 
+Questo comando e' il cuore del flusso **AI-first**: una volta che l’IR JSON e' stato scritto/curato a mano
+(Codex/AI), il tool si occupa solo della conversione `IR JSON -> XML`.
+
 ### Target profile (opzionale)
 
 Puoi forzare un profilo di target (convenzioni IR -> XML: naming/numbering/serializer) passando `TARGET_PROFILE`.
@@ -179,6 +199,11 @@ make gen-ir IR_JSON="work/input/ir_json/<file>_ir.json" SEQUENCE_NAME="MySeq_001
 
 Quando vuoi costruire l'IR **senza** usare il parser AWL automatico (es. perché stai ricostruendo le regole a mano),
 puoi generare un IR JSON “manuale” a partire da un documento `.md` con segmenti e tabelle.
+
+Flusso consigliato:
+- metti l’AWL in `work/input/` (o usa un case in `cases/input/inputN/`);
+- fai generare a **Codex/AI** un file IR in `work/input/ir_json/`;
+- usa `make gen-ir ...` per produrre gli XML.
 
 ```bash
 python3 scripts/manual_awl_md_to_ir.py \

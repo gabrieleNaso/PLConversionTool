@@ -94,8 +94,24 @@ Regola: distinguere chiaramente fra:
 - `A/U` -> `AND`
 - `AN/UN` -> `AND NOT`
 - `O` -> `OR`
+- `OM` -> `OR` (treat as `O`, stesso ruolo booleano)
 - `ON` -> `OR NOT`
 - gruppi `A(...)` / `O(...)` vanno mantenuti come sottogruppi (no flatten distruttivo)
+
+### 5.1.2 Istruzioni “di scaffolding” LAD (non semantiche)
+
+In alcuni sorgenti AWL (tipicamente ricostruiti da compile LAD) compaiono istruzioni di supporto che **non**
+modificano la logica booleana, ma servono a replicare la stessa RLO su più coil:
+
+- `BLD 102`
+- `= L 1.0` seguito da ripetizioni di `A L 1.0` + `= <dest>`
+
+Regole:
+- `BLD 102` va ignorato in estrazione IR (non è un operando logico).
+- Il pattern `= L 1.0` / `A L 1.0` indica “fan-out” della stessa condizione:
+  - la condizione vera è quella calcolata **prima** di `= L 1.0`;
+  - tutte le assegnazioni `= <dest>` che seguono (precedute da `A L 1.0`) ereditano la **stessa guardia**,
+    finché non viene ricalcolata una nuova RLO.
 
 ### 5.1.1 Derivare transizioni da `Trs` (pattern sequenziatore / FC32)
 
@@ -111,25 +127,79 @@ Regola per costruire l’IR JSON manuale:
 - la guardia è l’insieme delle condizioni tra la riga `A "...".Sxx` e il relativo `JNB` (includendo `A/AN` e gruppi `A(` / `O(`)
 - evitare wildcard: per transizioni tipo “Any -> S29/S32” espandere la sorgente su tutti gli step noti nel case
 
+Regola (multi-target dallo stesso step):
+- se nello stesso segmento dello stesso `Sxx` esistono più blocchi `... JNB ... L <n> T ...Trs` con `n` diversi,
+  allora esistono **più transizioni uscenti** dallo stesso `source_step` (AltBegin nel GRAPH),
+  ognuna con la propria guardia e il proprio `target_step`.
+
+Regola (pattern `JNB`/`JC`):
+- `JNB <lbl>` / `JC <lbl>` in questo contesto sono “salti su condizione falsa” del blocco corrente.
+  La guardia della transizione è la condizione **che evita il salto** (cioè il blocco booleano prima del jump valutato TRUE).
+
+Regola (cambio step “globale”, non legato a Sxx):
+- In alcuni sequenziatori la scrittura a `Trs` può avvenire in reti che **non** sono sotto una condizione `A "<prefix>".Sxx`.
+  In questo caso:
+  - non inventare un `source_step` “a caso”;
+  - se il segnale rappresenta una modalità/override (manual/emergency/fault/safe), modellalo come transizione da `Init`
+    (AltBegin) oppure come transizione da uno step “mode” standard se già presente.
+
 Regola (pattern “sequenziatore” osservato nei casi):
 - oltre ai passi “di processo” (`S01`, `S02`, ...), il GRAPH include anche passi standard di progetto come `S28_END`, `S30_Fault`, `S100_TRK CHECK`, `S101_TRK TRANSFER` con transizioni dedicate (tracking/ritorni).
 
 Regola (quando l’expected include XML, per validare l’IR):
 - se in `cases/expected_output/...` sono presenti gli XML (es. `05 ... Sequence.xml`), per costruire l’IR manuale le guardie e le negazioni vanno ricostruite **leggendo i contatti del FlgNet** nella transizione (Access + Contact + Negated), non solo dal testo AWL.
 
+### 5.1.3 GRAPH: ingressi multipli e `Direct` vs `Jump`
+
+Negli XML GRAPH (`... Sequence.xml`) ogni transizione collega il proprio target step con un `LinkType`:
+- `Direct`: edge “lineare”
+- `Jump`: edge “salto” (usato anche per evitare più ingressi `Direct` sullo stesso step)
+
+Regola generale osservata negli expected:
+- quando **più transizioni** puntano allo **stesso target step**, solo **una** deve rimanere `Direct`; le altre devono essere `Jump`.
+
+Problema tipico (perché “mancano” o sembrano diverse le diramazioni nel graph):
+- se la scelta di quale edge sia `Direct` dipende solo dall’ordine delle transizioni, lo stesso IR può produrre un graph “equivalente” ma con collegamenti visivamente/strutturalmente diversi (es. `Trans33`/`Trans37` su `S18` in `expected_output2`).
+
+Regola implementativa (per stabilizzare e avvicinarsi agli expected di progetto):
+- per ogni target step con ingressi multipli, selezionare un “preferred direct incoming”:
+  - evitare come `Direct` gli ingressi provenienti da step con `WAIT` nel nome (tipicamente rami laterali/back-edge),
+  - altrimenti preferire l’ingresso con distanza numerica minore tra `source_step` e `target_step`.
+
+Questo non cambia la semantica (GRAPH equivalente), ma stabilizza il layout e riduce diff inutili rispetto agli expected.
+
 ### 5.2 Timer AWL
 
 Pattern AWL:
-- `L S5T#...` + `SD T xx` + `A T xx`
+- `L S5T#...` + `SD/SF/SE/... T xx` + `A T xx`
 
 Regola:
 - in AWL, `A Txx` è il “done bit”: **mai** usare l’istanza `IEC_TIMER` (es. `T218`) come contatto booleano in LAD/GRAPH.
 - nel target il contatto deve puntare a un booleano equivalente (es. `Txx.Q` oppure un alias stabile tipo `Txx_DONE`).
 
+### 5.2.1 Fronte di salita (`FP`)
+
+In alcuni casi la logica usa il fronte di salita per generare impulsi (es. `FP <operand>`).
+
+Regole:
+- `FP <x>` va trattato come un **operatore**, non come un semplice contatto “equivalente a `A x`”.
+- Nell’IR, la guardia deve conservare l’informazione “rising edge”:
+  - minimo: includere `<x>` in `guard_operands` e annotare l’edge in `operand_notes`/`support_logic`;
+  - preferibile: rappresentare il termine come `RISING_EDGE(<x>)` (o struttura equivalente) nel modello booleano.
+
 ### 5.3 SET/RESET/ASSIGN
 
 Regola:
 - mantenere la semantica AWL materializzando le operazioni (SET/RESET/ASSIGN) nel modello IR e poi in LAD.
+
+### 5.4 DB esterni di integrazione (OPIN/OPOUT)
+
+Nei casi con integrazione esterna possono comparire DB “contrattuali” (es. `DB81-OPIN`, `DB82-OPOUT`)
+con member `Pnnn` / `Lnnn`.
+
+Regole:
+- trattare questi riferimenti come `external_refs`/operandi esterni (ownership fissa nel DB esterno).
+- preservare **esattamente** naming e zeri significativi (`P071`, `L103`, …): non sanitizzare/normalizzare in modo distruttivo.
 
 ---
 
@@ -245,10 +315,10 @@ Regole:
 ### 8.6 Timer (`timers`)
 
 Regole:
-- quando vedi un preset `L S5T#...` seguito da `SD T xx` (o `SE "Tnn" Tnn`), crea un `TimerCandidate`:
+- quando vedi un preset `L S5T#...` seguito da `SD/SF/SE/... T xx`, crea un `TimerCandidate`:
   - `source_timer = "Txx"` / `"Tnn"`
   - `network_index` = network corrente
-  - `kind` = `SD` / `SE`
+  - `kind` = opcode timer (`SD`, `SF`, `SE`, ...)
   - `preset` = stringa `S5T#...`
 - `trigger_operands[]`: raccogli gli operandi booleani che abilitano il timer (es. contatti `A/AN/O/ON` prima dell’istruzione timer)
 
@@ -274,13 +344,24 @@ Regola: riconosci il DB sequenza osservando pattern ripetuti su `DB?.DBW2` e bit
 
 ### 9.2 Step “standard” oltre ai passi di processo
 
-Nel GRAPH compaiono spesso (nome/numero standard):
-- `S01_Init` (entry)
-- `S29_Manual` (manual)
-- `S32_Emergency` (emergency)
-- `S30_Fault` (fault)
-- `S28_END` (end_cycle)
-- `S100_TRK CHECK`, `S101_TRK TRANSFER` (tracking)
+Nei casi osservati compaiono spesso alcuni **numeri step ricorrenti** (core del pattern):
+- `1` (Init / entry)
+- `2` (Check initial condition)
+- `3` (Check Piece Presence)
+- `7` (StartingCond)
+- `28` (END / end_cycle)
+- `29` (Manual)
+- `30` (Fault)
+- `32` (Emergency)
+- `100/101` (tracking: TRK CHECK / TRK TRANSFER)
+
+Oltre al core, la sequenza può includere step **machine-specific** (es. `10/12/14/18/22/26/...`) con descrizioni diverse
+(`S10_FLIPPER UP` vs `S10_FORWARD`, ecc.).
+
+Regola:
+- nell’IR, `step_number` resta il riferimento stabile (1,2,3,7,...) e il `name` può essere:
+  - canonico minimo: `S10`, `S14`, ...
+  - arricchito: `S10_<descrizione>` se il sorgente (o un mapping) fornisce un descrittivo affidabile.
 
 Regola: se il sorgente contiene elementi tracking/LEV2 o blocchi di interfaccia, crea anche gli step tracking.
 
@@ -291,6 +372,18 @@ Pattern più ricorrenti:
 - tracking split: `TRK CHECK → (OK|not OK)` (AltBegin 2)
 - starting conditions split: `StartingCond → (StartMov|Back)` (AltBegin 2)
 - back-to-begin: `Manual/Fault/Emergency → Init` con guardie negate (`NOT Manual`, ecc.)
+
+Regola (end-cycle/return loop):
+- Quando esiste uno step “fine ciclo” che riporta alla presenza/ingresso ciclo (es. ritorno a `S03`),
+  tratta quello step come **end-cycle** e rendilo esplicito nell’IR:
+  - se nell’AWL c’è un `Sxx` con `Trs=3` (o “ritorno al passo presenza”), allora `Sxx` è un candidato end-cycle.
+  - nell’IR mantieni `step_number` reale del sorgente, ma assegna un `step_roles` coerente (`end_cycle`)
+    e rendi esplicita la transizione “end → S03”.
+
+Regola (tracking steps):
+- Se il caso mostra segnali di tracking/interfaccia (es. `LEV2`, `ITF`, DB esterni di linea) o un pattern
+  di split “tracking ok / tracking not ok”, crea anche gli step di tracking (`S100_TRK CHECK`, `S101_TRK TRANSFER`)
+  e le relative transizioni nell’IR, anche se l’AWL applicativo delega parte della logica al runtime esterno.
 
 ### 9.4 Normalizzazione simbolica delle guardie (Transitions/Memory/LEV2)
 

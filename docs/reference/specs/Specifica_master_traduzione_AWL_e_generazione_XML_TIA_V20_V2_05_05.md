@@ -17,6 +17,10 @@ Gerarchia documentale fissata:
 Le Parti I-VI definiscono le regole di traduzione della sorgente di partenza (AWL oppure Excel strutturato), la costruzione dell'IR, il partizionamento nei blocchi TIA e le regole operative finali del convertitore.
 Le Parti VII-IX definiscono la grammatica XML consolidata, il template operativo e lo pseudo-codice del serializer.
 
+Nota operativa (workflow): l’IR non deve essere necessariamente prodotto da un parser AWL automatico. Nel flusso AI-first
+e' ammesso (e spesso consigliato) produrre/curare l’IR JSON manualmente (Codex/AI) partendo da AWL e dagli expected;
+il convertitore resta comunque responsabile solo della fase `IR -> XML` e della validazione di coerenza del bundle.
+
 ---
 
 # Parte I - Principi generali della traduzione
