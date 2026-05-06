@@ -2501,6 +2501,83 @@ def _freeze_ir_for_json_pipeline(ir: AwlIR) -> AwlIR:
     external_db_members = _prepare_support_db_members(ir, "external", external_members)
     parameters_db_members = _prepare_support_db_members(ir, "parameters", parameters_members)
 
+    # Ensure cross-family operands referenced in any FC are declared in their owner DB.
+    #
+    # Example (from corpus): Alarms logic can reference DI/DO signals; those operands
+    # must be declared in the IO DB even if they are not part of `ir.outputs`.
+    symbol_home_db_map = _build_support_symbol_home_db_map(ir)
+    diag_db_name, _, _, _, _, _ = _support_block_names(ir.sequence_name, "diag")
+    hmi_db_name, _, _, _, _, _ = _support_block_names(ir.sequence_name, "hmi")
+    aux_db_name, _, _, _, _, _ = _support_block_names(ir.sequence_name, "aux")
+    tr_db_name, _, _, _, _, _ = _support_block_names(ir.sequence_name, "transitions")
+    io_db_name, _, _, _, _, _ = _support_block_names(ir.sequence_name, "io")
+    mode_db_name, _, _, _, _, _ = _support_block_names(ir.sequence_name, "mode")
+    ext_db_name, _, _, _, _, _ = _support_block_names(ir.sequence_name, "external")
+    par_db_name, _, _, _, _, _ = _support_block_names(ir.sequence_name, "parameters")
+
+    required_by_db: dict[str, dict[str, str]] = {}
+
+    def _record_required(db_name: str, member: str, comment: str) -> None:
+        member = str(member or "").strip()
+        if not member or member.upper() in {"TRUE", "FALSE", "AND", "OR", "NOT"}:
+            return
+        required_by_db.setdefault(db_name, {}).setdefault(member, str(comment or "").strip())
+
+    def _scan_logic_rows(db_name_for_category: str, logic_rows: list[dict[str, object]]) -> None:
+        for row in logic_rows or []:
+            comment = str(row.get("comment") or "").strip()
+            result_member = str(row.get("result_member") or "").strip()
+            if result_member:
+                owner = symbol_home_db_map.get(result_member, db_name_for_category)
+                _record_required(owner, result_member, comment)
+                if result_member.endswith("_DONE") and len(result_member) > len("_DONE"):
+                    _record_required(owner, result_member[: -len("_DONE")], comment)
+
+            for operand in _as_str_list(row.get("condition_operands")):
+                token = str(operand or "").strip()
+                if not token:
+                    continue
+                owner = symbol_home_db_map.get(token, db_name_for_category)
+                _record_required(owner, token, comment)
+                if token.endswith("_DONE") and len(token) > len("_DONE"):
+                    _record_required(owner, token[: -len("_DONE")], comment)
+
+            expression = str(row.get("condition_expression") or "").strip()
+            for token in re.findall(r"[A-Za-z_]\w*(?:\.\w+)*", expression):
+                if token.upper() in {"AND", "OR", "NOT", "TRUE", "FALSE"}:
+                    continue
+                normalized = _support_member_name(token, "", strict_excel_mode=True)
+                if not normalized:
+                    continue
+                owner = symbol_home_db_map.get(normalized, db_name_for_category)
+                _record_required(owner, normalized, comment)
+
+    _scan_logic_rows(diag_db_name, diag_logic)
+    _scan_logic_rows(hmi_db_name, hmi_logic)
+    _scan_logic_rows(aux_db_name, aux_logic)
+    _scan_logic_rows(tr_db_name, transitions_logic)
+    _scan_logic_rows(io_db_name, io_logic)
+    _scan_logic_rows(mode_db_name, mode_logic)
+
+    def _augment(db_members: list[tuple[str, str]], db_name: str) -> list[tuple[str, str]]:
+        existing = {name for name, _ in db_members}
+        extras = required_by_db.get(db_name, {})
+        for name, comment in extras.items():
+            if name in existing:
+                continue
+            db_members.append((name, comment))
+            existing.add(name)
+        return _dedupe_named_members(db_members)
+
+    diag_db_members = _augment(diag_db_members, diag_db_name)
+    hmi_db_members = _augment(hmi_db_members, hmi_db_name)
+    aux_db_members = _augment(aux_db_members, aux_db_name)
+    transitions_db_members = _augment(transitions_db_members, tr_db_name)
+    output_db_members = _augment(output_db_members, io_db_name)
+    mode_db_members = _augment(mode_db_members, mode_db_name)
+    external_db_members = _augment(external_db_members, ext_db_name)
+    parameters_db_members = _augment(parameters_db_members, par_db_name)
+
     # Build a strict operand catalog that includes every member that can appear in DB/FC.
     catalog: list[str] = []
     category_map: dict[str, str] = {}
@@ -7058,6 +7135,24 @@ def _collect_diag_support_members(ir: AwlIR) -> list[tuple[str, str]]:
 
 def _collect_mode_support_members(ir: AwlIR) -> list[tuple[str, str]]:
     members: list[tuple[str, str]] = []
+    # LEV2 contract (tracking-aware): when the topology contains tracking steps,
+    # expose a minimal LEV2 DB contract (ITF + MEMORY) even if the AWL snippet
+    # does not contain explicit LEV2/HSK networks.
+    has_tracking = any("TRK" in str(step.name or "").upper() for step in (ir.steps or []))
+    if has_tracking:
+        members.extend(
+            [
+                ("LEV2.ITF.Production_Lock", "LEV2 interface: production lock"),
+                ("LEV2.ITF.Check_OK", "LEV2 interface: check ok"),
+                ("LEV2.ITF.Check_not_OK", "LEV2 interface: check not ok"),
+                ("LEV2.ITF.Transfer_OK", "LEV2 interface: transfer ok"),
+                ("LEV2.ITF.Transfer_not_OK", "LEV2 interface: transfer not ok"),
+                ("LEV2.ITF.Skip", "LEV2 interface: skip"),
+                ("LEV2.ITF.Status", "LEV2 interface: status word"),
+                ("LEV2.MEMORY.CheckRequestMemory", "LEV2 memory: check request latch"),
+                ("LEV2.MEMORY.Cond_move_Fwd", "LEV2 memory: condition move forward"),
+            ]
+        )
     if ir.manual_logic_networks:
         members.append(
             (
@@ -8340,6 +8435,135 @@ def _derive_awl_mode_logic_rows(ir: AwlIR) -> list[dict[str, object]]:
     corresponding HMI alias members exist in the operand catalog.
     """
     rows: list[dict[str, object]] = []
+
+    # Tracking-derived LEV2 minimal logic (generic).
+    #
+    # When the IR contains a tracking micro-flow (TRK_CHECK / TRK_TRANSFER steps),
+    # emit a small amount of deterministic LEV2 logic so DB17/FC17 are not empty:
+    # - latch `LEV2.MEMORY.CheckRequestMemory` on transitions entering TRK_CHECK,
+    #   reset it on transitions leaving TRK_CHECK.
+    # - drive `LEV2.ITF.Check_OK` / `LEV2.ITF.Transfer_OK` as pulses from the
+    #   corresponding “OK” transitions (best-effort).
+    #
+    # This does not try to rebuild HSK handshakes (often absent from AWL extracts).
+    tracking_transitions = [
+        tr
+        for tr in (ir.transitions or [])
+        if "TRK" in str(tr.source_step or "").upper() or "TRK" in str(tr.target_step or "").upper()
+    ]
+    if tracking_transitions:
+        def _tr_member(tr_id: str) -> str:
+            return _support_member_name(tr_id, "TR", strict_excel_mode=True)
+
+        enter_check = [
+            tr
+            for tr in (ir.transitions or [])
+            if "TRK" in str(tr.target_step or "").upper() and "CHECK" in str(tr.target_step or "").upper()
+        ]
+        leave_check = [
+            tr
+            for tr in (ir.transitions or [])
+            if "TRK" in str(tr.source_step or "").upper()
+            and "CHECK" in str(tr.source_step or "").upper()
+            and "TRK" not in str(tr.target_step or "").upper()
+        ]
+        leave_transfer = [
+            tr
+            for tr in (ir.transitions or [])
+            if "TRK" in str(tr.source_step or "").upper()
+            and "TRANSFER" in str(tr.source_step or "").upper()
+            and "TRK" not in str(tr.target_step or "").upper()
+        ]
+
+        for idx, tr in enumerate(enter_check, start=1):
+            member = _tr_member(str(tr.transition_id or "").strip())
+            if not member:
+                continue
+            rows.append(
+                {
+                    "result_member": "LEV2.MEMORY.CheckRequestMemory",
+                    "condition_expression": member,
+                    "condition_operands": [member],
+                    "coil_mode": "set",
+                    "network_title": "LEV2 tracking check request (set)",
+                    "comment": f"Set CheckRequestMemory on {tr.source_step}->{tr.target_step}",
+                    "network_index": 16000 + idx,
+                }
+            )
+
+        for idx, tr in enumerate(leave_check, start=1):
+            member = _tr_member(str(tr.transition_id or "").strip())
+            if not member:
+                continue
+            rows.append(
+                {
+                    "result_member": "LEV2.MEMORY.CheckRequestMemory",
+                    "condition_expression": member,
+                    "condition_operands": [member],
+                    "coil_mode": "reset",
+                    "network_title": "LEV2 tracking check request (reset)",
+                    "comment": f"Reset CheckRequestMemory on {tr.source_step}->{tr.target_step}",
+                    "network_index": 16100 + idx,
+                }
+            )
+
+        for idx, tr in enumerate(leave_check, start=1):
+            tid_upper = str(tr.transition_id or "").upper()
+            if "OK" not in tid_upper or "NOT" in tid_upper:
+                continue
+            member = _tr_member(str(tr.transition_id or "").strip())
+            if not member:
+                continue
+            rows.append(
+                {
+                    "result_member": "LEV2.ITF.Check_OK",
+                    "condition_expression": member,
+                    "condition_operands": [member],
+                    "coil_mode": "",
+                    "network_title": "LEV2 check ok",
+                    "comment": f"Derived Check_OK from {tr.transition_id}",
+                    "network_index": 16200 + idx,
+                }
+            )
+
+        for idx, tr in enumerate(leave_check, start=1):
+            tid_upper = str(tr.transition_id or "").upper()
+            if "NOT" not in tid_upper:
+                continue
+            member = _tr_member(str(tr.transition_id or "").strip())
+            if not member:
+                continue
+            rows.append(
+                {
+                    "result_member": "LEV2.ITF.Check_not_OK",
+                    "condition_expression": member,
+                    "condition_operands": [member],
+                    "coil_mode": "",
+                    "network_title": "LEV2 check not ok",
+                    "comment": f"Derived Check_not_OK from {tr.transition_id}",
+                    "network_index": 16250 + idx,
+                }
+            )
+
+        for idx, tr in enumerate(leave_transfer, start=1):
+            tid_upper = str(tr.transition_id or "").upper()
+            guard_upper = str(tr.guard_expression or "").upper()
+            if "TRANSFER_OK" not in tid_upper and "TRANSFER_OK" not in guard_upper:
+                continue
+            member = _tr_member(str(tr.transition_id or "").strip())
+            if not member:
+                continue
+            rows.append(
+                {
+                    "result_member": "LEV2.ITF.Transfer_OK",
+                    "condition_expression": member,
+                    "condition_operands": [member],
+                    "coil_mode": "",
+                    "network_title": "LEV2 transfer ok",
+                    "comment": f"Derived Transfer_OK from {tr.transition_id}",
+                    "network_index": 16300 + idx,
+                }
+            )
     hmi_members = _collect_hmi_command_alias_members(ir)
     auto_cmd = "T1_Auto" if "T1_Auto" in hmi_members else ("T1_auto" if "T1_auto" in hmi_members else "")
     man_cmd = "T1_Manual" if "T1_Manual" in hmi_members else ""
