@@ -3017,10 +3017,14 @@ def _build_graph_topology(ir: AwlIR, *, target_profile_name: str = "default") ->
     profile = str(target_profile_name or "default").strip().lower()
 
     transition_nodes: list[GraphTransitionNode] = []
+    transition_node_keys: list[tuple[str, str, str]] = []
+    explicit_numbered_transition_keys: set[tuple[str, str, str]] = set()
     for index, transition in enumerate(working_transitions, start=1):
         raw_id = str(transition.transition_id or "").strip()
         transition_no = index
         name = raw_id or f"T{index}"
+        key = (raw_id.upper(), str(transition.source_step or "").upper(), str(transition.target_step or "").upper())
+        explicit_numbered = False
 
         if profile == "romania":
             # Convention: allow encoding transition number + display name in transition_id.
@@ -3031,11 +3035,15 @@ def _build_graph_topology(ir: AwlIR, *, target_profile_name: str = "default") ->
             if match:
                 transition_no = int(match.group(1))
                 name = match.group(2).strip() or name
+                explicit_numbered = True
             else:
                 match = re.match(r"^Trans(\d+)$", raw_id, flags=re.IGNORECASE)
                 if match:
                     transition_no = int(match.group(1))
                     name = raw_id
+                    explicit_numbered = True
+        if explicit_numbered:
+            explicit_numbered_transition_keys.add(key)
 
         transition_nodes.append(
             GraphTransitionNode(
@@ -3052,7 +3060,41 @@ def _build_graph_topology(ir: AwlIR, *, target_profile_name: str = "default") ->
                 ),
             )
         )
+        transition_node_keys.append(key)
     if profile == "romania":
+        transition_pairs = list(zip(transition_nodes, transition_node_keys))
+        transition_pairs.sort(key=lambda pair: pair[0].transition_no)
+        transition_nodes = [pair[0] for pair in transition_pairs]
+        transition_node_keys = [pair[1] for pair in transition_pairs]
+
+        # Ensure unique transition numbers even when some nodes carry an explicit
+        # number (e.g. `Trans7`) and others are implicitly numbered by position.
+        used_numbers: set[int] = set()
+        next_free = max((item.transition_no for item in transition_nodes), default=0) + 1
+        for node, node_key in zip(transition_nodes, transition_node_keys):
+            number = int(getattr(node, "transition_no", 0) or 0)
+            if number <= 0:
+                while next_free in used_numbers:
+                    next_free += 1
+                node.transition_no = next_free
+                used_numbers.add(next_free)
+                next_free += 1
+                continue
+            if number in used_numbers:
+                # Preserve explicit numbering as much as possible, but TIA requires
+                # transition numbers to be unique. If we hit a collision, reassign
+                # the later node to the next free number.
+                if node_key in explicit_numbered_transition_keys:
+                    warnings.append(
+                        f"Numero transizione duplicato ({number}) per '{node.name}': rinumerato per import TIA."
+                    )
+                while next_free in used_numbers:
+                    next_free += 1
+                node.transition_no = next_free
+                used_numbers.add(next_free)
+                next_free += 1
+                continue
+            used_numbers.add(number)
         transition_nodes.sort(key=lambda item: item.transition_no)
 
     next_synthetic_network = (
