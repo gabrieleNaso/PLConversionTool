@@ -320,6 +320,29 @@ Regole (derivazione generica, senza usare gli expected come sorgente):
   - `LEV2.ITF.Check not OK` deve essere TRUE nel caso complementare (transizione di ritorno/loop da TRK_CHECK);
   - `LEV2.ITF.Transfer OK` deve essere TRUE quando il transfer e' completato (minimo: quando `S101_TRK_TRANSFER` e' attivo
     o quando un flag tipo `Pipe Transfered`/`Cond move Fwd` diventa TRUE).
+- se il micro-flow tracking include anche segnali handshake (o si vede che nei reference LEV2 e' sempre cablata verso
+  blocchi esterni), allora la LEV2 deve produrre una logica **export-shaped** (pochi network stabili) invece di tante reti
+  “scaffold” scollegate. Pattern minimo (generico, con token/step variabili):
+  - **Manual movement**:
+    - `LEV2.MEMORY.Cond_move_Fwd := FW_ON AND LEV2.MEMORY.PP_Man_Mov AND <PiecePresent>`
+    - `R(LEV2.MEMORY.PP_Man_Mov)` sulla stessa condizione.
+  - **Set memory of pipe transfer (S/R)**:
+    - `S(LEV2.MEMORY.PP_Man_Mov)` quando `<PiecePresent> AND FW_ON AND EX_INITIAL`
+    - `R(LEV2.MEMORY.PP_Man_Mov)` quando `NOT EX_INITIAL`
+  - **Tracking check request memory** (OR “a 3 rami”):
+    - `LEV2.MEMORY.CheckRequestMemory := <S_TRK_CHECK>.X OR (CheckRequestMemory AND AutoON AND NOT <S_FORWARD>.X) OR <S_WAIT>.X`
+    - dove `AutoON` e' il consenso automatico (es. `MODE_AUTO_ACTIVE` oppure un tag di status sequenza).
+  - **Handshake request (HSK)**:
+    - `HSK_TABLE.HSKxx.CHECK_MODE := LEV2.MEMORY.CheckRequestMemory`
+    - `HSK_TABLE.HSKxx.HS_TRIGGER := NOT LEV2.ITF.Check_not_OK AND ( <S_FWD_TO_HOME>.X OR <S_TRK_TRANSFER>.X OR Cond_move_Fwd OR <S_MANUAL>.X )`
+    - `MOVE 0 -> HSK_L1_TO_L2.HSKxx.CustomData1` abilitato dalla stessa espressione di `HS_TRIGGER`.
+  - **Handshake result** (senza edge/TON, versione semplificata ma deterministica):
+    - `LEV2.AUX.HSK_Answer_OK := (HSK_TABLE.HSKxx.HS_OK AND NOT HSK_TABLE.HSKxx.LOCK) OR HSK_TABLE.HSKxx.L2_MOD`
+  - **Check/Transfer OK latch**:
+    - `LEV2.ITF.Check_OK := HSK_Answer_OK OR (Check_OK AND CheckRequestMemory)`
+    - `LEV2.ITF.Transfer_OK := HSK_Answer_OK OR (Transfer_OK AND HSK_TABLE.HSKxx.HS_TRIGGER)`
+  - **Bypass**:
+    - se esiste `BYPASS LEVEL2`, allora `S(LEV2.ITF.Check_OK)` e `S(LEV2.ITF.Transfer_OK)` quando bypass e' TRUE.
 - se nell’AWL compaiono segnali chiaramente LEV2 (`...LEV2...`, `ITF.*`, `HSK*`, `BYPASS LEVEL2`, …), quelle azioni/alias
   vanno in famiglia `LEV2` con ownership nel DB LEV2 (DB `17..` nel profilo).
 - se l’AWL **non contiene** indicatori LEV2 e **non** esiste tracking micro-flow, il convertitore non deve inventare logica LEV2.

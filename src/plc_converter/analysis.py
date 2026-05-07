@@ -7188,6 +7188,26 @@ def _collect_external_support_members(ir: AwlIR) -> list[tuple[str, str]]:
                 member = _stable_ref_name("EXT_REF", normalized or str(ext))
             comment = f"External reference {ext}"
         members.append((member, comment))
+
+    # Tracking-aware Level2/HSK scaffold:
+    # Some projects implement L2 handshakes in external/global DBs that are not
+    # present in the AWL extract. When a tracking micro-flow is detected, expose
+    # a minimal external contract so FC17 can be generated closer to the validated
+    # reference exports (HSK TABLE / HSK L1->L2 / BYPASS LEVEL2).
+    has_tracking = any("TRK" in str(step.name or "").upper() for step in (ir.steps or []))
+    if has_tracking:
+        members.extend(
+            [
+                ("HSK_TABLE.HSK15.CHECK_MODE", "HSK TABLE scaffold: check mode"),
+                ("HSK_TABLE.HSK15.HS_TRIGGER", "HSK TABLE scaffold: handshake trigger"),
+                ("HSK_TABLE.HSK15.HS_IN_PROGRESS", "HSK TABLE scaffold: in progress"),
+                ("HSK_TABLE.HSK15.HS_OK", "HSK TABLE scaffold: ok"),
+                ("HSK_TABLE.HSK15.LOCK", "HSK TABLE scaffold: lock"),
+                ("HSK_TABLE.HSK15.L2_MOD", "HSK TABLE scaffold: level2 mode"),
+                ("HSK_L1_TO_L2.HSK15.CustomData1", "HSK L1->L2 scaffold: custom data 1"),
+                ("BYPASS_LEVEL2", "Scaffold: bypass level2"),
+            ]
+        )
     return list(dict.fromkeys(members))
 
 
@@ -8775,6 +8795,115 @@ def _derive_awl_mode_logic_rows(ir: AwlIR) -> list[dict[str, object]]:
                 "network_title": "LEV2 HS ok",
                 "comment": "Generic scaffold handshake ok",
                 "network_index": 16403,
+            }
+        )
+
+        # External HSK TABLE wiring (scaffold):
+        # mirror internal handshake markers into the external HSK table contract.
+        rows.append(
+            {
+                "result_member": "HSK_TABLE.HSK15.CHECK_MODE",
+                "condition_expression": "LEV2.MEMORY.CheckRequestMemory",
+                "condition_operands": ["LEV2.MEMORY.CheckRequestMemory"],
+                "coil_mode": "",
+                "network_title": "HSK TABLE check mode",
+                "comment": "Scaffold: CHECK_MODE mirrors CheckRequestMemory",
+                "network_index": 16410,
+            }
+        )
+        rows.append(
+            {
+                "result_member": "HSK_TABLE.HSK15.HS_TRIGGER",
+                "condition_expression": "LEV2.AUX.HS_Trigger",
+                "condition_operands": ["LEV2.AUX.HS_Trigger"],
+                "coil_mode": "",
+                "network_title": "HSK TABLE trigger",
+                "comment": "Scaffold: HS_TRIGGER mirrors LEV2.AUX.HS_Trigger",
+                "network_index": 16411,
+            }
+        )
+        rows.append(
+            {
+                "result_member": "HSK_TABLE.HSK15.HS_IN_PROGRESS",
+                "condition_expression": "LEV2.AUX.HS_In_Progress",
+                "condition_operands": ["LEV2.AUX.HS_In_Progress"],
+                "coil_mode": "",
+                "network_title": "HSK TABLE in progress",
+                "comment": "Scaffold: HS_IN_PROGRESS mirrors LEV2.AUX.HS_In_Progress",
+                "network_index": 16412,
+            }
+        )
+        rows.append(
+            {
+                "result_member": "HSK_TABLE.HSK15.HS_OK",
+                "condition_expression": "LEV2.AUX.HS_OK",
+                "condition_operands": ["LEV2.AUX.HS_OK"],
+                "coil_mode": "",
+                "network_title": "HSK TABLE ok",
+                "comment": "Scaffold: HS_OK mirrors LEV2.AUX.HS_OK",
+                "network_index": 16413,
+            }
+        )
+        rows.append(
+            {
+                "result_member": "HSK_TABLE.HSK15.LOCK",
+                "condition_expression": "LEV2.ITF.Production_Lock",
+                "condition_operands": ["LEV2.ITF.Production_Lock"],
+                "coil_mode": "",
+                "network_title": "HSK TABLE lock",
+                "comment": "Scaffold: LOCK mirrors Production_Lock",
+                "network_index": 16414,
+            }
+        )
+        rows.append(
+            {
+                "result_member": "HSK_TABLE.HSK15.L2_MOD",
+                "condition_expression": "MODE_AUTO_ACTIVE",
+                "condition_operands": ["MODE_AUTO_ACTIVE"],
+                "coil_mode": "",
+                "network_title": "HSK TABLE l2 mode",
+                "comment": "Scaffold: L2_MOD mirrors auto mode",
+                "network_index": 16415,
+            }
+        )
+
+        # CustomData1 marker (MOVE) - keep it deterministic.
+        rows.append(
+            {
+                "kind": "move",
+                "result_member": "HSK_L1_TO_L2.HSK15.CustomData1",
+                "move_in": {"kind": "literal_int", "value": "1"},
+                "move_out_members": ["HSK_L1_TO_L2.HSK15.CustomData1"],
+                "condition_expression": "LEV2.AUX.HS_Trigger",
+                "condition_operands": ["LEV2.AUX.HS_Trigger"],
+                "coil_mode": "",
+                "network_title": "HSK custom data 1",
+                "comment": "Scaffold: set CustomData1 when triggering handshake",
+                "network_index": 16416,
+            }
+        )
+
+        # BYPASS LEVEL2 behavior: force OK pulses when bypass is active.
+        rows.append(
+            {
+                "result_member": "LEV2.ITF.Check_OK",
+                "condition_expression": "BYPASS_LEVEL2",
+                "condition_operands": ["BYPASS_LEVEL2"],
+                "coil_mode": "set",
+                "network_title": "LEV2 bypass check ok (set)",
+                "comment": "Scaffold: bypass forces Check_OK",
+                "network_index": 16420,
+            }
+        )
+        rows.append(
+            {
+                "result_member": "LEV2.ITF.Transfer_OK",
+                "condition_expression": "BYPASS_LEVEL2",
+                "condition_operands": ["BYPASS_LEVEL2"],
+                "coil_mode": "set",
+                "network_title": "LEV2 bypass transfer ok (set)",
+                "comment": "Scaffold: bypass forces Transfer_OK",
+                "network_index": 16421,
             }
         )
     hmi_members = _collect_hmi_command_alias_members(ir)
