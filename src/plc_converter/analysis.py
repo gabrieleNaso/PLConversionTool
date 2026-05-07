@@ -3866,6 +3866,17 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
     guard_members_by_category = _collect_transition_guard_members_by_category(ir)
     timer_trigger_members_by_category = _collect_timer_trigger_support_members_by_category(ir)
     member_datatypes = _support_operand_datatypes(ir)
+    # Step alias hints: allow logic rows to reference canonical step tokens (Sxx)
+    # while still serializing the actual GRAPH step struct name (e.g. S29_Manual).
+    # Stored in `member_datatypes` with a reserved prefix so `_resolve_logic_symbol_path`
+    # can resolve `Sxx` / `Sxx.X` to the right struct.
+    for step in ir.steps or []:
+        step_name = str(step.name or "").strip()
+        match = re.match(r"^(S\d+)", step_name, flags=re.IGNORECASE)
+        if not match:
+            continue
+        canonical = _canonicalize_step_token(match.group(1).upper())
+        member_datatypes.setdefault(f"__STEP_ALIAS__:{canonical}", step_name)
     operand_notes = _support_operand_notes(ir)
     timer_configs = _support_timer_configs(ir)
     derived_actions = (
@@ -5321,9 +5332,21 @@ def _resolve_logic_symbol_path(
     token = str(operand or "").strip()
     if not token:
         return "", []
+    STEP_ALIAS_PREFIX = "__STEP_ALIAS__:"
+    step_aliases: dict[str, str] = {}
+    for key, value in (member_datatypes or {}).items():
+        raw_key = str(key or "")
+        if not raw_key.startswith(STEP_ALIAS_PREFIX):
+            continue
+        canonical = raw_key[len(STEP_ALIAS_PREFIX) :].strip().upper()
+        alias = str(value or "").strip()
+        if canonical and alias:
+            step_aliases[canonical] = alias
     # Step symbols are structs in the GRAPH runtime; use the active bit leaf (`.X`).
     if STEP_RE.fullmatch(token):
-        base_name = _support_member_name(token, "", strict_excel_mode=True)
+        canonical = _canonicalize_step_token(token.upper())
+        aliased = step_aliases.get(canonical.upper(), "")
+        base_name = _support_member_name(aliased or canonical, "", strict_excel_mode=True)
         if not base_name:
             return "", []
         return base_name, [base_name, "X"]
@@ -5338,7 +5361,12 @@ def _resolve_logic_symbol_path(
     if not raw_parts:
         return "", []
 
-    base_name = _support_member_name(raw_parts[0], "", strict_excel_mode=True)
+    base_raw = raw_parts[0]
+    if re.fullmatch(r"S0*\d+", base_raw, flags=re.IGNORECASE):
+        canonical = _canonicalize_step_token(base_raw.upper())
+        aliased = step_aliases.get(canonical.upper(), "")
+        base_raw = aliased or canonical
+    base_name = _support_member_name(base_raw, "", strict_excel_mode=True)
     if not base_name:
         return "", []
 
@@ -7027,14 +7055,25 @@ def _build_support_symbol_home_db_map(ir: AwlIR) -> dict[str, str]:
     graph_db_name = f"{DB_FAMILY_PREFIX['graph']}_{ir.sequence_name}_GRAPH_DB"
     for step in ir.steps or []:
         step_name = str(step.name or "").strip()
-        if not step_name or not STEP_RE.fullmatch(step_name):
+        if not step_name:
             continue
-        base_member = _support_member_name(step_name, "", strict_excel_mode=True)
-        if base_member:
+        # Steps can carry descriptive suffixes in the IR (e.g. "S29_Manual").
+        # Bind the canonical step token (Sxx) to the GRAPH runtime DB so that
+        # any expression referencing "Sxx" or "Sxx.X" resolves correctly.
+        match = re.match(r"^(S\d+)", step_name, flags=re.IGNORECASE)
+        if not match:
+            continue
+        canonical = _canonicalize_step_token(match.group(1).upper())
+        canonical_member = _support_member_name(canonical, "", strict_excel_mode=True)
+        full_member = _support_member_name(step_name, "", strict_excel_mode=True)
+        if canonical_member:
             # Do not gate on `allowed` here: the GRAPH runtime DB is not part of the
             # support DB catalogs, but we still need stable symbol resolution.
-            mapping[base_member] = graph_db_name
-            mapping[f"{base_member}.X"] = graph_db_name
+            mapping[canonical_member] = graph_db_name
+            mapping[f"{canonical_member}.X"] = graph_db_name
+        if full_member:
+            mapping[full_member] = graph_db_name
+            mapping[f"{full_member}.X"] = graph_db_name
     return mapping
 
 
@@ -7203,6 +7242,14 @@ def _collect_mode_support_members(ir: AwlIR) -> list[tuple[str, str]]:
                 ("LEV2.ITF.Status", "LEV2 interface: status word"),
                 ("LEV2.MEMORY.CheckRequestMemory", "LEV2 memory: check request latch"),
                 ("LEV2.MEMORY.Cond_move_Fwd", "LEV2 memory: condition move forward"),
+                ("LEV2.MEMORY.PP_Man_Mov", "LEV2 memory: manual move enable latch"),
+                ("LEV2.AUX.HSK_Answer_OK", "LEV2 aux: handshake answer ok (scaffold)"),
+                ("LEV2.AUX.HS_Trigger", "LEV2 aux: handshake trigger (scaffold)"),
+                ("LEV2.AUX.HS_In_Progress", "LEV2 aux: handshake in progress (scaffold)"),
+                ("LEV2.AUX.HS_OK", "LEV2 aux: handshake ok (scaffold)"),
+                ("LEV2.AUX.LOCK", "LEV2 aux: handshake lock (scaffold)"),
+                ("LEV2.AUX.L2_MOD", "LEV2 aux: level2 mode (scaffold)"),
+                ("LEV2.AUX.CHECK_MODE", "LEV2 aux: check mode (scaffold)"),
             ]
         )
     if ir.manual_logic_networks:
@@ -8507,6 +8554,22 @@ def _derive_awl_mode_logic_rows(ir: AwlIR) -> list[dict[str, object]]:
         def _tr_member(tr_id: str) -> str:
             return _support_member_name(tr_id, "TR", strict_excel_mode=True)
 
+        def _step_x_terms(*, include_keywords: tuple[str, ...]) -> list[str]:
+            terms: list[str] = []
+            for step in (ir.steps or []):
+                name = str(step.name or "").strip()
+                upper = name.upper()
+                if not name:
+                    continue
+                if not any(keyword in upper for keyword in include_keywords):
+                    continue
+                match = re.match(r"^(S\\d+)", name, flags=re.IGNORECASE)
+                if not match:
+                    continue
+                canonical = _canonicalize_step_token(match.group(1).upper())
+                terms.append(f"{canonical}.X")
+            return _dedupe_list(terms)
+
         enter_check = [
             tr
             for tr in (ir.transitions or [])
@@ -8600,22 +8663,120 @@ def _derive_awl_mode_logic_rows(ir: AwlIR) -> list[dict[str, object]]:
         for idx, tr in enumerate(leave_transfer, start=1):
             tid_upper = str(tr.transition_id or "").upper()
             guard_upper = str(tr.guard_expression or "").upper()
-            if "TRANSFER_OK" not in tid_upper and "TRANSFER_OK" not in guard_upper:
-                continue
             member = _tr_member(str(tr.transition_id or "").strip())
             if not member:
                 continue
+            # Best-effort: projects vary a lot in how they name the "leave transfer"
+            # transition(s). When we do have an explicit OK/NOT_OK marker, use it.
+            # Otherwise, treat leaving the TRK_TRANSFER step as an OK pulse to avoid
+            # an empty LEV2 FC for tracking-enabled sequences.
+            is_not_ok = ("NOT" in tid_upper) or ("NOT_OK" in tid_upper) or ("NOT_OK" in guard_upper) or ("NOK" in tid_upper)
+            result = "LEV2.ITF.Transfer_not_OK" if is_not_ok else "LEV2.ITF.Transfer_OK"
+            title = "LEV2 transfer not ok" if is_not_ok else "LEV2 transfer ok"
             rows.append(
                 {
-                    "result_member": "LEV2.ITF.Transfer_OK",
+                    "result_member": result,
                     "condition_expression": member,
                     "condition_operands": [member],
                     "coil_mode": "",
-                    "network_title": "LEV2 transfer ok",
-                    "comment": f"Derived Transfer_OK from {tr.transition_id}",
+                    "network_title": title,
+                    "comment": f"Derived {result.split('.')[-1]} from {tr.transition_id}",
                     "network_index": 16300 + idx,
                 }
             )
+
+        # Additional generic LEV2 scaffold (tracking-aware):
+        # - `Cond_move_Fwd`: true while in forward-related steps (or in auto during forward-like steps).
+        # - `PP_Man_Mov`: latch during manual mode when forward condition is true.
+        fwd_terms = _step_x_terms(include_keywords=("FWD", "FORWARD"))
+        if not fwd_terms:
+            fwd_terms = _step_x_terms(include_keywords=("FWD_TO_HOME", "FWD", "FORWARD"))
+        if fwd_terms:
+            expr = " OR ".join(fwd_terms)
+            rows.append(
+                {
+                    "result_member": "LEV2.MEMORY.Cond_move_Fwd",
+                    "condition_expression": f"({expr})",
+                    "condition_operands": list(fwd_terms),
+                    "coil_mode": "",
+                    "network_title": "LEV2 condition move forward",
+                    "comment": "Derived from forward-like GRAPH steps (generic scaffold)",
+                    "network_index": 16380,
+                }
+            )
+
+            # PP_Man_Mov set/reset
+            rows.append(
+                {
+                    "result_member": "LEV2.MEMORY.PP_Man_Mov",
+                    "condition_expression": "(MODE_MANUAL_ACTIVE AND LEV2.MEMORY.Cond_move_Fwd)",
+                    "condition_operands": ["MODE_MANUAL_ACTIVE", "LEV2.MEMORY.Cond_move_Fwd"],
+                    "coil_mode": "set",
+                    "network_title": "LEV2 manual move enable (set)",
+                    "comment": "Scaffold latch: enable manual move during forward condition",
+                    "network_index": 16381,
+                }
+            )
+            rows.append(
+                {
+                    "result_member": "LEV2.MEMORY.PP_Man_Mov",
+                    "condition_expression": "NOT MODE_MANUAL_ACTIVE",
+                    "condition_operands": ["MODE_MANUAL_ACTIVE"],
+                    "coil_mode": "reset",
+                    "network_title": "LEV2 manual move enable (reset)",
+                    "comment": "Reset when leaving manual mode (generic scaffold)",
+                    "network_index": 16382,
+                }
+            )
+
+        # Minimal handshake scaffold inside DB17 (no external HSK blocks available):
+        # - Trigger when entering transfer while check request is latched.
+        # - In progress mirrors trigger (pulse-like).
+        # - Answer ok mirrors `Check_OK` and/or `Transfer_OK`.
+        rows.append(
+            {
+                "result_member": "LEV2.AUX.HS_Trigger",
+                "condition_expression": "(LEV2.MEMORY.CheckRequestMemory AND LEV2.ITF.Transfer_OK)",
+                "condition_operands": ["LEV2.MEMORY.CheckRequestMemory", "LEV2.ITF.Transfer_OK"],
+                "coil_mode": "",
+                "network_title": "LEV2 HS trigger",
+                "comment": "Generic scaffold handshake trigger",
+                "network_index": 16400,
+            }
+        )
+        rows.append(
+            {
+                "result_member": "LEV2.AUX.HS_In_Progress",
+                "condition_expression": "LEV2.AUX.HS_Trigger",
+                "condition_operands": ["LEV2.AUX.HS_Trigger"],
+                "coil_mode": "",
+                "network_title": "LEV2 HS in progress",
+                "comment": "Generic scaffold handshake in progress",
+                "network_index": 16401,
+            }
+        )
+        rows.append(
+            {
+                "result_member": "LEV2.AUX.HSK_Answer_OK",
+                "condition_expression": "(LEV2.ITF.Check_OK OR LEV2.ITF.Transfer_OK)",
+                "condition_operands": ["LEV2.ITF.Check_OK", "LEV2.ITF.Transfer_OK"],
+                "coil_mode": "",
+                "network_title": "LEV2 HS answer ok",
+                "comment": "Generic scaffold handshake result",
+                "network_index": 16402,
+            }
+        )
+        rows.append(
+            {
+                "result_member": "LEV2.AUX.HS_OK",
+                "condition_expression": "LEV2.AUX.HSK_Answer_OK",
+                "condition_operands": ["LEV2.AUX.HSK_Answer_OK"],
+                "coil_mode": "",
+                "network_title": "LEV2 HS ok",
+                "comment": "Generic scaffold handshake ok",
+                "network_index": 16403,
+            }
+        )
     hmi_members = _collect_hmi_command_alias_members(ir)
     auto_cmd = "T1_Auto" if "T1_Auto" in hmi_members else ("T1_auto" if "T1_auto" in hmi_members else "")
     man_cmd = "T1_Manual" if "T1_Manual" in hmi_members else ""
@@ -8716,30 +8877,11 @@ def _derive_awl_action_logic_rows(ir: AwlIR) -> dict[str, list[dict[str, object]
             return "hmi"
         if "ALARM" in alias_upper or "ALM" in alias_upper:
             return "diag"
-        # Command-like signals: treat as IO/OUTPUT.
-        command_markers = (
-            "CMD",
-            "COMMAND",
-            "START",
-            "STOP",
-            "ENABLE",
-            "RESET",
-            "SET",
-            "REQ",
-            "REQUEST",
-            "FW",
-            "FWD",
-            "BW",
-            "BWD",
-            "MOVE",
-            "OPEN",
-            "CLOSE",
-            "LOCK",
-            "UNLOCK",
-            "ON",
-            "OFF",
-        )
-        if leaf.endswith("_ON") or leaf.endswith("_OFF") or any(marker in leaf for marker in command_markers):
+        # Only classify sequencer-DB members as IO when the *symbolic path* clearly
+        # points to an IO contract (e.g. "... I/O.DI.*" / "... I/O.DO.*").
+        # Many projects keep command-like latches inside the sequencer DB (FW_ON/BW_ON/...),
+        # but those must stay in AUX (they are internal state, not physical IO).
+        if any(token in alias_upper for token in ("I/O", " I_O", ".I_O.", ".IO.", ".DI.", ".DO.", " I/O ", " I-O ")):
             return "io"
         return category
 
