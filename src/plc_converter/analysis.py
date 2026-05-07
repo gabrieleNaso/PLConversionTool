@@ -5346,7 +5346,12 @@ def _resolve_logic_symbol_path(
     if STEP_RE.fullmatch(token):
         canonical = _canonicalize_step_token(token.upper())
         aliased = step_aliases.get(canonical.upper(), "")
-        base_name = _support_member_name(aliased or canonical, "", strict_excel_mode=True)
+        # IMPORTANT: when a step alias is available, it refers to the *GRAPH DB member
+        # name* (e.g. `S100_TRK CHECK`) which may contain spaces and must be preserved
+        # verbatim so FC accesses match the InstanceDB export/import contract.
+        if aliased:
+            return aliased, [aliased, "X"]
+        base_name = _support_member_name(canonical, "", strict_excel_mode=True)
         if not base_name:
             return "", []
         return base_name, [base_name, "X"]
@@ -5365,8 +5370,18 @@ def _resolve_logic_symbol_path(
     if re.fullmatch(r"S0*\d+", base_raw, flags=re.IGNORECASE):
         canonical = _canonicalize_step_token(base_raw.upper())
         aliased = step_aliases.get(canonical.upper(), "")
-        base_raw = aliased or canonical
-    base_name = _support_member_name(base_raw, "", strict_excel_mode=True)
+        # Preserve aliased GRAPH step member names verbatim (may contain spaces).
+        if aliased:
+            base_raw = aliased
+        else:
+            base_raw = canonical
+    # For step aliases (GRAPH InstanceDB member names), do not normalize: TIA exports
+    # often keep spaces in step names (e.g. `S100_TRK CHECK`) and FC accesses must
+    # match them exactly.
+    if base_raw.upper().startswith("S") and " " in base_raw and re.fullmatch(r"S0*\d+.*", base_raw, flags=re.IGNORECASE):
+        base_name = base_raw
+    else:
+        base_name = _support_member_name(base_raw, "", strict_excel_mode=True)
     if not base_name:
         return "", []
 
@@ -7066,6 +7081,10 @@ def _build_support_symbol_home_db_map(ir: AwlIR) -> dict[str, str]:
         canonical = _canonicalize_step_token(match.group(1).upper())
         canonical_member = _support_member_name(canonical, "", strict_excel_mode=True)
         full_member = _support_member_name(step_name, "", strict_excel_mode=True)
+        # Also bind the *raw* IR step name verbatim (may contain spaces). This is
+        # required because TIA exports often keep spaces in GRAPH step member names
+        # (e.g. `S100_TRK CHECK`) and our logic serializer may preserve them.
+        raw_member = step_name
         if canonical_member:
             # Do not gate on `allowed` here: the GRAPH runtime DB is not part of the
             # support DB catalogs, but we still need stable symbol resolution.
@@ -7074,6 +7093,9 @@ def _build_support_symbol_home_db_map(ir: AwlIR) -> dict[str, str]:
         if full_member:
             mapping[full_member] = graph_db_name
             mapping[f"{full_member}.X"] = graph_db_name
+        if raw_member:
+            mapping[raw_member] = graph_db_name
+            mapping[f"{raw_member}.X"] = graph_db_name
     return mapping
 
 
