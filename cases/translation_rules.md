@@ -146,6 +146,12 @@ Regola (cambio step “globale”, non legato a Sxx):
 Regola (pattern “sequenziatore” osservato nei casi):
 - oltre ai passi “di processo” (`S01`, `S02`, ...), il GRAPH include anche passi standard di progetto come `S28_END`, `S30_Fault`, `S100_TRK CHECK`, `S101_TRK TRANSFER` con transizioni dedicate (tracking/ritorni).
 
+Regola (transizioni GRAPH non “vuote”):
+- evitare `guard_expression: TRUE` per transizioni che nei reference hanno contatti/condizioni: in TIA questo produce transizioni “senza logica” e altera il graph.
+- preferire una guardia **nominale** (es. `T_AutoSemiSafeCond`, `Check_piece_presence`, `T_Back_To_Begin_Safe`) e mettere la logica reale in `support_logic` categoria `transitions` che pilota quel membro.
+  - questo replica il pattern dei progetti TIA dove il GRAPH usa contatti semplici e la logica dettagliata sta in una FC “Transitions”.
+- se una transizione ha due alias (nome con spazi e versione con underscore), mantenere **entrambi** in `support_logic` coerenti (stessa `condition_expression`) per non perdere compatibilità con naming diversi.
+
 Regola (quando l’expected include XML, per validare l’IR):
 - se in `cases/expected_output/...` sono presenti gli XML (es. `05 ... Sequence.xml`), per costruire l’IR manuale le guardie e le negazioni vanno ricostruite **leggendo i contatti del FlgNet** nella transizione (Access + Contact + Negated), non solo dal testo AWL.
 

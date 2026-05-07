@@ -3045,14 +3045,24 @@ def _build_graph_topology(ir: AwlIR, *, target_profile_name: str = "default") ->
         if explicit_numbered:
             explicit_numbered_transition_keys.add(key)
 
+        guard_expression = str(transition.guard_expression or "").strip()
+        guard_operands = list(transition.guard_operands or [])
+        # If no guard information is available (common when the AWL extract only
+        # contains "step request" writes and the boolean transition conditions are
+        # computed elsewhere), avoid emitting an empty GRAPH transition.
+        # Fallback to the dedicated transition member hosted in the Transitions DB.
+        if (not guard_expression or guard_expression.upper() == "TRUE") and not guard_operands:
+            guard_expression = _support_member_name(name, "TR", strict_excel_mode=ir.strict_operand_catalog)
+            guard_operands = [guard_expression] if guard_expression else []
+
         transition_nodes.append(
             GraphTransitionNode(
                 name=name,
                 transition_no=transition_no,
                 source_step=transition.source_step,
                 target_step=transition.target_step,
-                guard_expression=transition.guard_expression or "TRUE",
-                guard_operands=list(transition.guard_operands or []),
+                guard_expression=guard_expression or "TRUE",
+                guard_operands=guard_operands,
                 network_index=transition.network_index,
                 db_block_name=_transitions_db_block_name(ir),
                 db_member_name=_support_member_name(
