@@ -218,6 +218,23 @@ Da input e expected emergono famiglie ricorrenti:
 
 Regola: l’output deve segmentare e serializzare per famiglia come da reference del caso.
 
+### 6.1 DB di sequenza: distinguere `state` vs `command`
+
+Nei sorgenti AWL reali è comune che **lo stesso DB di sequenza** contenga sia:
+- bit di **stato/memoria** (da trattare come `aux`), sia
+- bit di **comando/attuatore** (da trattare come `output`/`io`, cioè logica nella FC Output).
+
+Regola generale (estrazione AWL -> IR):
+- la sola informazione “è nel DB sequenza” **non basta** per decidere la famiglia;
+- se il simbolo/alias del member indica un comando (marker tipici: `*_ON`, `*_OFF`, `CMD`, `START`, `STOP`, `ENABLE`,
+  `FW/FWD`, `BW/BWD`, `MOVE`, `OPEN`, `CLOSE`, `LOCK/UNLOCK`, `REQ/REQUEST`), allora il target è **famiglia output/io**
+  anche se l’address è `DB<seq>.DBX...`;
+- se il simbolo/alias indica contratti L2 (`LEV2/LV2`, `HSK`), il target è **famiglia LEV2** (`mode` nel support FC).
+
+Motivazione:
+- evita che comandi finiscano “schiacciati” come memorie AUX e che le FC `Output/LEV2` risultino artificialmente vuote,
+  pur avendo la logica presente nel sorgente.
+
 ---
 
 ## 7) Derivare gli output “di progetto” (solo da AWL, usando i casi come regole)

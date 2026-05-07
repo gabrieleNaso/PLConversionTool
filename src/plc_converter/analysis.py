@@ -2433,6 +2433,14 @@ def _freeze_ir_for_json_pipeline(ir: AwlIR) -> AwlIR:
     aux_logic = derived_actions.get("aux", [])
     transitions_logic = derived_actions.get("transitions", [])
     io_logic = derived_actions.get("io", [])
+    # Keep OUTPUT logic rows separate from IO DB members:
+    # - `io` is the support GlobalDB contract for DI/DO tags,
+    # - `output` is the support FC (LAD) that drives those tags.
+    #
+    # The AWL-derived action extractor classifies physical outputs as `io`;
+    # during freezing we mirror them into the `output` category so the JSON
+    # pipeline (IR JSON -> XML) can keep a stable sheet-like separation.
+    output_logic = list(io_logic)
     mode_logic = _derive_awl_mode_logic_rows(ir)
 
     # Ensure no references to steps outside the derived GRAPH topology leak into support FC logic.
@@ -2441,6 +2449,7 @@ def _freeze_ir_for_json_pipeline(ir: AwlIR) -> AwlIR:
     _sanitize_logic_rows_for_graph_steps(aux_logic)
     _sanitize_logic_rows_for_graph_steps(transitions_logic)
     _sanitize_logic_rows_for_graph_steps(io_logic)
+    _sanitize_logic_rows_for_graph_steps(output_logic)
     _sanitize_logic_rows_for_graph_steps(mode_logic)
 
     # Ensure at least one logic row per transition.
@@ -2651,6 +2660,7 @@ def _freeze_ir_for_json_pipeline(ir: AwlIR) -> AwlIR:
         *[{"category": "aux", **row} for row in aux_logic],
         *[{"category": "transitions", **row} for row in transitions_logic],
         *[{"category": "io", **row} for row in io_logic],
+        *[{"category": "output", **row} for row in output_logic],
         *[{"category": "mode", **row} for row in mode_logic],
     ]
 
@@ -8636,6 +8646,61 @@ def _derive_awl_action_logic_rows(ir: AwlIR) -> dict[str, list[dict[str, object]
         "external": [],
     }
 
+    def _category_for_store_target(normalized_operand: str) -> str:
+        """
+        Classify a store target (S/R/= or MOVE target) into a support family.
+
+        We start from the generic address-based classifier, then refine using
+        alias hints (symbolic name) when the target lives inside the sequencer DB.
+        This is needed because many projects keep both "state" and "commands"
+        inside the same DB, but in the target bundle commands must end up in the
+        OUTPUT support FC (and in the IO DB contract), while state remains AUX.
+        """
+        category = _support_category_for_guard_operand(normalized_operand, sequence_db_no=sequence_db_no)
+        if category != "aux":
+            return category
+        if sequence_db_no is None:
+            return category
+        seq_prefix = f"DB{int(sequence_db_no)}."
+        if not normalized_operand.upper().startswith(seq_prefix.upper()):
+            return category
+        alias = operand_aliases.get(normalized_operand.upper(), "")
+        alias_upper = alias.upper()
+        leaf = alias_upper.split(".")[-1].strip() if alias_upper else ""
+        # Direct family hints from symbolic path.
+        if "LEV2" in alias_upper or "LV2" in alias_upper:
+            return "mode"
+        if "HMI" in alias_upper:
+            return "hmi"
+        if "ALARM" in alias_upper or "ALM" in alias_upper:
+            return "diag"
+        # Command-like signals: treat as IO/OUTPUT.
+        command_markers = (
+            "CMD",
+            "COMMAND",
+            "START",
+            "STOP",
+            "ENABLE",
+            "RESET",
+            "SET",
+            "REQ",
+            "REQUEST",
+            "FW",
+            "FWD",
+            "BW",
+            "BWD",
+            "MOVE",
+            "OPEN",
+            "CLOSE",
+            "LOCK",
+            "UNLOCK",
+            "ON",
+            "OFF",
+        )
+        if leaf.endswith("_ON") or leaf.endswith("_OFF") or any(marker in leaf for marker in command_markers):
+            return "io"
+        return category
+
     def _network_label(network: AwlNetwork) -> str:
         title = str(network.title or "").strip()
         # User requested to keep FC comments empty and rely only on the network title.
@@ -8985,7 +9050,7 @@ def _derive_awl_action_logic_rows(ir: AwlIR) -> dict[str, list[dict[str, object]
                 continue
             if not _is_address_like_operand(normalized) and not normalized.startswith("DB"):
                 continue
-            category = _support_category_for_guard_operand(normalized, sequence_db_no=sequence_db_no)
+            category = _category_for_store_target(normalized)
             result_member = _map_symbol(raw_operand, network.index)
             if not result_member:
                 continue
