@@ -35,7 +35,9 @@ Nota importante:
 - **Stabilita'**: il naming deve essere deterministico (stesso input -> stessi simboli).
 - **Allineamento**: simboli referenziati nel `FlgNet` devono esistere e avere naming identico tra FB/DB.
 - **Evitare ambiguita'**: niente acronimi non condivisi; preferire naming impiantistico.
-- **Workflow Excel (strict DB)**: la logica transizioni GRAPH puo' referenziare operandi completi, ma la dichiarazione member DB deve seguire il catalogo `operands` del file Excel (e categorie derivate), evitando inferenze non dichiarate.
+- **Workflow strict DB (Excel o IR JSON)**: la logica transizioni GRAPH puo' referenziare operandi completi, ma la dichiarazione member DB deve seguire il catalogo strict:
+  - Excel: foglio `operands`;
+  - IR JSON: `operand_catalog` (con `strict_operand_catalog: true`) + dichiarazioni esplicite via `support_members`/`operand_categories`.
 
 ## Convenzioni logiche AWL -> Guard XML
 - **Operatori booleani**:

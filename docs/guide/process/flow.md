@@ -20,11 +20,16 @@ Il convertitore non deve mescolare questi piani: il target finale resta `V20 / G
 - Il backend legge il file AWL e lo passa al core converter come stringa (`awlSource`).
 - Quando in `work/input/` sono presenti più blocchi correlati (es. FC sequenza + FC runtime chiamate), il tool può eseguire un'analisi **di progetto**: indicizza i blocchi disponibili e prova a risolvere le dipendenze `CALL` durante l'analisi del blocco principale.
 
-### Variante: input via Codex
-Quando descrivi a Codex il GRAPH/comportamento:
-1. Codex traduce la richiesta in un input strutturato (AWL o parametri compatibili col core converter).
-2. Salva il sorgente in `work/input/` oppure invia `awlSource` via API.
-3. Il flusso resta identico: analisi -> IR -> XML.
+### Variante: input via Codex/AI (AI-first)
+Quando usi Codex/AI come “interprete” dell'AWL:
+1. Codex/AI analizza il sorgente AWL e costruisce direttamente l'IR (JSON) secondo le regole e i casi.
+2. Salva l’IR in `work/input/ir_json/`.
+3. Il tool viene usato solo per `IR JSON -> XML` (`make gen-ir ...`).
+
+Nota strict:
+- se l’IR ha `strict_operand_catalog: true`, ogni variabile usata nelle espressioni deve essere:
+  - presente in `operand_catalog`;
+  - dichiarata nel DB owner (tipicamente aggiunta in `support_members` con la `category` corretta).
 
 ## 2) Analisi e IR (Python)
 

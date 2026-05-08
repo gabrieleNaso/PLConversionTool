@@ -1,4 +1,4 @@
-Specifica master consolidata del 04-05-2026
+Specifica master consolidata del 08-05-2026
 per le regole di traduzione e generazione XML
 AWL / Excel -> IR -> GRAPH / GlobalDB / FC LAD per TIA Portal V20
 
@@ -20,6 +20,10 @@ Le Parti VII-IX definiscono la grammatica XML consolidata, il template operativo
 Nota operativa (workflow): l’IR non deve essere necessariamente prodotto da un parser AWL automatico. Nel flusso AI-first
 e' ammesso (e spesso consigliato) produrre/curare l’IR JSON manualmente (Codex/AI) partendo da AWL e dagli expected;
 il convertitore resta comunque responsabile solo della fase `IR -> XML` e della validazione di coerenza del bundle.
+
+Nota hard (strict catalog):
+- quando nell’IR JSON e' attivo `strict_operand_catalog: true`, `operand_catalog` diventa vincolante (equivalente concettuale del foglio Excel `operands`);
+- ogni leaf usata nelle logiche (`support_logic.condition_expression`, guardie transizioni, reti FC) deve comparire in `operand_catalog` e deve risultare dichiarata nel DB owner (tipicamente via `support_members` o `operand_categories`).
 
 ---
 
@@ -884,6 +888,14 @@ AWL / Excel
 ```
 
 Non è ammesso generare logiche divergenti tra `FC14`, `DB14` e `GRAPH`.
+
+### 27-ter. Regola hard: niente operandi “non dichiarati” in strict mode
+
+Quando `strict_operand_catalog: true` e' attivo nell’IR:
+- il builder/serializer **non** deve “inventare” o auto‑aggiungere member DB fuori catalogo;
+- qualsiasi simbolo usato nelle reti della `FC14` (o nelle transizioni GRAPH) deve essere:
+  - presente in `operand_catalog`;
+  - dichiarato nel DB owner del pacchetto (io/aux/hmi/diag/external/transitions/mode) tramite dichiarazione esplicita (`support_members`) o ownership (`operand_categories`).
 
 Una transizione deve avere una sola semantica sorgente nell'IR; le rappresentazioni nei blocchi target sono materializzazioni diverse della stessa transizione e devono restare semanticamente equivalenti.
 

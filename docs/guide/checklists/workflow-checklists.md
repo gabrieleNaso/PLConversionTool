@@ -1,7 +1,7 @@
 # Checklist operative (TIA Portal V20 / GRAPH V2)
 
 Queste checklist sono da eseguire sempre prima di perdere tempo su debug casuale.
-Fonte: `docs/reference/reports/report_del_30-04-2026.md` e `docs/reference/specs/Specifica_master_traduzione_AWL_e_generazione_XML_TIA_V20_V2_29_04.md`.
+Fonte: `docs/reference/reports/report_del_08-05-2026.md` e `docs/reference/specs/Specifica_master_traduzione_AWL_e_generazione_XML_TIA_V20_V2_08_05.md`.
 
 Regola trasversale:
 - `FB GRAPH`, `GlobalDB`, `FC LAD` e ogni eventuale blocco aggiuntivo vanno verificati come pacchetto coerente.
@@ -31,6 +31,9 @@ Regola trasversale:
 - **Contratto cross-blocco**: il DB deve dichiarare tutti i member richiesti dal `GRAPH`, dalla `FC LAD` e da eventuali blocchi aggiuntivi del pacchetto, senza drift di naming.
 - **Nessun member vuoto/orfano**: evitare nomi vuoti, placeholder non collegati e simboli presenti in FC/GRAPH ma assenti dai DB.
 - **Caso Excel strict**: verificare che i member DB siano coerenti con il catalogo `operands` del file Excel, senza extra non dichiarati.
+- **Caso IR JSON strict**: se `strict_operand_catalog: true`, verificare che:
+  - ogni leaf usata in `condition_expression`/`guard_expression` compaia in `operand_catalog`;
+  - ogni leaf globale usata in FC/GRAPH sia dichiarata in un DB owner (tipicamente tramite `support_members` con `category` corretta).
 - **Qualita' naming**: evitare member vuoti o instabili; preferire alias semantici e fallback deterministici dal token/simbolo AWL (sanitizzato) in caso di ambiguita'.
 
 ## C) Checklist rapida — FC LAD importabile

@@ -308,7 +308,10 @@ Regole Excel importanti:
 - `coil_mode` per riga: `set` -> `SCoil`, `reset` -> `RCoil`, vuoto -> bobina normale (`Coil`).
 - `sequence`, `operands` e `support_fc` sono obbligatori: se manca uno di questi (o `operands`/`support_fc` sono vuoti), `generate-excel-ir` termina con errore.
 - nelle espressioni logiche (`condition_expression` / `guard_expression`) sono supportate parentesi e precedenza booleana.
-- il generatore deduce automaticamente gli operandi da `condition_expression`/`guard_expression` (non servono colonne operandi dedicate nel formato corrente).
+- il generatore deduce automaticamente gli operandi da `condition_expression`/`guard_expression` per costruire il `FlgNet` (non servono colonne operandi dedicate nel formato corrente).
+- **Strict catalog (Excel e IR JSON)**: quando e' attivo il catalogo strict (`operands` in Excel o `strict_operand_catalog: true` nell'IR JSON),
+  un simbolo che non e' presente nel catalogo non viene dichiarato in alcun DB: la rete puo' ancora “nominarlo” nel testo,
+  ma in generazione XML risultera' non risolvibile / non dichiarato (errore in compile).
 - nel GRAPH, le transition usano la logica reale dell'Excel (`condition_expression`) e non vengono ridotte a marker tipo `T1/T2`.
 - i riferimenti variabile nelle transition GRAPH sono cross-DB: ogni simbolo punta al DB owner derivato dal catalogo `operands`.
 - i blocchi supporto vengono emessi in modo completo per famiglia; un placeholder `NoData` e' ammesso solo quando la famiglia e' davvero non usata nel bundle (nessun simbolo richiesto da FB/FC/GRAPH). Se una famiglia e' referenziata (es. variabili esterne o HMI presenti), deve contenere i member richiesti.
@@ -356,6 +359,10 @@ curl -sS "http://127.0.0.1:8000/api/tia/jobs/<JOB_ID>"
 - **Excel strict DB**:
   - la logica transizioni GRAPH resta completa;
   - nei DB vengono dichiarati solo segnali presenti nel catalogo `operands` (e categorie derivate).
+- **IR JSON strict (`strict_operand_catalog: true`)**:
+  - trattare `operand_catalog` come “operands” di Excel: ogni leaf usata in `support_logic.condition_expression` deve comparire nel catalogo;
+  - la dichiarazione DB deve essere esplicita: aggiungere i leaf necessari in `support_members` con la `category` corretta (io/aux/hmi/diag/external/transitions/mode)
+    oppure fornire `operand_categories` coerenti per guidare l’owner DB.
 - **Output fisiche**:
   - sono riconosciute sia in formato `Axx(.x)` sia `Qxx(.x)` quando usate con `=`.
   - attenzione: nel modello dei casi, la `FC16 Output` non contiene solo `Q`: include anche `Seq Status.*`, interlock e comandi interni (`Memory.*`). Quando diciamo “output” del tool, intendiamo l’insieme di coil/materializzazioni di `FC16`, non solo le uscite fisiche.

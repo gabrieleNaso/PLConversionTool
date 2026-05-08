@@ -1,4 +1,4 @@
-# Report aggiornato del 04-05-2026
+# Report aggiornato del 08-05-2026
 
 ## Progetto
 Conversione di sequenziatori PLC da AWL a GRAPH in TIA Portal V20 tramite XML.
@@ -16,7 +16,7 @@ L'obiettivo di questa versione consolidata è:
 - mantenere una baseline unica, leggibile e riusabile;
 - integrare in un unico testo sia la parte di reverse engineering XML sia la parte operativa su TIA Portal Openness.
 
-Il documento va quindi usato come riferimento tecnico corrente del progetto alla data del 04-05-2026.
+Il documento va quindi usato come riferimento tecnico corrente del progetto alla data del **08-05-2026**.
 
 Nota: diverse regole operative sono state consolidate in revisioni precedenti e poi riallineate/validate nella presente revisione.
 
@@ -956,6 +956,19 @@ Quando la sorgente IR arriva da Excel con catalogo `operands`, il popolamento de
 
 Se una transizione o una rete FC usa operandi non presenti nel catalogo, il validator li segnala come non risolti: un bundle con simboli non risolti non va considerato valido per import/compile.
 
+### 32.9C Modalita' strict anche su IR JSON (AI-first)
+
+Nel flusso AI-first e' ammesso produrre un IR JSON manuale con `strict_operand_catalog: true`.
+In questo caso `operand_catalog` diventa il catalogo vincolante (equivalente concettuale del foglio Excel `operands`):
+
+- i simboli non presenti in `operand_catalog` non vengono dichiarati in alcun DB (quindi possono generare errori di compile anche se compaiono in una `condition_expression`);
+- per evitare “variabili non dichiarate”, ogni leaf globale usata in FC/GRAPH deve risultare dichiarata nel DB owner:
+  - aggiungendo un record in `support_members` con `category` corretta (io/aux/hmi/diag/external/transitions/mode),
+  - oppure fornendo `operand_categories` coerenti (ownership esplicita).
+
+Milestone validata (08-05-2026):
+- bundle `FC118` generato da IR JSON strict compila senza errori (zero errori in compilazione), dopo allineamento logica transizioni e dichiarazione esplicita dei leaf usati in `FC14 Transitions`.
+
 ### 32.10 Normalizzazione di memorie e timer
 
 I timer AWL `Txx`, i preset `S5T`, i bit di appoggio pulsati e le memorie tecniche non restano nel DB sequenza monolitico.
@@ -1067,7 +1080,7 @@ Il target corretto è:
 
 La HMI va quindi trattata come consumer del modello semantico e non come duplicazione indipendente della logica AWL.
 
-Nota operativa consolidata (04-05-2026):
+Nota operativa consolidata valida al 08-05-2026:
 
 - i member HMI possono essere gerarchici (`HMI.ST.ST Sequencer step`): il DB generator deve creare le `Struct` intermedie e le FC devono referenziare sempre il path completo (con DB owner) per evitare simboli "senza DB".
 
@@ -1171,7 +1184,7 @@ I prossimi step non sono più “far parlare il sistema con TIA”, ma:
 
 ---
 
-# PARTE F - BASELINE FINALE DEL PROGETTO AL 04-05-2026
+# PARTE F - BASELINE FINALE DEL PROGETTO AL 08-05-2026
 
 ## 38. Baseline consolidata
 
