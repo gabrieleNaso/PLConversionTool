@@ -151,6 +151,7 @@ Regola (transizioni GRAPH non “vuote”):
 - preferire una guardia **nominale** (es. `T_AutoSemiSafeCond`, `Check_piece_presence`, `T_Back_To_Begin_Safe`) e mettere la logica reale in `support_logic` categoria `transitions` che pilota quel membro.
   - questo replica il pattern dei progetti TIA dove il GRAPH usa contatti semplici e la logica dettagliata sta in una FC “Transitions”.
 - se una transizione ha due alias (nome con spazi e versione con underscore), mantenere **entrambi** in `support_logic` coerenti (stessa `condition_expression`) per non perdere compatibilità con naming diversi.
+- se `strict_operand_catalog: true`, ogni leaf usata in `condition_expression` deve comparire in `operand_catalog` (e idealmente in `operand_datatypes`) altrimenti il generatore la scarterà e la variabile risulterà “non dichiarata”.
 
 Regola (quando l’expected include XML, per validare l’IR):
 - se in `cases/expected_output/...` sono presenti gli XML (es. `05 ... Sequence.xml`), per costruire l’IR manuale le guardie e le negazioni vanno ricostruite **leggendo i contatti del FlgNet** nella transizione (Access + Contact + Negated), non solo dal testo AWL.
