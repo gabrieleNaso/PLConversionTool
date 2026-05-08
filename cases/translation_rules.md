@@ -450,6 +450,7 @@ Regole:
 - **non** espandere “Any → Manual/Emergency/Fault” su tutti i passi: queste richieste vanno modellate come **branch dal passo Init** (AltBegin).
 - quindi, quando l’AWL ha reti dedicate che forzano `Trs=29` (manuale) o `Trs=32` (emergenza) o condizioni fault/safe, mappa a transizioni **da Init** verso gli step standard (`S29_Manual`, `S32_Emergency`, `S30_Fault`, …).
 - le transizioni “back-to-begin” sono transizioni **da** `S29_Manual`/`S30_Fault`/`S32_Emergency` **a** `S01_Init` con guardia negata (`NOT Manual`, ecc.).
+- vincolo TIA GRAPH: ogni `transition_id` deve essere **unico** dentro lo stesso FB. Se per vincoli di topologia devi comunque replicare transizioni “globali” (stessa guardia su più `source_step`), riusa pure la stessa `guard_expression` (es. `T_Manual`) ma assegna id diversi (es. `T_Manual_from_<source_step>`).
 
 ### 8.6 Timer (`timers`)
 
