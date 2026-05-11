@@ -1,4 +1,3 @@
-```awl
 FC193 : Titolo:
 
 Segmento 1: Reset Alarme
