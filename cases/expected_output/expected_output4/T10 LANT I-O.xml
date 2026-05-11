@@ -1,0 +1,143 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Document>
+  <Engineering version="V20" />
+  <SW.Blocks.GlobalDB ID="0">
+    <AttributeList>
+      <AutoNumber>false</AutoNumber>
+      <HeaderAuthor>SAS</HeaderAuthor>
+      <Interface><Sections xmlns="http://www.siemens.com/automation/Openness/SW/Interface/v5">
+  <Section Name="Static">
+    <Member Name="DI" Datatype="Struct">
+      <Member Name="E353.4" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E353.4) T10-TC01: Fbk Disj Ok Ventilatoare Motoare </MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="E353.5" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E353.5) T10-TC01: Fbk Contactor On Ventilatoare Motoare </MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="E355.6" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E355.6) T10-TC01: Fbk PP1 Loading chain first pos. paralelism (1)  </MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="E355.7" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E355.7) T10-TC01: Fbk PP2 Loading chain first pos. paralelism (2)  </MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="E356.2" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E356.2) T10-TC01: Fbk PP1 Last position paralelism (1)  </MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="E356.3" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E356.3) T10-TC01: Fbk PP2 Last position paralelism (2)  </MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="E356.4" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E356.4) T10-TC01: Fbk Pos Home Step position </MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="E359.3" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E359.3) T10-TC:Incetinire Lant 1 Coada</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="E359.4" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E359.4) T10-TC:Ultima Pozitie Lant 1 Coada</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="E359.5" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E359.5) T10-TC:Incetinire Lant 2 Coada</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="E359.6" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E359.6) T10-TC:Ultima Pozitie Lant 2 Coada</MultiLanguageText>
+        </Comment>
+      </Member>
+    </Member>
+    <Member Name="DO" Datatype="Struct">
+      <Member Name="A352.2" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(A352.2) T10-TC01: Cmd CNT On Vent - Comanda contactor motor Vent Lant Transfer</MultiLanguageText>
+        </Comment>
+      </Member>
+    </Member>
+    <Member Name="Drive" Datatype="Struct">
+      <Member Name="CMD" Datatype="&quot;DRIVE_CMD_Horiz&quot;" />
+      <Member Name="STATUS" Datatype="&quot;DRIVE_STATUS_Horiz&quot;">
+        <AttributeList>
+          <BooleanAttribute Name="SetPoint" SystemDefined="true">true</BooleanAttribute>
+        </AttributeList>
+      </Member>
+      <Member Name="RD_AREA" Datatype="&quot;G120-TelegramFree8/8 READ&quot;" />
+      <Member Name="WR_AREA" Datatype="&quot;G120-TelegramFree8/8 WRITE&quot;" />
+    </Member>
+    <Member Name="Encoder" Datatype="Struct">
+      <Member Name="Lenght" Datatype="&quot;ENC_AUX&quot;" />
+      <Member Name="Lenght_DATA_RD" Datatype="&quot;TM RD&quot;">
+        <AttributeList>
+          <BooleanAttribute Name="SetPoint" SystemDefined="true">true</BooleanAttribute>
+        </AttributeList>
+      </Member>
+      <Member Name="Lenght_DATA_WR" Datatype="&quot;TM WR&quot;">
+        <AttributeList>
+          <BooleanAttribute Name="SetPoint" SystemDefined="true">true</BooleanAttribute>
+        </AttributeList>
+      </Member>
+    </Member>
+  </Section>
+</Sections></Interface>
+      <IsRetainMemResEnabled>true</IsRetainMemResEnabled>
+      <MemoryLayout>Optimized</MemoryLayout>
+      <MemoryReserve>100</MemoryReserve>
+      <Name>T10 LANT I-O</Name>
+      <Namespace />
+      <Number>1693</Number>
+      <ProgrammingLanguage>DB</ProgrammingLanguage>
+      <RetainMemoryReserve>100</RetainMemoryReserve>
+    </AttributeList>
+    <ObjectList>
+      <MultilingualText ID="1" CompositionName="Comment">
+        <ObjectList>
+          <MultilingualTextItem ID="2" CompositionName="Items">
+            <AttributeList>
+              <Culture>en-US</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+          <MultilingualTextItem ID="3" CompositionName="Items">
+            <AttributeList>
+              <Culture>it-IT</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+        </ObjectList>
+      </MultilingualText>
+      <MultilingualText ID="4" CompositionName="Title">
+        <ObjectList>
+          <MultilingualTextItem ID="5" CompositionName="Items">
+            <AttributeList>
+              <Culture>en-US</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+          <MultilingualTextItem ID="6" CompositionName="Items">
+            <AttributeList>
+              <Culture>it-IT</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+        </ObjectList>
+      </MultilingualText>
+    </ObjectList>
+  </SW.Blocks.GlobalDB>
+</Document>

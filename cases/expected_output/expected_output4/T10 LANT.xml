@@ -1,0 +1,433 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Document>
+  <Engineering version="V20" />
+  <SW.Blocks.GlobalDB ID="0">
+    <AttributeList>
+      <AutoNumber>false</AutoNumber>
+      <HeaderAuthor>SAS</HeaderAuthor>
+      <Interface><Sections xmlns="http://www.siemens.com/automation/Openness/SW/Interface/v5">
+  <Section Name="Static">
+    <Member Name="Seq Status" Datatype="Struct" Remanence="Retain">
+      <Member Name="ReadyToAuto" Datatype="Bool" />
+      <Member Name="AutoON" Datatype="Bool" />
+      <Member Name="WaitPiece" Datatype="Bool" />
+      <Member Name="Stopped" Datatype="Bool" />
+      <Member Name="Step" Datatype="Struct">
+        <Member Name="Actual" Datatype="Int" />
+        <Member Name="-1" Datatype="Int" />
+        <Member Name="-2" Datatype="Int" />
+        <Member Name="-3" Datatype="Int" />
+        <Member Name="-4" Datatype="Int" />
+        <Member Name="-5" Datatype="Int" />
+        <Member Name="-6" Datatype="Int" />
+        <Member Name="-7" Datatype="Int" />
+        <Member Name="-8" Datatype="Int" />
+        <Member Name="-9" Datatype="Int" />
+        <Member Name="Actual time" Datatype="Time_Of_Day" />
+        <Member Name="-1 Time" Datatype="Time_Of_Day" />
+        <Member Name="-2 Time" Datatype="Time_Of_Day" />
+        <Member Name="-3 Time" Datatype="Time_Of_Day" />
+        <Member Name="-4 Time" Datatype="Time_Of_Day" />
+        <Member Name="-5 Time" Datatype="Time_Of_Day" />
+        <Member Name="-6 Time" Datatype="Time_Of_Day" />
+        <Member Name="-7 Time" Datatype="Time_Of_Day" />
+        <Member Name="-8 Time" Datatype="Time_Of_Day" />
+        <Member Name="-9 Time" Datatype="Time_Of_Day" />
+      </Member>
+    </Member>
+    <Member Name="Transitions" Datatype="Struct" Remanence="Retain">
+      <Member Name="Safe" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Emergency</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Fault" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Fault</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Auto" Datatype="Bool" />
+      <Member Name="Manual" Datatype="Bool" />
+      <Member Name="Semi_Auto" Datatype="Bool" />
+      <Member Name="Pause" Datatype="Bool" />
+      <Member Name="Stop" Datatype="Bool" />
+      <Member Name="Cycle start request" Datatype="Bool" />
+      <Member Name="First Piece" Datatype="Bool" />
+      <Member Name="Piece presence" Datatype="Bool" />
+      <Member Name="Adjacent Machines" Datatype="Bool" />
+      <Member Name="Adjacent Machines Repositioning" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Only for repositioning</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Init_Sequence" Datatype="Bool" />
+      <Member Name="Movement conditions 1" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Chain last position empty</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Movement conditions 2" Datatype="Bool" />
+      <Member Name="Movement conditions 3" Datatype="Bool" />
+      <Member Name="Movement conditions 4" Datatype="Bool" />
+      <Member Name="Reset Fault" Datatype="Bool" />
+      <Member Name="Bypass ilock" Datatype="Bool" />
+    </Member>
+    <Member Name="Memory" Datatype="Struct" Remanence="Retain">
+      <Member Name="Piece presence" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Cumulative piece presence</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Piece absence" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">No sensor triggered</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Aux_PT_Start" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Aux Prezenta Prima Pozitie Lant</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="PT_Start" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Prezenta Teava pe Pozitia Start Bancal</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="TIME_OUT_BENCH" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">TimeOutBancal</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="PT_END" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Prezenta Teava Pozitie Stop Bancl</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="MEM_PT_END" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Memorie Teava Ultima Pozitie Lant</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="TRK_PIPE_LAST" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">PIPE IN CHAIN LAST POSITION</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="TRK_PIPE_IN" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">PIPE IN CHAIN RALL POSITION</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="TRK_PIPE_Incet" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">ONE PIPE IN Incet POSITION</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Aux_PT_RALL" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">AUX Prezenta In Pozitie Slow</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="PT_RALL" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Prezenta Teava Incet Pozitie Bancal</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="PIPE_TO_CHARGE" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">1 pipe to charge</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="C_PT" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Cycle FILLING</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="C_TO" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Cycle Time out</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="C_E" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Cycle Empty</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="C_F" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Cycle Fast One pipe</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Permanent Condition" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Permanent condition</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Movement Fault" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Cumulative of Machine Fault condition </MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Local StopAuto" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Local StopAuto</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Interlocks FW" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Interlocks for FORWARD</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Interlocks BW" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Interlocks for BACKWARD</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="S8-&gt;S14" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">From step 8 to step 14</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="S10-&gt;S14" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">From step 10 to step 14</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="S12-&gt;S3" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">From step 12 to step 3</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="S12-&gt;S8" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">From step 12 to step 8</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="S12-&gt;S14" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">From step 12 to step 14</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="S12-&gt;S16" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">From step 12 to step 16</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Doi_Pasi" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">0 = doi pasi done</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="OS_CHAIN_STEP" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Lant in 'Pas'</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="STEP" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Lant in 'Pas'</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Lant T10" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Lant T10 (Pas)</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Lant_Pas_OK" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Lant in Pas OK pentru Incarcare</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="FW_ON" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">FORWARD ON</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="BW_ON" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">BACKWARD ON</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="CF_CHARGE_SPEED" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">FAST CYCLE: CHARGE SPEED REF.</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="CF_DISCHARGE_SPEED" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">FAST CYCLE: DISCHARGE SPEED REF.</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="CF_STANDBY_SPEED" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">FAST CYCLE: STAND-BY SPEED REF.</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="CF_FAST_SPEED" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">FAST CYCLE: FAST SPEED REF.</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="BENCH_EMPTY" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Bancal Gol</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Dec_L1" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Decelerare L1</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Dec_L2" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Decelerare L2</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Dec_L3" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Decelerare L3</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Dec_L4" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Decelerare L4</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Dec_L5" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Decelerare L5</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Pas_Decel_Lant_T10" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Pas Decel Lant T10</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Stop_L1" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Stop L1</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Stop_L2" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Stop L2</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Stop_L3" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Stop L3</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Stop_L4" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Stop L4</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Stop_L5" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Stop L5</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Pas_Stop_Lant_T10" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Pas Stop Lant T10</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Aux_Oprire_Pas" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Aux Oprire Lant In Pas In Mod Manual</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Frana" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Frana</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Aux_CMD_Frana" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">1 = CMD Decuplata</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="COUNT_STEP" Datatype="Int">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Numar Pas Lant</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="PASI" Datatype="Int">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Lant T10 Pasi</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="SPEED_FW_AUTO_ROLL_MIN" Datatype="Real">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Viteza Teava 'Inainte' AUTO [ROLL\MINUTE]</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="SPEED_FW_AUTO_RPM" Datatype="Real">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Viteza Teava 'Inainte' AUTO [RPM]</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="SPEED_FW_AUTO_HZ" Datatype="Real">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Viteza Teava 'Inainte' AUTO [HZ*10]</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="SPEED_OPERATIVE" Datatype="Real">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Viteza Operativa Teava [HZ*10]</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="ROST_SPEED_OPERATIVE" Datatype="Real">
+        <Comment>
+          <MultiLanguageText Lang="en-US">Referinta Viteza [HZ*10]</MultiLanguageText>
+        </Comment>
+      </Member>
+    </Member>
+  </Section>
+</Sections></Interface>
+      <IsRetainMemResEnabled>true</IsRetainMemResEnabled>
+      <MemoryLayout>Optimized</MemoryLayout>
+      <MemoryReserve>100</MemoryReserve>
+      <Name>T10 LANT</Name>
+      <Namespace />
+      <Number>1193</Number>
+      <ProgrammingLanguage>DB</ProgrammingLanguage>
+      <RetainMemoryReserve>100</RetainMemoryReserve>
+    </AttributeList>
+    <ObjectList>
+      <MultilingualText ID="1" CompositionName="Comment">
+        <ObjectList>
+          <MultilingualTextItem ID="2" CompositionName="Items">
+            <AttributeList>
+              <Culture>en-US</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+          <MultilingualTextItem ID="3" CompositionName="Items">
+            <AttributeList>
+              <Culture>it-IT</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+        </ObjectList>
+      </MultilingualText>
+      <MultilingualText ID="4" CompositionName="Title">
+        <ObjectList>
+          <MultilingualTextItem ID="5" CompositionName="Items">
+            <AttributeList>
+              <Culture>en-US</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+          <MultilingualTextItem ID="6" CompositionName="Items">
+            <AttributeList>
+              <Culture>it-IT</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+        </ObjectList>
+      </MultilingualText>
+    </ObjectList>
+  </SW.Blocks.GlobalDB>
+</Document>
