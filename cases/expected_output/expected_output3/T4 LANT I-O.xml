@@ -1,0 +1,260 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Document>
+  <Engineering version="V20" />
+  <SW.Blocks.GlobalDB ID="0">
+    <AttributeList>
+      <AutoNumber>false</AutoNumber>
+      <HeaderAuthor>SAS</HeaderAuthor>
+      <Interface><Sections xmlns="http://www.siemens.com/automation/Openness/SW/Interface/v5">
+  <Section Name="Static">
+    <Member Name="DI" Datatype="Struct">
+      <Member Name="T4-B49.X1" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E0.3) T4-Senzor Proximitate Pozitia "Incetinire" 1</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="T4-B49.X2" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E0.4) T4-Senzor Proximitate Pozitia "Incetinire" 2</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="S45.1" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E79.0) T4 Lant Comanda 'Inainte'</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="S45.2" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E79.1) T4 Lant Comanda 'Inapoi'</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="S45.3" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E79.2) T4 Lant Selectie 'Pas/Continuu'</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="S45.4" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E79.3) T4 Lant Rostogolire Comanda Inainte</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="S45.5" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E79.4) T4 Lant Rostogolire Comanda Inapoi</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="B48.5" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E81.4) T4 Lant Senzor 1 Prezenta Teava pe Lant (intrare)</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="B48.6" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E81.5) T4 Lant Senzor 2 Prezenta Teava pe Lant (intrare)</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="B48.7" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E81.6) T4 Lant Senzor 'Pas'</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="E81.7" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E81.7) T4 senzor1 suplimentar la tevi scurte</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="B49.1" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E82.0) T4 Lant Senzor 1 Prezenta Teava pe Lant(pendula opritor iesire)</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="B49.2" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E82.1) T4 Lant Senzor 2 Prezenta Teava pe Lant (pendula opritor iesire)</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Q21.2/K21.2" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E214.0) T4 Lant Tensiune Comanda</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Q11.7" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E215.0) T4 Lant Disjunctor Alimentare Ventilatoare Motoare</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Q11.3" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E215.1) T4 Lant Disjunctor Alimentare Convertizor</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="K22.2no" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E215.2) T4 Lant Confirmare Cuplare Contactor Convertizor</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="K22.6no" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E215.3) T4 Lant Confirmare Cuplare Contactor Frana</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="K24.5.1" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E215.4) T4 Lant Convertizor 'OK'</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="K24.5.2" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E215.5) T4 Lant Convertizor 'RUN'</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="S33.7" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E215.6) T4 Lant Permisie Cuplare Contactor</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Q11.8" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E215.7) T4 Lant Disjunctor Alimentare Frana</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="Q17.3" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E217.1) T4 Lant Rostogolire Disjunctor Alimentare Convertizor</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="K26.2no" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E217.2) T4 Lant Rostogolire Confirmare Cuplare Contactor Convertizor</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="U17.3'OK'" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E217.4) T4 Lant Rostogolire Convertizor 'OK'</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="U17.3(RUN)" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E217.5) T4 Lant Rostogolire Convertizor 'RUN'</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="S35.7" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E217.6) T4 Lant Rostogolire Permisie Cuplare Contactor</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="F17.3" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(E217.7) T4 Lant Rostogolire Protectie Termica Motor</MultiLanguageText>
+        </Comment>
+      </Member>
+    </Member>
+    <Member Name="DO" Datatype="Struct">
+      <Member Name="K52.7-K22.6" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(A190.6) T4 Lant Contactor Frana</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="K54.5" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(A191.4) T4 Lant Rostogolire Contactor Alimentare Convertizor</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="K54.6" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(A191.5) T4 Lant Rostogolire Contactor 'Abilitare'</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="A191.6" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(A191.6) Ventilator racire motor rostogolire</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="K55.5-K22.2" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(A200.4) T4 Lant Contactor Alimentare Convertizor</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="K55.6" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(A200.5) T4 Lant Contactor 'Abilitare'</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="K55.7" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(A200.6) T4 Lant Contactor Deplasare 'Inainte'</MultiLanguageText>
+        </Comment>
+      </Member>
+      <Member Name="K55.8" Datatype="Bool">
+        <Comment>
+          <MultiLanguageText Lang="en-US">(A200.7) T4 Lant Contactor Deplasare 'Inapoi'</MultiLanguageText>
+        </Comment>
+      </Member>
+    </Member>
+    <Member Name="Drive Lant" Datatype="Struct">
+      <Member Name="CMD" Datatype="&quot;DRIVE_CMD_Horiz&quot;" />
+      <Member Name="STATUS" Datatype="&quot;DRIVE_STATUS_Horiz&quot;">
+        <AttributeList>
+          <BooleanAttribute Name="SetPoint" SystemDefined="true">true</BooleanAttribute>
+        </AttributeList>
+      </Member>
+      <Member Name="RD_AREA" Datatype="&quot;G120-Telegram1 READ&quot;" />
+      <Member Name="WR_AREA" Datatype="&quot;G120-Telegram1-WRITE&quot;" />
+    </Member>
+    <Member Name="Drive LantRost" Datatype="Struct">
+      <Member Name="CMD" Datatype="&quot;DRIVE_CMD_Horiz&quot;" />
+      <Member Name="STATUS" Datatype="&quot;DRIVE_STATUS_Horiz&quot;">
+        <AttributeList>
+          <BooleanAttribute Name="SetPoint" SystemDefined="true">true</BooleanAttribute>
+        </AttributeList>
+      </Member>
+      <Member Name="RD_AREA" Datatype="&quot;G120-Telegram352-Mod READ&quot;" />
+      <Member Name="WR_AREA" Datatype="&quot;G120-Telegram352-Mod WRITE&quot;" />
+    </Member>
+  </Section>
+</Sections></Interface>
+      <IsRetainMemResEnabled>true</IsRetainMemResEnabled>
+      <MemoryLayout>Optimized</MemoryLayout>
+      <MemoryReserve>100</MemoryReserve>
+      <Name>T4 LANT I-O</Name>
+      <Namespace />
+      <Number>1612</Number>
+      <ProgrammingLanguage>DB</ProgrammingLanguage>
+      <RetainMemoryReserve>100</RetainMemoryReserve>
+    </AttributeList>
+    <ObjectList>
+      <MultilingualText ID="1" CompositionName="Comment">
+        <ObjectList>
+          <MultilingualTextItem ID="2" CompositionName="Items">
+            <AttributeList>
+              <Culture>en-US</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+          <MultilingualTextItem ID="3" CompositionName="Items">
+            <AttributeList>
+              <Culture>it-IT</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+        </ObjectList>
+      </MultilingualText>
+      <MultilingualText ID="4" CompositionName="Title">
+        <ObjectList>
+          <MultilingualTextItem ID="5" CompositionName="Items">
+            <AttributeList>
+              <Culture>en-US</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+          <MultilingualTextItem ID="6" CompositionName="Items">
+            <AttributeList>
+              <Culture>it-IT</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+        </ObjectList>
+      </MultilingualText>
+    </ObjectList>
+  </SW.Blocks.GlobalDB>
+</Document>
