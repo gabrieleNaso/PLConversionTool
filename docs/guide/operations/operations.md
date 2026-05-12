@@ -68,6 +68,19 @@ curl -sS http://127.0.0.1:8000/api/tia/overview
 
 Gli expected dei casi vengono curati a mano in `cases/expected_output/expected_outputN/`.
 
+Se in un `expected_outputN/` hai solo XML e vuoi un `analysis.json` confrontabile (schema `artifact_previews`),
+puoi generarlo senza toccare gli XML con:
+
+```bash
+make expected-analysis EXPECTED_DIR="cases/expected_output/expected_outputN"
+```
+
+Per rigenerarli tutti in batch:
+
+```bash
+make expected-analysis-all
+```
+
 ## Generare XML senza AI (da file in `work/input/`)
 
 Questo e' il flusso **automatico** basato su parsing AWL. Se stai seguendo il flusso AI-first, vai a

@@ -1,4 +1,4 @@
-.PHONY: help doctor build pull up logs shell-backend shell-frontend shell-tia run-backend run-tia test-backend lint-backend fmt-backend generate-input generate-excel-ir generate-excel generate-ir gen gen-ir import-generated generate-and-import generate-import clean down
+.PHONY: help doctor build pull up logs shell-backend shell-frontend shell-tia run-backend run-tia test-backend lint-backend fmt-backend generate-input generate-excel-ir generate-excel generate-ir gen gen-ir import-generated generate-and-import generate-import expected-analysis expected-analysis-all clean down
 
 PROJECT_NAME := plconversiontool
 COMPOSE := docker compose -p $(PROJECT_NAME) -f compose.dev.yml
@@ -33,6 +33,8 @@ help:
 	"  import-generated - import bundles into TIA (use IMPORT_BUNDLE/IMPORT_PREFIX)" \
 	"  generate-and-import - generate-input + import-generated" \
 	"  generate-import - alias of generate-and-import" \
+	"  expected-analysis - generate cases/expected_output/*/analysis.json (use EXPECTED_DIR)" \
+	"  expected-analysis-all - generate analysis.json for all expected_outputN" \
 	"  clean   - remove work/tmp/ and work/output/*" \
 	"  down    - stop compose services"
 
@@ -104,6 +106,12 @@ import-generated:
 generate-and-import: generate-input import-generated
 
 generate-import: generate-and-import
+
+expected-analysis:
+	@python3 scripts/expected_xml_to_analysis_json.py --expected-dir "$(EXPECTED_DIR)"
+
+expected-analysis-all:
+	@python3 scripts/expected_xml_to_analysis_json.py --all
 
 clean:
 	@mkdir -p ./work/tmp

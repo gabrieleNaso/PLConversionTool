@@ -183,6 +183,7 @@ Pattern AWL:
 Regola:
 - in AWL, `A Txx` è il “done bit”: **mai** usare l’istanza `IEC_TIMER` (es. `T218`) come contatto booleano in LAD/GRAPH.
 - nel target il contatto deve puntare a un booleano equivalente (es. `Txx.Q` oppure un alias stabile tipo `Txx_DONE`).
+- preservare il **kind** del timer (`SD` vs `SF` vs `SE`...): nei casi 3/4 compaiono catene `SD`+`SF` usate per filtrare/impulsare segnali (es. “Pas” con `SF T680` o “presence” con `SF T541`).
 
 ### 5.2.1 Fronte di salita (`FP`)
 
@@ -198,6 +199,25 @@ Regole:
 
 Regola:
 - mantenere la semantica AWL materializzando le operazioni (SET/RESET/ASSIGN) nel modello IR e poi in LAD.
+- per lo **stesso** tag possono esistere sia `S <tag>` sia `R <tag>` in reti diverse (pattern tipico: allarme latched con reset da comando).
+  Nel nostro IR questo si rappresenta con **più** entry in `support_logic[]` con lo stesso `result_member` ma `coil_mode` diverso:
+  - `coil_mode: "set"` per `S`
+  - `coil_mode: "reset"` per `R`
+  - `coil_mode: ""` per `=`
+
+### 5.3.1 Temporanei STL (`L xx.x`, `MW`, `#temp`)
+
+Nei casi 3/4 compaiono temporanei STL tipo:
+- `= L 30.0` / `A L 30.0` (bit locali di rete)
+- `T MW 146` / `L MW 754` (word locali)
+- `#AUXI`, `#AUXT` (TEMP locali di FC)
+
+Regole:
+- questi temporanei **non sono variabili di sequenza**: non vanno “promossi” a member di DB (né `Memory.*` né `Transitions.*`).
+- nel JSON IR, evita di introdurli come operandi: riscrivi la logica **in forma equivalente** in `support_logic.condition_expression`
+  usando direttamente le condizioni a monte (es. invece di `L 30.0` usa l’espressione che lo genera).
+- se proprio servono (caso limite), allora vanno modellati come TEMP del blocco target (non come DB). Nel nostro IR attuale
+  preferiamo **non** introdurli: sono una sorgente tipica di variabili “non dichiarate” e mismatch.
 
 ### 5.4 DB esterni di integrazione (OPIN/OPOUT)
 
@@ -207,6 +227,8 @@ con member `Pnnn` / `Lnnn`.
 Regole:
 - trattare questi riferimenti come `external_refs`/operandi esterni (ownership fissa nel DB esterno).
 - preservare **esattamente** naming e zeri significativi (`P071`, `L103`, …): non sanitizzare/normalizzare in modo distruttivo.
+- estendere la stessa regola a DB “API”/diagnostici di campo osservati nei casi (es. encoder `DB_Encoder_*`, drive `G120_*`):
+  sono **external** e non vanno riclassificati come `Memory.*` solo perché appaiono nelle condizioni.
 
 ---
 
@@ -225,7 +247,30 @@ Da input e expected emergono famiglie ricorrenti:
 
 Regola: l’output deve segmentare e serializzare per famiglia come da reference del caso.
 
+### 6.0.1 Alarms: mapping verso `ALARM TABLE`
+
+Nei reference `expected_output3/4` gli allarmi non scrivono direttamente `LLALM.DB202...` ma vengono materializzati su
+`ALARM TABLE.TAB_01.DBX...` (reset e set).
+
+Regole:
+- quando nell’AWL vedi coil/reset su `LLALM.DB202_DBX...` (o DB allarmi equivalenti), nel target il owner “vero” è
+  `ALARM TABLE.TAB_01.<DBX...>` (naming preservato).
+- se l’AWL scrive lo stesso allarme su due DB (es. `LLALM` + `LLXhALM`), trattalo come ridondanza: nel target resta
+  **un solo** bit in `ALARM TABLE` (la tabella è la sorgente unica).
+- pattern frequente: `S <alarm>` dopo un timer (`A Txx`) e reset da comando (`R <alarm>` su HMI tag) o reset periodico (clock).
+  In IR: mantieni sia la rete `set` sia la rete `reset` (vedi regola 5.3).
+
 ### 6.1 DB di sequenza: distinguere `state` vs `command`
+
+Nota (casi 3/4, “LANT”):
+- oltre ai classici `Seq/Trs/COUNT_STEP/Sxx`, il DB sequenza contiene spesso una struttura “di progetto”:
+  - `Transitions.*` (Auto/Manual/Safe/Fault/Stop/Pause/…; in T10 compare anche `Semi_Auto`);
+  - `Memory.*` (PT_Start/PT_END/MEM_PT_END/TRK_PIPE_* e derivate tipo `PIPE_TO_CHARGE`, `C_PT/C_TO/C_E/C_F`,
+    `Interlocks *`, `Lant_Pas_OK`, …).
+
+Regola: in IR, questi segnali devono restare separati per ownership:
+- `Transitions.*` → famiglia `transitions`
+- `Memory.*` → famiglia `aux`/`memory` (non LEV2)
 
 Nei sorgenti AWL reali è comune che **lo stesso DB di sequenza** contenga sia:
 - bit di **stato/memoria** (da trattare come `aux`), sia
@@ -313,9 +358,12 @@ Regole:
 
 ### 7.5 LEV2: cosa appartiene a LEV2 senza XML
 
-Nei reference `expected_output1/2` la LEV2 ha una **struttura contrattuale** stabile (DB `... LEV2`) con:
+Nei reference `expected_output1/2/3/4` la LEV2 ha una **struttura contrattuale** stabile (DB `... LEV2`) con:
 - `ITF.*` (Check OK/not OK, Transfer OK/not OK, Production Lock, Skip, Status);
 - `MEMORY.*` (es. `CheckRequestMemory`, `Cond move Fwd`, `PP_Man_Mov`, …);
+- `SEQ` (datatype `SEQ LIV2`): nei casi 3/4 espone solo alcuni step “core” (`S01`, `S28`, `S29`, `S30`, `S32`)
+  invece dell’intera sequenza;
+- `AUX.TIMER[]` e `AUX.OS[]` (array di timer/os usati dal contratto LEV2, anche se la sequenza applicativa non li usa direttamente);
 - opzionale handshake `HSK TABLE.*` / `HSK Answer OK` (global tags esterni, non “memory” della sequenza).
 
 Regole (derivazione generica, senza usare gli expected come sorgente):
@@ -353,6 +401,10 @@ Regole (derivazione generica, senza usare gli expected come sorgente):
 - se nell’AWL compaiono segnali chiaramente LEV2 (`...LEV2...`, `ITF.*`, `HSK*`, `BYPASS LEVEL2`, …), quelle azioni/alias
   vanno in famiglia `LEV2` con ownership nel DB LEV2 (DB `17..` nel profilo).
 - se l’AWL **non contiene** indicatori LEV2 e **non** esiste tracking micro-flow, il convertitore non deve inventare logica LEV2.
+
+Nota importante (casi 3/4):
+- segnali `TRK_*` legati alla presenza tubo sul bancale/lant (es. `TRK_PIPE_IN`, `TRK_PIPE_LAST`, `MEM_PT_END`, `PT_RALL`)
+  appartengono alla **Memory della sequenza** (DB sequenza), non al DB LEV2.
 
 Conseguenza: se una sequenza ha segmenti output/LEV2 vuoti, l’unico modo corretto per ricostruirli da AWL e'
 che la logica sia comunque presente “sparsa” in altre reti (azioni su Q/alias LEV2); altrimenti serve sorgente aggiuntiva.

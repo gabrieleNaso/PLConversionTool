@@ -36,6 +36,20 @@ In `expected_outputN/` puoi mettere:
 - JSON (`*_ir.json`, `*_analysis.json`) se vuoi fissare l'IR/diagnosi attesa
 - e/o XML se vuoi fissare direttamente gli artefatti TIA attesi
 
+Se hai solo XML e vuoi un “contenitore JSON” confrontabile con gli output del generatore (schema `artifact_previews`),
+puoi generarlo con:
+
+```bash
+python3 scripts/expected_xml_to_analysis_json.py \
+  --expected-dir cases/expected_output/expected_outputN
+```
+
+Oppure per rigenerare `analysis.json` **per tutti** gli expected:
+
+```bash
+python3 scripts/expected_xml_to_analysis_json.py --all
+```
+
 ## Tracce (analisi caso)
 
 Ogni caso ha **la sua** traccia dedicata in `cases/traces/`:
