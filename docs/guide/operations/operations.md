@@ -325,6 +325,7 @@ Regole Excel importanti:
 - **Strict catalog (Excel e IR JSON)**: quando e' attivo il catalogo strict (`operands` in Excel o `strict_operand_catalog: true` nell'IR JSON),
   un simbolo che non e' presente nel catalogo non viene dichiarato in alcun DB: la rete puo' ancora “nominarlo” nel testo,
   ma in generazione XML risultera' non risolvibile / non dichiarato (errore in compile).
+- **AI-first (IR JSON)**: per IR scritti da Codex/AI, usare di default `strict_operand_catalog: false` cosi' il generatore dichiara automaticamente nei DB tutti i simboli effettivamente referenziati (soprattutto nelle guardie del GRAPH).
 - nel GRAPH, le transition usano la logica reale dell'Excel (`condition_expression`) e non vengono ridotte a marker tipo `T1/T2`.
 - i riferimenti variabile nelle transition GRAPH sono cross-DB: ogni simbolo punta al DB owner derivato dal catalogo `operands`.
 - i blocchi supporto vengono emessi in modo completo per famiglia; un placeholder `NoData` e' ammesso solo quando la famiglia e' davvero non usata nel bundle (nessun simbolo richiesto da FB/FC/GRAPH). Se una famiglia e' referenziata (es. variabili esterne o HMI presenti), deve contenere i member richiesti.

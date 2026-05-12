@@ -109,8 +109,9 @@ Per input Excel, il generatore usa `operands` come catalogo strict:
 
 Se una transizione o una rete FC usa operandi non presenti nel catalogo, il report analysis li marca come **non risolti**: un bundle con simboli non risolti non va considerato valido per import/compile in TIA.
 
-Nota: la stessa logica vale anche per IR JSON “AI-first” quando `strict_operand_catalog: true` e' attivo:
-`operand_catalog` diventa il catalogo vincolante e i leaf usati devono risultare dichiarati nel DB owner (tipicamente via `support_members`).
+Nota (AI-first):
+- consigliato: `strict_operand_catalog: false` (il generatore dichiara automaticamente nei DB i simboli realmente usati in GRAPH/FC).
+- se scegli `strict_operand_catalog: true`, `operand_catalog` diventa vincolante e i leaf usati devono risultare dichiarati nel DB owner (tipicamente via `operand_categories` e/o `support_members`).
 
 ## 5) Compilazione FC (Pagina Unica)
 Tutto cio' che riguarda le FC e' in un solo foglio: `support_fc` (obbligatorio).

@@ -31,6 +31,7 @@ Regola trasversale:
 - **Contratto cross-blocco**: il DB deve dichiarare tutti i member richiesti dal `GRAPH`, dalla `FC LAD` e da eventuali blocchi aggiuntivi del pacchetto, senza drift di naming.
 - **Nessun member vuoto/orfano**: evitare nomi vuoti, placeholder non collegati e simboli presenti in FC/GRAPH ma assenti dai DB.
 - **Caso Excel strict**: verificare che i member DB siano coerenti con il catalogo `operands` del file Excel, senza extra non dichiarati.
+- **Caso AI-first (IR JSON)**: preferire `strict_operand_catalog: false` per evitare che simboli usati in GRAPH/FC restino non dichiarati nei DB.
 - **Caso IR JSON strict**: se `strict_operand_catalog: true`, verificare che:
   - ogni leaf usata in `condition_expression`/`guard_expression` compaia in `operand_catalog`;
   - ogni leaf globale usata in FC/GRAPH sia dichiarata in un DB owner (tipicamente tramite `support_members` con `category` corretta).

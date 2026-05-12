@@ -964,8 +964,11 @@ Se una transizione o una rete FC usa operandi non presenti nel catalogo, il vali
 
 ### 32.9C Modalita' strict anche su IR JSON (AI-first)
 
-Nel flusso AI-first e' ammesso produrre un IR JSON manuale con `strict_operand_catalog: true`.
-In questo caso `operand_catalog` diventa il catalogo vincolante (equivalente concettuale del foglio Excel `operands`):
+Nel flusso AI-first e' ammesso produrre un IR JSON manuale.
+- workflow consigliato: `strict_operand_catalog: false` (il generatore dichiara automaticamente nei DB i simboli effettivamente usati in GRAPH/FC, evitando variabili non dichiarate nelle guardie).
+- workflow strict (solo se necessario): `strict_operand_catalog: true`.
+
+In strict, `operand_catalog` diventa il catalogo vincolante (equivalente concettuale del foglio Excel `operands`):
 
 - i simboli non presenti in `operand_catalog` non vengono dichiarati in alcun DB (quindi possono generare errori di compile anche se compaiono in una `condition_expression`);
 - per evitare “variabili non dichiarate”, ogni leaf globale usata in FC/GRAPH deve risultare dichiarata nel DB owner:

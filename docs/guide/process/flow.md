@@ -27,9 +27,10 @@ Quando usi Codex/AI come “interprete” dell'AWL:
 3. Il tool viene usato solo per `IR JSON -> XML` (`make gen-ir ...`).
 
 Nota strict:
-- se l’IR ha `strict_operand_catalog: true`, ogni variabile usata nelle espressioni deve essere:
+- **AI-first (consigliato)**: usare `strict_operand_catalog: false` cosi' il generatore puo' dichiarare automaticamente nei DB tutti i simboli referenziati da GRAPH/FC (evita "variabile non dichiarata" quando le guardie crescono).
+- **Strict** (`strict_operand_catalog: true`): usarlo solo quando stai mantenendo un catalogo completo (stile Excel `operands`). In questo caso ogni leaf usata nelle espressioni deve essere:
   - presente in `operand_catalog`;
-  - dichiarata nel DB owner (tipicamente aggiunta in `support_members` con la `category` corretta).
+  - dichiarata nel DB owner (tipicamente via `operand_categories` e/o `support_members`).
 
 ## 2) Analisi e IR (Python)
 

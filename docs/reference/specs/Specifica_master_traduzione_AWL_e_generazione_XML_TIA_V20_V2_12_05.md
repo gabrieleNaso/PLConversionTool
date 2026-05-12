@@ -22,8 +22,9 @@ e' ammesso (e spesso consigliato) produrre/curare l’IR JSON manualmente (Codex
 il convertitore resta comunque responsabile solo della fase `IR -> XML` e della validazione di coerenza del bundle.
 
 Nota hard (strict catalog):
+- workflow consigliato (AI-first): usare `strict_operand_catalog: false` cosi' il generatore dichiara automaticamente nei DB tutti i simboli effettivamente referenziati da GRAPH/FC.
 - quando nell’IR JSON e' attivo `strict_operand_catalog: true`, `operand_catalog` diventa vincolante (equivalente concettuale del foglio Excel `operands`);
-- ogni leaf usata nelle logiche (`support_logic.condition_expression`, guardie transizioni, reti FC) deve comparire in `operand_catalog` e deve risultare dichiarata nel DB owner (tipicamente via `support_members` o `operand_categories`).
+- in strict, ogni leaf usata nelle logiche (`support_logic.condition_expression`, guardie transizioni, reti FC) deve comparire in `operand_catalog` e deve risultare dichiarata nel DB owner (tipicamente via `operand_categories` e/o `support_members`).
 
 Aggiornamenti integrati in questa revisione (12-05-2026):
 - consolidati i pattern osservati nei casi `expected_output3` (FC112) e `expected_output4` (FC193), in aggiunta ai casi 1/2.
