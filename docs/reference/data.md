@@ -10,3 +10,7 @@ Struttura:
 - `cases/` (versionato)
   - `cases/input/` + `cases/expected_output/` per casi riproducibili
 - `datasets/` (versionato) campioni di riferimento (corpus, typicals, golden)
+
+Nota:
+- in `cases/expected_output/expected_outputN/` gli XML sono “verità assoluta” e non vanno modificati dal tool;
+  se serve un contenitore confrontabile, generare `analysis.json` con `make expected-analysis-all`.

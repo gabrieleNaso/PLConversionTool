@@ -175,6 +175,21 @@ Regola implementativa (per stabilizzare e avvicinarsi agli expected di progetto)
 
 Questo non cambia la semantica (GRAPH equivalente), ma stabilizza il layout e riduce diff inutili rispetto agli expected.
 
+### 5.1.4 Confronti numerici (`<>R`, `==R`, `<R`, `>=R`...) e letterali
+
+Nei casi 3/4 compaiono confronti numerici STL (tipicamente REAL) espressi come:
+- `L <operand>` / `L <costante>` seguito da `<>R`, `==R`, `<R`, `>=R` (o varianti analoghe)
+- costanti in notazione scientifica (es. `0.000000e+000`)
+
+Regole:
+- questi confronti **non sono booleani “nativi”**: in IR vanno rappresentati come operazioni di confronto tipate,
+  preservando l’operatore (`!=`, `==`, `<`, `>=`, …) e il tipo atteso (REAL vs INT).
+- non introdurre conversioni arbitrarie (es. REAL->BOOL): la condizione deve rimanere un confronto numerico.
+- normalizzare le costanti senza perdere valore:
+  - `0.000000e+000` può diventare `0.0` (REAL), ma deve restare REAL se confrontato con un REAL.
+- se l’AWL usa un confronto come “guardia” di un rung, nel target deve diventare un blocco/termine equivalente
+  (comparatore) nella `support_logic.condition_expression`.
+
 ### 5.2 Timer AWL
 
 Pattern AWL:
@@ -217,7 +232,19 @@ Regole:
 - nel JSON IR, evita di introdurli come operandi: riscrivi la logica **in forma equivalente** in `support_logic.condition_expression`
   usando direttamente le condizioni a monte (es. invece di `L 30.0` usa l’espressione che lo genera).
 - se proprio servono (caso limite), allora vanno modellati come TEMP del blocco target (non come DB). Nel nostro IR attuale
-  preferiamo **non** introdurli: sono una sorgente tipica di variabili “non dichiarate” e mismatch.
+preferiamo **non** introdurli: sono una sorgente tipica di variabili “non dichiarate” e mismatch.
+
+### 5.3.2 Costanti `TRUE`/`FALSE` e contatti “sempre veri/falsi”
+
+Nei sorgenti AWL ricostruiti si vedono spesso contatti di servizio:
+- `A "M:TRUE"` (sempre vero, spesso solo per “ancorare” la rete)
+- `A "M:FALSE"` o `A "M:FALSE" ...` usato come “rung sempre falso” (placeholder) prima di una `S`/coil
+
+Regole:
+- `A TRUE` a inizio rete è **noop**: può essere eliminato senza cambiare la semantica.
+- quando serve un termine sempre falso per preservare la struttura (caso raro), in target deve essere una costante
+  booleana `FALSE` (come negli expected di progetto), non una variabile inventata.
+- evitare di “creare” variabili di DB per rappresentare `TRUE/FALSE`: sono costanti, non segnali di processo.
 
 ### 5.4 DB esterni di integrazione (OPIN/OPOUT)
 
@@ -260,6 +287,18 @@ Regole:
 - pattern frequente: `S <alarm>` dopo un timer (`A Txx`) e reset da comando (`R <alarm>` su HMI tag) o reset periodico (clock).
   In IR: mantieni sia la rete `set` sia la rete `reset` (vedi regola 5.3).
 
+### 6.0.2 Alarms: reset “di progetto” e sorgenti multiple
+
+Nei reference (casi 3/4) il reset degli allarmi non è solo “clock”, ma tipicamente una OR tra:
+- un comando di reset lato sequenza (`<Sequence>.Transitions.Reset Fault`)
+- un comando esterno (es. `DB81:OPIN.P157` o equivalenti di impianto)
+
+Regole:
+- se l’AWL contiene reset su clock (`A CLOCK` + `R <alarm>`), verifica negli expected se il progetto usa invece un
+  reset consolidato (OR di due o più sorgenti). In IR va modellata la guardia **completa** del reset.
+- se esistono più sorgenti di reset, non serializzarle come rami separati “quasi uguali”: preferire una singola rete
+  con un OR esplicito, così da stabilizzare la topologia e ridurre diff.
+
 ### 6.1 DB di sequenza: distinguere `state` vs `command`
 
 Nota (casi 3/4, “LANT”):
@@ -271,6 +310,16 @@ Nota (casi 3/4, “LANT”):
 Regola: in IR, questi segnali devono restare separati per ownership:
 - `Transitions.*` → famiglia `transitions`
 - `Memory.*` → famiglia `aux`/`memory` (non LEV2)
+
+### 6.2 “Mode DB” / selettori di modo: copia verso `Transitions.*`
+
+Nei casi 3/4 (bundle “LANT”) le reti `Transitions` in LAD sono spesso una **copia 1:1** da un DB globale “Mode <n>”
+(Automatic/Manual/Semi_Auto/Reset Fault/...) verso i bit `Transitions.*` nel DB sequenza della macchina.
+
+Regole:
+- riconoscere il pattern come “mapping di interfaccia” (nessuna logica complessa): in IR rappresentarlo come assegnazioni
+  dirette (`=`) con source esterna (Mode DB) e destinazione interna (`<Machine>.Transitions.<name>`).
+- preservare esattamente i nomi (inclusi spazi) quando derivano dal progetto target (`Reset Fault`, `Cycle start request`, …).
 
 Nei sorgenti AWL reali è comune che **lo stesso DB di sequenza** contenga sia:
 - bit di **stato/memoria** (da trattare come `aux`), sia

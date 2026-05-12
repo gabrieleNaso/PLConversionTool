@@ -1,4 +1,4 @@
-Specifica master consolidata del 08-05-2026
+Specifica master consolidata del 12-05-2026
 per le regole di traduzione e generazione XML
 AWL / Excel -> IR -> GRAPH / GlobalDB / FC LAD per TIA Portal V20
 
@@ -24,6 +24,10 @@ il convertitore resta comunque responsabile solo della fase `IR -> XML` e della 
 Nota hard (strict catalog):
 - quando nell’IR JSON e' attivo `strict_operand_catalog: true`, `operand_catalog` diventa vincolante (equivalente concettuale del foglio Excel `operands`);
 - ogni leaf usata nelle logiche (`support_logic.condition_expression`, guardie transizioni, reti FC) deve comparire in `operand_catalog` e deve risultare dichiarata nel DB owner (tipicamente via `support_members` o `operand_categories`).
+
+Aggiornamenti integrati in questa revisione (12-05-2026):
+- consolidati i pattern osservati nei casi `expected_output3` (FC112) e `expected_output4` (FC193), in aggiunta ai casi 1/2.
+- chiarita la gestione in IR di: temporanei STL (es. `L 30.0`, `#TEMP`, `MW`), confronti numerici/REAL (`<>R`, `==R`, `<R`, `>=R`), e mapping “Mode DB -> Transitions.*”.
 
 ---
 
@@ -118,6 +122,15 @@ Regole hard:
 - il convertitore deve supportare la serializzazione LAD dei `Move` per catturare scritture non booleane AWL (`L/T`) quando sono semanticamente significative;
 - il convertitore **non** deve generare decine di `Move` a costanti solo perché il sorgente Step7 scrive `Trs/Seq/Preset` in molte reti: questi pattern sono dettagli del runtime legacy e nel target GRAPH diventano rumore;
 - i `Move` di status devono essere **comparabili** al progetto esempio, non proporzionali al numero di scritture `Trs` nel sorgente.
+
+## 2.6 Regola hard: mapping di progetto “Mode DB -> Transitions.*”
+
+Nei bundle reali (casi `expected_output3/4`) compare spesso un DB globale di modo (es. `Mode <n>`) che alimenta
+direttamente i bit `Transitions.*` del DB sequenza della macchina (Automatic/Manual/Semi_Auto/Reset Fault/...).
+
+Regole hard:
+- questo mapping va trattato come “interfaccia di progetto”: assegnazioni dirette 1:1, senza introdurre logica aggiuntiva.
+- i nomi dei member devono essere preservati esattamente (inclusi spazi) quando richiesti dal contratto del progetto target.
 
 Allineamento all'esempio (HMI status):
 
@@ -286,6 +299,22 @@ Famiglie minime da riconoscere:
 9. HMI e popup.
 
 L'ordine sorgente può aiutare l'analisi, ma la classificazione deve essere semantica e non solo testuale.
+
+## 5-bis. Regole hard AWL: temporanei, costanti e confronti numerici
+
+Nei sorgenti AWL reali (specialmente quando derivano da compile LAD o contengono STL “di servizio”) possono comparire:
+- temporanei di rete (`L 30.0`, `L 1.0`, `#TEMP`, `MW xxx`)
+- contatti costanti (`TRUE`, `FALSE`, o equivalenti)
+- confronti numerici tipati (`<>R`, `==R`, `<R`, `>=R`, …)
+
+Regole hard:
+- i temporanei di rete **non** devono diventare variabili GlobalDB: sono dettagli di implementazione e portano a simboli “non dichiarati”.
+  La logica va riscritta in forma equivalente usando direttamente le condizioni a monte.
+- le costanti booleane vanno trattate come tali:
+  - `A TRUE` è un noop e può essere eliminato;
+  - quando serve una rete sempre falsa (placeholder), deve restare una costante `FALSE`, non un member inventato in DB.
+- i confronti numerici devono restare confronti tipati (REAL/INT) e non devono degradare in BOOL/contatti:
+  - preservare operatore e tipi; normalizzare i letterali senza cambiare il valore.
 
 ## 6. Regola di riconoscimento dei passi AWL
 

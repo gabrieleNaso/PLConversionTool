@@ -1,4 +1,4 @@
-# Report aggiornato del 08-05-2026
+# Report aggiornato del 12-05-2026
 
 ## Progetto
 Conversione di sequenziatori PLC da AWL a GRAPH in TIA Portal V20 tramite XML.
@@ -16,7 +16,11 @@ L'obiettivo di questa versione consolidata è:
 - mantenere una baseline unica, leggibile e riusabile;
 - integrare in un unico testo sia la parte di reverse engineering XML sia la parte operativa su TIA Portal Openness.
 
-Il documento va quindi usato come riferimento tecnico corrente del progetto alla data del **08-05-2026**.
+Il documento va quindi usato come riferimento tecnico corrente del progetto alla data del **12-05-2026**.
+
+Aggiornamento principale di questa revisione:
+- aggiunti e incrociati i casi `expected_output3` (FC112) e `expected_output4` (FC193) per rafforzare le regole generali
+  di estrazione AWL -> IR (vedi `cases/translation_rules.md`).
 
 Nota: diverse regole operative sono state consolidate in revisioni precedenti e poi riallineate/validate nella presente revisione.
 
@@ -98,6 +102,8 @@ A valle del confronto tra i documenti operativi, i report consolidati e i tipici
 - L'IR comune del progetto puo' ora essere alimentato sia da parsing AWL sia da Excel strutturato, pur restando invariati i contratti semantici richiesti dai backend.
 - Flusso operativo corrente (AI-first): `AWL -> Codex/AI (IR manuale) -> IR JSON -> tool -> XML (TIA)`. Il parser AWL automatico resta disponibile come alternativa/diagnostica, ma non e' il percorso principale per i casi curati.
 - Per evitare FC `Output/LEV2` troppo scarne, la classificazione AWL -> IR deve distinguere nel DB di sequenza tra bit di **state** (AUX) e bit di **command** (OUTPUT/IO) usando indizi sul nome simbolico/alias (es. `*_ON`, `CMD`, `START/STOP`, `LEV2/HSK`). Vedi regole aggiornate in `cases/translation_rules.md`.
+- Dai casi `expected_output3/4`: attenzione a temporanei STL (`L 30.0`, `#TEMP`, `MW`) e confronti numerici/REAL (`<>R`, `==R`, `<R`, `>=R`) che vanno mantenuti tipati e **non** promossi a variabili DB.
+- Dai casi `expected_output3/4`: pattern “Mode DB -> Transitions.*” è un mapping 1:1 (assegnazioni dirette), non logica applicativa complessa.
 - LEV2 (tracking + handshake): quando compaiono step `TRK CHECK/TRANSFER` e contratti `HSK TABLE` / `HSK L1 to L2` / `BYPASS LEVEL2`, la FC `LEV2` va resa “export-shaped” (poche reti stabili, tipicamente 8) invece di molte reti scaffold; questo riduce divergenze di struttura/graph rispetto agli expected e facilita l’import/validazione.
 - Nota import TIA: nel profilo `romania` alcune transizioni possono essere numerate esplicitamente via `transition_id` (es. `Trans7`). Se altre transizioni sono numerate implicitamente “per posizione”, può verificarsi un conflitto (stesso `Number` ripetuto) e TIA blocca l’import con errore tipo “The transition number 7 exists twice” (es. job `job-4e2f0da672744b59b08e433a6195321e`). Il generatore ora garantisce unicità dei numeri transizione rinumerando i conflitti.
 - Le regole di estrazione generiche **AWL -> IR** vanno mantenute in un riferimento unico aggiornabile caso dopo caso (`cases/translation_rules.md`), senza introdurre hard-code legati a un singolo esempio.
