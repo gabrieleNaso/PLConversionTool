@@ -37,6 +37,9 @@ Regola trasversale:
   - ogni leaf globale usata in FC/GRAPH sia dichiarata in un DB owner (tipicamente tramite `support_members` con `category` corretta).
 - **Qualita' naming**: evitare member vuoti o instabili; preferire alias semantici e fallback deterministici dal token/simbolo AWL (sanitizzato) in caso di ambiguita'.
 
+Checklist extra (coerenza simboli):
+- Eseguire `python3 scripts/check_bundle_symbol_resolution.py --bundle-dir work/output/generated/<bundle>` e verificare `missing: 0`.
+
 ## C) Checklist rapida — FC LAD importabile
 - **Blocco**: `SW.Blocks.FC` in LAD, importabile anche con interfaccia minima.
 - **CompileUnit ordinati**: sequenza coerente di `SW.Blocks.CompileUnit`.

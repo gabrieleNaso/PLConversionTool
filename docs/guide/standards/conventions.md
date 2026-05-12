@@ -55,6 +55,10 @@ Nota importante:
 - **Output fisiche**:
   - riconoscere sia notazione `Axx(.x)` sia `Qxx(.x)` per mapping uscite.
 
+## Regola IR JSON: simboli puntati
+- Nel flusso IR JSON (AI-first) i simboli con `.` sono trattati come **leaf token** (sanitizzati) per evitare DB esterni non importati (“DB fantasma”).
+- Eccezione: step del GRAPH e accesso `.X` restano strutturati e puntano al DB istanza del GRAPH (`ZZ_DB15...`).
+
 ## Datasets e campioni
 
 ### Obiettivo

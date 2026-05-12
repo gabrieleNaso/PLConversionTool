@@ -2368,6 +2368,25 @@ def _freeze_ir_for_json_pipeline(ir: AwlIR) -> AwlIR:
     if ir.strict_operand_catalog:
         return ir
 
+    # IR JSON can be produced manually (AI-first) and may already contain curated
+    # `support_logic` rows. Preserve them, and only fall back to AWL-derived logic
+    # for categories that are missing. This keeps the JSON pipeline a pure
+    # translation step when the payload is already finalized.
+    provided_support_logic: dict[str, list[dict[str, object]]] = {}
+    for row in list(ir.support_logic or []):
+        cat = str(row.get("category") or "").strip().lower()
+        if not cat:
+            continue
+        provided_support_logic.setdefault(cat, []).append(dict(row))
+
+    def _merge_logic_rows(primary: list[dict[str, object]], fallback: list[dict[str, object]]) -> list[dict[str, object]]:
+        # When IR JSON already provides curated rows (AI-first), treat them as
+        # authoritative to avoid re-introducing derived placeholder logic that
+        # diverges from the reference project patterns.
+        if primary:
+            return list(primary)
+        return list(fallback)
+
     def _sanitize_logic_rows_for_graph_steps(rows: list[dict[str, object]]) -> None:
         """
         Replace references to non-existent GRAPH steps with FALSE.
@@ -2426,13 +2445,15 @@ def _freeze_ir_for_json_pipeline(ir: AwlIR) -> AwlIR:
     guard_members_by_category = _collect_transition_guard_members_by_category(ir)
     timer_trigger_members_by_category = _collect_timer_trigger_support_members_by_category(ir)
     derived_actions = _derive_awl_action_logic_rows(ir)
-    diag_logic = derived_actions.get("diag", [])
+    diag_logic = _merge_logic_rows(provided_support_logic.get("diag", []), derived_actions.get("diag", []))
     # Note: OPIN/OPOUT (DB81/DB82) are classified as "external", but the user expects
     # the corresponding status mapping logic to live in the HMI support FC.
-    hmi_logic = derived_actions.get("hmi", []) + derived_actions.get("external", []) + _derive_awl_hmi_alias_logic_rows(ir)
-    aux_logic = derived_actions.get("aux", [])
-    transitions_logic = derived_actions.get("transitions", [])
-    io_logic = derived_actions.get("io", [])
+    hmi_fallback = derived_actions.get("hmi", []) + derived_actions.get("external", []) + _derive_awl_hmi_alias_logic_rows(ir)
+    hmi_logic = _merge_logic_rows(provided_support_logic.get("hmi", []), hmi_fallback)
+    aux_logic = _merge_logic_rows(provided_support_logic.get("aux", []), derived_actions.get("aux", []))
+    has_curated_transitions_logic = bool(provided_support_logic.get("transitions"))
+    transitions_logic = _merge_logic_rows(provided_support_logic.get("transitions", []), derived_actions.get("transitions", []))
+    io_logic = _merge_logic_rows(provided_support_logic.get("io", []), derived_actions.get("io", []))
     # Keep OUTPUT logic rows separate from IO DB members:
     # - `io` is the support GlobalDB contract for DI/DO tags,
     # - `output` is the support FC (LAD) that drives those tags.
@@ -2440,8 +2461,8 @@ def _freeze_ir_for_json_pipeline(ir: AwlIR) -> AwlIR:
     # The AWL-derived action extractor classifies physical outputs as `io`;
     # during freezing we mirror them into the `output` category so the JSON
     # pipeline (IR JSON -> XML) can keep a stable sheet-like separation.
-    output_logic = list(io_logic)
-    mode_logic = _derive_awl_mode_logic_rows(ir)
+    output_logic = _merge_logic_rows(provided_support_logic.get("output", []), list(io_logic))
+    mode_logic = _merge_logic_rows(provided_support_logic.get("mode", []), _derive_awl_mode_logic_rows(ir))
 
     # Ensure no references to steps outside the derived GRAPH topology leak into support FC logic.
     _sanitize_logic_rows_for_graph_steps(diag_logic)
@@ -2452,23 +2473,24 @@ def _freeze_ir_for_json_pipeline(ir: AwlIR) -> AwlIR:
     _sanitize_logic_rows_for_graph_steps(output_logic)
     _sanitize_logic_rows_for_graph_steps(mode_logic)
 
-    # Ensure at least one logic row per transition.
-    existing_tr_ids = {str(row.get("result_member") or "").strip() for row in transitions_logic}
-    for idx, tr in enumerate(ir.transitions, start=1):
-        tid = str(tr.transition_id or f"T{idx}").strip()
-        if not tid or tid in existing_tr_ids:
-            continue
-        transitions_logic.append(
-            {
-                "result_member": tid,
-                "condition_expression": str(tr.guard_expression or "TRUE").strip() or "TRUE",
-                "condition_operands": [str(x).strip() for x in (tr.guard_operands or []) if str(x).strip()],
-                "coil_mode": "",
-                "comment": f"Transition {tr.source_step}->{tr.target_step}",
-                "network_index": int(tr.network_index or idx),
-            }
-        )
-    transitions_logic.sort(key=lambda row: (_as_positive_int(row.get("network_index")) or 10**9, str(row.get("result_member") or "")))
+    if not has_curated_transitions_logic:
+        # Ensure at least one logic row per transition.
+        existing_tr_ids = {str(row.get("result_member") or "").strip() for row in transitions_logic}
+        for idx, tr in enumerate(ir.transitions, start=1):
+            tid = str(tr.transition_id or f"T{idx}").strip()
+            if not tid or tid in existing_tr_ids:
+                continue
+            transitions_logic.append(
+                {
+                    "result_member": tid,
+                    "condition_expression": str(tr.guard_expression or "TRUE").strip() or "TRUE",
+                    "condition_operands": [str(x).strip() for x in (tr.guard_operands or []) if str(x).strip()],
+                    "coil_mode": "",
+                    "comment": f"Transition {tr.source_step}->{tr.target_step}",
+                    "network_index": int(tr.network_index or idx),
+                }
+            )
+        transitions_logic.sort(key=lambda row: (_as_positive_int(row.get("network_index")) or 10**9, str(row.get("result_member") or "")))
 
     diag_members = (
         _collect_diag_support_members(ir)
@@ -2587,9 +2609,11 @@ def _freeze_ir_for_json_pipeline(ir: AwlIR) -> AwlIR:
     external_db_members = _augment(external_db_members, ext_db_name)
     parameters_db_members = _augment(parameters_db_members, par_db_name)
 
-    # Build a strict operand catalog that includes every member that can appear in DB/FC.
-    catalog: list[str] = []
-    category_map: dict[str, str] = {}
+    # Build a catalog that includes every member that can appear in DB/FC.
+    # In AI-first mode we keep `strict_operand_catalog` disabled so the generator
+    # can still auto-declare missing DB members needed by GRAPH/FC.
+    catalog: list[str] = list(ir.operand_catalog or [])
+    category_map: dict[str, str] = dict(ir.operand_categories or {})
 
     def _add_members(excel_category: str, items: list[tuple[str, str]], *, assign_category: bool) -> None:
         for name, _comment in items:
@@ -2667,8 +2691,8 @@ def _freeze_ir_for_json_pipeline(ir: AwlIR) -> AwlIR:
     # Preserve any existing metadata-only support_logic entries (no category).
     preserved_meta = [item for item in (ir.support_logic or []) if isinstance(item, dict) and "category" not in item]
 
-    ir.strict_operand_catalog = True
-    ir.operand_catalog = catalog
+    # Preserve the caller's strictness choice.
+    ir.operand_catalog = _dedupe_list([str(x or "").strip() for x in catalog if str(x or "").strip()])
     ir.operand_categories = category_map
     ir.support_members = support_members
     ir.support_logic = preserved_meta + support_logic_rows
@@ -3826,6 +3850,7 @@ def _build_artifact_previews(scaffold, ir: AwlIR, graph_topology: GraphTopology)
                 content=global_db.content,
             )
         )
+
     return previews
 
 
@@ -3950,6 +3975,10 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
     member_datatypes.setdefault(sequencer_status_member, "Int")
 
     # Emit one MOVE per step bit: when step is active, move its step number into the status Int.
+    # If the IR already provides curated HMI logic rows (AI-first), do not inject
+    # these derived status moves to avoid introducing extra symbols that might not
+    # match the reference project contracts.
+    has_curated_hmi_logic = bool(_excel_support_logic_rows(ir, "hmi"))
     step_rows: list[dict[str, object]] = []
     seen_step_names: set[str] = set()
 
@@ -3968,28 +3997,29 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
         except Exception:
             return 0
 
-    for step in sorted(ir.steps, key=lambda item: (_infer_step_no(item), str(item.name or ""))):
-        step_name = str(step.name or "").strip()
-        if not step_name or step_name.upper() in seen_step_names:
-            continue
-        seen_step_names.add(step_name.upper())
-        step_no = _infer_step_no(step)
-        if step_no <= 0:
-            continue
-        step_rows.append(
-            {
-                "kind": "move",
-                "result_member": sequencer_status_member,
-                "move_in": {"kind": "literal_int", "value": str(step_no)},
-                "move_out_members": [sequencer_status_member],
-                "condition_expression": f"{step_name}.X",
-                "condition_operands": [f"{step_name}.X"],
-                "coil_mode": "",
-                "network_title": "Sequencer status",
-                "comment": "",
-                "network_index": 12000 + step_no,
-            }
-        )
+    if not has_curated_hmi_logic:
+        for step in sorted(ir.steps, key=lambda item: (_infer_step_no(item), str(item.name or ""))):
+            step_name = str(step.name or "").strip()
+            if not step_name or step_name.upper() in seen_step_names:
+                continue
+            seen_step_names.add(step_name.upper())
+            step_no = _infer_step_no(step)
+            if step_no <= 0:
+                continue
+            step_rows.append(
+                {
+                    "kind": "move",
+                    "result_member": sequencer_status_member,
+                    "move_in": {"kind": "literal_int", "value": str(step_no)},
+                    "move_out_members": [sequencer_status_member],
+                    "condition_expression": f"{step_name}.X",
+                    "condition_operands": [f"{step_name}.X"],
+                    "coil_mode": "",
+                    "network_title": "Sequencer status",
+                    "comment": "",
+                    "network_index": 12000 + step_no,
+                }
+            )
     if step_rows:
         hmi_logic = hmi_logic + step_rows
 
@@ -5372,6 +5402,23 @@ def _resolve_logic_symbol_path(
         if not base_name:
             return "", []
         return base_name, [base_name]
+    # Default rule for IR JSON / AI-first: treat dotted symbolic operands as a
+    # single leaf token (TIA-sanitized). This prevents leaking project-global DB
+    # names (e.g. `DB87_T10_OPOUT.L080`, `T10_LANT.Transitions.Safe`) into the
+    # generated XML as if they were real Openness struct accesses.
+    #
+    # Step symbols are handled above and remain structured (`Sxx.X`).
+    if "." in token:
+        # Special-case: keep explicit GRAPH instance DB step accesses structured,
+        # otherwise they turn into orphaned "DB15_..._Sxx_X" leaf tokens.
+        mm = re.match(r"^(DB\\d+_[A-Z0-9_]+_GRAPH_DB)\\.(S\\d+_.+)\\.X$", token, flags=re.IGNORECASE)
+        if mm:
+            db_base = _support_member_name(mm.group(1), "", strict_excel_mode=True)
+            step_name = mm.group(2)
+            return db_base, [db_base, step_name, "X"]
+        leaf = _support_member_name(token, "", strict_excel_mode=True)
+        if leaf:
+            return leaf, [leaf]
     raw_parts = [part for part in token.split(".") if part]
     if not raw_parts:
         return "", []
@@ -5840,6 +5887,9 @@ def _build_support_logic_flgnet(
         token = str(symbol_name or "").strip()
         if not token:
             return ""
+        # Step bits are hosted in the GRAPH instance DB (ZZ_DB15...).
+        if re.match(r"^S\\d+\\b", token, flags=re.IGNORECASE):
+            return _graph_db_block_name(ir.sequence_name)
         if token in db_members:
             return db_name
         folded = token.upper()

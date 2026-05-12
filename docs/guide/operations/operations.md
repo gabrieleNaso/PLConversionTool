@@ -398,6 +398,18 @@ Nota sui nomi member DB:
 - in caso di alias ambiguo il generatore usa fallback deterministico basato sul token AWL originale (sanitizzato), senza introdurre indirizzi nuovi e senza lasciare nomi vuoti.
 - i member della famiglia transizioni sono sempre emessi e referenziati come path strutturato: `DB14_<Name>_TRANSITIONS_DB -> Transitions -> <member>`.
 
+Nota IR JSON (simboli puntati e DB “fantasma”):
+- se in `support_logic.condition_expression` compaiono simboli come `DB87_T10_OPOUT.L080` o `T10_LANT.Transitions.Safe`,
+  nel flusso IR JSON non devono diventare `<Component Name="DB87_T10_OPOUT" /> ...` (DB non importato) ma devono essere trattati come leaf token sanitizzati (es. `DB87_T10_OPOUT_L080`) e dichiarati nel DB owner corretto (tipicamente `DB18 ... ext_db` oppure `DB14 ... transitions_db`).
+
+### Check coerenza simboli (bundle)
+
+Per verificare che ogni `Access Scope="GlobalVariable"` in GRAPH/FC punti a un member realmente dichiarato nei DB del bundle:
+
+```bash
+python3 scripts/check_bundle_symbol_resolution.py --bundle-dir work/output/generated/<bundle> --out work/tmp/<bundle>_symbol_resolution.md
+```
+
 Nota timer (AWL):
 - quando in AWL compaiono `Txx` in logica booleana, il significato e' il done del timer: in XML deve diventare `Txx.Q` oppure un box IEC in-line. Il token `Txx_DONE` e' solo una rappresentazione interna e non deve diventare un member BOOL nei DB.
 

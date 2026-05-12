@@ -26,6 +26,10 @@ Nota hard (strict catalog):
 - quando nell’IR JSON e' attivo `strict_operand_catalog: true`, `operand_catalog` diventa vincolante (equivalente concettuale del foglio Excel `operands`);
 - in strict, ogni leaf usata nelle logiche (`support_logic.condition_expression`, guardie transizioni, reti FC) deve comparire in `operand_catalog` e deve risultare dichiarata nel DB owner (tipicamente via `operand_categories` e/o `support_members`).
 
+Nota hard (IR JSON e simboli con `.`):
+- nel flusso IR JSON (AI-first) i simboli puntati (es. `DB87_T10_OPOUT.L080`, `T10_LANT.Transitions.Safe`) devono essere trattati come **leaf token sanitizzati** (es. `DB87_T10_OPOUT_L080`) e poi risolti verso il DB owner del pacchetto (IO/AUX/HMI/DIAG/EXTERNAL/TRANSITIONS/MODE).
+- eccezione: i riferimenti step del GRAPH (`...Sxx... .X`) restano strutturati e referenziano il DB istanza del GRAPH (`ZZ_DB15...`).
+
 Aggiornamenti integrati in questa revisione (12-05-2026):
 - consolidati i pattern osservati nei casi `expected_output3` (FC112) e `expected_output4` (FC193), in aggiunta ai casi 1/2.
 - chiarita la gestione in IR di: temporanei STL (es. `L 30.0`, `#TEMP`, `MW`), confronti numerici/REAL (`<>R`, `==R`, `<R`, `>=R`), e mapping “Mode DB -> Transitions.*”.

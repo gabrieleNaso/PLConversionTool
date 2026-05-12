@@ -154,6 +154,10 @@ Regola (transizioni GRAPH non “vuote”):
 - workflow consigliato (AI-first): tenere `strict_operand_catalog: false` cosi' il generatore dichiara automaticamente nei DB i simboli usati nelle guardie.
 - se `strict_operand_catalog: true`, ogni leaf usata in `condition_expression` deve comparire in `operand_catalog` (e idealmente in `operand_datatypes`) altrimenti il generatore la scarterà e la variabile risulterà “non dichiarata”.
 
+Regola (IR JSON: simboli puntati):
+- se nell’IR compaiono simboli con `.` (es. `DB87_T10_OPOUT.L080`, `T10_LANT_HMI.Conditions...`), vanno considerati leaf token e non “path reali” verso DB esterni.
+- gli unici path strutturati ammessi come tali sono quelli dello step del GRAPH (`...Sxx... .X`), che puntano al DB istanza del GRAPH.
+
 Regola (quando l’expected include XML, per validare l’IR):
 - se in `cases/expected_output/...` sono presenti gli XML (es. `05 ... Sequence.xml`), per costruire l’IR manuale le guardie e le negazioni vanno ricostruite **leggendo i contatti del FlgNet** nella transizione (Access + Contact + Negated), non solo dal testo AWL.
 

@@ -978,6 +978,16 @@ In strict, `operand_catalog` diventa il catalogo vincolante (equivalente concett
 Milestone validata (08-05-2026):
 - bundle `FC118` generato da IR JSON strict compila senza errori (zero errori in compilazione), dopo allineamento logica transizioni e dichiarazione esplicita dei leaf usati in `FC14 Transitions`.
 
+### 32.9D Validazione simboli (bundle)
+
+Nel flusso AI-first, un problema ricorrente e' l'introduzione di riferimenti a “DB fantasma” quando in IR compaiono simboli puntati
+(`DB87_T10_OPOUT.L080`, `T10_LANT.Transitions.Safe`, ...). La regola corretta e':
+- i simboli puntati vengono trattati come leaf token (sanitizzati) e poi dichiarati nel DB owner del pacchetto;
+- solo gli step del GRAPH (`...Sxx... .X`) restano accessi strutturati al DB istanza del GRAPH.
+
+Check operativo:
+- `python3 scripts/check_bundle_symbol_resolution.py --bundle-dir work/output/generated/<bundle>` deve dare `missing: 0`.
+
 ### 32.10 Normalizzazione di memorie e timer
 
 I timer AWL `Txx`, i preset `S5T`, i bit di appoggio pulsati e le memorie tecniche non restano nel DB sequenza monolitico.

@@ -32,6 +32,10 @@ Nota strict:
   - presente in `operand_catalog`;
   - dichiarata nel DB owner (tipicamente via `operand_categories` e/o `support_members`).
 
+Nota IR JSON (simboli puntati):
+- nel flusso IR JSON (AI-first) i token simbolici con `.` (es. `DB87_T10_OPOUT.L080`, `T10_LANT_HMI.Conditions...`) vengono trattati come **leaf token** (sanitizzati) e poi legati al DB owner tramite `operand_categories`/heuristiche.
+- eccezione: i riferimenti step del GRAPH (`...Sxx... .X`) restano strutturati e puntano al DB istanza del GRAPH (`ZZ_DB15_<SEQ>_graph_db_auto.xml`).
+
 ## 2) Analisi e IR (Python)
 
 ### Punto di ingresso
