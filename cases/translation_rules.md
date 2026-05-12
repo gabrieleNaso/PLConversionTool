@@ -175,6 +175,20 @@ Regola implementativa (per stabilizzare e avvicinarsi agli expected di progetto)
 
 Questo non cambia la semantica (GRAPH equivalente), ma stabilizza il layout e riduce diff inutili rispetto agli expected.
 
+### 5.1.5 GRAPH: ricostruzione completa di steps/transitions (caso LANT)
+
+Nei casi 3/4 (famiglia “LANT”) il GRAPH atteso include esplicitamente:
+- passi “di servizio” oltre al ciclo base: `S07_*`, `S28_END`, `S30_Fault`, `S100_TRK CHECK`, `S101_TRK TRANSFER` ecc.
+- transizioni con numerazione di progetto non sequenziale (es. `Trans7`, `T Safe`=48, `T Manual`=46, …).
+
+Regole:
+- non fermarsi ai soli passi “visti” nella prima parte dell’AWL: l’IR deve includere tutti gli step che esistono nel target atteso,
+  includendo manual/fault/emergency e tracking quando il progetto li modella come passi del GRAPH.
+- in profilo `romania`, se serve preservare numerazione/nomi delle transizioni, codificare l’ID così:
+  - `T<nnn>_<Nome transizione>` (es. `T002_T AutoSemiSafeCond`)
+  - `Trans<nn>` (es. `Trans7`)
+  in modo che il builder mantenga `Number` e `Name` coerenti con gli expected.
+
 ### 5.1.4 Confronti numerici (`<>R`, `==R`, `<R`, `>=R`...) e letterali
 
 Nei casi 3/4 compaiono confronti numerici STL (tipicamente REAL) espressi come:
