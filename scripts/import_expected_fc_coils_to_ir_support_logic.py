@@ -35,7 +35,20 @@ class Expr:
 
     def operands(self) -> set[str]:
         if self.kind == "var" and self.value:
+            if str(self.value).startswith("#"):
+                return set()
             return {self.value}
+        if self.kind == "cmp" and self.value:
+            # value is "OP|lhs|rhs"
+            parts = self.value.split("|", 2)
+            if len(parts) == 3:
+                _, lhs, rhs = parts
+                acc: set[str] = set()
+                if lhs and not lhs.startswith("#"):
+                    acc.add(lhs)
+                if rhs and not rhs.startswith("#"):
+                    acc.add(rhs)
+                return acc
         acc: set[str] = set()
         for it in self.items:
             acc |= it.operands()
@@ -43,7 +56,21 @@ class Expr:
 
     def to_str(self) -> str:
         if self.kind == "var":
-            return str(self.value)
+            val = str(self.value)
+            return val[1:] if val.startswith("#") else val
+        if self.kind == "cmp" and self.value:
+            op, lhs, rhs = (self.value.split("|", 2) + ["", "", ""])[:3]
+            op = op.upper()
+            symbol = {"EQ": "==", "NE": "<>", "GT": ">", "GE": ">=", "LT": "<", "LE": "<="}.get(op, "==")
+            if not lhs:
+                lhs = "UNKNOWN"
+            if not rhs:
+                rhs = "UNKNOWN"
+            if lhs.startswith("#"):
+                lhs = lhs[1:]
+            if rhs.startswith("#"):
+                rhs = rhs[1:]
+            return f"({lhs} {symbol} {rhs})"
         if self.kind == "not":
             return f"NOT ({self.items[0].to_str()})"
         if self.kind == "and":
@@ -122,6 +149,12 @@ def _collect_multilang_text_text(node: ET.Element | None) -> str:
 
 
 def _extract_operand_from_access(acc: ET.Element) -> str:
+    scope = (acc.attrib.get("Scope") or "").strip()
+    if scope in {"LiteralConstant", "TypedConstant"}:
+        const_value = (acc.findtext(".//f:ConstantValue", namespaces=FNS) or "").strip()
+        const_type = (acc.findtext(".//f:ConstantType", namespaces=FNS) or "").strip()
+        if const_value:
+            return f"#{const_type}:{const_value}" if const_type else f"#{const_value}"
     comps = [c.attrib.get("Name", "") for c in acc.findall(".//f:Component", FNS)]
     return symbol_to_operand(comps)
 
@@ -193,8 +226,12 @@ def parse_flgnet_coil_rows(flgnet: ET.Element) -> list[dict[str, object]]:
 
     power_net = dsu.find("Powerrail")
     expr_at_net: dict[str, Expr] = {power_net: Expr("var", value="TRUE")}
+    # Store IdentCon operands by net for comparator input capture.
+    operand_at_net: dict[str, str] = {}
+    for acc_uid, op in access_operands.items():
+        operand_at_net[net_of_identcon(acc_uid)] = op
 
-    # Evaluate: contacts (series AND), OR gates.
+    # Evaluate: contacts (series AND), OR gates, and selected function blocks.
     changed = True
     for _ in range(80):
         if not changed:
@@ -241,6 +278,93 @@ def parse_flgnet_coil_rows(flgnet: ET.Element) -> list[dict[str, object]]:
                     expr_at_net[out_net] = new_expr
                     changed = True
 
+        # Timers: treat Q as the boolean condition at IN (enable is implicit in FlgNet wiring).
+        for uid, name in part_name.items():
+            if name not in {"TON", "TOF", "TP"}:
+                continue
+            in_net = net_of_namecon_if_exists(uid, "IN")
+            out_q = net_of_namecon_if_exists(uid, "Q")
+            if in_net is None or out_q is None:
+                continue
+            if in_net not in expr_at_net:
+                continue
+            new_expr = expr_at_net[in_net]
+            if expr_at_net.get(out_q) != new_expr:
+                expr_at_net[out_q] = new_expr
+                changed = True
+
+        # MOVE blocks: treat ENO as the boolean enable at EN.
+        for uid, name in part_name.items():
+            if name != "Move":
+                continue
+            en_net = net_of_namecon_if_exists(uid, "en")
+            eno_net = net_of_namecon_if_exists(uid, "eno")
+            if en_net is None or eno_net is None:
+                continue
+            if en_net not in expr_at_net:
+                continue
+            new_expr = expr_at_net[en_net]
+            if expr_at_net.get(eno_net) != new_expr:
+                expr_at_net[eno_net] = new_expr
+                changed = True
+
+        # PBox (pulse/edge helper): treat OUT as IN for boolean gating purposes.
+        for uid, name in part_name.items():
+            if name != "PBox":
+                continue
+            in_net = net_of_namecon_if_exists(uid, "in")
+            out_net = net_of_namecon_if_exists(uid, "out")
+            if in_net is None or out_net is None:
+                continue
+            if in_net not in expr_at_net:
+                continue
+            new_expr = expr_at_net[in_net]
+            if expr_at_net.get(out_net) != new_expr:
+                expr_at_net[out_net] = new_expr
+                changed = True
+
+        # SR latch: approximate q as (operand OR s), and ignore resets for gating.
+        # This avoids generating unconditional coils when the FlgNet uses SR blocks.
+        for uid, name in part_name.items():
+            if name not in {"Sr", "RS", "SR"}:
+                continue
+            q_net = net_of_namecon_if_exists(uid, "q")
+            s_net = net_of_namecon_if_exists(uid, "s")
+            op_net = net_of_namecon_if_exists(uid, "operand")
+            if q_net is None or s_net is None or op_net is None:
+                continue
+            if s_net not in expr_at_net:
+                continue
+            operand_token = operand_at_net.get(op_net)
+            if not operand_token:
+                continue
+            new_expr = _expr_or([Expr("var", value=operand_token), expr_at_net[s_net]])
+            if expr_at_net.get(q_net) != new_expr:
+                expr_at_net[q_net] = new_expr
+                changed = True
+
+        # Comparators / numeric predicate blocks: we don't model the numeric comparison yet.
+        # These blocks produce a boolean output from (pre AND comparison(in1,in2)).
+        # If we ignore them completely, downstream coils become unconditional (TRUE).
+        for uid, name in part_name.items():
+            if name not in {"Eq", "Ne", "Gt", "Ge", "Lt", "Le"}:
+                continue
+            pre_net = net_of_namecon_if_exists(uid, "pre")
+            out_net = net_of_namecon_if_exists(uid, "out")
+            in1_net = net_of_namecon_if_exists(uid, "in1")
+            in2_net = net_of_namecon_if_exists(uid, "in2")
+            if pre_net is None or out_net is None or in1_net is None or in2_net is None:
+                continue
+            if pre_net not in expr_at_net:
+                continue
+            lhs = operand_at_net.get(in1_net, "")
+            rhs = operand_at_net.get(in2_net, "")
+            cmp = Expr("cmp", value=f"{name.upper()}|{lhs}|{rhs}")
+            new_expr = _expr_and(expr_at_net[pre_net], cmp)
+            if expr_at_net.get(out_net) != new_expr:
+                expr_at_net[out_net] = new_expr
+                changed = True
+
     # Extract coil writes: Coil/SCoil/RCoil
     rows: list[dict[str, object]] = []
     for coil_uid, name in part_name.items():
@@ -258,19 +382,45 @@ def parse_flgnet_coil_rows(flgnet: ET.Element) -> list[dict[str, object]]:
         if not target:
             continue
 
+        # If the boolean is gated by a comparator, capture it explicitly so the generator can
+        # re-create the expected LAD (Eq/Ne/Gt/Ge/Lt/Le) instead of falling back to contacts.
+        cmp_expr: Expr | None = None
+        pre_expr: Expr | None = None
+        if expr.kind == "cmp":
+            cmp_expr = expr
+            pre_expr = Expr("var", value="TRUE")
+        elif expr.kind == "and":
+            cmp_terms = [it for it in expr.items if it.kind == "cmp"]
+            if len(cmp_terms) == 1:
+                cmp_expr = cmp_terms[0]
+                others = [it for it in expr.items if it is not cmp_expr]
+                pre_expr = Expr("var", value="TRUE")
+                for it in others:
+                    pre_expr = _expr_and(pre_expr, it)
+
         expr_str = expr.to_str().replace("TRUE AND ", "").replace("(TRUE AND ", "(").strip()
         if expr_str.upper() == "TRUE":
             expr_str = "(TRUE)"
         operands = sorted(o for o in expr.operands() if o and o != "TRUE")
         coil_mode = "set" if name == "SCoil" else "reset" if name == "RCoil" else ""
-        rows.append(
-            {
-                "result_member": target,
-                "condition_expression": expr_str,
-                "condition_operands": operands,
-                "coil_mode": coil_mode,
-            }
-        )
+        row: dict[str, object] = {
+            "result_member": target,
+            "condition_expression": expr_str,
+            "condition_operands": operands,
+            "coil_mode": coil_mode,
+        }
+        if cmp_expr is not None and pre_expr is not None and cmp_expr.value:
+            op, lhs, rhs = (cmp_expr.value.split("|", 2) + ["", "", ""])[:3]
+            row["kind"] = "compare"
+            row["compare_op"] = op.upper()
+            row["compare_lhs"] = lhs
+            row["compare_rhs"] = rhs
+            pre_str = pre_expr.to_str().replace("TRUE AND ", "").replace("(TRUE AND ", "(").strip()
+            if pre_str.upper() == "TRUE":
+                pre_str = "(TRUE)"
+            row["pre_expression"] = pre_str
+            row["pre_operands"] = sorted(o for o in pre_expr.operands() if o and o != "TRUE")
+        rows.append(row)
     return rows
 
 

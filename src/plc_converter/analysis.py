@@ -5610,6 +5610,25 @@ def _build_support_lad_compile_units(
                             prefer_current_db_for_unmapped=prefer_current_db_for_unmapped,
                         )
                     )
+                elif str(logic_row.get("kind") or "").strip().lower() == "compare":
+                    if not result_member:
+                        continue
+                    flgnet_fragments.append(
+                        _build_support_compare_flgnet(
+                            db_name=db_name,
+                            result_member=result_member,
+                            compare_op=str(logic_row.get("compare_op") or "").strip(),
+                            compare_lhs=str(logic_row.get("compare_lhs") or "").strip(),
+                            compare_rhs=str(logic_row.get("compare_rhs") or "").strip(),
+                            pre_expression=str(logic_row.get("pre_expression") or "TRUE"),
+                            pre_operands=_as_str_list(logic_row.get("pre_operands")),
+                            db_members=db_member_set,
+                            symbol_home_db_map=symbol_home_db_map,
+                            member_datatypes=member_datatypes,
+                            coil_mode=coil_mode,
+                            prefer_current_db_for_unmapped=prefer_current_db_for_unmapped,
+                        )
+                    )
                 else:
                     if not result_member:
                         continue
@@ -6388,6 +6407,294 @@ def _build_support_logic_flgnet(
     )
 
 
+def _build_support_compare_flgnet(
+    db_name: str,
+    result_member: str,
+    compare_op: str,
+    compare_lhs: str,
+    compare_rhs: str,
+    pre_expression: str,
+    pre_operands: list[str],
+    db_members: set[str],
+    symbol_home_db_map: dict[str, str],
+    member_datatypes: dict[str, str],
+    coil_mode: str = "",
+    prefer_current_db_for_unmapped: bool = False,
+) -> str:
+    next_uid = 21
+
+    def alloc_uid() -> int:
+        nonlocal next_uid
+        current = next_uid
+        next_uid += 1
+        return current
+
+    normalized_result = _support_member_name(result_member, "", strict_excel_mode=True)
+    normalized_coil_mode = str(coil_mode or "").strip().lower()
+    coil_part_name = "Coil"
+    if normalized_coil_mode in {"set", "s"}:
+        coil_part_name = "SCoil"
+    elif normalized_coil_mode in {"reset", "r"}:
+        coil_part_name = "RCoil"
+
+    parts_lines: list[str] = []
+    wires_lines: list[str] = []
+
+    def _owner_db_name(symbol_name: str) -> str:
+        token = str(symbol_name or "").strip()
+        if not token:
+            return ""
+        if re.match(r"^S\\d+\\b", token, flags=re.IGNORECASE):
+            return _graph_db_block_name(ir.sequence_name)
+        if token in db_members:
+            return db_name
+        folded = token.upper()
+        prefix = f"{folded}."
+        if any(str(member or "").strip().upper().startswith(prefix) for member in db_members):
+            return db_name
+        if symbol_name in symbol_home_db_map:
+            return symbol_home_db_map[symbol_name]
+        if prefer_current_db_for_unmapped:
+            return db_name
+        return ""
+
+    def _render_access(symbol_name: str, symbol_path: list[str], access_uid: int) -> list[str]:
+        target_db_name = _owner_db_name(symbol_name)
+        if target_db_name:
+            resolved_path = list(symbol_path)
+            root_struct = _support_root_struct_for_db_name(target_db_name)
+            if root_struct and (not resolved_path or resolved_path[0] != root_struct):
+                resolved_path = [root_struct, *resolved_path]
+            return [
+                f'    <Access Scope="GlobalVariable" UId="{access_uid}">\n',
+                "      <Symbol>\n",
+                f'        <Component Name="{escape(target_db_name)}" />\n',
+                "".join(f'        <Component Name="{escape(component)}" />\n' for component in resolved_path),
+                "      </Symbol>\n",
+                "    </Access>\n",
+            ]
+        return [
+            f'    <Access Scope="GlobalVariable" UId="{access_uid}">\n',
+            "      <Symbol>\n",
+            "".join(f'        <Component Name="{escape(component)}" />\n' for component in symbol_path),
+            "      </Symbol>\n",
+            "    </Access>\n",
+        ]
+
+    guard_clauses = _parse_guard_clauses(pre_expression, pre_operands)
+    has_true_clause = any(not clause for clause in guard_clauses)
+    clause_contact_uids: list[list[int]] = []
+
+    for clause in guard_clauses:
+        if not clause:
+            continue
+        contact_uids: list[int] = []
+        for operand, negated in clause:
+            normalized_operand, operand_path = _resolve_logic_symbol_path(operand, member_datatypes)
+            if not normalized_operand:
+                continue
+            access_uid = alloc_uid()
+            contact_uid = alloc_uid()
+            parts_lines.extend(_render_access(normalized_operand, operand_path, access_uid))
+            if negated:
+                parts_lines.extend(
+                    [
+                        f'    <Part Name="Contact" UId="{contact_uid}">\n',
+                        '      <Negated Name="operand" />\n',
+                        "    </Part>\n",
+                    ]
+                )
+            else:
+                parts_lines.append(f'    <Part Name="Contact" UId="{contact_uid}" />\n')
+
+            operand_wire_uid = alloc_uid()
+            wires_lines.extend(
+                [
+                    f'    <Wire UId="{operand_wire_uid}">\n',
+                    f'      <IdentCon UId="{access_uid}" />\n',
+                    f'      <NameCon UId="{contact_uid}" Name="operand" />\n',
+                    "    </Wire>\n",
+                ]
+            )
+            contact_uids.append(contact_uid)
+
+        if not contact_uids:
+            continue
+
+        # Chain contacts in series.
+        for index, contact_uid in enumerate(contact_uids):
+            in_wire_uid = alloc_uid()
+            if index == 0:
+                wires_lines.extend(
+                    [
+                        f'    <Wire UId="{in_wire_uid}">\n',
+                        "      <Powerrail />\n",
+                        f'      <NameCon UId="{contact_uid}" Name="in" />\n',
+                        "    </Wire>\n",
+                    ]
+                )
+            else:
+                prev_uid = contact_uids[index - 1]
+                wires_lines.extend(
+                    [
+                        f'    <Wire UId="{in_wire_uid}">\n',
+                        f'      <NameCon UId="{prev_uid}" Name="out" />\n',
+                        f'      <NameCon UId="{contact_uid}" Name="in" />\n',
+                        "    </Wire>\n",
+                    ]
+                )
+        clause_contact_uids.append(contact_uids)
+
+    # Comparator + coil.
+    compare_part_map = {"EQ": "Eq", "NE": "Ne", "GT": "Gt", "GE": "Ge", "LT": "Lt", "LE": "Le"}
+    compare_part_name = compare_part_map.get(str(compare_op or "").strip().upper(), "Eq")
+    compare_uid = alloc_uid()
+    coil_access_uid = alloc_uid()
+    coil_uid = alloc_uid()
+    parts_lines.extend(_render_access(normalized_result, [normalized_result], coil_access_uid))
+    parts_lines.append(f'    <Part Name="{escape(coil_part_name)}" UId="{coil_uid}" />\n')
+
+    # LHS access (in1)
+    lhs_token = str(compare_lhs or "").strip()
+    lhs_access_uid = alloc_uid()
+    if lhs_token:
+        normalized_lhs, lhs_path = _resolve_logic_symbol_path(lhs_token, member_datatypes)
+        parts_lines.extend(_render_access(normalized_lhs or lhs_token, lhs_path or [lhs_token], lhs_access_uid))
+    else:
+        parts_lines.extend(_render_access("UNKNOWN", ["UNKNOWN"], lhs_access_uid))
+
+    # RHS access or constant
+    rhs_token = str(compare_rhs or "").strip()
+    rhs_access_uid = alloc_uid()
+    rhs_constant = ""
+    rhs_constant_type = ""
+    if rhs_token.startswith("#"):
+        rhs_payload = rhs_token[1:]
+        if ":" in rhs_payload:
+            rhs_constant_type, rhs_constant = rhs_payload.split(":", 1)
+        else:
+            rhs_constant = rhs_payload
+    if rhs_constant:
+        parts_lines.extend(
+            [
+                f'    <Access Scope="LiteralConstant" UId="{rhs_access_uid}">\n',
+                "      <Constant>\n",
+                (f"        <ConstantType>{escape(rhs_constant_type)}</ConstantType>\n" if rhs_constant_type else ""),
+                f"        <ConstantValue>{escape(rhs_constant)}</ConstantValue>\n",
+                "      </Constant>\n",
+                "    </Access>\n",
+            ]
+        )
+    else:
+        normalized_rhs, rhs_path = _resolve_logic_symbol_path(rhs_token, member_datatypes)
+        parts_lines.extend(_render_access(normalized_rhs or rhs_token or "UNKNOWN", rhs_path or [rhs_token or "UNKNOWN"], rhs_access_uid))
+
+    parts_lines.append(f'    <Part Name="{escape(compare_part_name)}" UId="{compare_uid}">\n')
+    # Best effort: infer SrcType from constant type when present.
+    src_type = rhs_constant_type or "Int"
+    parts_lines.append(f'      <TemplateValue Name="SrcType" Type="Type">{escape(src_type)}</TemplateValue>\n')
+    parts_lines.append("    </Part>\n")
+
+    # Wire pre -> compare.pre (OR across clauses)
+    if has_true_clause or not clause_contact_uids:
+        pre_wire_uid = alloc_uid()
+        wires_lines.extend(
+            [
+                f'    <Wire UId="{pre_wire_uid}">\n',
+                "      <Powerrail />\n",
+                f'      <NameCon UId="{compare_uid}" Name="pre" />\n',
+                "    </Wire>\n",
+            ]
+        )
+    elif len(clause_contact_uids) == 1:
+        last_uid = clause_contact_uids[0][-1]
+        pre_wire_uid = alloc_uid()
+        wires_lines.extend(
+            [
+                f'    <Wire UId="{pre_wire_uid}">\n',
+                f'      <NameCon UId="{last_uid}" Name="out" />\n',
+                f'      <NameCon UId="{compare_uid}" Name="pre" />\n',
+                "    </Wire>\n",
+            ]
+        )
+    else:
+        or_uid = alloc_uid()
+        parts_lines.append(f'    <Part Name="O" UId="{or_uid}">\n')
+        parts_lines.append(f'      <TemplateValue Name="Card" Type="Cardinality">{len(clause_contact_uids)}</TemplateValue>\n')
+        parts_lines.append("    </Part>\n")
+        for index, chain in enumerate(clause_contact_uids, start=1):
+            in_wire_uid = alloc_uid()
+            wires_lines.extend(
+                [
+                    f'    <Wire UId="{in_wire_uid}">\n',
+                    f'      <NameCon UId="{chain[-1]}" Name="out" />\n',
+                    f'      <NameCon UId="{or_uid}" Name="in{index}" />\n',
+                    "    </Wire>\n",
+                ]
+            )
+        out_wire_uid = alloc_uid()
+        wires_lines.extend(
+            [
+                f'    <Wire UId="{out_wire_uid}">\n',
+                f'      <NameCon UId="{or_uid}" Name="out" />\n',
+                f'      <NameCon UId="{compare_uid}" Name="pre" />\n',
+                "    </Wire>\n",
+            ]
+        )
+
+    # Wire lhs/rhs to comparator
+    lhs_wire_uid = alloc_uid()
+    wires_lines.extend(
+        [
+            f'    <Wire UId="{lhs_wire_uid}">\n',
+            f'      <IdentCon UId="{lhs_access_uid}" />\n',
+            f'      <NameCon UId="{compare_uid}" Name="in1" />\n',
+            "    </Wire>\n",
+        ]
+    )
+    rhs_wire_uid = alloc_uid()
+    wires_lines.extend(
+        [
+            f'    <Wire UId="{rhs_wire_uid}">\n',
+            f'      <IdentCon UId="{rhs_access_uid}" />\n',
+            f'      <NameCon UId="{compare_uid}" Name="in2" />\n',
+            "    </Wire>\n",
+        ]
+    )
+
+    # compare.out -> coil.in
+    cmp_out_wire_uid = alloc_uid()
+    wires_lines.extend(
+        [
+            f'    <Wire UId="{cmp_out_wire_uid}">\n',
+            f'      <NameCon UId="{compare_uid}" Name="out" />\n',
+            f'      <NameCon UId="{coil_uid}" Name="in" />\n',
+            "    </Wire>\n",
+        ]
+    )
+    # coil operand
+    coil_op_wire_uid = alloc_uid()
+    wires_lines.extend(
+        [
+            f'    <Wire UId="{coil_op_wire_uid}">\n',
+            f'      <IdentCon UId="{coil_access_uid}" />\n',
+            f'      <NameCon UId="{coil_uid}" Name="operand" />\n',
+            "    </Wire>\n",
+        ]
+    )
+
+    return (
+        '          <NetworkSource><FlgNet xmlns="http://www.siemens.com/automation/Openness/SW/NetworkSource/FlgNet/v5">\n'
+        "  <Parts>\n"
+        f'{"".join(parts_lines)}'
+        "  </Parts>\n"
+        "  <Wires>\n"
+        f'{"".join(wires_lines)}'
+        "  </Wires>\n"
+        "</FlgNet></NetworkSource>"
+    )
+
+
 def _build_support_move_flgnet(
     db_name: str,
     enable_expression: str,
@@ -6884,6 +7191,22 @@ def _excel_support_logic_rows(
             row["move_out_members"] = [
                 _support_member_name(str(token).strip(), "", strict_excel_mode=True)
                 for token in _as_str_list(item.get("move_out_members"))
+                if str(token).strip()
+            ]
+        elif item_kind == "compare":
+            row["kind"] = "compare"
+            row["compare_op"] = str(item.get("compare_op") or "").strip()
+            lhs = str(item.get("compare_lhs") or "").strip()
+            rhs = str(item.get("compare_rhs") or "").strip()
+            row["compare_lhs"] = _support_member_name(lhs, "", strict_excel_mode=True) if lhs else ""
+            if rhs.startswith("#"):
+                row["compare_rhs"] = rhs
+            else:
+                row["compare_rhs"] = _support_member_name(rhs, "", strict_excel_mode=True) if rhs else ""
+            row["pre_expression"] = str(item.get("pre_expression") or "").strip() or "TRUE"
+            row["pre_operands"] = [
+                _support_member_name(str(token).strip(), "", strict_excel_mode=True)
+                for token in _as_str_list(item.get("pre_operands"))
                 if str(token).strip()
             ]
         rows.append(row)

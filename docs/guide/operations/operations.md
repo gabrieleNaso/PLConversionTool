@@ -402,6 +402,13 @@ Nota IR JSON (simboli puntati e DB “fantasma”):
 - se in `support_logic.condition_expression` compaiono simboli come `DB87_T10_OPOUT.L080` o `T10_LANT.Transitions.Safe`,
   nel flusso IR JSON non devono diventare `<Component Name="DB87_T10_OPOUT" /> ...` (DB non importato) ma devono essere trattati come leaf token sanitizzati (es. `DB87_T10_OPOUT_L080`) e dichiarati nel DB owner corretto (tipicamente `DB18 ... ext_db` oppure `DB14 ... transitions_db`).
 
+Nota `support_logic.kind=compare` (confronti numerici):
+- quando una bobina e' pilotata da un comparatore (`Eq/Ne/Gt/Ge/Lt/Le`) su operandi non-bool (es. `DB88...SPI001 == 2`), **non** va generata una catena di `Contact` sul valore numerico (TIA non compila).
+- nel JSON IR usare una riga `support_logic[]` con:
+  - `kind: "compare"`, `compare_op`, `compare_lhs`, `compare_rhs` (costante come `#Int:2` / `#Real:0.0`)
+  - `pre_expression` / `pre_operands` per la parte booleana che abilita il confronto.
+  Il generatore emette il box comparatore in LAD e collega la bobina al suo `out`.
+
 ### Check coerenza simboli (bundle)
 
 Per verificare che ogni `Access Scope="GlobalVariable"` in GRAPH/FC punti a un member realmente dichiarato nei DB del bundle:

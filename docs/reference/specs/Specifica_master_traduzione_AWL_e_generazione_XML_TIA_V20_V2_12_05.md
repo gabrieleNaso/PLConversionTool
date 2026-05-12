@@ -235,6 +235,14 @@ Colonne canoniche di `support_fc`:
 - `comment`
 - `network`
 
+Estensione (IR JSON / casi curati): confronti numerici
+- quando una rete LAD usa un comparatore (`Eq/Ne/Gt/Ge/Lt/Le`) e la bobina dipende dal suo `out`, l'IR puo' usare `support_logic.kind="compare"` con campi:
+  - `compare_op` (`EQ/NE/GT/GE/LT/LE`)
+  - `compare_lhs` (simbolo a sinistra)
+  - `compare_rhs` (simbolo oppure costante tipata `#Int:2`, `#Real:0.0`, ...)
+  - `pre_expression` / `pre_operands` per la parte booleana che alimenta `pre`.
+Regola hard: non e' ammesso degradare un confronto numerico a `Contact` su un operando INT/REAL (TIA non compila).
+
 Regole hard:
 
 - almeno una riga valida in `support_fc` con `member_name` e/o `result_member`;
