@@ -4,6 +4,7 @@ import copy
 import hashlib
 import os
 import re
+import xml.etree.ElementTree as ET
 from xml.sax.saxutils import escape
 
 from .domain import (
@@ -51,6 +52,108 @@ CONDITION_OPCODES = {"U", "UN", "O", "ON", "A", "AN", "X", "XN"}
 ACTION_OPCODES = {"S", "R", "="}
 JUMP_OPCODES = {"JC", "JCN", "JU"}
 TIMER_OPCODES = {"SD", "SE", "SP", "SS", "SF"}
+
+
+def _normalize_networksource_xml(raw_xml: str) -> str:
+    """Best-effort normalization for TIA import.
+
+    ElementTree re-serialization often turns default namespaces into `ns0:` prefixes.
+    TIA exports typically use the default namespace (no prefixes). Some TIA imports
+    are sensitive to this, so we normalize known NetworkSource payloads by:
+    - converting `xmlns:nsX="URL"` into `xmlns="URL"`
+    - stripping matching `nsX:` prefixes from element tags
+    """
+    raw = str(raw_xml or "").strip()
+    if not raw:
+        return ""
+    # Only attempt when we see an ns* prefix namespace declaration.
+    m = re.search(r'xmlns:(ns\d+)="([^"]+)"', raw)
+    if not m:
+        return raw
+    prefix, url = m.group(1), m.group(2)
+    # Replace the namespace decl first (only once).
+    raw = re.sub(rf'xmlns:{re.escape(prefix)}="{re.escape(url)}"', f'xmlns="{url}"', raw, count=1)
+    # Strip the prefix from tags.
+    raw = raw.replace(f"<{prefix}:", "<").replace(f"</{prefix}:", "</")
+    return raw
+
+
+def _canonicalize_symbol_token_preserve_case(token: str) -> str:
+    value = str(token or "").strip().rstrip(",;").strip("()")
+    value = value.strip().strip('"').strip("'")
+    value = value.replace('"', "").replace("'", "")
+    if not value:
+        return ""
+    value = value.replace(":", "_").replace("-", "_")
+    value = re.sub(r"[^A-Za-z0-9_.]+", "_", value)
+    value = re.sub(r"_+", "_", value).strip("_")
+    return value
+
+
+def _rewrite_networksource_global_symbols_to_db(
+    raw_xml: str,
+    symbol_home_db_map: dict[str, str],
+) -> str:
+    """Rewrite GlobalVariable symbols like `T10 LANT.Memory.X` into DB access.
+
+    This avoids relying on undeclared PLC tags / tag tables. The rewrite is best-effort:
+    - If we can map the canonical token to a home DB, rewrite the Symbol components to:
+        [<DB_NAME>, <DB_MEMBER_NAME>]
+    - Otherwise, leave as-is.
+    """
+    raw = _normalize_networksource_xml(raw_xml)
+    if not raw or not symbol_home_db_map:
+        return raw
+
+    try:
+        root = ET.fromstring(f"<Root>{raw}</Root>")
+    except Exception:
+        return raw
+
+    changed = False
+    for acc in root.iter():
+        if not str(acc.tag).endswith("Access"):
+            continue
+        if str(acc.attrib.get("Scope") or "") != "GlobalVariable":
+            continue
+        sym = None
+        for node in list(acc):
+            if str(node.tag).endswith("Symbol"):
+                sym = node
+                break
+        if sym is None:
+            continue
+        comps = [c for c in list(sym) if str(c.tag).endswith("Component")]
+        names = [str(c.attrib.get("Name") or "").strip() for c in comps]
+        names = [n for n in names if n]
+        if not names:
+            continue
+        # Already a DB-based symbol.
+        if names[0].strip().upper().startswith("DB"):
+            continue
+        raw_token = ".".join(names)
+        canonical = _canonicalize_symbol_token_preserve_case(raw_token)
+        if not canonical:
+            continue
+        member_name = _support_member_name(canonical, "", strict_excel_mode=True)
+        home_db = str(symbol_home_db_map.get(member_name) or "").strip()
+        if not home_db:
+            continue
+        root_struct = _support_root_struct_for_db_name(home_db)
+        # Replace all existing components with DB (+ root struct) + member.
+        for c in list(sym):
+            sym.remove(c)
+        sym.append(ET.Element("Component", {"Name": home_db}))
+        if root_struct:
+            sym.append(ET.Element("Component", {"Name": root_struct}))
+        sym.append(ET.Element("Component", {"Name": member_name}))
+        changed = True
+
+    if not changed:
+        return raw
+    return "".join(ET.tostring(child, encoding="unicode") for child in list(root))
+
+
 SUPPORT_BLOCK_SCHEMA = {
     "io": {"token": "IO", "file_token": "io"},
     "diag": {"token": "ALARMS", "file_token": "alarms"},
@@ -2397,11 +2500,15 @@ def _freeze_ir_for_json_pipeline(ir: AwlIR) -> AwlIR:
         (e.g. S10.X) or misleading conditions. Treat them as FALSE so the output
         remains compileable and consistent with the derived topology.
         """
-        allowed_steps = {
-            _canonicalize_step_token(str(step.name or "").strip().upper())
-            for step in (ir.steps or [])
-            if str(step.name or "").strip()
-        }
+        allowed_steps: set[str] = set()
+        for step in (ir.steps or []):
+            raw_name = str(step.name or "").strip()
+            if not raw_name:
+                continue
+            match = re.match(r"^S\\d+", raw_name, flags=re.IGNORECASE)
+            if not match:
+                continue
+            allowed_steps.add(_canonicalize_step_token(match.group(0).upper()))
         if not allowed_steps:
             return
 
@@ -2474,23 +2581,34 @@ def _freeze_ir_for_json_pipeline(ir: AwlIR) -> AwlIR:
     _sanitize_logic_rows_for_graph_steps(mode_logic)
 
     if not has_curated_transitions_logic:
-        # Ensure at least one logic row per transition.
+        # Ensure at least one logic row per transition, but never create
+        # unconditional placeholder coils (they would show up as \"bobine senza logica\").
         existing_tr_ids = {str(row.get("result_member") or "").strip() for row in transitions_logic}
         for idx, tr in enumerate(ir.transitions, start=1):
             tid = str(tr.transition_id or f"T{idx}").strip()
             if not tid or tid in existing_tr_ids:
                 continue
+            guard = str(tr.guard_expression or "TRUE").strip() or "TRUE"
+            ops = [str(x).strip() for x in (tr.guard_operands or []) if str(x).strip()]
+            if guard.strip().upper() in {"TRUE", "(TRUE)"} and not ops:
+                continue
             transitions_logic.append(
                 {
                     "result_member": tid,
-                    "condition_expression": str(tr.guard_expression or "TRUE").strip() or "TRUE",
-                    "condition_operands": [str(x).strip() for x in (tr.guard_operands or []) if str(x).strip()],
+                    "condition_expression": guard,
+                    "condition_operands": ops,
                     "coil_mode": "",
                     "comment": f"Transition {tr.source_step}->{tr.target_step}",
                     "network_index": int(tr.network_index or idx),
+                    "network_title": tid,
                 }
             )
-        transitions_logic.sort(key=lambda row: (_as_positive_int(row.get("network_index")) or 10**9, str(row.get("result_member") or "")))
+        transitions_logic.sort(
+            key=lambda row: (
+                _as_positive_int(row.get("network_index")) or 10**9,
+                str(row.get("result_member") or ""),
+            )
+        )
 
     diag_members = (
         _collect_diag_support_members(ir)
@@ -4041,7 +4159,11 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
 
     transitions_logic = _excel_support_logic_rows(ir, "transitions")
     if not ir.strict_operand_catalog:
-        transitions_logic = transitions_logic + derived_actions.get("transitions", [])
+        # Keep curated transitions logic (imported from expected FC) authoritative.
+        # Appending AWL-derived rows bloats the FC and diverges from the reference
+        # project layout.
+        if not transitions_logic:
+            transitions_logic = transitions_logic + derived_actions.get("transitions", [])
     transitions_members = (
         (_excel_support_members(ir, "transitions") or _collect_transitions_support_members(ir, []))
         + guard_members_by_category.get("transitions", [])
@@ -4241,7 +4363,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
             file_name=diag_fc_file,
             content=_build_support_lad_fc_xml(
                 fc_name=diag_fc_name,
-                title=f"{ir.sequence_name} Diag LAD",
+                title=SUPPORT_BLOCK_SCHEMA["diag"]["token"],
                 db_name=diag_db_name,
                 support_members=diag_fc_members,
                 db_members=[name for name, _ in diag_db_members],
@@ -4277,7 +4399,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
             file_name=hmi_fc_file,
             content=_build_support_lad_fc_xml(
                 fc_name=hmi_fc_name,
-                title=f"{ir.sequence_name} HMI LAD",
+                title=SUPPORT_BLOCK_SCHEMA["hmi"]["token"],
                 db_name=hmi_db_name,
                 support_members=hmi_fc_members,
                 db_members=[name for name, _ in hmi_db_members],
@@ -4313,7 +4435,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
             file_name=aux_fc_file,
             content=_build_support_lad_fc_xml(
                 fc_name=aux_fc_name,
-                title=f"{ir.sequence_name} Aux LAD",
+                title=SUPPORT_BLOCK_SCHEMA["aux"]["token"],
                 db_name=aux_db_name,
                 support_members=aux_fc_members,
                 db_members=[name for name, _ in aux_db_members],
@@ -4350,7 +4472,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
             file_name=tr_fc_file,
             content=_build_support_lad_fc_xml(
                 fc_name=tr_fc_name,
-                title=f"{ir.sequence_name} Transitions LAD",
+                title=SUPPORT_BLOCK_SCHEMA["transitions"]["token"],
                 db_name=tr_db_name,
                 support_members=transitions_fc_members,
                 db_members=[name for name, _ in transitions_db_members],
@@ -4387,7 +4509,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
             file_name=output_fc_file,
             content=_build_support_lad_fc_xml(
                 fc_name=output_fc_name,
-                title=f"{ir.sequence_name} Output LAD",
+                title=SUPPORT_BLOCK_SCHEMA["output"]["token"],
                 db_name=io_db_name,
                 support_members=output_fc_members,
                 db_members=[name for name, _ in output_db_members],
@@ -4402,6 +4524,10 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
             ),
         )
     )
+
+    # NOTE: Do not auto-create external/library FCs that appear as calls inside
+    # expected networks. The bundle must remain within the project's standard
+    # block set; external calls are left as-is for the target project to provide.
 
     previews.append(
         ArtifactPreview(
@@ -4423,7 +4549,7 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
             file_name=mode_fc_file,
             content=_build_support_lad_fc_xml(
                 fc_name=mode_fc_name,
-                title=f"{ir.sequence_name} LEV2 LAD",
+                title=SUPPORT_BLOCK_SCHEMA["mode"]["token"],
                 db_name=mode_db_name,
                 support_members=mode_fc_members,
                 db_members=[name for name, _ in mode_db_members],
@@ -5088,6 +5214,12 @@ def _build_support_lad_fc_xml(
         f'              <Text>{escape(title)}</Text>\n'
         '            </AttributeList>\n'
         '          </MultilingualTextItem>\n'
+        '          <MultilingualTextItem ID="FFFF2" CompositionName="Items">\n'
+        '            <AttributeList>\n'
+        '              <Culture>it-IT</Culture>\n'
+        '              <Text />\n'
+        '            </AttributeList>\n'
+        '          </MultilingualTextItem>\n'
         '        </ObjectList>\n'
         '      </MultilingualText>\n'
         '    </ObjectList>\n'
@@ -5634,7 +5766,7 @@ def _build_support_lad_compile_units(
         for row_index, logic_row in enumerate(logic_rows):
             result_member = str(logic_row.get("result_member") or "").strip()
             kind = str(logic_row.get("kind") or "").strip().lower()
-            if not result_member and kind not in {"meta", "move", "raw_flgnet"}:
+            if not result_member and kind not in {"meta", "move", "raw_flgnet", "raw_networksource"}:
                 continue
             network_no = _as_positive_int(logic_row.get("network_index")) or (row_index + 1)
             if network_no not in by_network:
@@ -5648,6 +5780,7 @@ def _build_support_lad_compile_units(
             comment = ""
             title = ""
             network_no_for_title = ""
+            programming_language = "LAD"
             for logic_row in network_rows:
                 result_member = str(logic_row.get("result_member") or "").strip()
                 condition_expression = str(logic_row.get("condition_expression") or "TRUE")
@@ -5665,8 +5798,20 @@ def _build_support_lad_compile_units(
                 if str(logic_row.get("kind") or "").strip().lower() == "raw_flgnet":
                     raw_xml = str(logic_row.get("raw_flgnet_xml") or "").strip()
                     if raw_xml:
+                        comment = str(logic_row.get("comment") or "").strip()
                         flgnet_fragments.append(f"<NetworkSource>{raw_xml}</NetworkSource>")
                         # Raw FlgNet is authoritative for this CompileUnit.
+                        break
+                if str(logic_row.get("kind") or "").strip().lower() == "raw_networksource":
+                    raw_xml = _rewrite_networksource_global_symbols_to_db(
+                        str(logic_row.get("raw_networksource_xml") or ""),
+                        symbol_home_db_map=symbol_home_db_map,
+                    )
+                    raw_xml = _normalize_networksource_xml(raw_xml)
+                    if raw_xml:
+                        comment = str(logic_row.get("comment") or "").strip()
+                        flgnet_fragments.append(f"<NetworkSource>{raw_xml}</NetworkSource>")
+                        programming_language = str(logic_row.get("programming_language") or "").strip() or "LAD"
                         break
                 note_hints: list[str] = []
                 for token in [result_member, *condition_operands]:
@@ -5770,7 +5915,7 @@ def _build_support_lad_compile_units(
                 + '" CompositionName="CompileUnits">\n'
                 '        <AttributeList>\n'
                 f"{flgnet_xml}\n"
-                '          <ProgrammingLanguage>LAD</ProgrammingLanguage>\n'
+                f'          <ProgrammingLanguage>{escape(programming_language)}</ProgrammingLanguage>\n'
                 '        </AttributeList>\n'
                 '        <ObjectList>\n'
                 '          <MultilingualText ID="'
@@ -7077,6 +7222,7 @@ def _build_support_move_flgnet(
     `move_in` expects:
       - {"kind": "symbol", "value": "<operand>"}
       - {"kind": "literal_int", "value": "2"}
+      - {"kind": "literal_real", "value": "50.0"}
       - {"kind": "literal_time", "value": "T#1S"}
       - {"kind": "literal_string", "value": \"'text'\"}
       - {"kind": "literal_bool", "value": "TRUE"/"FALSE"}
@@ -7302,8 +7448,12 @@ def _build_support_move_flgnet(
         ]
         if in_kind == "literal_int":
             constant_lines.append("        <ConstantType>Int</ConstantType>\n")
+        elif in_kind == "literal_real":
+            constant_lines.append("        <ConstantType>Real</ConstantType>\n")
         elif in_kind == "literal_string":
             constant_lines.append("        <ConstantType>String</ConstantType>\n")
+        elif in_kind == "literal_bool":
+            constant_lines.append("        <ConstantType>Bool</ConstantType>\n")
         constant_lines.append(f"        <ConstantValue>{escape(in_value)}</ConstantValue>\n")
         constant_lines.extend(
             [
@@ -7540,6 +7690,20 @@ def _excel_support_logic_rows(
                     }
                 )
                 continue
+            if item_kind == "raw_networksource":
+                raw_xml = str(item.get("raw_networksource_xml") or "").strip()
+                if raw_xml:
+                    rows.append(
+                        {
+                            "kind": "raw_networksource",
+                            "raw_networksource_xml": raw_xml,
+                            "programming_language": str(item.get("programming_language") or "").strip() or "LAD",
+                            "comment": str(item.get("comment") or "").strip(),
+                            "network_index": item_network,
+                            "network_title": str(item.get("network_title") or "").strip(),
+                        }
+                    )
+                continue
             if item_kind == "raw_flgnet":
                 raw_xml = str(item.get("raw_flgnet_xml") or "").strip()
                 if raw_xml:
@@ -7594,6 +7758,29 @@ def _excel_support_logic_rows(
             condition_expression = " AND ".join(operands)
         if not condition_expression:
             condition_expression = "TRUE"
+
+        # Normalize operand tokens inside the expression to match `condition_operands`.
+        # This is critical for step bits like `S01.X`: operands are sanitized to `S01_X`
+        # in strict Excel mode, so leaving the expression unnormalized would make the
+        # guard parser drop every term and emit unconditional coils.
+        for raw in sorted(
+            {
+                str(t or "").strip()
+                for t in _as_str_list(item.get("condition_operands"))
+                if str(t or "").strip()
+            },
+            key=len,
+            reverse=True,
+        ):
+            normalized = _support_member_name(raw, "", strict_excel_mode=True)
+            if not normalized or normalized == raw:
+                continue
+            # Use non-word boundaries to also match tokens containing '.' (e.g. `S01.X`).
+            condition_expression = re.sub(
+                rf"(?<![A-Za-z0-9_]){re.escape(raw)}(?![A-Za-z0-9_])",
+                normalized,
+                condition_expression,
+            )
 
         row: dict[str, object] = {
             "result_member": result_member,
@@ -7858,6 +8045,8 @@ def _build_support_symbol_home_db_map(ir: AwlIR) -> dict[str, str]:
         "alarm": "diag",
         "aux": "aux",
         "memory": "aux",
+        "parameter": "parameters",
+        "parameters": "parameters",
         "hmi": "hmi",
         "external": "external",
         "output": "io",

@@ -380,6 +380,8 @@ def parse_flgnet_support_rows(flgnet: ET.Element) -> list[dict[str, object]]:
                         "kind": "literal_bool",
                         "value": "TRUE" if const_value.lower() in {"true", "1"} else "FALSE",
                     }
+                if const_type in {"real", "lreal"}:
+                    return {"kind": "literal_real", "value": const_value}
                 if const_type in {"int", "dint", "uint", "udint", "word", "dword"} and re.fullmatch(r"[-+]?\d+", const_value):
                     return {"kind": "literal_int", "value": const_value}
                 if const_type in {"time", "s5time", "t"}:
@@ -539,29 +541,79 @@ def main() -> int:
 
     for cu in compile_units:
         title = _collect_multilang_text_text(cu.find("./ObjectList/MultilingualText[@CompositionName='Title']"))
-        flgnet = cu.find(".//f:FlgNet", FNS)
+        comment_text = _collect_multilang_text_text(cu.find("./ObjectList/MultilingualText[@CompositionName='Comment']"))
+        network_source = cu.find("./AttributeList/NetworkSource")
+        flgnet = None
+        if network_source is not None:
+            flgnet = network_source.find(".//f:FlgNet", FNS)
         base_network_index = next_index
         if flgnet is None:
-            if title:
-                # Preserve title-only networks (separator CompileUnits). Keep the same category so
-                # they can be emitted inside the target FC as empty networks.
+            # If the CompileUnit is not LAD (e.g. STL StatementList), keep the raw NetworkSource
+            # so the generator can emit a non-empty network instead of a blank placeholder.
+            raw_xml = ""
+            if network_source is not None and len(list(network_source)) > 0:
+                raw_xml = "".join(ET.tostring(child, encoding="unicode") for child in list(network_source))
+            prog_lang = (cu.findtext("./AttributeList/ProgrammingLanguage") or "").strip() or "LAD"
+            if raw_xml:
+                ir.setdefault("support_logic", []).append(
+                    {
+                        "category": str(args.category),
+                        "kind": "raw_networksource",
+                        "network_title": title,
+                        "comment": comment_text,
+                        "network_index": base_network_index,
+                        "programming_language": prog_lang,
+                        "raw_networksource_xml": raw_xml,
+                    }
+                )
+                imported += 1
+            elif title:
+                # Title-only separator CompileUnit.
                 ir.setdefault("support_logic", []).append(
                     {
                         "category": str(args.category),
                         "kind": "meta",
                         "network_title": title,
-                        "comment": "",
+                        "comment": comment_text,
                         "network_index": base_network_index,
                     }
                 )
+                imported += 1
             next_index += 1
             continue
 
         extracted_rows = parse_flgnet_support_rows(flgnet)
         if not extracted_rows:
             # This CompileUnit contains logic we don't model yet (e.g. FC calls).
-            # Do not emit a title-only placeholder network: it would show up as an
-            # empty LAD network and confuse downstream diffs.
+            # Preserve it verbatim so the generated FC mirrors the expected export.
+            raw_xml = ""
+            if network_source is not None and len(list(network_source)) > 0:
+                raw_xml = "".join(ET.tostring(child, encoding="unicode") for child in list(network_source))
+            prog_lang = (cu.findtext("./AttributeList/ProgrammingLanguage") or "").strip() or "LAD"
+            if raw_xml:
+                ir.setdefault("support_logic", []).append(
+                    {
+                        "category": str(args.category),
+                        "kind": "raw_networksource",
+                        "network_title": title,
+                        "comment": comment_text,
+                        "network_index": base_network_index,
+                        "programming_language": prog_lang,
+                        "raw_networksource_xml": raw_xml,
+                    }
+                )
+                imported += 1
+            elif title:
+                ir.setdefault("support_logic", []).append(
+                    {
+                        "category": str(args.category),
+                        "kind": "meta",
+                        "network_title": title,
+                        "comment": comment_text,
+                        "network_index": base_network_index,
+                    }
+                )
+                imported += 1
             next_index += 1
             continue
 
@@ -573,15 +625,16 @@ def main() -> int:
                     "category": str(args.category),
                     "kind": "meta",
                     "network_title": title,
-                    "comment": "",
+                    "comment": comment_text,
                     "network_index": base_network_index,
                 }
             )
+            imported += 1
 
         for row in extracted_rows:
             row["category"] = str(args.category)
             row.setdefault("network_title", title)
-            row.setdefault("comment", "")
+            row.setdefault("comment", comment_text)
             # Keep all rows from the same CompileUnit grouped under the same network_index
             # so the generator can merge them into a single CompileUnit, mirroring TIA exports.
             row.setdefault("network_index", base_network_index)
@@ -602,10 +655,59 @@ def main() -> int:
                 tok = str(token or "").strip()
                 if not tok or tok.upper() in {"TRUE", "FALSE"}:
                     continue
-                ir.setdefault("operand_datatypes", {}).setdefault(tok, "Bool")
+                # Do not default every referenced symbol to Bool: MOVE outputs and
+                # numeric values would otherwise be mis-declared in DBs. Keep the
+                # datatype unspecified unless we can infer it (compare rows already
+                # patch their LHS via typed RHS, and coil condition operands are Bool).
+                row_kind = str(row.get("kind") or "").strip().lower()
+                if row_kind not in {"move", "raw_networksource"}:
+                    ir.setdefault("operand_datatypes", {}).setdefault(tok, "Bool")
                 ir.setdefault("operand_categories", {}).setdefault(tok, _guess_category_for_symbol(tok))
                 if tok not in ir.setdefault("operand_catalog", []):
                     ir["operand_catalog"].append(tok)
+
+            # For MOVE rows, infer destination/source datatypes from the literal input.
+            if row_kind == "move":
+                move_in = row.get("move_in") if isinstance(row.get("move_in"), dict) else {}
+                in_kind = str(move_in.get("kind") or "").strip().lower()
+                desired_dt = ""
+                if in_kind == "literal_int":
+                    desired_dt = "Int"
+                elif in_kind == "literal_real":
+                    desired_dt = "Real"
+                elif in_kind == "literal_bool":
+                    desired_dt = "Bool"
+                if desired_dt:
+                    for out_member in list(row.get("move_out_members") or []):
+                        tok = str(out_member or "").strip()
+                        if not tok:
+                            continue
+                        current = str(ir.setdefault("operand_datatypes", {}).get(tok) or "").strip()
+                        if not current or current.lower() == "bool":
+                            ir["operand_datatypes"][tok] = desired_dt
+                # If MOVE input is a symbol, infer its datatype from the output(s)
+                # when possible (e.g. Move Real -> Real destinations).
+                if in_kind == "symbol":
+                    sym = str(move_in.get("value") or "").strip()
+                    out_dts: list[str] = []
+                    for out_member in list(row.get("move_out_members") or []):
+                        tok = str(out_member or "").strip()
+                        if not tok:
+                            continue
+                        dt = str(ir.setdefault("operand_datatypes", {}).get(tok) or "").strip()
+                        if dt:
+                            out_dts.append(dt)
+                    inferred = ""
+                    for dt in out_dts:
+                        if dt and dt.lower() != "bool":
+                            inferred = dt
+                            break
+                    if not inferred and out_dts:
+                        inferred = out_dts[0]
+                    if sym and inferred:
+                        current = str(ir.setdefault("operand_datatypes", {}).get(sym) or "").strip()
+                        if not current or current.lower() == "bool":
+                            ir["operand_datatypes"][sym] = inferred
 
             # If this row carries a numeric comparator, set the datatype of the LHS accordingly
             # so the external DB declares it correctly (e.g. Int/Real instead of Bool).
@@ -626,8 +728,7 @@ def main() -> int:
                         ir["operand_catalog"].append(lhs)
 
         # advance to next compile unit index
-        if flgnet is not None:
-            next_index += 1
+        next_index += 1
 
     ir_path.write_text(json.dumps(ir, indent=2, ensure_ascii=False), encoding="utf-8")
     print(json.dumps({"imported_rows": imported, "next_network_index": next_index}, indent=2))
