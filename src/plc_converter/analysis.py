@@ -3945,7 +3945,8 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
 
     diag_logic = _excel_support_logic_rows(ir, "diag")
     if not ir.strict_operand_catalog:
-        diag_logic = diag_logic + derived_actions.get("diag", [])
+        if not diag_logic:
+            diag_logic = diag_logic + derived_actions.get("diag", [])
     diag_members = (
         (_excel_support_members(ir, "diag") or _collect_diag_support_members(ir))
         + guard_members_by_category.get("diag", [])
@@ -3955,7 +3956,8 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
 
     hmi_logic = _excel_support_logic_rows(ir, "hmi")
     if not ir.strict_operand_catalog:
-        hmi_logic = hmi_logic + derived_actions.get("hmi", []) + derived_actions.get("external", [])
+        if not hmi_logic:
+            hmi_logic = hmi_logic + derived_actions.get("hmi", []) + derived_actions.get("external", [])
     hmi_members = (
         (_excel_support_members(ir, "hmi") or _collect_hmi_support_members(ir))
         + guard_members_by_category.get("hmi", [])
@@ -4025,7 +4027,11 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
 
     aux_logic = _excel_support_logic_rows(ir, "aux")
     if not ir.strict_operand_catalog:
-        aux_logic = aux_logic + derived_actions.get("aux", [])
+        # If IR already provides curated AUX logic (e.g. imported from expected FC),
+        # don't append AWL-derived fallback rows: they often contain placeholder
+        # contacts that mis-type numeric operands as BOOL and diverge from the reference.
+        if not aux_logic:
+            aux_logic = aux_logic + derived_actions.get("aux", [])
     aux_members = (
         (_excel_support_members(ir, "aux") or _collect_aux_support_members(ir))
         + guard_members_by_category.get("aux", [])
@@ -4133,6 +4139,19 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
         _scan_logic_rows(io_db_name, io_output_logic)
         _scan_logic_rows(mode_db_name, mode_logic)
         _scan_logic_rows(tr_db_name, transitions_logic)
+
+        # Timer trigger operands: AWL timer metadata can be used to recover a meaningful
+        # enable chain for timeout alarms. Ensure every trigger token is declared (external DB).
+        for timer in ir.timers or []:
+            timer_name = _support_member_name(str(timer.source_timer or "").strip(), "", strict_excel_mode=True)
+            for raw in (timer.trigger_operands or []):
+                token = str(raw or "").strip()
+                if not token:
+                    continue
+                normalized = _support_member_name(token, "", strict_excel_mode=True)
+                if not normalized:
+                    continue
+                _record_required(ext_db_name, normalized, f"Timer {timer_name} trigger")
 
         # Include guard members too (they might be referenced only in other FCs).
         for category, items in guard_members_by_category.items():
@@ -5302,6 +5321,19 @@ def _counter_part_name(counter_kind: str) -> str:
 
 def _support_timer_configs(ir: AwlIR) -> dict[str, dict[str, str]]:
     configs: dict[str, dict[str, str]] = {}
+    # Ensure timer trigger operands exist in the operand catalog so any recovered
+    # enable logic we emit (contacts before the timer) resolves to a declared DB member.
+    def _record_timer_trigger(token: str) -> None:
+        raw = str(token or "").strip()
+        if not raw:
+            return
+        normalized = _support_member_name(raw, "", strict_excel_mode=True)
+        if not normalized:
+            return
+        ir.operand_datatypes.setdefault(normalized, "Bool")
+        ir.operand_categories.setdefault(normalized, "external")
+        if normalized not in ir.operand_catalog:
+            ir.operand_catalog.append(normalized)
     for raw_name, settings in ir.operand_control_settings.items():
         normalized_name = _support_member_name(raw_name, "", strict_excel_mode=True)
         if not normalized_name:
@@ -5348,6 +5380,11 @@ def _support_timer_configs(ir: AwlIR) -> dict[str, dict[str, str]]:
             "value": preset,
             "control_family": "timer",
         }
+        raw_triggers = [str(x or "").strip() for x in (timer.trigger_operands or []) if str(x or "").strip()]
+        if raw_triggers:
+            configs[normalized_name]["trigger_operands"] = ",".join(raw_triggers)
+            for token in raw_triggers:
+                _record_timer_trigger(token)
     # Record the AWL networks that actually *call* the timer (SD/SE/SP/...) so
     # we can safely inline the timer block only when it is started in the same
     # network where its done bit is evaluated.
@@ -5555,7 +5592,7 @@ def _build_support_lad_compile_units(
         by_network: dict[int, list[dict[str, object]]] = {}
         for row_index, logic_row in enumerate(logic_rows):
             result_member = str(logic_row.get("result_member") or "").strip()
-            if not result_member:
+            if not result_member and str(logic_row.get("kind") or "").strip().lower() != "meta":
                 continue
             network_no = _as_positive_int(logic_row.get("network_index")) or (row_index + 1)
             if network_no not in by_network:
@@ -5580,6 +5617,9 @@ def _build_support_lad_compile_units(
                     title = _normalize_network_title_for_tia(str(logic_row.get("network_title") or "").strip())
                 if not network_no_for_title:
                     network_no_for_title = str(_as_positive_int(logic_row.get("network_index")) or "").strip()
+                if str(logic_row.get("kind") or "").strip().lower() == "meta":
+                    # Separator network: emit empty NetworkSource with title.
+                    continue
                 note_hints: list[str] = []
                 for token in [result_member, *condition_operands]:
                     note = str(operand_notes.get(str(token).strip()) or "").strip()
@@ -5629,6 +5669,22 @@ def _build_support_lad_compile_units(
                             prefer_current_db_for_unmapped=prefer_current_db_for_unmapped,
                         )
                     )
+                elif str(logic_row.get("kind") or "").strip().lower() == "const":
+                    if not result_member:
+                        continue
+                    const_value = str(logic_row.get("const_value") or "").strip().lower() == "true"
+                    flgnet_fragments.append(
+                        _build_support_const_bool_flgnet(
+                            db_name=db_name,
+                            result_member=result_member,
+                            const_value=const_value,
+                            db_members=db_member_set,
+                            symbol_home_db_map=symbol_home_db_map,
+                            member_datatypes=member_datatypes,
+                            coil_mode=coil_mode,
+                            prefer_current_db_for_unmapped=prefer_current_db_for_unmapped,
+                        )
+                    )
                 else:
                     if not result_member:
                         continue
@@ -5648,6 +5704,8 @@ def _build_support_lad_compile_units(
                         )
                     )
             if not flgnet_fragments:
+                if title:
+                    units.append(_build_empty_compile_unit(title=title, comment=comment, base_id=base_id + (index * 5)))
                 continue
             if not title:
                 # Fallback: when no title is available, at least preserve the network number.
@@ -5919,6 +5977,13 @@ def _build_support_logic_flgnet(
             return symbol_home_db_map[symbol_name]
         if prefer_current_db_for_unmapped:
             return db_name
+        return ""
+
+    def _default_external_db_name() -> str:
+        for candidate in (symbol_home_db_map or {}).values():
+            cand = str(candidate or "").strip()
+            if cand and cand.upper().endswith("_EXT_DB"):
+                return cand
         return ""
 
     def _timer_candidate_for_operand(operand: str, negated: bool) -> tuple[str, str, str, str] | None:
@@ -6313,15 +6378,117 @@ def _build_support_logic_flgnet(
                 ]
             )
         else:
-            timer_true_wire_uid = alloc_uid()
-            wires_lines.extend(
-                [
-                    f'    <Wire UId="{timer_true_wire_uid}">\n',
-                    "      <Powerrail />\n",
-                    f'      <NameCon UId="{timer_uid}" Name="{control_input_pin}" />\n',
-                    "    </Wire>\n",
-                ]
-            )
+            # If the expression only referenced a timer done bit, try to recover a
+            # meaningful enable condition from the timer metadata (AWL triggers).
+            recovered_triggers = str((timer_configs.get(active_timer_name) or {}).get("trigger_operands") or "").strip()
+            raw_tokens = [t.strip() for t in recovered_triggers.split(",") if t.strip()] if recovered_triggers else []
+            # Only keep boolean-like triggers; skip numeric operands that would be mis-wired as Contacts.
+            trigger_tokens: list[str] = []
+            for tok in raw_tokens:
+                normalized_tok = _support_member_name(tok, "", strict_excel_mode=True)
+                dtype = _normalize_plc_datatype(member_datatypes.get(normalized_tok, "Bool"))
+                if dtype and dtype != "Bool":
+                    continue
+                # Heuristic: reject obviously numeric DB leaves (DBW/DBD style) and PVR/SPI leaves.
+                upper_tok = tok.upper()
+                if any(key in upper_tok for key in ("PVR", "SPI", ".DBW", ".DBD", ".DBB")):
+                    continue
+                trigger_tokens.append(tok)
+            if trigger_tokens:
+                contact_uids: list[int] = []
+                access_uids: list[int] = []
+                for token in trigger_tokens:
+                    normalized_operand, operand_path = _resolve_logic_symbol_path(token, member_datatypes)
+                    if not normalized_operand:
+                        continue
+                    # Timer triggers often refer to raw IO/drive flags that are not categorized.
+                    # Treat them as external so the Access includes an owner DB and imports cleanly.
+                    if not str(symbol_home_db_map.get(normalized_operand) or "").strip():
+                        ext_db_name = _default_external_db_name() or db_name
+                        symbol_home_db_map[normalized_operand] = ext_db_name
+                    access_uid = alloc_uid()
+                    contact_uid = alloc_uid()
+                    access_uids.append(access_uid)
+                    contact_uids.append(contact_uid)
+                    parts_lines.extend(_render_access(normalized_operand, operand_path, access_uid))
+                    parts_lines.append(f'    <Part Name="Contact" UId="{contact_uid}" />\n')
+                    operand_wire_uid = alloc_uid()
+                    wires_lines.extend(
+                        [
+                            f'    <Wire UId="{operand_wire_uid}">\n',
+                            f'      <IdentCon UId="{access_uid}" />\n',
+                            f'      <NameCon UId="{contact_uid}" Name="operand" />\n',
+                            "    </Wire>\n",
+                        ]
+                    )
+
+                if contact_uids:
+                    # One Powerrail for all trigger contacts.
+                    pr_uid = alloc_uid()
+                    wires_lines.append(f'    <Wire UId="{pr_uid}">\n')
+                    wires_lines.append("      <Powerrail />\n")
+                    for cu in contact_uids:
+                        wires_lines.append(f'      <NameCon UId="{cu}" Name="in" />\n')
+                    wires_lines.append("    </Wire>\n")
+
+                    if len(contact_uids) == 1:
+                        in_wire_uid = alloc_uid()
+                        wires_lines.extend(
+                            [
+                                f'    <Wire UId="{in_wire_uid}">\n',
+                                f'      <NameCon UId="{contact_uids[0]}" Name="out" />\n',
+                                f'      <NameCon UId="{timer_uid}" Name="{control_input_pin}" />\n',
+                                "    </Wire>\n",
+                            ]
+                        )
+                    else:
+                        or_uid = alloc_uid()
+                        parts_lines.extend(
+                            [
+                                f'    <Part Name="O" UId="{or_uid}">\n',
+                                f'      <TemplateValue Name="Card" Type="Cardinality">{len(contact_uids)}</TemplateValue>\n',
+                                "    </Part>\n",
+                            ]
+                        )
+                        for idx, cu in enumerate(contact_uids, start=1):
+                            w_uid = alloc_uid()
+                            wires_lines.extend(
+                                [
+                                    f'    <Wire UId="{w_uid}">\n',
+                                    f'      <NameCon UId="{cu}" Name="out" />\n',
+                                    f'      <NameCon UId="{or_uid}" Name="in{idx}" />\n',
+                                    "    </Wire>\n",
+                                ]
+                            )
+                        out_w_uid = alloc_uid()
+                        wires_lines.extend(
+                            [
+                                f'    <Wire UId="{out_w_uid}">\n',
+                                f'      <NameCon UId="{or_uid}" Name="out" />\n',
+                                f'      <NameCon UId="{timer_uid}" Name="{control_input_pin}" />\n',
+                                "    </Wire>\n",
+                            ]
+                        )
+                else:
+                    timer_true_wire_uid = alloc_uid()
+                    wires_lines.extend(
+                        [
+                            f'    <Wire UId="{timer_true_wire_uid}">\n',
+                            "      <Powerrail />\n",
+                            f'      <NameCon UId="{timer_uid}" Name="{control_input_pin}" />\n',
+                            "    </Wire>\n",
+                        ]
+                    )
+            else:
+                timer_true_wire_uid = alloc_uid()
+                wires_lines.extend(
+                    [
+                        f'    <Wire UId="{timer_true_wire_uid}">\n',
+                        "      <Powerrail />\n",
+                        f'      <NameCon UId="{timer_uid}" Name="{control_input_pin}" />\n',
+                        "    </Wire>\n",
+                    ]
+                )
 
         pt_wire_uid = alloc_uid()
         wires_lines.extend(
@@ -6484,6 +6651,7 @@ def _build_support_compare_flgnet(
     guard_clauses = _parse_guard_clauses(pre_expression, pre_operands)
     has_true_clause = any(not clause for clause in guard_clauses)
     clause_contact_uids: list[list[int]] = []
+    clause_start_uids: list[int] = []
 
     for clause in guard_clauses:
         if not clause:
@@ -6523,17 +6691,10 @@ def _build_support_compare_flgnet(
 
         # Chain contacts in series.
         for index, contact_uid in enumerate(contact_uids):
-            in_wire_uid = alloc_uid()
             if index == 0:
-                wires_lines.extend(
-                    [
-                        f'    <Wire UId="{in_wire_uid}">\n',
-                        "      <Powerrail />\n",
-                        f'      <NameCon UId="{contact_uid}" Name="in" />\n',
-                        "    </Wire>\n",
-                    ]
-                )
+                clause_start_uids.append(contact_uid)
             else:
+                in_wire_uid = alloc_uid()
                 prev_uid = contact_uids[index - 1]
                 wires_lines.extend(
                     [
@@ -6544,6 +6705,16 @@ def _build_support_compare_flgnet(
                     ]
                 )
         clause_contact_uids.append(contact_uids)
+
+    if clause_start_uids:
+        # LAD rule: one Powerrail per network. Use a single wire that fans out
+        # to the first contact of each clause.
+        powerrail_wire_uid = alloc_uid()
+        wires_lines.append(f'    <Wire UId="{powerrail_wire_uid}">\n')
+        wires_lines.append("      <Powerrail />\n")
+        for uid in clause_start_uids:
+            wires_lines.append(f'      <NameCon UId="{uid}" Name="in" />\n')
+        wires_lines.append("    </Wire>\n")
 
     # Comparator + coil.
     compare_part_map = {"EQ": "Eq", "NE": "Ne", "GT": "Gt", "GE": "Ge", "LT": "Lt", "LE": "Le"}
@@ -6677,6 +6848,152 @@ def _build_support_compare_flgnet(
     wires_lines.extend(
         [
             f'    <Wire UId="{coil_op_wire_uid}">\n',
+            f'      <IdentCon UId="{coil_access_uid}" />\n',
+            f'      <NameCon UId="{coil_uid}" Name="operand" />\n',
+            "    </Wire>\n",
+        ]
+    )
+
+    return (
+        '          <NetworkSource><FlgNet xmlns="http://www.siemens.com/automation/Openness/SW/NetworkSource/FlgNet/v5">\n'
+        "  <Parts>\n"
+        f'{"".join(parts_lines)}'
+        "  </Parts>\n"
+        "  <Wires>\n"
+        f'{"".join(wires_lines)}'
+        "  </Wires>\n"
+        "</FlgNet></NetworkSource>"
+    )
+
+
+def _build_support_const_bool_flgnet(
+    db_name: str,
+    result_member: str,
+    const_value: bool,
+    db_members: set[str],
+    symbol_home_db_map: dict[str, str],
+    member_datatypes: dict[str, str],
+    coil_mode: str = "",
+    prefer_current_db_for_unmapped: bool = False,
+) -> str:
+    """
+    Emit a constant boolean contact driving a coil (matches typical TIA export shape).
+    """
+    next_uid = 21
+
+    def alloc_uid() -> int:
+        nonlocal next_uid
+        current = next_uid
+        next_uid += 1
+        return current
+
+    normalized_result = _support_member_name(result_member, "", strict_excel_mode=True)
+    normalized_coil_mode = str(coil_mode or "").strip().lower()
+    coil_part_name = "Coil"
+    if normalized_coil_mode in {"set", "s"}:
+        coil_part_name = "SCoil"
+    elif normalized_coil_mode in {"reset", "r"}:
+        coil_part_name = "RCoil"
+
+    parts_lines: list[str] = []
+    wires_lines: list[str] = []
+
+    # Literal constant access
+    const_access_uid = alloc_uid()
+    parts_lines.extend(
+        [
+            f'    <Access Scope="LiteralConstant" UId="{const_access_uid}">\n',
+            "      <Constant>\n",
+            "        <ConstantType>Bool</ConstantType>\n",
+            f"        <ConstantValue>{'true' if const_value else 'false'}</ConstantValue>\n",
+            "      </Constant>\n",
+            "    </Access>\n",
+        ]
+    )
+
+    contact_uid = alloc_uid()
+    parts_lines.append(f'    <Part Name="Contact" UId="{contact_uid}" />\n')
+
+    coil_access_uid = alloc_uid()
+    coil_uid = alloc_uid()
+
+    def _owner_db_name(symbol_name: str) -> str:
+        token = str(symbol_name or "").strip()
+        if not token:
+            return ""
+        if token in db_members:
+            return db_name
+        folded = token.upper()
+        prefix = f"{folded}."
+        if any(str(member or "").strip().upper().startswith(prefix) for member in db_members):
+            return db_name
+        if symbol_name in symbol_home_db_map:
+            return symbol_home_db_map[symbol_name]
+        if prefer_current_db_for_unmapped:
+            return db_name
+        return ""
+
+    def _render_access(symbol_name: str, symbol_path: list[str], access_uid: int) -> list[str]:
+        target_db_name = _owner_db_name(symbol_name)
+        if target_db_name:
+            resolved_path = list(symbol_path)
+            root_struct = _support_root_struct_for_db_name(target_db_name)
+            if root_struct and (not resolved_path or resolved_path[0] != root_struct):
+                resolved_path = [root_struct, *resolved_path]
+            return [
+                f'    <Access Scope="GlobalVariable" UId="{access_uid}">\n',
+                "      <Symbol>\n",
+                f'        <Component Name="{escape(target_db_name)}" />\n',
+                "".join(f'        <Component Name="{escape(component)}" />\n' for component in resolved_path),
+                "      </Symbol>\n",
+                "    </Access>\n",
+            ]
+        return [
+            f'    <Access Scope="GlobalVariable" UId="{access_uid}">\n',
+            "      <Symbol>\n",
+            "".join(f'        <Component Name="{escape(component)}" />\n' for component in symbol_path),
+            "      </Symbol>\n",
+            "    </Access>\n",
+        ]
+
+    parts_lines.extend(_render_access(normalized_result, [normalized_result], coil_access_uid))
+    parts_lines.append(f'    <Part Name="{escape(coil_part_name)}" UId="{coil_uid}" />\n')
+
+    # Powerrail -> contact.in
+    pr_wire_uid = alloc_uid()
+    wires_lines.extend(
+        [
+            f'    <Wire UId="{pr_wire_uid}">\n',
+            "      <Powerrail />\n",
+            f'      <NameCon UId="{contact_uid}" Name="in" />\n',
+            "    </Wire>\n",
+        ]
+    )
+    # const -> contact.operand
+    op_wire_uid = alloc_uid()
+    wires_lines.extend(
+        [
+            f'    <Wire UId="{op_wire_uid}">\n',
+            f'      <IdentCon UId="{const_access_uid}" />\n',
+            f'      <NameCon UId="{contact_uid}" Name="operand" />\n',
+            "    </Wire>\n",
+        ]
+    )
+    # contact.out -> coil.in
+    in_wire_uid = alloc_uid()
+    wires_lines.extend(
+        [
+            f'    <Wire UId="{in_wire_uid}">\n',
+            f'      <NameCon UId="{contact_uid}" Name="out" />\n',
+            f'      <NameCon UId="{coil_uid}" Name="in" />\n',
+            "    </Wire>\n",
+        ]
+    )
+    # coil operand
+    coil_op_uid = alloc_uid()
+    wires_lines.extend(
+        [
+            f'    <Wire UId="{coil_op_uid}">\n',
             f'      <IdentCon UId="{coil_access_uid}" />\n',
             f'      <NameCon UId="{coil_uid}" Name="operand" />\n',
             "    </Wire>\n",
@@ -7150,6 +7467,11 @@ def _excel_support_logic_rows(
         return []
 
     rows: list[dict[str, object]] = []
+    cmp_re = re.compile(
+        r"^\(?\s*([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z0-9_]+)*)\s*(==|<>|>=|<=|>|<)\s*"
+        r"(?:(Int|DInt|Real|Byte|Word|DWord):)?([0-9]+(?:\.[0-9]+)?)\s*\)?$",
+        flags=re.IGNORECASE,
+    )
     for item in ir.support_logic:
         raw_category = str(item.get("category") or "").strip().lower()
         if raw_category != normalized_category:
@@ -7160,6 +7482,16 @@ def _excel_support_logic_rows(
 
         result_raw = str(item.get("result_member") or "").strip()
         if not result_raw:
+            if item_kind == "meta":
+                rows.append(
+                    {
+                        "kind": "meta",
+                        "comment": str(item.get("comment") or "").strip(),
+                        "network_index": item_network,
+                        "network_title": str(item.get("network_title") or "").strip(),
+                    }
+                )
+            continue
             continue
         result_member = _support_member_name(result_raw, "", strict_excel_mode=True)
 
@@ -7184,6 +7516,37 @@ def _excel_support_logic_rows(
             "network_index": item_network,
             "network_title": str(item.get("network_title") or "").strip(),
         }
+        # Promote bool literal tokens used in expected exports: (Bool:true)/(Bool:false)
+        if not item_kind:
+            lit = condition_expression.strip().strip("()").strip()
+            if lit.lower() in {"bool:true", "bool:false"}:
+                row["kind"] = "const"
+                row["const_type"] = "Bool"
+                row["const_value"] = "true" if lit.lower().endswith("true") else "false"
+        # Auto-promote simple numeric comparisons to `kind=compare` so they are emitted
+        # as Eq/Ne/Gt/Ge/Lt/Le blocks rather than illegal Contacts on INT/REAL members.
+        if not item_kind and operands and len(operands) == 1 and row.get("kind") != "const":
+            m = cmp_re.match(condition_expression)
+            if m:
+                lhs, op_sym, typed, num = m.group(1), m.group(2), m.group(3), m.group(4)
+                op_map = {"==": "EQ", "<>": "NE", ">": "GT", ">=": "GE", "<": "LT", "<=": "LE"}
+                compare_op = op_map.get(op_sym, "")
+                rhs_type = (typed or ("Real" if "." in (num or "") else "Int")).capitalize()
+                row = {
+                    "kind": "compare",
+                    "result_member": result_member,
+                    "compare_op": compare_op,
+                    "compare_lhs": _support_member_name(lhs, "", strict_excel_mode=True),
+                    "compare_rhs": f"#{rhs_type}:{num}",
+                    "pre_expression": "TRUE",
+                    "pre_operands": [],
+                    "coil_mode": str(item.get("coil_mode") or "").strip(),
+                    "comment": str(item.get("comment") or "").strip(),
+                    "network_index": item_network,
+                    "network_title": str(item.get("network_title") or "").strip(),
+                    "condition_expression": condition_expression,
+                    "condition_operands": operands,
+                }
         if item_kind == "move":
             row["kind"] = "move"
             move_in = item.get("move_in") if isinstance(item.get("move_in"), dict) else {}
@@ -7217,6 +7580,40 @@ def _excel_support_logic_rows(
         )
     )
     return rows
+
+
+def _build_empty_compile_unit(title: str, comment: str, base_id: int) -> str:
+    unit_id = format(base_id, "X")
+    comment_id = format(base_id + 1, "X")
+    comment_item_id = format(base_id + 2, "X")
+    title_id = format(base_id + 3, "X")
+    title_item_id = format(base_id + 4, "X")
+    return (
+        '      <SW.Blocks.CompileUnit ID="'
+        + unit_id
+        + '" CompositionName="CompileUnits">\n'
+        '        <AttributeList>\n'
+        "          <NetworkSource />\n"
+        '          <ProgrammingLanguage>LAD</ProgrammingLanguage>\n'
+        "        </AttributeList>\n"
+        "        <ObjectList>\n"
+        '          <MultilingualText ID="'
+        + comment_id
+        + '" CompositionName="Comment">\n'
+        "            <ObjectList>\n"
+        + _render_multilingual_text_items(comment_item_id, comment, indent="              ")
+        + "            </ObjectList>\n"
+        "          </MultilingualText>\n"
+        '          <MultilingualText ID="'
+        + title_id
+        + '" CompositionName="Title">\n'
+        "            <ObjectList>\n"
+        + _render_multilingual_text_items(title_item_id, title, indent="              ")
+        + "            </ObjectList>\n"
+        "          </MultilingualText>\n"
+        "        </ObjectList>\n"
+        "      </SW.Blocks.CompileUnit>"
+    )
 
 
 def _merge_support_members_with_logic(

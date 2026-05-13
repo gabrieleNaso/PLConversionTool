@@ -477,9 +477,22 @@ def main() -> int:
     for cu in compile_units:
         title = _collect_multilang_text_text(cu.find("./ObjectList/MultilingualText[@CompositionName='Title']"))
         flgnet = cu.find(".//f:FlgNet", FNS)
-        if flgnet is None:
-            continue
         base_network_index = next_index
+        if title:
+            # Preserve title-only networks (separator CompileUnits). Keep the same category so
+            # they can be emitted inside the target FC as empty networks.
+            ir.setdefault("support_logic", []).append(
+                {
+                    "category": str(args.category),
+                    "kind": "meta",
+                    "network_title": title,
+                    "comment": "",
+                    "network_index": base_network_index,
+                }
+            )
+        if flgnet is None:
+            next_index += 1
+            continue
         for row in parse_flgnet_coil_rows(flgnet):
             row["category"] = str(args.category)
             row.setdefault("network_title", title)
@@ -499,6 +512,24 @@ def main() -> int:
                 ir.setdefault("operand_categories", {}).setdefault(tok, _guess_category_for_symbol(tok))
                 if tok not in ir.setdefault("operand_catalog", []):
                     ir["operand_catalog"].append(tok)
+
+            # If this row carries a numeric comparator, set the datatype of the LHS accordingly
+            # so the external DB declares it correctly (e.g. Int/Real instead of Bool).
+            if str(row.get("kind") or "").strip().lower() == "compare":
+                lhs = str(row.get("compare_lhs") or "").strip()
+                rhs = str(row.get("compare_rhs") or "").strip()
+                rhs_type = ""
+                if rhs.startswith("#"):
+                    rhs_payload = rhs[1:]
+                    if ":" in rhs_payload:
+                        rhs_type = rhs_payload.split(":", 1)[0].strip()
+                if lhs and rhs_type:
+                    # Map TIA literal constant types to PLC datatypes.
+                    plc_type = rhs_type
+                    ir.setdefault("operand_datatypes", {})[lhs] = plc_type
+                    ir.setdefault("operand_categories", {}).setdefault(lhs, _guess_category_for_symbol(lhs))
+                    if lhs not in ir.setdefault("operand_catalog", []):
+                        ir["operand_catalog"].append(lhs)
 
         # advance to next compile unit index
         if flgnet is not None:

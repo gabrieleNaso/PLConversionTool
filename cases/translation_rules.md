@@ -434,6 +434,26 @@ Nei reference `expected_output1/2/3/4` la LEV2 ha una **struttura contrattuale**
 - `AUX.TIMER[]` e `AUX.OS[]` (array di timer/os usati dal contratto LEV2, anche se la sequenza applicativa non li usa direttamente);
 - opzionale handshake `HSK TABLE.*` / `HSK Answer OK` (global tags esterni, non “memory” della sequenza).
 
+#### 7.5.1 LEV2 “export-shaped” (reti LAD stabili, non scaffold)
+
+Dai reference (in particolare casi 3/4) la FC LEV2 attesa non e' una “dump” di tutte le assegnazioni trovate in AWL,
+ma un set di network **stabili e leggibili** (export-shaped), con titoli e separatori usati come “capitoli”.
+
+Regole (estrazione IR, indipendenti dal caso specifico):
+- **Separator network (solo titolo)**: quando nella FC LEV2 esiste una rete con solo titolo (nessuna logica),
+  in `support_logic` va resa come riga `kind: meta` con `network_title` valorizzato.
+  - Questa riga **non** deve avere `result_member`/`condition_expression`.
+  - Serve solo a preservare i “capitoli” (es. `============ Manual movement ============`) anche se non ci sono coil.
+- **Costanti booleane (TRUE/FALSE)**: alcune reti LEV2 definiscono output ITF con un contatto costante `TRUE`/`FALSE`
+  collegato a una bobina (pattern “Check OK / not OK”, “Transfer OK / not OK”).
+  - In IR, rappresentare queste reti come `condition_expression` tipata (`(Bool:true)` / `(Bool:false)`) oppure come `kind: const`.
+  - Evitare di modellare `TRUE/FALSE` come variabile: e' una costante (TIA: `LiteralConstant`).
+- **Unconditional coil (sempre ON)**: se un membro ITF (es. `Production Lock`) e' sempre attivo negli expected,
+  l’IR deve contenere una rete con `condition_expression: TRUE` (bobina su powerrail), non logica inventata.
+- **Confronti numerici**: quando una condizione LEV2 dipende da un confronto (INT/REAL),
+  non usare mai il valore numerico come “contatto” (TIA non permette contact su INT/REAL).
+  - In IR usare un confronto esplicito (`kind: compare`) con operatore e letterali tipati.
+
 Regole (derivazione generica, senza usare gli expected come sorgente):
 - se dall’AWL/IR emerge un **tracking micro-flow** (tipicamente step sintetici `S100_TRK_CHECK` / `S101_TRK_TRANSFER`
   oppure pattern equivalente), allora:
