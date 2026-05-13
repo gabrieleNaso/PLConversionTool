@@ -4133,6 +4133,47 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
                     owner = symbol_home_db_map.get(normalized, db_name_for_category)
                     _record_required(owner, normalized, comment)
 
+                row_kind = str(row.get("kind") or "").strip().lower()
+                if row_kind == "move":
+                    for member in _as_str_list(row.get("move_out_members")):
+                        token = str(member or "").strip()
+                        if not token:
+                            continue
+                        normalized = _support_member_name(token, "", strict_excel_mode=True)
+                        if not normalized:
+                            continue
+                        owner = symbol_home_db_map.get(normalized, db_name_for_category)
+                        _record_required(owner, normalized, comment)
+                    move_in = row.get("move_in") if isinstance(row.get("move_in"), dict) else {}
+                    if str(move_in.get("kind") or "").strip().lower() == "symbol":
+                        token = str(move_in.get("value") or "").strip()
+                        normalized = _support_member_name(token, "", strict_excel_mode=True)
+                        if normalized:
+                            owner = symbol_home_db_map.get(normalized, db_name_for_category)
+                            _record_required(owner, normalized, comment)
+                elif row_kind == "compare":
+                    lhs = str(row.get("compare_lhs") or "").strip()
+                    rhs = str(row.get("compare_rhs") or "").strip()
+                    if lhs:
+                        normalized = _support_member_name(lhs, "", strict_excel_mode=True)
+                        if normalized:
+                            owner = symbol_home_db_map.get(normalized, db_name_for_category)
+                            _record_required(owner, normalized, comment)
+                    if rhs and not rhs.startswith("#"):
+                        normalized = _support_member_name(rhs, "", strict_excel_mode=True)
+                        if normalized:
+                            owner = symbol_home_db_map.get(normalized, db_name_for_category)
+                            _record_required(owner, normalized, comment)
+                    for operand in _as_str_list(row.get("pre_operands")):
+                        token = str(operand or "").strip()
+                        if not token:
+                            continue
+                        normalized = _support_member_name(token, "", strict_excel_mode=True)
+                        if not normalized:
+                            continue
+                        owner = symbol_home_db_map.get(normalized, db_name_for_category)
+                        _record_required(owner, normalized, comment)
+
         _scan_logic_rows(diag_db_name, diag_logic)
         _scan_logic_rows(hmi_db_name, hmi_logic)
         _scan_logic_rows(aux_db_name, aux_logic)
@@ -5592,7 +5633,8 @@ def _build_support_lad_compile_units(
         by_network: dict[int, list[dict[str, object]]] = {}
         for row_index, logic_row in enumerate(logic_rows):
             result_member = str(logic_row.get("result_member") or "").strip()
-            if not result_member and str(logic_row.get("kind") or "").strip().lower() != "meta":
+            kind = str(logic_row.get("kind") or "").strip().lower()
+            if not result_member and kind not in {"meta", "move", "raw_flgnet"}:
                 continue
             network_no = _as_positive_int(logic_row.get("network_index")) or (row_index + 1)
             if network_no not in by_network:
@@ -5620,6 +5662,12 @@ def _build_support_lad_compile_units(
                 if str(logic_row.get("kind") or "").strip().lower() == "meta":
                     # Separator network: emit empty NetworkSource with title.
                     continue
+                if str(logic_row.get("kind") or "").strip().lower() == "raw_flgnet":
+                    raw_xml = str(logic_row.get("raw_flgnet_xml") or "").strip()
+                    if raw_xml:
+                        flgnet_fragments.append(f"<NetworkSource>{raw_xml}</NetworkSource>")
+                        # Raw FlgNet is authoritative for this CompileUnit.
+                        break
                 note_hints: list[str] = []
                 for token in [result_member, *condition_operands]:
                     note = str(operand_notes.get(str(token).strip()) or "").strip()
@@ -7491,7 +7539,47 @@ def _excel_support_logic_rows(
                         "network_title": str(item.get("network_title") or "").strip(),
                     }
                 )
-            continue
+                continue
+            if item_kind == "raw_flgnet":
+                raw_xml = str(item.get("raw_flgnet_xml") or "").strip()
+                if raw_xml:
+                    rows.append(
+                        {
+                            "kind": "raw_flgnet",
+                            "raw_flgnet_xml": raw_xml,
+                            "comment": str(item.get("comment") or "").strip(),
+                            "network_index": item_network,
+                            "network_title": str(item.get("network_title") or "").strip(),
+                        }
+                    )
+                continue
+            if item_kind == "move":
+                move_in = item.get("move_in") if isinstance(item.get("move_in"), dict) else {}
+                move_out_members = [
+                    _support_member_name(str(token).strip(), "", strict_excel_mode=True)
+                    for token in _as_str_list(item.get("move_out_members"))
+                    if str(token).strip()
+                ]
+                operands = [
+                    _support_member_name(str(token).strip(), "", strict_excel_mode=True)
+                    for token in _as_str_list(item.get("condition_operands"))
+                    if str(token).strip()
+                ]
+                enable_expr = str(item.get("condition_expression") or "").strip() or "TRUE"
+                rows.append(
+                    {
+                        "kind": "move",
+                        "move_in": {str(k): str(v) for k, v in (move_in or {}).items()},
+                        "move_out_members": move_out_members,
+                        "condition_expression": enable_expr,
+                        "condition_operands": operands,
+                        "coil_mode": "",
+                        "comment": str(item.get("comment") or "").strip(),
+                        "network_index": item_network,
+                        "network_title": str(item.get("network_title") or "").strip(),
+                    }
+                )
+                continue
             continue
         result_member = _support_member_name(result_raw, "", strict_excel_mode=True)
 

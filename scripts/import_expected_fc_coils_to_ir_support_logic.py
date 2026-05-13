@@ -159,7 +159,7 @@ def _extract_operand_from_access(acc: ET.Element) -> str:
     return symbol_to_operand(comps)
 
 
-def parse_flgnet_coil_rows(flgnet: ET.Element) -> list[dict[str, object]]:
+def parse_flgnet_support_rows(flgnet: ET.Element) -> list[dict[str, object]]:
     # Access UId -> operand token.
     access_operands: dict[str, str] = {}
     for acc in flgnet.findall(".//f:Access", FNS):
@@ -365,8 +365,71 @@ def parse_flgnet_coil_rows(flgnet: ET.Element) -> list[dict[str, object]]:
                 expr_at_net[out_net] = new_expr
                 changed = True
 
-    # Extract coil writes: Coil/SCoil/RCoil
     rows: list[dict[str, object]] = []
+
+    def _move_in_spec(token: str) -> dict[str, str]:
+        tok = str(token or "").strip()
+        if tok.startswith("#"):
+            payload = tok[1:]
+            if ":" in payload:
+                const_type, const_value = payload.split(":", 1)
+                const_type = const_type.strip().lower()
+                const_value = const_value.strip()
+                if const_type == "bool":
+                    return {
+                        "kind": "literal_bool",
+                        "value": "TRUE" if const_value.lower() in {"true", "1"} else "FALSE",
+                    }
+                if const_type in {"int", "dint", "uint", "udint", "word", "dword"} and re.fullmatch(r"[-+]?\d+", const_value):
+                    return {"kind": "literal_int", "value": const_value}
+                if const_type in {"time", "s5time", "t"}:
+                    return {"kind": "literal_time", "value": const_value}
+                if const_type in {"string", "wstring"}:
+                    return {"kind": "literal_string", "value": const_value}
+            return {"kind": "symbol", "value": payload}
+        if tok.upper() in {"TRUE", "FALSE"}:
+            return {"kind": "literal_bool", "value": tok.upper()}
+        return {"kind": "symbol", "value": tok}
+
+    # Extract MOVE writes (Move box).
+    for move_uid, name in part_name.items():
+        if name != "Move":
+            continue
+        en_net = net_of_namecon_if_exists(move_uid, "en")
+        in_net = net_of_namecon_if_exists(move_uid, "in")
+        if en_net is None or in_net is None:
+            continue
+        enable_expr = expr_at_net.get(en_net, Expr("var", value="TRUE"))
+        enable_str = enable_expr.to_str().replace("TRUE AND ", "").replace("(TRUE AND ", "(").strip()
+        if enable_str.upper() == "TRUE":
+            enable_str = "(TRUE)"
+        enable_operands = sorted(o for o in enable_expr.operands() if o and o != "TRUE")
+
+        in_token = operand_at_net.get(in_net, "")
+        if not in_token:
+            continue
+        out_members: list[str] = []
+        for idx in range(1, 33):
+            out_net = net_of_namecon_if_exists(move_uid, f"out{idx}")
+            if out_net is None:
+                continue
+            out_token = operand_at_net.get(out_net, "")
+            if out_token and out_token not in out_members:
+                out_members.append(out_token)
+        if not out_members:
+            continue
+        rows.append(
+            {
+                "kind": "move",
+                "condition_expression": enable_str,
+                "condition_operands": enable_operands,
+                "move_in": _move_in_spec(in_token),
+                "move_out_members": out_members,
+                "coil_mode": "",
+            }
+        )
+
+    # Extract coil writes: Coil/SCoil/RCoil
     for coil_uid, name in part_name.items():
         if name not in {"Coil", "SCoil", "RCoil"}:
             continue
@@ -478,9 +541,33 @@ def main() -> int:
         title = _collect_multilang_text_text(cu.find("./ObjectList/MultilingualText[@CompositionName='Title']"))
         flgnet = cu.find(".//f:FlgNet", FNS)
         base_network_index = next_index
+        if flgnet is None:
+            if title:
+                # Preserve title-only networks (separator CompileUnits). Keep the same category so
+                # they can be emitted inside the target FC as empty networks.
+                ir.setdefault("support_logic", []).append(
+                    {
+                        "category": str(args.category),
+                        "kind": "meta",
+                        "network_title": title,
+                        "comment": "",
+                        "network_index": base_network_index,
+                    }
+                )
+            next_index += 1
+            continue
+
+        extracted_rows = parse_flgnet_support_rows(flgnet)
+        if not extracted_rows:
+            # This CompileUnit contains logic we don't model yet (e.g. FC calls).
+            # Do not emit a title-only placeholder network: it would show up as an
+            # empty LAD network and confuse downstream diffs.
+            next_index += 1
+            continue
+
         if title:
-            # Preserve title-only networks (separator CompileUnits). Keep the same category so
-            # they can be emitted inside the target FC as empty networks.
+            # Preserve the CompileUnit title inside the target FC (as a meta row)
+            # so the generator can keep the same network headings.
             ir.setdefault("support_logic", []).append(
                 {
                     "category": str(args.category),
@@ -490,10 +577,8 @@ def main() -> int:
                     "network_index": base_network_index,
                 }
             )
-        if flgnet is None:
-            next_index += 1
-            continue
-        for row in parse_flgnet_coil_rows(flgnet):
+
+        for row in extracted_rows:
             row["category"] = str(args.category)
             row.setdefault("network_title", title)
             row.setdefault("comment", "")
@@ -503,8 +588,17 @@ def main() -> int:
             ir.setdefault("support_logic", []).append(row)
             imported += 1
 
-            # Ensure operand metadata exists for target + operands.
-            for token in [row["result_member"], *list(row.get("condition_operands") or [])]:
+            # Ensure operand metadata exists for referenced operands.
+            referenced_tokens: list[str] = []
+            if "result_member" in row:
+                referenced_tokens.append(str(row.get("result_member") or ""))
+            referenced_tokens.extend(list(row.get("condition_operands") or []))
+            referenced_tokens.extend(list(row.get("move_out_members") or []))
+            move_in = row.get("move_in") if isinstance(row.get("move_in"), dict) else {}
+            if str(move_in.get("kind") or "") == "symbol":
+                referenced_tokens.append(str(move_in.get("value") or ""))
+
+            for token in referenced_tokens:
                 tok = str(token or "").strip()
                 if not tok or tok.upper() in {"TRUE", "FALSE"}:
                     continue
