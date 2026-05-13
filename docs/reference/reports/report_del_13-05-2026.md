@@ -1,4 +1,4 @@
-# Report aggiornato del 12-05-2026
+# Report aggiornato del 13-05-2026
 
 ## Progetto
 Conversione di sequenziatori PLC da AWL a GRAPH in TIA Portal V20 tramite XML.

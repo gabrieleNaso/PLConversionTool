@@ -1,4 +1,4 @@
-Specifica master consolidata del 12-05-2026
+Specifica master consolidata del 13-05-2026
 per le regole di traduzione e generazione XML
 AWL / Excel -> IR -> GRAPH / GlobalDB / FC LAD per TIA Portal V20
 
