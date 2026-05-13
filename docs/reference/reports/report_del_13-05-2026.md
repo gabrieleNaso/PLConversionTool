@@ -16,7 +16,7 @@ L'obiettivo di questa versione consolidata è:
 - mantenere una baseline unica, leggibile e riusabile;
 - integrare in un unico testo sia la parte di reverse engineering XML sia la parte operativa su TIA Portal Openness.
 
-Il documento va quindi usato come riferimento tecnico corrente del progetto alla data del **12-05-2026**.
+Il documento va quindi usato come riferimento tecnico corrente del progetto alla data del **13-05-2026**.
 
 Aggiornamento principale di questa revisione:
 - aggiunti e incrociati i casi `expected_output3` (FC112) e `expected_output4` (FC193) per rafforzare le regole generali
