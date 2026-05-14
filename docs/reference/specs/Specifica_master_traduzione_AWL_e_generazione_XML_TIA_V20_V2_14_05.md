@@ -34,6 +34,9 @@ Aggiornamenti integrati in questa revisione (14-05-2026):
 - consolidati i pattern osservati nei casi `expected_output3` (FC112) e `expected_output4` (FC193), in aggiunta ai casi 1/2.
 - chiarita la gestione in IR di: temporanei STL (es. `L 30.0`, `#TEMP`, `MW`), confronti numerici/REAL (`<>R`, `==R`, `<R`, `>=R`), e mapping “Mode DB -> Transitions.*”.
 - hardening serializer: riscrittura simboli GlobalVariable estesa anche ai nodi `Instance` nei `raw_flgnet`/`raw_networksource`; gestione timer array `TIMER[idx]` come leaf `TIMER_<idx>` tipata `IEC_TIMER` nel DB AUX.
+- hardening compile support FC: quando l'IR contiene `raw_flgnet` importati dagli expected, il generatore deve inferire e propagare i datatype non-bool
+  richiesti dai blocchi LAD (`Add/Convert/OutRange/Le/Ge/TON...`) e deve riscrivere i temp locali usati come preset `Time` verso `Aux_Time` (Datatype `Time`)
+  mantenendo separato `Aux_DInt` (Datatype `DInt`) per conversioni/contatori.
 
 ## Nota hard aggiuntiva (timer instance nei raw FlgNet)
 

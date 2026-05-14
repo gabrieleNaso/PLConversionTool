@@ -89,6 +89,13 @@ _BANNED_SUPPORT_CALLS = {
 
 def _raw_network_contains_banned_call(raw_xml: str) -> bool:
     raw = str(raw_xml or "")
+    # Support FCs must not contain external FC/FB calls imported from expected FlgNet.
+    # They make the bundle non-portable and typically fail in compile when the
+    # referenced library blocks are not present in the target project.
+    if "<CallInfo" in raw or "CallInfo" in raw:
+        return True
+    if "<Call " in raw or "<Call>" in raw:
+        return True
     if "CallInfo" not in raw:
         return False
     raw_lower = raw.lower()
@@ -155,6 +162,286 @@ def _ensure_timer_array_instances_in_catalog(ir: AwlIR) -> None:
         ir.operand_categories.setdefault(token, "aux")
         if token not in ir.operand_catalog:
             ir.operand_catalog.append(token)
+
+
+def _infer_operand_datatypes_from_support_flgnet(ir: AwlIR) -> None:
+    """
+    Best-effort datatype inference from raw FlgNet expected/support networks.
+
+    When we import raw FlgNet (either from cases or from parsed AWL), many
+    referenced operands start as Bool by default. Arithmetic/compare blocks
+    in FlgNet imply non-bool types (Real/Int/DInt/Time). This function upgrades
+    `ir.operand_datatypes` where inference is safe.
+    """
+
+    def _upgrade_datatype(name: str, datatype: str) -> None:
+        member = _support_member_name(name, "", strict_excel_mode=True)
+        if not member:
+            return
+        desired = _normalize_plc_datatype(datatype)
+        current = _normalize_plc_datatype(ir.operand_datatypes.get(member, ""))
+        if current == desired:
+            return
+        # Never downgrade away from explicit numeric/time types.
+        priority = {
+            "Bool": 0,
+            "Byte": 1,
+            "Word": 2,
+            "Int": 3,
+            "DInt": 4,
+            "Real": 5,
+            "Time": 6,
+            "IEC_TIMER": 7,
+        }
+        if priority.get(desired, 0) >= priority.get(current, 0):
+            ir.operand_datatypes[member] = desired
+
+    def _is(tag: str, suffix: str) -> bool:
+        return str(tag or "").endswith(suffix)
+
+    for row in ir.support_logic or []:
+        kind = str(row.get("kind") or "").strip().lower()
+        raw_xml = ""
+        if kind == "raw_networksource":
+            raw_xml = str(row.get("raw_networksource_xml") or "")
+        elif kind == "raw_flgnet":
+            raw_xml = str(row.get("raw_flgnet_xml") or "")
+        if not raw_xml:
+            continue
+        try:
+            raw_norm = _normalize_networksource_xml(raw_xml)
+            root = ET.fromstring(f"<Root>{raw_norm}</Root>")
+        except Exception:
+            continue
+
+        access_by_uid: dict[str, dict[str, object]] = {}
+        part_by_uid: dict[str, dict[str, object]] = {}
+        literal_type_by_uid: dict[str, str] = {}
+
+        for node in root.iter():
+            if _is(node.tag, "Access"):
+                uid = str(node.attrib.get("UId") or "").strip()
+                scope = str(node.attrib.get("Scope") or "").strip()
+                comps = [
+                    str(c.attrib.get("Name") or "").strip()
+                    for c in node.iter()
+                    if _is(c.tag, "Component") and str(c.attrib.get("Name") or "").strip()
+                ]
+                access_by_uid[uid] = {"scope": scope, "components": comps}
+                if scope == "LiteralConstant":
+                    ctype = ""
+                    for c in node.iter():
+                        if _is(c.tag, "ConstantType"):
+                            ctype = str(c.text or "").strip()
+                            break
+                    if ctype:
+                        literal_type_by_uid[uid] = _normalize_plc_datatype(ctype)
+            elif _is(node.tag, "Part"):
+                puid = str(node.attrib.get("UId") or "").strip()
+                pname = str(node.attrib.get("Name") or "").strip()
+                templates: dict[str, str] = {}
+                for tv in node:
+                    if not _is(tv.tag, "TemplateValue"):
+                        continue
+                    tname = str(tv.attrib.get("Name") or "").strip()
+                    templates[tname] = str(tv.text or "").strip()
+                part_by_uid[puid] = {"name": pname, "templates": templates}
+
+        # (part_uid, port_name) -> [access_uid...]
+        conn_access_for_port: dict[tuple[str, str], list[str]] = {}
+        for wire in root.iter():
+            if not _is(wire.tag, "Wire"):
+                continue
+            ident_uids = [str(n.attrib.get("UId") or "").strip() for n in wire if _is(n.tag, "IdentCon")]
+            name_cons = [
+                (str(n.attrib.get("UId") or "").strip(), str(n.attrib.get("Name") or "").strip())
+                for n in wire
+                if _is(n.tag, "NameCon")
+            ]
+            if not ident_uids or not name_cons:
+                continue
+            for part_uid, port_name in name_cons:
+                if not part_uid or not port_name:
+                    continue
+                key = (part_uid, port_name)
+                conn_access_for_port.setdefault(key, []).extend([u for u in ident_uids if u])
+
+        # Part-driven inference (Add/Convert/TON, etc.)
+        for puid, meta in part_by_uid.items():
+            pname = str(meta.get("name") or "")
+            templates = dict(meta.get("templates") or {})
+
+            if pname in {"Add", "Sub", "Mul", "Div", "OutRange"}:
+                src_type = templates.get("SrcType") or templates.get("srcType") or ""
+                if src_type:
+                    inferred = _normalize_plc_datatype(src_type)
+                    for port in ("in", "in1", "in2", "in3", "in4", "min", "max"):
+                        for auid in conn_access_for_port.get((puid, port), []):
+                            acc = access_by_uid.get(auid) or {}
+                            if str(acc.get("scope") or "") != "GlobalVariable":
+                                continue
+                            comps = list(acc.get("components") or [])
+                            token = _canonicalize_symbol_token_preserve_case(
+                                ".".join(str(c or "") for c in comps if str(c or "").strip())
+                            )
+                            if token:
+                                _upgrade_datatype(token, inferred)
+
+            if pname == "Convert":
+                src_type = templates.get("SrcType") or ""
+                dest_type = templates.get("DestType") or ""
+                if src_type:
+                    inferred = _normalize_plc_datatype(src_type)
+                    for auid in conn_access_for_port.get((puid, "in"), []):
+                        acc = access_by_uid.get(auid) or {}
+                        if str(acc.get("scope") or "") != "GlobalVariable":
+                            continue
+                        comps = list(acc.get("components") or [])
+                        token = _canonicalize_symbol_token_preserve_case(
+                            ".".join(str(c or "") for c in comps if str(c or "").strip())
+                        )
+                        if token:
+                            _upgrade_datatype(token, inferred)
+                if dest_type:
+                    inferred = _normalize_plc_datatype(dest_type)
+                    for auid in conn_access_for_port.get((puid, "out"), []):
+                        acc = access_by_uid.get(auid) or {}
+                        if str(acc.get("scope") or "") != "GlobalVariable":
+                            continue
+                        comps = list(acc.get("components") or [])
+                        token = _canonicalize_symbol_token_preserve_case(
+                            ".".join(str(c or "") for c in comps if str(c or "").strip())
+                        )
+                        if token:
+                            _upgrade_datatype(token, inferred)
+
+            if pname in {"TON", "TOF", "TP"}:
+                time_type = templates.get("time_type") or templates.get("TimeType") or "Time"
+                inferred = _normalize_plc_datatype(time_type or "Time")
+                for auid in conn_access_for_port.get((puid, "PT"), []):
+                    acc = access_by_uid.get(auid) or {}
+                    if str(acc.get("scope") or "") != "GlobalVariable":
+                        continue
+                    comps = list(acc.get("components") or [])
+                    token = _canonicalize_symbol_token_preserve_case(
+                        ".".join(str(c or "") for c in comps if str(c or "").strip())
+                    )
+                    if token:
+                        _upgrade_datatype(token, inferred)
+
+        # Compare-driven inference: if one side is a typed literal, require the other side to match.
+        compare_parts = {"Le", "Ge", "Lt", "Gt", "Eq", "Ne"}
+        for puid, meta in part_by_uid.items():
+            if str(meta.get("name") or "") not in compare_parts:
+                continue
+            in1_uids = conn_access_for_port.get((puid, "in1"), [])
+            in2_uids = conn_access_for_port.get((puid, "in2"), [])
+            for a, b in ((in1_uids, in2_uids), (in2_uids, in1_uids)):
+                for auid in a:
+                    if auid in literal_type_by_uid:
+                        dtype = literal_type_by_uid[auid]
+                        for buid in b:
+                            acc = access_by_uid.get(buid) or {}
+                            if str(acc.get("scope") or "") != "GlobalVariable":
+                                continue
+                            comps = list(acc.get("components") or [])
+                            token = _canonicalize_symbol_token_preserve_case(
+                                ".".join(str(c or "") for c in comps if str(c or "").strip())
+                            )
+                            if token:
+                                _upgrade_datatype(token, dtype)
+
+        # Heuristics for common numeric IO/setpoint signals (MOVE without literals).
+        for acc in access_by_uid.values():
+            if str(acc.get("scope") or "") != "GlobalVariable":
+                continue
+            comps = list(acc.get("components") or [])
+            if len(comps) < 2:
+                continue
+            token = _canonicalize_symbol_token_preserve_case(
+                ".".join(str(c or "") for c in comps if str(c or "").strip())
+            )
+            token_u = token.upper()
+            if not token_u:
+                continue
+            if "SCALED_VALUE" in token_u or "PRESET_VALUE" in token_u:
+                _upgrade_datatype(token, "Real")
+            if "PRESET_POINT" in token_u:
+                _upgrade_datatype(token, "Real")
+            if re.search(r"\bSPR\d+\b", token_u) or "_SPR" in token_u or ".SPR" in token_u:
+                _upgrade_datatype(token, "Real")
+
+
+def _rewrite_support_flgnet_local_time_temps(ir: AwlIR) -> None:
+    """Rewrite LocalVariable Aux_DInt used as TON/PT into Aux_Time (Time)."""
+
+    def _is(tag: str, suffix: str) -> bool:
+        return str(tag or "").endswith(suffix)
+
+    def _rewrite(raw_xml: str) -> str:
+        try:
+            raw_norm = _normalize_networksource_xml(raw_xml)
+            root = ET.fromstring(f"<Root>{raw_norm}</Root>")
+        except Exception:
+            return raw_xml
+
+        access_by_uid: dict[str, ET.Element] = {}
+        for node in root.iter():
+            if not _is(node.tag, "Access"):
+                continue
+            uid = str(node.attrib.get("UId") or "").strip()
+            if uid:
+                access_by_uid[uid] = node
+
+        for part in root.iter():
+            if not _is(part.tag, "Part"):
+                continue
+            name = str(part.attrib.get("Name") or "").strip()
+            if name not in {"TON", "TOF", "TP"}:
+                continue
+            puid = str(part.attrib.get("UId") or "").strip()
+            if not puid:
+                continue
+
+            for wire in root.iter():
+                if not _is(wire.tag, "Wire"):
+                    continue
+                has_pt = any(
+                    _is(n.tag, "NameCon")
+                    and str(n.attrib.get("UId") or "").strip() == puid
+                    and str(n.attrib.get("Name") or "").strip() == "PT"
+                    for n in wire
+                )
+                if not has_pt:
+                    continue
+                for ident in wire:
+                    if not _is(ident.tag, "IdentCon"):
+                        continue
+                    auid = str(ident.attrib.get("UId") or "").strip()
+                    acc = access_by_uid.get(auid)
+                    if acc is None:
+                        continue
+                    if str(acc.attrib.get("Scope") or "") != "LocalVariable":
+                        continue
+                    comps = [c for c in acc.iter() if _is(c.tag, "Component")]
+                    if len(comps) != 1:
+                        continue
+                    comp = comps[0]
+                    if str(comp.attrib.get("Name") or "").strip().lower() == "aux_dint":
+                        comp.attrib["Name"] = "Aux_Time"
+
+        return "".join(ET.tostring(child, encoding="unicode") for child in root)
+
+    for row in ir.support_logic or []:
+        kind = str(row.get("kind") or "").strip().lower()
+        if kind == "raw_networksource":
+            raw_xml = str(row.get("raw_networksource_xml") or "")
+            if raw_xml:
+                row["raw_networksource_xml"] = _rewrite(raw_xml)
+        elif kind == "raw_flgnet":
+            raw_xml = str(row.get("raw_flgnet_xml") or "")
+            if raw_xml:
+                row["raw_flgnet_xml"] = _rewrite(raw_xml)
 
 
 def _canonicalize_symbol_token_preserve_case(token: str) -> str:
@@ -4138,6 +4425,8 @@ def _build_artifact_manifest(previews: list[ArtifactPreview]) -> dict[str, list[
 def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
     previews: list[ArtifactPreview] = []
     _ensure_timer_array_instances_in_catalog(ir)
+    _rewrite_support_flgnet_local_time_temps(ir)
+    _infer_operand_datatypes_from_support_flgnet(ir)
     symbol_home_db_map = _build_support_symbol_home_db_map(ir)
     guard_members_by_category = _collect_transition_guard_members_by_category(ir)
     timer_trigger_members_by_category = _collect_timer_trigger_support_members_by_category(ir)
@@ -5309,11 +5598,16 @@ def _build_support_lad_fc_xml(
             if not name:
                 continue
             inferred = ""
-            if name.lower() in {"aux_real", "auxreal", "aux_real_"}:
+            lname = name.lower()
+            if lname in {"aux_time", "auxtime", "aux_time_"} or lname.endswith("_time"):
+                inferred = "Time"
+            elif lname in {"aux_dint", "auxdint", "aux_dint_"} or lname.endswith("_dint"):
+                inferred = "DInt"
+            elif lname in {"aux_real", "auxreal", "aux_real_"}:
                 inferred = "Real"
-            elif name.lower().endswith("_real") or name.lower().endswith("real"):
+            elif lname.endswith("_real") or lname.endswith("real"):
                 inferred = "Real"
-            elif name.lower().endswith("_int") or name.lower().endswith("int"):
+            elif lname.endswith("_int") or lname.endswith("int"):
                 inferred = "Int"
             else:
                 inferred = "Bool"

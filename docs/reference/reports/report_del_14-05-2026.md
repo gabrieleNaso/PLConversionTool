@@ -24,6 +24,10 @@ Aggiornamenti principali di questa revisione:
 - fix strutturale lato serializer: nei `raw_flgnet`/`raw_networksource` la riscrittura dei simboli GlobalVariable ora include anche i nodi
   `<Instance Scope=\"GlobalVariable\">` (non solo `<Access>`), con gestione dedicata dei timer array `TIMER[idx]` per evitare errori di compile tipo
   `Missing instance DB`.
+- fix compile FC AUX (caso FC193): aggiunta inferenza dei datatype dagli expected `raw_flgnet` (es. reti con `Add/Convert/Le/Ge/TON`) e riscrittura
+  dei temp locali per i preset `Time` (`Aux_Time`) e conversioni `DInt` (`Aux_DInt`), riducendo i mismatch `Bool vs Real/Time/DInt` emersi in TIA.
+- raffinata la regola euristica su segnali `Encoder`: non forzare indiscriminatamente `Real` su qualsiasi tag contenente `ENCODER`, ma solo su campi
+  numericizzati (`SCALED_VALUE`, `PRESET_VALUE`) per evitare mismatch su bit/flag (es. `...Sincro` usato come contatto/bobina).
 
 Nota: diverse regole operative sono state consolidate in revisioni precedenti e poi riallineate/validate nella presente revisione.
 

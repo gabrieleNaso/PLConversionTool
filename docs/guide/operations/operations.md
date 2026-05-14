@@ -421,6 +421,9 @@ Nota timer (AWL):
 - quando in AWL compaiono `Txx` in logica booleana, il significato e' il done del timer: in XML deve diventare `Txx.Q` oppure un box IEC in-line. Il token `Txx_DONE` e' solo una rappresentazione interna e non deve diventare un member BOOL nei DB.
 - quando nei `raw_flgnet` (expected importati) compaiono timer IEC con `<Instance Scope="GlobalVariable">`, la riscrittura dei simboli deve includere anche i nodi `Instance` (non solo gli `Access`), altrimenti la compile fallisce con `Missing instance DB`.
 - pattern legacy tipico: `... TIMER[idx]` (array). Nel bundle deve diventare un leaf dichiarato nel DB AUX, es. `TIMER_<idx>` tipato `IEC_TIMER`.
+- nota datatype (raw FlgNet): se gli expected contengono blocchi LAD numerici (`Add`, `Convert`, `OutRange`, `Le/Ge` con costanti `Real`, `TON` con `PT`),
+  i member referenziati devono essere dichiarati con datatype coerente (`Real`, `DInt`, `Time`...). In caso contrario TIA fallisce con mismatch tipo `Bool vs Real/Time/DInt`.
+- nota temp locali: quando un `raw_flgnet` usa un temp locale come preset `PT` di un timer, quel temp deve essere `Time` (es. `Aux_Time`), non un `Int/DInt`.
 
 ## Problemi comuni (e cosa fare)
 
