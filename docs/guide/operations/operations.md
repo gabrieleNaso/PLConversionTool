@@ -419,6 +419,8 @@ python3 scripts/check_bundle_symbol_resolution.py --bundle-dir work/output/gener
 
 Nota timer (AWL):
 - quando in AWL compaiono `Txx` in logica booleana, il significato e' il done del timer: in XML deve diventare `Txx.Q` oppure un box IEC in-line. Il token `Txx_DONE` e' solo una rappresentazione interna e non deve diventare un member BOOL nei DB.
+- quando nei `raw_flgnet` (expected importati) compaiono timer IEC con `<Instance Scope="GlobalVariable">`, la riscrittura dei simboli deve includere anche i nodi `Instance` (non solo gli `Access`), altrimenti la compile fallisce con `Missing instance DB`.
+- pattern legacy tipico: `... TIMER[idx]` (array). Nel bundle deve diventare un leaf dichiarato nel DB AUX, es. `TIMER_<idx>` tipato `IEC_TIMER`.
 
 ## Problemi comuni (e cosa fare)
 

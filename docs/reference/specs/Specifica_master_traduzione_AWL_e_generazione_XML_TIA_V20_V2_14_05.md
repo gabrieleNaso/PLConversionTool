@@ -1,4 +1,4 @@
-Specifica master consolidata del 13-05-2026
+Specifica master consolidata del 14-05-2026
 per le regole di traduzione e generazione XML
 AWL / Excel -> IR -> GRAPH / GlobalDB / FC LAD per TIA Portal V20
 
@@ -30,9 +30,27 @@ Nota hard (IR JSON e simboli con `.`):
 - nel flusso IR JSON (AI-first) i simboli puntati (es. `DB87_T10_OPOUT.L080`, `T10_LANT.Transitions.Safe`) devono essere trattati come **leaf token sanitizzati** (es. `DB87_T10_OPOUT_L080`) e poi risolti verso il DB owner del pacchetto (IO/AUX/HMI/DIAG/EXTERNAL/TRANSITIONS/MODE).
 - eccezione: i riferimenti step del GRAPH (`...Sxx... .X`) restano strutturati e referenziano il DB istanza del GRAPH (`ZZ_DB15...`).
 
-Aggiornamenti integrati in questa revisione (13-05-2026):
+Aggiornamenti integrati in questa revisione (14-05-2026):
 - consolidati i pattern osservati nei casi `expected_output3` (FC112) e `expected_output4` (FC193), in aggiunta ai casi 1/2.
 - chiarita la gestione in IR di: temporanei STL (es. `L 30.0`, `#TEMP`, `MW`), confronti numerici/REAL (`<>R`, `==R`, `<R`, `>=R`), e mapping “Mode DB -> Transitions.*”.
+- hardening serializer: riscrittura simboli GlobalVariable estesa anche ai nodi `Instance` nei `raw_flgnet`/`raw_networksource`; gestione timer array `TIMER[idx]` come leaf `TIMER_<idx>` tipata `IEC_TIMER` nel DB AUX.
+
+## Nota hard aggiuntiva (timer instance nei raw FlgNet)
+
+Nei tipici TIA esportati, i blocchi IEC timer/counter in LAD possono essere serializzati come `Part` con un nodo:
+
+- `<Instance Scope="GlobalVariable" ...>` (non un `<Access Scope="GlobalVariable">`).
+
+Regola hard:
+- la normalizzazione `GlobalVariable -> DB owner` deve riscrivere **sia** `Access` **sia** `Instance`;
+- se l'istanza è espressa come array (pattern `... <Component Name="TIMER" AccessModifier="Array"> ... <ConstantValue>14</ConstantValue>`),
+  l'istanza deve essere normalizzata verso un leaf dichiarabile nel bundle:
+  - token IR: `TIMER_<idx>` (es. `TIMER_14`);
+  - datatype: `IEC_TIMER`;
+  - categoria: `aux` (DB AUX).
+
+Conseguenza operativa: se l'IR contiene `raw_flgnet`/`raw_networksource` che usano `TIMER[idx]`, il generatore deve garantire che
+`operand_catalog`/`operand_datatypes` includano automaticamente `TIMER_<idx>` per evitare errori Openness/TIA di compile tipo `Missing instance DB`.
 
 ---
 

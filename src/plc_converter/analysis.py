@@ -99,6 +99,64 @@ def _raw_network_contains_banned_call(raw_xml: str) -> bool:
     return False
 
 
+def _collect_timer_array_indices_from_raw_networksource(raw_xml: str) -> set[int]:
+    """Extract TIMER array indices used in <Instance> nodes of raw FlgNet fragments."""
+    raw = _normalize_networksource_xml(raw_xml)
+    if not raw or "Instance" not in raw or "TIMER" not in raw:
+        return set()
+    try:
+        root = ET.fromstring(f"<Root>{raw}</Root>")
+    except Exception:
+        return set()
+    indices: set[int] = set()
+    for inst in root.iter():
+        if not str(inst.tag).endswith("Instance"):
+            continue
+        # Look for a Component Name="TIMER" AccessModifier="Array" with a literal index.
+        for comp in list(inst):
+            if not str(comp.tag).endswith("Component"):
+                continue
+            if str(comp.attrib.get("Name") or "").strip() != "TIMER":
+                continue
+            if str(comp.attrib.get("AccessModifier") or "").strip() != "Array":
+                continue
+            value = ""
+            for node in comp.iter():
+                if str(node.tag).endswith("ConstantValue"):
+                    value = str(node.text or "").strip()
+                    break
+            if not value:
+                continue
+            try:
+                indices.add(int(value))
+            except Exception:
+                continue
+    return indices
+
+
+def _ensure_timer_array_instances_in_catalog(ir: AwlIR) -> None:
+    """Ensure TIMER_<idx> IEC_TIMER operands exist when raw FlgNet uses TIMER[idx] instances."""
+    indices: set[int] = set()
+    for row in ir.support_logic or []:
+        kind = str(row.get("kind") or "").strip().lower()
+        raw_xml = ""
+        if kind == "raw_flgnet":
+            raw_xml = str(row.get("raw_flgnet_xml") or "")
+        elif kind == "raw_networksource":
+            raw_xml = str(row.get("raw_networksource_xml") or "")
+        if not raw_xml:
+            continue
+        indices |= _collect_timer_array_indices_from_raw_networksource(raw_xml)
+    if not indices:
+        return
+    for idx in sorted(indices):
+        token = f"TIMER_{idx}"
+        ir.operand_datatypes.setdefault(token, "IEC_TIMER")
+        ir.operand_categories.setdefault(token, "aux")
+        if token not in ir.operand_catalog:
+            ir.operand_catalog.append(token)
+
+
 def _canonicalize_symbol_token_preserve_case(token: str) -> str:
     value = str(token or "").strip().rstrip(",;").strip("()")
     value = value.strip().strip('"').strip("'")
@@ -134,46 +192,84 @@ def _rewrite_networksource_global_symbols_to_db(
     changed = False
     known_owner_dbs = set(str(v).strip() for v in (symbol_home_db_map or {}).values() if str(v).strip())
 
-    for acc in root.iter():
-        if not str(acc.tag).endswith("Access"):
-            continue
-        if str(acc.attrib.get("Scope") or "") != "GlobalVariable":
-            continue
-        sym = None
-        for node in list(acc):
-            if str(node.tag).endswith("Symbol"):
-                sym = node
-                break
-        if sym is None:
-            continue
-        comps = [c for c in list(sym) if str(c.tag).endswith("Component")]
+    def _rewrite_components(parent: ET.Element, comps: list[ET.Element]) -> None:
+        nonlocal changed
         names = [str(c.attrib.get("Name") or "").strip() for c in comps]
         names = [n for n in names if n]
         if not names:
-            continue
+            return
         # Already pointing to a generated owner DB: leave as-is.
         if names[0] in known_owner_dbs:
-            continue
-        raw_token = ".".join(names)
-        # Normalize legacy DB symbol tokens like "DB88:T10_OPSP.SPR04" into
-        # catalog-friendly "DB88_T10_OPSP.SPR04".
-        raw_token = raw_token.replace(":", "_")
-        canonical = _canonicalize_symbol_token_preserve_case(raw_token)
-        if not canonical:
-            continue
-        member_name = _support_member_name(canonical, "", strict_excel_mode=True)
+            return
+
+        # Special-case: TIMER array instances like `... TIMER[14]` must map to a declared IEC_TIMER.
+        timer_idx: int | None = None
+        for c in comps:
+            if str(c.attrib.get("Name") or "").strip() != "TIMER":
+                continue
+            if str(c.attrib.get("AccessModifier") or "").strip() != "Array":
+                continue
+            try:
+                raw_norm = _normalize_networksource_xml(ET.tostring(c, encoding="unicode"))
+                frag = ET.fromstring(f"<Root>{raw_norm}</Root>")
+                value = ""
+                for node in frag.iter():
+                    if str(node.tag).endswith("ConstantValue"):
+                        value = str(node.text or "").strip()
+                        break
+                if value:
+                    timer_idx = int(value)
+            except Exception:
+                timer_idx = None
+            break
+        if timer_idx is not None:
+            member_name = _support_member_name(f"TIMER_{timer_idx}", "", strict_excel_mode=True)
+        else:
+            raw_token = ".".join(names).replace(":", "_")
+            canonical = _canonicalize_symbol_token_preserve_case(raw_token)
+            if not canonical:
+                return
+            member_name = _support_member_name(canonical, "", strict_excel_mode=True)
         home_db = str(symbol_home_db_map.get(member_name) or "").strip()
         if not home_db:
-            continue
+            return
         root_struct = _support_root_struct_for_db_name(home_db)
-        # Replace all existing components with DB (+ root struct) + member.
-        for c in list(sym):
-            sym.remove(c)
-        sym.append(ET.Element("Component", {"Name": home_db}))
+        # Replace components with DB (+ root struct) + member.
+        for c in list(comps):
+            try:
+                parent.remove(c)
+            except Exception:
+                pass
+        parent.append(ET.Element("Component", {"Name": home_db}))
         if root_struct:
-            sym.append(ET.Element("Component", {"Name": root_struct}))
-        sym.append(ET.Element("Component", {"Name": member_name}))
+            parent.append(ET.Element("Component", {"Name": root_struct}))
+        parent.append(ET.Element("Component", {"Name": member_name}))
         changed = True
+
+    for node in root.iter():
+        tag = str(node.tag)
+        if not (tag.endswith("Access") or tag.endswith("Instance")):
+            continue
+        if str(node.attrib.get("Scope") or "") != "GlobalVariable":
+            continue
+
+        # Access nodes wrap components inside <Symbol>.
+        if tag.endswith("Access"):
+            sym = None
+            for child in list(node):
+                if str(child.tag).endswith("Symbol"):
+                    sym = child
+                    break
+            if sym is None:
+                continue
+            comps = [c for c in list(sym) if str(c.tag).endswith("Component")]
+            _rewrite_components(sym, comps)
+            continue
+
+        # Instance nodes typically contain <Component> directly (no <Symbol> wrapper).
+        comps = [c for c in list(node) if str(c.tag).endswith("Component")]
+        if comps:
+            _rewrite_components(node, comps)
 
     if not changed:
         return raw
@@ -4041,6 +4137,7 @@ def _build_artifact_manifest(previews: list[ArtifactPreview]) -> dict[str, list[
 
 def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
     previews: list[ArtifactPreview] = []
+    _ensure_timer_array_instances_in_catalog(ir)
     symbol_home_db_map = _build_support_symbol_home_db_map(ir)
     guard_members_by_category = _collect_transition_guard_members_by_category(ir)
     timer_trigger_members_by_category = _collect_timer_trigger_support_members_by_category(ir)

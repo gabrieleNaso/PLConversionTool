@@ -1,4 +1,4 @@
-# Report aggiornato del 13-05-2026
+# Report aggiornato del 14-05-2026
 
 ## Progetto
 Conversione di sequenziatori PLC da AWL a GRAPH in TIA Portal V20 tramite XML.
@@ -16,11 +16,14 @@ L'obiettivo di questa versione consolidata è:
 - mantenere una baseline unica, leggibile e riusabile;
 - integrare in un unico testo sia la parte di reverse engineering XML sia la parte operativa su TIA Portal Openness.
 
-Il documento va quindi usato come riferimento tecnico corrente del progetto alla data del **13-05-2026**.
+Il documento va quindi usato come riferimento tecnico corrente del progetto alla data del **14-05-2026**.
 
-Aggiornamento principale di questa revisione:
+Aggiornamenti principali di questa revisione:
 - aggiunti e incrociati i casi `expected_output3` (FC112) e `expected_output4` (FC193) per rafforzare le regole generali
   di estrazione AWL -> IR (vedi `cases/translation_rules.md`).
+- fix strutturale lato serializer: nei `raw_flgnet`/`raw_networksource` la riscrittura dei simboli GlobalVariable ora include anche i nodi
+  `<Instance Scope=\"GlobalVariable\">` (non solo `<Access>`), con gestione dedicata dei timer array `TIMER[idx]` per evitare errori di compile tipo
+  `Missing instance DB`.
 
 Nota: diverse regole operative sono state consolidate in revisioni precedenti e poi riallineate/validate nella presente revisione.
 
