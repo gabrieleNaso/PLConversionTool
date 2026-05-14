@@ -509,6 +509,11 @@ def main() -> int:
     ap.add_argument("--category", default="output", help="support_logic.category to set for imported rows (default: output).")
     ap.add_argument("--start-network-index", type=int, default=20000, help="Base network_index for imported rows.")
     ap.add_argument(
+        "--raw-flgnet",
+        action="store_true",
+        help="Import LAD FlgNet compile units as raw_flgnet (verbatim) instead of extracting simplified rows.",
+    )
+    ap.add_argument(
         "--purge-from-index",
         action="store_true",
         help="Before importing, remove existing support_logic rows for the same category with network_index >= start-network-index.",
@@ -579,6 +584,43 @@ def main() -> int:
                     }
                 )
                 imported += 1
+            next_index += 1
+            continue
+
+        if args.raw_flgnet:
+            # Preserve the full FlgNet network verbatim.
+            raw_xml = ET.tostring(flgnet, encoding="unicode")
+            if raw_xml:
+                ir.setdefault("support_logic", []).append(
+                    {
+                        "category": str(args.category),
+                        "kind": "raw_flgnet",
+                        "raw_flgnet_xml": raw_xml,
+                        "network_title": title,
+                        "comment": comment_text,
+                        "network_index": base_network_index,
+                    }
+                )
+                imported += 1
+                # Also harvest referenced operands so DBs can declare them.
+                access_operands: dict[str, str] = {}
+                for acc in flgnet.findall(".//f:Access", FNS):
+                    uid = acc.attrib.get("UId")
+                    if not uid:
+                        continue
+                    access_operands[uid] = _extract_operand_from_access(acc)
+                referenced = list(access_operands.values())
+                for token in referenced:
+                    tok = str(token or "").strip()
+                    if not tok or tok.upper() in {"TRUE", "FALSE"}:
+                        continue
+                    # Normalize constant markers away.
+                    if tok.startswith("#"):
+                        continue
+                    ir.setdefault("operand_datatypes", {}).setdefault(tok, "Bool")
+                    ir.setdefault("operand_categories", {}).setdefault(tok, _guess_category_for_symbol(tok))
+                    if tok not in ir.setdefault("operand_catalog", []):
+                        ir["operand_catalog"].append(tok)
             next_index += 1
             continue
 

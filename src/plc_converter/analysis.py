@@ -78,6 +78,27 @@ def _normalize_networksource_xml(raw_xml: str) -> str:
     return raw
 
 
+_BANNED_SUPPORT_CALLS = {
+    # Project/library FC calls that must not appear in generated support FCs.
+    "SCALE",
+    "DRIVE G TLG8-8",
+    "STEP BUFFER",
+    "POPUP_HANDLER",
+}
+
+
+def _raw_network_contains_banned_call(raw_xml: str) -> bool:
+    raw = str(raw_xml or "")
+    if "CallInfo" not in raw:
+        return False
+    raw_lower = raw.lower()
+    for name in _BANNED_SUPPORT_CALLS:
+        needle = str(name).lower()
+        if f'name="{needle}"' in raw_lower or f'name=&quot;{needle}&quot;' in raw_lower:
+            return True
+    return False
+
+
 def _canonicalize_symbol_token_preserve_case(token: str) -> str:
     value = str(token or "").strip().rstrip(",;").strip("()")
     value = value.strip().strip('"').strip("'")
@@ -111,6 +132,8 @@ def _rewrite_networksource_global_symbols_to_db(
         return raw
 
     changed = False
+    known_owner_dbs = set(str(v).strip() for v in (symbol_home_db_map or {}).values() if str(v).strip())
+
     for acc in root.iter():
         if not str(acc.tag).endswith("Access"):
             continue
@@ -128,10 +151,13 @@ def _rewrite_networksource_global_symbols_to_db(
         names = [n for n in names if n]
         if not names:
             continue
-        # Already a DB-based symbol.
-        if names[0].strip().upper().startswith("DB"):
+        # Already pointing to a generated owner DB: leave as-is.
+        if names[0] in known_owner_dbs:
             continue
         raw_token = ".".join(names)
+        # Normalize legacy DB symbol tokens like "DB88:T10_OPSP.SPR04" into
+        # catalog-friendly "DB88_T10_OPSP.SPR04".
+        raw_token = raw_token.replace(":", "_")
         canonical = _canonicalize_symbol_token_preserve_case(raw_token)
         if not canonical:
             continue
@@ -5156,8 +5182,54 @@ def _build_support_lad_fc_xml(
     number_span: int = 200,
 ) -> str:
     fc_number = _stable_block_number(number_seed, base=number_base, span=number_span)
-    # Support FCs access data via GlobalVariable symbols, not via interface Temp.
-    # Keeping Temp empty aligns with typical TIA exports and avoids orphan members.
+    # Support FCs usually access data via GlobalVariable symbols, not via interface Temp.
+    # However, some expected networks rely on LocalVariable temporaries (e.g. Aux_real).
+    temp_locals: dict[str, str] = {}
+    for row in logic_rows or []:
+        kind = str(row.get("kind") or "").strip().lower()
+        raw_xml = ""
+        if kind == "raw_networksource":
+            raw_xml = str(row.get("raw_networksource_xml") or "")
+        elif kind == "raw_flgnet":
+            raw_xml = str(row.get("raw_flgnet_xml") or "")
+        if not raw_xml:
+            continue
+        try:
+            raw_norm = _normalize_networksource_xml(raw_xml)
+            root = ET.fromstring(f"<Root>{raw_norm}</Root>")
+        except Exception:
+            continue
+        for acc in root.iter():
+            if not str(acc.tag).endswith("Access"):
+                continue
+            if str(acc.attrib.get("Scope") or "") != "LocalVariable":
+                continue
+            comps = [str(c.attrib.get("Name") or "").strip() for c in acc.iter() if str(c.tag).endswith("Component")]
+            comps = [c for c in comps if c]
+            if len(comps) != 1:
+                continue
+            name = comps[0]
+            if not name:
+                continue
+            inferred = ""
+            if name.lower() in {"aux_real", "auxreal", "aux_real_"}:
+                inferred = "Real"
+            elif name.lower().endswith("_real") or name.lower().endswith("real"):
+                inferred = "Real"
+            elif name.lower().endswith("_int") or name.lower().endswith("int"):
+                inferred = "Int"
+            else:
+                inferred = "Bool"
+            temp_locals.setdefault(name, inferred)
+
+    if temp_locals:
+        lines = ['  <Section Name="Temp">']
+        for name, dtype in sorted(temp_locals.items(), key=lambda kv: kv[0].lower()):
+            lines.append(f'    <Member Name="{escape(name)}" Datatype="{escape(dtype)}" />')
+        lines.append('  </Section>')
+        temp_section = "\n".join(lines) + "\n"
+    else:
+        temp_section = '  <Section Name="Temp" />\n'
     compile_units = _build_support_lad_compile_units(
         db_name=db_name,
         support_members=support_members,
@@ -5181,7 +5253,7 @@ def _build_support_lad_fc_xml(
         '  <Section Name="Input" />\n'
         '  <Section Name="Output" />\n'
         '  <Section Name="InOut" />\n'
-        '  <Section Name="Temp" />\n'
+        f"{temp_section}"
         '  <Section Name="Constant" />\n'
         '  <Section Name="Return">\n'
         '    <Member Name="Ret_Val" Datatype="Void" />\n'
@@ -5698,11 +5770,11 @@ def _build_lad_compile_units(ir: AwlIR, graph_topology: GraphTopology) -> str:
         )
     ]
     for index, transition in enumerate(guard_targets):
-        unit_id = format(base_id + (index * 5), "X")
-        comment_id = format(base_id + (index * 5) + 1, "X")
-        comment_item_id = format(base_id + (index * 5) + 2, "X")
-        title_id = format(base_id + (index * 5) + 3, "X")
-        title_item_id = format(base_id + (index * 5) + 4, "X")
+        unit_id = str(base_id + (index * 5))
+        comment_id = str(base_id + (index * 5) + 1)
+        comment_item_id = str(base_id + (index * 5) + 2)
+        title_id = str(base_id + (index * 5) + 3)
+        title_item_id = str(base_id + (index * 5) + 4)
         target_db_name = escape(transition.db_block_name or _transitions_db_block_name(ir))
         target_member_name = escape(transition.db_member_name)
         aux_member_name = escape(transition.db_member_name)
@@ -5796,8 +5868,12 @@ def _build_support_lad_compile_units(
                     # Separator network: emit empty NetworkSource with title.
                     continue
                 if str(logic_row.get("kind") or "").strip().lower() == "raw_flgnet":
-                    raw_xml = str(logic_row.get("raw_flgnet_xml") or "").strip()
-                    if raw_xml:
+                    raw_xml = _rewrite_networksource_global_symbols_to_db(
+                        str(logic_row.get("raw_flgnet_xml") or ""),
+                        symbol_home_db_map=symbol_home_db_map,
+                    )
+                    raw_xml = _normalize_networksource_xml(raw_xml)
+                    if raw_xml and not _raw_network_contains_banned_call(raw_xml):
                         comment = str(logic_row.get("comment") or "").strip()
                         flgnet_fragments.append(f"<NetworkSource>{raw_xml}</NetworkSource>")
                         # Raw FlgNet is authoritative for this CompileUnit.
@@ -5808,7 +5884,7 @@ def _build_support_lad_compile_units(
                         symbol_home_db_map=symbol_home_db_map,
                     )
                     raw_xml = _normalize_networksource_xml(raw_xml)
-                    if raw_xml:
+                    if raw_xml and not _raw_network_contains_banned_call(raw_xml):
                         comment = str(logic_row.get("comment") or "").strip()
                         flgnet_fragments.append(f"<NetworkSource>{raw_xml}</NetworkSource>")
                         programming_language = str(logic_row.get("programming_language") or "").strip() or "LAD"
@@ -5903,11 +5979,11 @@ def _build_support_lad_compile_units(
             if not title:
                 # Fallback: when no title is available, at least preserve the network number.
                 title = network_no_for_title
-            unit_id = format(base_id + (index * 5), "X")
-            comment_id = format(base_id + (index * 5) + 1, "X")
-            comment_item_id = format(base_id + (index * 5) + 2, "X")
-            title_id = format(base_id + (index * 5) + 3, "X")
-            title_item_id = format(base_id + (index * 5) + 4, "X")
+            unit_id = str(base_id + (index * 5))
+            comment_id = str(base_id + (index * 5) + 1)
+            comment_item_id = str(base_id + (index * 5) + 2)
+            title_id = str(base_id + (index * 5) + 3)
+            title_item_id = str(base_id + (index * 5) + 4)
             flgnet_xml = _merge_support_logic_flgnets(flgnet_fragments)
             units.append(
                 '      <SW.Blocks.CompileUnit ID="'
@@ -5962,11 +6038,11 @@ def _build_support_lad_compile_units(
     for index, (member_name, member_comment) in enumerate(unique_members):
         # Keep fallback network comments strictly explicit from Excel.
         fallback_comment = str(member_comment or "").strip()
-        unit_id = format(base_id + (index * 5), "X")
-        comment_id = format(base_id + (index * 5) + 1, "X")
-        comment_item_id = format(base_id + (index * 5) + 2, "X")
-        title_id = format(base_id + (index * 5) + 3, "X")
-        title_item_id = format(base_id + (index * 5) + 4, "X")
+        unit_id = str(base_id + (index * 5))
+        comment_id = str(base_id + (index * 5) + 1)
+        comment_item_id = str(base_id + (index * 5) + 2)
+        title_id = str(base_id + (index * 5) + 3)
+        title_item_id = str(base_id + (index * 5) + 4)
         flgnet_xml = _build_support_logic_flgnet(
             db_name=db_name,
             result_member=member_name,
@@ -7858,11 +7934,11 @@ def _excel_support_logic_rows(
 
 
 def _build_empty_compile_unit(title: str, comment: str, base_id: int) -> str:
-    unit_id = format(base_id, "X")
-    comment_id = format(base_id + 1, "X")
-    comment_item_id = format(base_id + 2, "X")
-    title_id = format(base_id + 3, "X")
-    title_item_id = format(base_id + 4, "X")
+    unit_id = str(base_id)
+    comment_id = str(base_id + 1)
+    comment_item_id = str(base_id + 2)
+    title_id = str(base_id + 3)
+    title_item_id = str(base_id + 4)
     return (
         '      <SW.Blocks.CompileUnit ID="'
         + unit_id
@@ -7996,6 +8072,22 @@ def _prepare_support_db_members(
     explicit_excel_comments = _explicit_excel_member_comments(ir)
     current_db_name, _, _, _, _, _ = _support_block_names(ir.sequence_name, category)
     owner_db_map = _build_support_symbol_home_db_map(ir)
+    # When importing expected networks as raw FlgNet/StatementList, we may not have
+    # an explicit support_members sheet for every referenced operand. Ensure that
+    # any operand in the catalog that resolves to this owner DB is declared here.
+    if not ir.strict_operand_catalog:
+        for operand in ir.operand_catalog or []:
+            operand_token = str(operand or "").strip()
+            if not operand_token:
+                continue
+            member_name = _support_member_name(operand_token, "", strict_excel_mode=True)
+            if not member_name:
+                continue
+            if owner_db_map.get(member_name, current_db_name) != current_db_name:
+                continue
+            if any(existing == member_name for existing, _ in members):
+                continue
+            members.append((member_name, f"Auto-declared from operand_catalog: {operand_token}"))
     filtered = [
         (name, comment)
         for name, comment in members
