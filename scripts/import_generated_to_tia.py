@@ -102,6 +102,37 @@ def _split_trailing_number(name: str) -> tuple[str, int | None]:
     return stem, number
 
 
+def _split_fc_name(name: str) -> tuple[str, int] | None:
+    """
+    Returns (prefix_including_fc, fc_number) for names like 'AWL_romania_fc193'.
+    The returned prefix is the full matched string, not the 'stem' before digits.
+    """
+    match = re.match(r"^(.*_fc)(\d+)$", name, flags=re.IGNORECASE)
+    if not match:
+        return None
+    return f"{match.group(1)}{match.group(2)}", int(match.group(2))
+
+
+def _choose_collision_base_and_start(candidate: str) -> tuple[str, int]:
+    """
+    Decide how to rename on TIA block-name collisions.
+
+    Rule:
+    - For FC-named blocks like '*_fc193', do NOT increment the FC number (193->194).
+      Instead append a copy suffix: '*_fc193_2', '*_fc193_3', ...
+    - Otherwise, if the name ends with digits, increment them (Foo1->Foo2).
+    - Otherwise append a numeric suffix starting from 1 (Foo->Foo1).
+    """
+    fc = _split_fc_name(candidate)
+    if fc:
+        base = f"{fc[0]}_"
+        return base, 2
+    stem, suffix = _split_trailing_number(candidate)
+    if suffix is None:
+        return candidate, 1
+    return stem, suffix + 1
+
+
 def _read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8", errors="ignore")
 
@@ -246,9 +277,7 @@ def main() -> int:
                 blocked_name = _extract_colliding_name(detail)
                 if base_name is None:
                     candidate = blocked_name or current_name or bundle_dir.name
-                    stem, suffix = _split_trailing_number(candidate)
-                    base_name = stem
-                    next_suffix = (suffix + 1) if suffix is not None else 1
+                    base_name, next_suffix = _choose_collision_base_and_start(candidate)
 
                 retry_index += 1
                 next_name = f"{base_name}{next_suffix}"
