@@ -3950,12 +3950,16 @@ def _build_graph_topology(ir: AwlIR, *, target_profile_name: str = "default") ->
             continue
         target_no = step_no_by_name.get(target_step, 10**9)
 
-        def _incoming_score(node: GraphTransitionNode) -> tuple[int, int]:
+        def _incoming_score(node: GraphTransitionNode) -> tuple[int, int, int]:
             source_label = str(node.source_step or "").upper()
-            wait_penalty = 1 if "WAIT" in source_label else 0
-            source_no = step_no_by_name.get(node.source_step, -1)
-            distance = abs(target_no - source_no) if source_no >= 0 and target_no < 10**9 else 10**9
-            return (-wait_penalty, -distance)
+            is_wait = 1 if "WAIT" in source_label else 0
+            source_no = step_no_by_name.get(node.source_step, 10**9)
+            distance = abs(target_no - source_no) if source_no < 10**9 and target_no < 10**9 else 10**9
+            # Prefer a stable "main flow" for Direct edges:
+            # 1) avoid WAIT steps (layout/semantics)
+            # 2) prefer earlier source steps (keeps forward flow readable when multiple sources converge)
+            # 3) as tie-breaker, prefer closer steps
+            return (-is_wait, -source_no, -distance)
 
         preferred = sorted(incoming, key=_incoming_score, reverse=True)[0]
         preferred_direct_incoming[target_step] = preferred.name
