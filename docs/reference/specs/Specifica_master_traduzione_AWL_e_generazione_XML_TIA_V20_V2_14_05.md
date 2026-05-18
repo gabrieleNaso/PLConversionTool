@@ -25,6 +25,8 @@ Nota hard (strict catalog):
 - workflow consigliato (AI-first): usare `strict_operand_catalog: false` cosi' il generatore dichiara automaticamente nei DB tutti i simboli effettivamente referenziati da GRAPH/FC.
 - quando nell’IR JSON e' attivo `strict_operand_catalog: true`, `operand_catalog` diventa vincolante (equivalente concettuale del foglio Excel `operands`);
 - in strict, ogni leaf usata nelle logiche (`support_logic.condition_expression`, guardie transizioni, reti FC) deve comparire in `operand_catalog` e deve risultare dichiarata nel DB owner (tipicamente via `operand_categories` e/o `support_members`).
+- in strict (Excel-first), il generatore deve dichiarare nei rispettivi DB owner **tutti** i token presenti in `operand_catalog` in base a `operand_categories`
+  (anche se i fogli `support_fc` / `support_members` sono vuoti), evitando che variabili presenti in `operands` restino non dichiarate nel bundle.
 
 Nota hard (IR JSON e simboli con `.`):
 - nel flusso IR JSON (AI-first) i simboli puntati (es. `DB87_T10_OPOUT.L080`, `T10_LANT.Transitions.Safe`) devono essere trattati come **leaf token sanitizzati** (es. `DB87_T10_OPOUT_L080`) e poi risolti verso il DB owner del pacchetto (IO/AUX/HMI/DIAG/EXTERNAL/TRANSITIONS/MODE).

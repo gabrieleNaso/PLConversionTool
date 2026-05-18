@@ -439,6 +439,10 @@ Strategie:
 - se serve isolamento massimo, imposta anche `targetName` sul blocco specifico da compilare
 - pulisci i blocchi legacy nel progetto prima di compilare globalmente
 
+Nota Excel strict (`strict_operand_catalog: true`):
+- nessuna logica HMI/AUX/... deve essere iniettata automaticamente dal generatore se il foglio `support_fc` e' vuoto;
+- i DB di supporto devono comunque dichiarare i member presenti nel foglio `operands` (tramite `operand_catalog` + `operand_categories`), anche senza `support_members`.
+
 ### Backend o bridge non raggiungibili
 - avvia: `make up`
 - verifica: `curl http://127.0.0.1:8000/health` e `curl http://127.0.0.1:8010/health`

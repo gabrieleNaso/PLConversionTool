@@ -4501,18 +4501,23 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
     #
     # We do not mirror legacy Step7 runtime words (Trs/Seq) 1:1 as dozens of constant writes;
     # instead we provide a comparable "actual step" status.
-    sequencer_status_member = "HMI.ST.ST Sequencer step"
-    if all(name.upper() != sequencer_status_member.upper() for name, _ in hmi_db_members):
-        hmi_db_members.append((sequencer_status_member, "Sequencer status (actual step)"))
-    member_datatypes.setdefault(sequencer_status_member, "Int")
+    # IMPORTANT: do not inject implicit HMI logic in strict Excel mode.
+    # In strict mode the Excel file must be the single source of truth for both:
+    # - which HMI members exist (operands)
+    # - which networks exist (support_fc)
+    if not ir.strict_operand_catalog:
+        sequencer_status_member = "HMI.ST.ST Sequencer step"
+        if all(name.upper() != sequencer_status_member.upper() for name, _ in hmi_db_members):
+            hmi_db_members.append((sequencer_status_member, "Sequencer status (actual step)"))
+        member_datatypes.setdefault(sequencer_status_member, "Int")
 
-    # Emit one MOVE per step bit: when step is active, move its step number into the status Int.
-    # If the IR already provides curated HMI logic rows (AI-first), do not inject
-    # these derived status moves to avoid introducing extra symbols that might not
-    # match the reference project contracts.
-    has_curated_hmi_logic = bool(_excel_support_logic_rows(ir, "hmi"))
-    step_rows: list[dict[str, object]] = []
-    seen_step_names: set[str] = set()
+        # Emit one MOVE per step bit: when step is active, move its step number into the status Int.
+        # If the IR already provides curated HMI logic rows (AI-first), do not inject
+        # these derived status moves to avoid introducing extra symbols that might not
+        # match the reference project contracts.
+        has_curated_hmi_logic = bool(_excel_support_logic_rows(ir, "hmi"))
+        step_rows: list[dict[str, object]] = []
+        seen_step_names: set[str] = set()
 
     def _infer_step_no(step: StepCandidate) -> int:
         if step.step_number:
@@ -4529,31 +4534,31 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
         except Exception:
             return 0
 
-    if not has_curated_hmi_logic:
-        for step in sorted(ir.steps, key=lambda item: (_infer_step_no(item), str(item.name or ""))):
-            step_name = str(step.name or "").strip()
-            if not step_name or step_name.upper() in seen_step_names:
-                continue
-            seen_step_names.add(step_name.upper())
-            step_no = _infer_step_no(step)
-            if step_no <= 0:
-                continue
-            step_rows.append(
-                {
-                    "kind": "move",
-                    "result_member": sequencer_status_member,
-                    "move_in": {"kind": "literal_int", "value": str(step_no)},
-                    "move_out_members": [sequencer_status_member],
-                    "condition_expression": f"{step_name}.X",
-                    "condition_operands": [f"{step_name}.X"],
-                    "coil_mode": "",
-                    "network_title": "Sequencer status",
-                    "comment": "",
-                    "network_index": 12000 + step_no,
-                }
-            )
-    if step_rows:
-        hmi_logic = hmi_logic + step_rows
+        if not has_curated_hmi_logic:
+            for step in sorted(ir.steps, key=lambda item: (_infer_step_no(item), str(item.name or ""))):
+                step_name = str(step.name or "").strip()
+                if not step_name or step_name.upper() in seen_step_names:
+                    continue
+                seen_step_names.add(step_name.upper())
+                step_no = _infer_step_no(step)
+                if step_no <= 0:
+                    continue
+                step_rows.append(
+                    {
+                        "kind": "move",
+                        "result_member": sequencer_status_member,
+                        "move_in": {"kind": "literal_int", "value": str(step_no)},
+                        "move_out_members": [sequencer_status_member],
+                        "condition_expression": f"{step_name}.X",
+                        "condition_operands": [f"{step_name}.X"],
+                        "coil_mode": "",
+                        "network_title": "Sequencer status",
+                        "comment": "",
+                        "network_index": 12000 + step_no,
+                    }
+                )
+        if step_rows:
+            hmi_logic = hmi_logic + step_rows
 
     aux_logic = _excel_support_logic_rows(ir, "aux")
     if not ir.strict_operand_catalog:
@@ -8466,19 +8471,18 @@ def _prepare_support_db_members(
     # When importing expected networks as raw FlgNet/StatementList, we may not have
     # an explicit support_members sheet for every referenced operand. Ensure that
     # any operand in the catalog that resolves to this owner DB is declared here.
-    if not ir.strict_operand_catalog:
-        for operand in ir.operand_catalog or []:
-            operand_token = str(operand or "").strip()
-            if not operand_token:
-                continue
-            member_name = _support_member_name(operand_token, "", strict_excel_mode=True)
-            if not member_name:
-                continue
-            if owner_db_map.get(member_name, current_db_name) != current_db_name:
-                continue
-            if any(existing == member_name for existing, _ in members):
-                continue
-            members.append((member_name, f"Auto-declared from operand_catalog: {operand_token}"))
+    for operand in ir.operand_catalog or []:
+        operand_token = str(operand or "").strip()
+        if not operand_token:
+            continue
+        member_name = _support_member_name(operand_token, "", strict_excel_mode=True)
+        if not member_name:
+            continue
+        if owner_db_map.get(member_name, current_db_name) != current_db_name:
+            continue
+        if any(existing == member_name for existing, _ in members):
+            continue
+        members.append((member_name, f"Auto-declared from operand_catalog: {operand_token}"))
     filtered = [
         (name, comment)
         for name, comment in members
