@@ -168,7 +168,9 @@ Alternative:
 Note operative:
 - l'import non accoda compile automatiche
 - se un blocco con lo stesso nome esiste gia' in TIA, il singolo tentativo di import va in collisione; `import-generated` gestisce il caso con retry e rinomina automatica.
-- lo script `import-generated` effettua polling del job e, su collisione nome blocco, prova automaticamente suffissi numerici (`...1`, `...2`, ...).
+- lo script `import-generated` effettua polling del job e, su collisione nome blocco, prova automaticamente rinomini:
+  - default: suffissi numerici (`...1`, `...2`, ...);
+  - per nomi tipo `*_fc193`: usa suffisso copia `*_fc193_2`, `*_fc193_3`, ... (non `*_fc194`).
 - `tia-bridge` carica e invia all'agent Windows solo i file `*.xml` del bundle: i report `.json` restano locali e non bloccano l'import.
 
 ## Multi-blocco (best effort)
@@ -365,8 +367,9 @@ curl -sS "http://127.0.0.1:8000/api/tia/jobs/<JOB_ID>"
 - **Numerazione step**: la sorgente primaria e' `step_number/numero_step`; il passo iniziale e' quello con numero `1`.
 - **Naming step**: il nome passo e' libero e non deve cambiare la topologia.
 - **Ingressi multipli** su uno step non iniziale:
-  - il primo ingresso puo' essere `Direct`;
+  - il primo ingresso puo' essere `Direct` (scelto in modo deterministico);
   - gli ingressi extra devono essere `Jump`.
+  - policy attuale: a parita' di target, il `Direct` viene assegnato preferendo lo step sorgente col `step_number` piu' basso (e non "WAIT"); gli altri ingressi diventano `Jump`.
 - **Guard logiche transizioni (`Trs`)**:
   - il parser preserva operatori booleani `AND` / `OR` / `NOT` da AWL (`A/AN/O/ON`, inclusi gruppi `A(...)`/`O(...)`);
   - le guardie non vanno appiattite in `AND` quando in AWL esistono rami `OR`.

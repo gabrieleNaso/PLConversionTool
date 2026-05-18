@@ -1,4 +1,4 @@
-Specifica master consolidata del 14-05-2026
+Specifica master consolidata del 18-05-2026
 per le regole di traduzione e generazione XML
 AWL / Excel -> IR -> GRAPH / GlobalDB / FC LAD per TIA Portal V20
 
@@ -32,7 +32,7 @@ Nota hard (IR JSON e simboli con `.`):
 - nel flusso IR JSON (AI-first) i simboli puntati (es. `DB87_T10_OPOUT.L080`, `T10_LANT.Transitions.Safe`) devono essere trattati come **leaf token sanitizzati** (es. `DB87_T10_OPOUT_L080`) e poi risolti verso il DB owner del pacchetto (IO/AUX/HMI/DIAG/EXTERNAL/TRANSITIONS/MODE).
 - eccezione: i riferimenti step del GRAPH (`...Sxx... .X`) restano strutturati e referenziano il DB istanza del GRAPH (`ZZ_DB15...`).
 
-Aggiornamenti integrati in questa revisione (14-05-2026):
+Aggiornamenti integrati in questa revisione (18-05-2026):
 - consolidati i pattern osservati nei casi `expected_output3` (FC112) e `expected_output4` (FC193), in aggiunta ai casi 1/2.
 - chiarita la gestione in IR di: temporanei STL (es. `L 30.0`, `#TEMP`, `MW`), confronti numerici/REAL (`<>R`, `==R`, `<R`, `>=R`), e mapping “Mode DB -> Transitions.*”.
 - hardening serializer: riscrittura simboli GlobalVariable estesa anche ai nodi `Instance` nei `raw_flgnet`/`raw_networksource`; gestione timer array `TIMER[idx]` come leaf `TIMER_<idx>` tipata `IEC_TIMER` nel DB AUX.
@@ -1693,12 +1693,17 @@ def validate_graph_topology(g: GraphIR) -> None:
     pass
 ```
 
-Nota pratica: se uno step non iniziale riceve piu' ingressi, il primo puo' restare
+Nota pratica: se uno step non iniziale riceve piu' ingressi, uno solo puo' restare
 `Direct` mentre gli ingressi aggiuntivi vanno trasformati in link `Jump` per evitare
 la violazione "doppi ingressi Direct" e ridurre i rischi di crash in TIA.
+Policy deterministica consigliata: a parita' di target, assegnare `Direct` preferendo
+lo step sorgente con `step_number` piu' basso (e non "WAIT"); gli altri diventano `Jump`.
 Nota operativa import/export: il `targetPath` dei job TIA parte sempre da
 `Program blocks/`. Per creare sottocartelle ordinare usare ad esempio
 `Program blocks/generati da tool/<nome>`.
+Nota operativa collisioni nome blocco in import: se il nome e' del tipo `*_fc193`,
+in caso di collisione non incrementare il numero FC (193->194) ma usare un suffisso
+di copia: `*_fc193_2`, `*_fc193_3`, ...
 Nota sui numeri step: la numerazione GRAPH deve seguire il `step_number` dell'IR.
 Il nome del passo e' una label e non deve forzare la numerazione.
 

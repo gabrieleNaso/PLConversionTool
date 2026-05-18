@@ -1,4 +1,4 @@
-# Report aggiornato del 14-05-2026
+# Report aggiornato del 18-05-2026
 
 ## Progetto
 Conversione di sequenziatori PLC da AWL a GRAPH in TIA Portal V20 tramite XML.
@@ -16,7 +16,7 @@ L'obiettivo di questa versione consolidata è:
 - mantenere una baseline unica, leggibile e riusabile;
 - integrare in un unico testo sia la parte di reverse engineering XML sia la parte operativa su TIA Portal Openness.
 
-Il documento va quindi usato come riferimento tecnico corrente del progetto alla data del **14-05-2026**.
+Il documento va quindi usato come riferimento tecnico corrente del progetto alla data del **18-05-2026**.
 
 Aggiornamenti principali di questa revisione:
 - aggiunti e incrociati i casi `expected_output3` (FC112) e `expected_output4` (FC193) per rafforzare le regole generali
@@ -409,11 +409,13 @@ Riferimenti osservati:
 
 - uno step non iniziale non deve ricevere due ingressi `Direct`;
 - le confluenze multiple vanno gestite correttamente con `Jump` o join espliciti;
+- in caso di confluenza (piu' transition verso lo stesso step), il `Direct` deve essere scelto in modo deterministico (consiglio: sorgente con `step_number` piu' basso e non "WAIT"), gli altri ingressi devono essere `Jump`;
 - le alternative si modellano con `AltBegin`;
 - i paralleli si modellano con `SimBegin` e `SimEnd`;
 - i rami di allarme devono chiudersi correttamente.
 - per gli import, `targetPath` parte sempre da `Program blocks/`; per sottocartelle usare `Program blocks/generati da tool/<nome>`.
 - la numerazione step in GRAPH deve seguire il `step_number` dell'IR; il nome step e' una label logica.
+- collisione nome blocco in import: per nomi tipo `*_fc193` usare suffisso `*_fc193_2` (non `*_fc194`).
 
 ### 8.6 Stato di stabilita' generatore
 
