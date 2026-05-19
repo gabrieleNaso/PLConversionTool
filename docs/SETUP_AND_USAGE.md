@@ -3,7 +3,7 @@
 Questo documento raccoglie **in un unico posto**:
 - setup completo (Linux/Docker + VM Windows/TIA/Openness + agent);
 - come usare il tool end‑to‑end (AWL/Excel/IR JSON → XML → import TIA);
-- comandi `make`, script e API realmente presenti nel repo.
+- comandi `make` e script principali.
 
 Nota gerarchia (importante):
 - le regole *hard* di traduzione/serializer stanno nella **spec master**: `docs/reference/specs/Specifica_master_traduzione_AWL_e_generazione_XML_TIA_V20_V2_18_05.md`;
@@ -11,7 +11,7 @@ Nota gerarchia (importante):
 
 ---
 
-## 1) Panoramica rapida (cosa fa il progetto)
+## 1) Panoramica rapida
 
 Obiettivo: convertire sequenziatori PLC (AWL o Excel strutturato) in un **pacchetto coerente** di blocchi TIA Portal V20:
 
@@ -105,12 +105,8 @@ Variabili utili aggiuntive (in base al caso):
   - `BACKEND_PORT=8000`
   - `FRONTEND_PORT=3000`
   - `TIA_BRIDGE_PORT=8010`
-- timezone:
-  - `TZ=UTC`
 - modalità bridge (per sviluppo senza Windows/TIA):
   - `TIA_BRIDGE_MODE=stub` (default) → il bridge accetta job ma li salva in memoria (nessuna chiamata alla VM)
-- target profile generazione (solo IR → XML):
-  - `PLC_TARGET_PROFILE=romania` (oppure passa `TARGET_PROFILE=...` ai comandi `make`)
 
 Esempio `.env` completo (tipico):
 ```env
@@ -124,9 +120,6 @@ TIA_WINDOWS_AGENT_URL=http://192.168.1.50:8050
 TIA_VMWARE_NETWORK_MODE=bridged
 ```
 
-Nota su UID/GID e volumi:
-- il compose passa `USER_UID/USER_GID/USERNAME` come build args (default `1000/dev`);
-- monta la repo in `/workspace` e monta anche `~/.gitconfig` e `~/.ssh` in read-only nei container.
 
 ### 4.2 Avvio stack
 Da root repo:
@@ -151,13 +144,6 @@ Shell nei container:
 - `make shell-tia`
 - `make shell-frontend`
 
-### 4.3 Cosa aspettarsi dai servizi (ruoli)
-- `backend` (FastAPI) genera bundle XML e fornisce endpoint di conversione; espone anche un proxy verso il bridge (`/api/tia/*`).
-- `tia-bridge` (FastAPI) è l’orchestratore: stage-a artefatti da Linux → VM Windows e accoda job (import/compile/export).
-- `frontend` (Next.js) è una pagina di overview (status backend/bridge/agent).
-
-Nota: se `TIA_BRIDGE_MODE=stub`, i job TIA risultano “completati” solo a livello stub e non producono side effects su TIA.
-
 ---
 
 ## 5) Input/Output: cartelle del workspace
@@ -169,17 +155,6 @@ Cartelle principali (vedi anche `docs/reference/data.md`):
   - Excel: `work/input/excel/*.xlsx` (opzionale, percorso libero)
 - output runtime: `work/output/generated/<bundle>/`
 - temp/staging: `work/tmp/`
-
-Struttura tipica di un bundle in `work/output/generated/<bundle>/`:
-- XML principali:
-  - `FB_<SequenceName>_GRAPH_auto.xml`
-  - `DB<XX>_<SequenceName>_<family>_db_auto.xml` (più famiglie DB)
-  - `FC<XX>_<SequenceName>_<family>_lad_auto.xml` (più famiglie FC)
-- report/diagnosi:
-  - `<SequenceName>_analysis.json` (diagnosi completa + anteprime artefatti)
-  - `<SequenceName>_ir.json` (se generato via script IR o se copiato per tracciabilità)
-- export Excel (quando l’IR è disponibile):
-  - `<SequenceName>_from_ir.xlsx`
 
 Nota sui casi versionati:
 - `cases/input/` e `cases/expected_output/` sono la base per regressione e regole (`cases/translation_rules.md`).
@@ -198,15 +173,6 @@ Opzionale (profilo target solo per IR→XML):
 
 Equivalente script:
 - `python3 scripts/generate_from_ir_json.py --ir-json "work/input/ir_json/<file>.json" --sequence-name "<SequenceName>"`
-
-Dettagli pratici:
-- lo script `scripts/generate_from_ir_json.py` crea/ricrea la cartella bundle sotto `work/output/generated/<slug_sequence_name>/` (pulizia inclusa).
-- se passi `--target-profile` (o `TARGET_PROFILE`), viene impostata `PLC_TARGET_PROFILE` e l’IR viene marcato con `target_profile_name`.
-
-Punto di partenza consigliato per costruire IR JSON:
-- bootstrap (scaffold) via API backend:
-  - `POST http://127.0.0.1:8000/api/conversion/bootstrap` con payload `{ "sequenceName": "...", "awlSource": "...", "sourceName": "..." }`
-  - usa il JSON risultante come base (poi cura `ir` e rigenera con `gen-ir`).
 
 Strumenti utili per creare IR da markdown AWL (senza parser automatico):
 - `python3 scripts/manual_awl_md_to_ir.py --source "work/input/<file>.md" --sequence-name "<SequenceName>" --out "work/input/ir_json/<SequenceName>_ir.json"`
@@ -248,10 +214,6 @@ Checklist operative:
 Controllo simboli (tutto ciò che è referenziato deve essere dichiarato nel DB owner):
 - `python3 scripts/check_bundle_symbol_resolution.py --bundle-dir work/output/generated/<bundle>`
 
-Output del check:
-- stampa un JSON con `xml_files`, `accesses`, `missing`;
-- se `missing > 0`, l’import/compile in TIA è tipicamente a rischio (member non dichiarati o DB non trovato).
-
 Rigenerazione “pulita”:
 - la generazione ricrea/pulisce la cartella bundle target (evita XML “stale”).
 
@@ -282,94 +244,11 @@ Import + attesa esito (via script, utile in debug):
 - `python3 scripts/import_generated_to_tia.py --project-path "C:\\path\\progetto.ap20" --target-path "Program blocks/generati da tool" --bundle "<bundle>" --wait`
 
 Nota compile:
-- il flusso import non accoda compile automatiche: se vuoi verificare coerenza reale del pacchetto, fai import + compile (vedi esempi API sotto).
+- il flusso import non accoda compile automatiche: se vuoi verificare coerenza reale del pacchetto, fai import + compile (separatamente).
 
 ---
 
-## 9) API (backend e bridge)
-
-### 9.1 Backend (`http://127.0.0.1:8000`)
-Health:
-- `GET /health`
-
-Conversione:
-- `POST /api/conversion/analyze` (AWL → analysis+IR+previews)
-- `POST /api/conversion/export` (AWL → scrittura bundle su `work/output/...`)
-- `POST /api/conversion/analyze-ir` (IR JSON payload → analysis)
-- `POST /api/conversion/export-ir` (IR JSON payload → scrittura bundle)
-- `GET /api/conversion/profile`
-
-TIA boundary (proxy verso bridge):
-- `GET /api/tia/overview`
-- `GET /api/tia/openness/diagnostics`
-- `POST /api/tia/jobs/import|compile|export`
-- `GET /api/tia/jobs` / `GET /api/tia/jobs/{jobId}`
-
-Esempi `curl` (backend):
-
-Analyze (AWL → analisi + anteprime):
-```bash
-curl -sS -X POST "http://127.0.0.1:8000/api/conversion/analyze" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "sequenceName":"MySeq_001",
-    "sourceName":"myseq_001.awl",
-    "awlSource":"NETWORK 1\n      U     S1\n      S     S29\n"
-  }'
-```
-
-Export (scrive bundle sotto `work/output/generated/...`):
-```bash
-curl -sS -X POST "http://127.0.0.1:8000/api/conversion/export" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "sequenceName":"MySeq_001",
-    "sourceName":"myseq_001.awl",
-    "awlSource":"NETWORK 1\n      U     S1\n      S     S29\n",
-    "outputDir":"work/output/generated/myseq_001"
-  }'
-```
-
-Accodare un import TIA (passando una cartella bundle come `artifactPath`):
-```bash
-curl -sS -X POST "http://127.0.0.1:8000/api/tia/jobs/import" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "artifactPath":"work/output/generated/myseq_001",
-    "projectPath":"C:\\\\path\\\\progetto.ap20",
-    "targetPath":"Program blocks/generati da tool",
-    "saveProject": true,
-    "notes":"import bundle myseq_001"
-  }'
-```
-
-Accodare una compile (stesso progetto, target opzionali):
-```bash
-curl -sS -X POST "http://127.0.0.1:8000/api/tia/jobs/compile" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "artifactPath":"work/output/generated/myseq_001",
-    "projectPath":"C:\\\\path\\\\progetto.ap20",
-    "targetPath":"Program blocks/generati da tool",
-    "saveProject": true,
-    "notes":"compile post-import"
-  }'
-```
-
-### 9.2 TIA bridge (`http://127.0.0.1:8010`)
-- `GET /health`
-- `GET /api/status`
-- `GET /api/openness/diagnostics`
-- `POST /api/jobs/import|compile|export`
-- `GET /api/jobs` / `GET /api/jobs/{jobId}`
-
-Note bridge (dettagli che impattano il setup):
-- il bridge legge `TIA_BRIDGE_MODE` (`stub`/`real`) e l’URL dell’agent via `TIA_WINDOWS_AGENT_URL` oppure `TIA_WINDOWS_HOST`+porta;
-- quando `artifactPath` è una cartella, stage-a e invia all’agent Windows **solo** i file `*.xml` (i `.json` restano locali).
-
----
-
-## 10) Troubleshooting essenziale
+## 9) Troubleshooting essenziale
 
 ### Bridge “unreachable” / agent non configurato
 - verifica `.env` su Linux (`TIA_WINDOWS_AGENT_URL`, `TIA_BRIDGE_MODE=real`);
