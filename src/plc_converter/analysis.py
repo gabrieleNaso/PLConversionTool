@@ -672,59 +672,6 @@ def _tracking_translation_is_enabled(
         return True
     return any(_is_tracking_seed_transition(item) for item in transitions)
 
-
-def _prefer_raw_networksources(logic_rows: list[dict[str, object]]) -> list[dict[str, object]]:
-    """
-    When the IR contains both a generated logic-row (kind missing / compare / move / const ...)
-    and an imported expected network (kind raw_flgnet/raw_networksource) for the same
-    `network_title`, keep the raw network and drop the generated one to avoid duplicated
-    CompileUnits in support FCs.
-
-    This primarily happens when curated cases provide authoritative `raw_flgnet_xml`
-    while older pipelines still emit equivalent derived rows.
-    """
-    if not logic_rows:
-        return logic_rows
-    titles_with_raw: set[str] = set()
-    for row in logic_rows:
-        kind = str(row.get("kind") or "").strip().lower()
-        if kind not in {"raw_flgnet", "raw_networksource"}:
-            continue
-        title = str(row.get("network_title") or "").strip()
-        if title:
-            titles_with_raw.add(title)
-    if not titles_with_raw:
-        return logic_rows
-
-    def _is_separator_title(value: str) -> bool:
-        token = (value or "").strip()
-        if not token:
-            return False
-        # Common separator patterns observed in curated projects.
-        if token.startswith("===") or token.startswith("---"):
-            return True
-        if token.startswith("======") or token.endswith("======"):
-            return True
-        return False
-
-    cleaned: list[dict[str, object]] = []
-    seen_meta_titles: set[str] = set()
-    for row in logic_rows:
-        title = str(row.get("network_title") or "").strip()
-        kind = str(row.get("kind") or "").strip().lower()
-        if title and title in titles_with_raw and kind not in {"raw_flgnet", "raw_networksource", "meta"}:
-            continue
-        # Avoid emitting an empty separator network with the exact same title of an
-        # authoritative raw network (it results in a visually duplicated network in TIA).
-        if title and title in titles_with_raw and kind == "meta" and not _is_separator_title(title):
-            continue
-        if kind == "meta" and title and title in seen_meta_titles:
-            continue
-        if kind == "meta" and title:
-            seen_meta_titles.add(title)
-        cleaned.append(row)
-    return cleaned
-
 # External integration DBs (fixed contracts observed in corpus).
 # Note: DB202 is used by the LLALM alarm map in the Romania source and must be
 # treated as diagnostics/alarms (DB11 family), not as "external integration".
@@ -3015,17 +2962,13 @@ def _freeze_ir_for_json_pipeline(ir: AwlIR) -> AwlIR:
     timer_trigger_members_by_category = _collect_timer_trigger_support_members_by_category(ir)
     derived_actions = _derive_awl_action_logic_rows(ir)
     diag_logic = _merge_logic_rows(provided_support_logic.get("diag", []), derived_actions.get("diag", []))
-    diag_logic = _prefer_raw_networksources(diag_logic)
     # Note: OPIN/OPOUT (DB81/DB82) are classified as "external", but the user expects
     # the corresponding status mapping logic to live in the HMI support FC.
     hmi_fallback = derived_actions.get("hmi", []) + derived_actions.get("external", []) + _derive_awl_hmi_alias_logic_rows(ir)
     hmi_logic = _merge_logic_rows(provided_support_logic.get("hmi", []), hmi_fallback)
-    hmi_logic = _prefer_raw_networksources(hmi_logic)
     aux_logic = _merge_logic_rows(provided_support_logic.get("aux", []), derived_actions.get("aux", []))
-    aux_logic = _prefer_raw_networksources(aux_logic)
     has_curated_transitions_logic = bool(provided_support_logic.get("transitions"))
     transitions_logic = _merge_logic_rows(provided_support_logic.get("transitions", []), derived_actions.get("transitions", []))
-    transitions_logic = _prefer_raw_networksources(transitions_logic)
     io_logic = _merge_logic_rows(provided_support_logic.get("io", []), derived_actions.get("io", []))
     # Keep OUTPUT logic rows separate from IO DB members:
     # - `io` is the support GlobalDB contract for DI/DO tags,
@@ -3035,9 +2978,7 @@ def _freeze_ir_for_json_pipeline(ir: AwlIR) -> AwlIR:
     # during freezing we mirror them into the `output` category so the JSON
     # pipeline (IR JSON -> XML) can keep a stable sheet-like separation.
     output_logic = _merge_logic_rows(provided_support_logic.get("output", []), list(io_logic))
-    output_logic = _prefer_raw_networksources(output_logic)
     mode_logic = _merge_logic_rows(provided_support_logic.get("mode", []), _derive_awl_mode_logic_rows(ir))
-    mode_logic = _prefer_raw_networksources(mode_logic)
 
     # Ensure no references to steps outside the derived GRAPH topology leak into support FC logic.
     _sanitize_logic_rows_for_graph_steps(diag_logic)
@@ -4540,7 +4481,6 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
     if not ir.strict_operand_catalog:
         if not diag_logic:
             diag_logic = diag_logic + derived_actions.get("diag", [])
-    diag_logic = _prefer_raw_networksources(diag_logic)
     diag_members = (
         (_excel_support_members(ir, "diag") or _collect_diag_support_members(ir))
         + guard_members_by_category.get("diag", [])
@@ -4552,7 +4492,6 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
     if not ir.strict_operand_catalog:
         if not hmi_logic:
             hmi_logic = hmi_logic + derived_actions.get("hmi", []) + derived_actions.get("external", [])
-    hmi_logic = _prefer_raw_networksources(hmi_logic)
     hmi_members = (
         (_excel_support_members(ir, "hmi") or _collect_hmi_support_members(ir))
         + guard_members_by_category.get("hmi", [])
@@ -4632,7 +4571,6 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
         # contacts that mis-type numeric operands as BOOL and diverge from the reference.
         if not aux_logic:
             aux_logic = aux_logic + derived_actions.get("aux", [])
-    aux_logic = _prefer_raw_networksources(aux_logic)
     aux_members = (
         (_excel_support_members(ir, "aux") or _collect_aux_support_members(ir))
         + guard_members_by_category.get("aux", [])
@@ -4647,7 +4585,6 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
         # project layout.
         if not transitions_logic:
             transitions_logic = transitions_logic + derived_actions.get("transitions", [])
-    transitions_logic = _prefer_raw_networksources(transitions_logic)
     transitions_members = (
         (_excel_support_members(ir, "transitions") or _collect_transitions_support_members(ir, []))
         + guard_members_by_category.get("transitions", [])
@@ -4663,7 +4600,6 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
     io_output_logic = io_logic + output_logic
     if not ir.strict_operand_catalog:
         io_output_logic = io_output_logic + derived_actions.get("io", [])
-    io_output_logic = _prefer_raw_networksources(io_output_logic)
     io_members = _excel_support_members(ir, "io")
     output_members = _excel_support_members(ir, "output")
     io_output_members = (
@@ -4679,7 +4615,6 @@ def _build_support_artifact_previews(ir: AwlIR) -> list[ArtifactPreview]:
     )
 
     mode_logic = _excel_support_logic_rows(ir, "mode")
-    mode_logic = _prefer_raw_networksources(mode_logic)
     mode_members = _excel_support_members(ir, "mode") or _collect_mode_support_members(ir)
     mode_db_members, mode_fc_members = _prepare_support_members(ir, "mode", mode_members, mode_logic)
 
