@@ -348,7 +348,10 @@ def _read_support_logic_rows(path: Path) -> list[dict[str, object]]:
                 "network_index": _int_or_none(row.get("network")),
                 "network_title": "",
                 "result_member": result_member,
-                "condition_expression": condition_expression or "TRUE",
+                # IMPORTANT: preserve empty expressions exactly as authored in Excel.
+                # Empty means "no condition" (unconditional coil), and must not be
+                # rewritten to "TRUE" in the IR.
+                "condition_expression": condition_expression,
                 "condition_operands": condition_operands,
                 "coil_mode": coil_mode,
                 "comment": _cell_text(row.get("comment")),
@@ -560,7 +563,10 @@ def _build_transitions_from_rows(rows: list[dict[str, object]]) -> list[dict[str
             continue
         # Network index is always auto-managed by generator.
         network_index = idx
-        guard_expression = _cell_text(row.get("condition_expression")) or "TRUE"
+        # IMPORTANT: preserve empty expressions exactly as authored in Excel.
+        # Empty means "no condition" (unconditional transition), and must not be
+        # rewritten to "TRUE" in the IR.
+        guard_expression = _cell_text(row.get("condition_expression"))
         guard_operands = _split_list(row.get("operands_used_in_condition"))
         if not guard_operands and guard_expression and guard_expression.upper() != "TRUE":
             guard_operands = _infer_operands_from_expression(guard_expression)

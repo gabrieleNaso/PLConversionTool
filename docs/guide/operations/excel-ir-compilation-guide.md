@@ -48,7 +48,7 @@ Colonne:
 - `from_step`: passo sorgente transizione.
 - `transition_id`: id transizione (opzionale, auto `T1`, `T2`, ... se vuoto).
 - `to_step`: passo destinazione transizione.
-- `condition_expression`: espressione LAD/booleana (default `TRUE`).
+- `condition_expression`: espressione LAD/booleana. Se lasciata vuota, viene trattata come “nessuna condizione” (transizione incondizionata) e viene preservata vuota nell’IR.
 - `flow_type`: `alternative` oppure `parallel`.
 - `parallel_group`: gruppo parallelo (obbligatorio quando `flow_type=parallel`).
 
@@ -145,6 +145,7 @@ Regole pratiche:
 - piu' righe logiche con stessa `category` + stesso `network` vengono aggregate in un'unica network LAD.
 - se vuoi reti distinte, usa numeri `network` diversi.
 - se compili `result_member`/condizione, la FC della categoria usa la logica scritta qui.
+- `condition_expression` vuota significa “nessuna condizione” (bobina incondizionata) e viene preservata vuota nell’IR.
 - `coil_mode` e' per-riga: `set` genera `SCoil`, `reset` genera `RCoil`, vuoto genera `Coil` normale.
 - i segnali presenti in `operands` vengono collegati ai DB supporto.
 - non usare segnali assenti da `operands`: aggiungili al catalogo per poterli dichiarare nel DB owner e mantenerli collegati in FC/GRAPH.

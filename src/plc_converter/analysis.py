@@ -990,7 +990,14 @@ def _ir_from_payload(
             source_step=str(item.get("source_step") or "").strip(),
             target_step=str(item.get("target_step") or "").strip(),
             network_index=_as_int(item.get("network_index"), 1),
-            guard_expression=str(item.get("guard_expression") or "TRUE"),
+            # Preserve explicit empty guard expressions (Excel/curated IR may use empty
+            # to represent an unconditional transition). Only default to TRUE when the
+            # field is absent/null.
+            guard_expression=(
+                str(item.get("guard_expression"))
+                if item.get("guard_expression") is not None
+                else "TRUE"
+            ),
             guard_operands=_as_str_list(item.get("guard_operands")),
             jump_labels=_as_str_list(item.get("jump_labels")),
             flow_type=_normalize_flow_type(item.get("flow_type")),
