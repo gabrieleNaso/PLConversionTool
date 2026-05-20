@@ -52,6 +52,27 @@ Sulla VM Windows devono essere veri almeno questi punti:
 - `.NET Framework 4.8` e tool di build: `dotnet` (consigliato) oppure Visual Studio/MSBuild.
 - Agent Windows avviabile dalla cartella `tia_windows_agent/` (vedi sotto).
 
+### 2.3 (Opzionale) Setup locale Python (`venv`) per script
+Il progetto è pensato per girare in Docker, ma alcuni workflow possono essere comodi anche “fuori Docker”
+(ad esempio generare bundle con gli script).
+
+Requisiti:
+- Python 3.12+
+
+Creazione venv (root repo):
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -U pip
+python -m pip install -r backend/requirements.txt
+python -m pip install -r tia_bridge/requirements.txt
+```
+
+Note:
+- questo venv abilita gli script in `scripts/` che dipendono dalle librerie backend/bridge (es. `openpyxl`).
+- se usi Docker, il venv non è necessario.
+- per uscire dal venv: `deactivate`
+
 ---
 
 ## 3) Setup Windows (TIA Windows Agent)
@@ -68,6 +89,23 @@ Questa parte si fa **dentro la VM Windows**.
 - copia `appsettings.Local.template.json` → `appsettings.Local.json`
 - verifica almeno: `ListenUrl`, `ProjectRoot`, `OutputDirectory`, `TempDirectory`, `SiemensAssemblyDirectory`, `DefaultProjectPath`
 
+Esempio minimo `appsettings.Local.json` (porta default `8050`):
+```json
+{
+  "TiaAgent": {
+    "ListenUrl": "http://0.0.0.0:8050",
+    "OpennessMode": "real",
+    "TiaPortalVersion": "V20",
+    "SiemensAssemblyDirectory": "C:\\\\Program Files\\\\Siemens\\\\Automation\\\\Portal V20\\\\PublicAPI\\\\V20",
+    "ProjectRoot": "C:\\\\PLConversionTool",
+    "OutputDirectory": "C:\\\\PLConversionTool\\\\output",
+    "TempDirectory": "C:\\\\PLConversionTool\\\\tmp",
+    "DefaultProjectPath": "C:\\\\path\\\\progetto.ap20",
+    "LaunchUi": false
+  }
+}
+```
+
 4) Bootstrap (crea config se manca + firewall rule):
 - `.\bootstrap-vm.ps1`
 - (porta diversa) `.\bootstrap-vm.ps1 -Port 8060`
@@ -80,11 +118,45 @@ Questa parte si fa **dentro la VM Windows**.
 - `Invoke-RestMethod http://localhost:8050/api/status`
 - `Invoke-RestMethod http://localhost:8050/api/openness/diagnostics`
 
+Nota firewall (se vuoi farlo manualmente):
+- `.\install-firewall-rule.ps1 -Port 8050`
+
+7) Test da Linux verso la VM (reachability)
+Da Linux (host/container), verifica che la VM sia raggiungibile:
+```bash
+curl -sS http://<IP_VM_WINDOWS>:8050/health
+```
+
+Se fallisce:
+- controlla che `ListenUrl` stia ascoltando su `0.0.0.0` (non solo `localhost`);
+- controlla la regola firewall (script `tia_windows_agent/install-firewall-rule.ps1`);
+- controlla la modalità di rete della VM (vedi sezione “Connessione VM” sotto).
+
 Documentazione dettagliata Windows agent: `tia_windows_agent/agent.md`.
 
 ---
 
 ## 4) Setup Linux (Docker Compose dev)
+
+### 4.0 Connessione tra Linux/Docker e VM Windows (rete)
+Obiettivo: il container `tia-bridge` deve poter chiamare l’agent Windows su `http://<IP_VM_WINDOWS>:8050`.
+
+Configurazione consigliata (VMware/VirtualBox/Hyper‑V):
+- modalità rete VM Windows: **bridged** (IP stabile sulla stessa LAN del Linux host);
+- assegna un IP statico o DHCP reservation alla VM Windows.
+
+Se usi NAT:
+- assicurati che esista port‑forwarding verso la VM (host → guest) sulla porta dell’agent;
+- in quel caso, `TIA_WINDOWS_AGENT_URL` deve puntare all’IP/porta **raggiungibile dai container** (non per forza “localhost”).
+
+Check rapidi:
+- da Linux host: `curl -sS http://<IP_VM_WINDOWS>:8050/health`
+- dal container `tia-bridge` (se vuoi verificare “dal punto di vista compose”):
+  - `make shell-tia`
+  - `curl -sS http://<IP_VM_WINDOWS>:8050/health`
+
+Regola pratica:
+- se con `bridged` funziona ma con `NAT` no, il problema è quasi sempre nel port‑forwarding o nel fatto che l’URL punti a un IP non raggiungibile dai container.
 
 ### 4.1 Variabili ambiente (consigliato: `.env`)
 Parti da `.env.example` e crea un `.env` nella root repo.
@@ -161,30 +233,72 @@ Nota sui casi versionati:
 
 ---
 
-## 6) Workflow di uso (3 ingressi → 1 uscita: bundle XML)
+## 6) Uso (comandi ordinati)
 
-### 6.1 Workflow consigliato (AI-first): IR JSON → XML
+### 6.1 Avvio servizi (dev)
+```bash
+make doctor
+make up
+```
+
+Check servizi:
+```bash
+curl -sS http://127.0.0.1:8000/health
+curl -sS http://127.0.0.1:8010/health
+curl -sS http://127.0.0.1:8000/api/tia/overview
+```
+
+Log:
+```bash
+make logs
+```
+
+Stop:
+```bash
+make down
+```
+
+### 6.2 Generazione bundle XML (scegli un ingresso)
+
+#### A) IR JSON → XML (consigliato)
 1) Crea/curi un IR JSON in `work/input/ir_json/` (manualmente o con AI).
 2) Genera il bundle:
-- `make gen-ir IR_JSON="work/input/ir_json/<file>_ir.json" SEQUENCE_NAME="<SequenceName>"`
+```bash
+make gen-ir IR_JSON="work/input/ir_json/<file>_ir.json" SEQUENCE_NAME="<SequenceName>"
+```
 
 Opzionale (profilo target solo per IR→XML):
-- `make gen-ir IR_JSON="..." SEQUENCE_NAME="..." TARGET_PROFILE=romania`
+```bash
+make gen-ir IR_JSON="work/input/ir_json/<file>_ir.json" SEQUENCE_NAME="<SequenceName>" TARGET_PROFILE=romania
+```
 
 Equivalente script:
-- `python3 scripts/generate_from_ir_json.py --ir-json "work/input/ir_json/<file>.json" --sequence-name "<SequenceName>"`
+```bash
+python3 scripts/generate_from_ir_json.py \
+  --ir-json "work/input/ir_json/<file>.json" \
+  --sequence-name "<SequenceName>"
+```
 
 Strumenti utili per creare IR da markdown AWL (senza parser automatico):
-- `python3 scripts/manual_awl_md_to_ir.py --source "work/input/<file>.md" --sequence-name "<SequenceName>" --out "work/input/ir_json/<SequenceName>_ir.json"`
+```bash
+python3 scripts/manual_awl_md_to_ir.py \
+  --source "work/input/<file>.md" \
+  --sequence-name "<SequenceName>" \
+  --out "work/input/ir_json/<SequenceName>_ir.json"
+```
 
-### 6.2 Workflow automatico (parser AWL): AWL → IR → XML
+#### B) AWL (parser) → IR → XML
 1) Metti i sorgenti in `work/input/` (`.awl`, `.txt`, `.md`).
 2) Genera:
-- `make gen`
+```bash
+make gen
+```
 
 Filtri:
-- `make gen INPUT_FILE="AWL romania fc112.md"`
-- `make gen INPUT_PREFIX="romania_"`
+```bash
+make gen INPUT_FILE="AWL romania fc112.md"
+make gen INPUT_PREFIX="romania_"
+```
 
 Output tipico per bundle:
 - `*_ir.json` (IR usato)
@@ -194,19 +308,26 @@ Output tipico per bundle:
 Dettagli input `.md`:
 - se il file è markdown, il parser prova a estrarre i blocchi fenced AWL/STL; se non li rileva, usa il testo completo.
 
-### 6.3 Workflow Excel: Excel → IR → XML
+#### C) Excel → IR → XML
 1) Parti dal template: `docs/templates/ir_excel_template_single_page_with_support_fc.xlsx`
 2) Genera:
-- `make generate-excel-ir EXCEL_FILE="docs/templates/ir_excel_template_single_page_with_support_fc.xlsx"`
+```bash
+make generate-excel-ir EXCEL_FILE="docs/templates/ir_excel_template_single_page_with_support_fc.xlsx"
+```
 
 Equivalente script:
-- `python3 scripts/generate_from_excel_ir.py --excel "<file>.xlsx" --output-root work/output/generated --sequence-name "<SequenceName>"`
+```bash
+python3 scripts/generate_from_excel_ir.py \
+  --excel "<file>.xlsx" \
+  --output-root work/output/generated \
+  --sequence-name "<SequenceName>"
+```
 
 Regole Excel (hard) e colonne: `docs/guide/operations/excel-ir-compilation-guide.md`.
 
 ---
 
-## 7) Validazioni rapide (prima di importare in TIA)
+### 6.3 Validazioni (prima di importare in TIA)
 
 Checklist operative:
 - `docs/guide/checklists/workflow-checklists.md`
@@ -219,7 +340,7 @@ Rigenerazione “pulita”:
 
 ---
 
-## 8) Import in TIA (via backend → bridge → agent Windows)
+### 6.4 Import in TIA (via backend → bridge → agent Windows)
 
 Prerequisiti:
 - stack Linux avviato (`make up`)
@@ -248,7 +369,7 @@ Nota compile:
 
 ---
 
-## 9) Troubleshooting essenziale
+## 7) Troubleshooting essenziale
 
 ### Bridge “unreachable” / agent non configurato
 - verifica `.env` su Linux (`TIA_WINDOWS_AGENT_URL`, `TIA_BRIDGE_MODE=real`);
