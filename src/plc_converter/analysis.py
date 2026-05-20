@@ -3952,23 +3952,32 @@ def _build_graph_topology(ir: AwlIR, *, target_profile_name: str = "default") ->
         if not item.target_step or item.target_step == entry_step:
             continue
         incoming_by_target.setdefault(item.target_step, []).append(item)
+    is_excel_source = str(getattr(ir, "source_name", "") or "").strip().lower().endswith(".xlsx")
+
     for target_step, incoming in incoming_by_target.items():
         if len(incoming) < 2:
             continue
-        target_no = step_no_by_name.get(target_step, 10**9)
+        if is_excel_source:
+            # Excel flow must reproduce the authored order. When multiple transitions
+            # converge to the same target step, keep as Direct the first transition
+            # encountered in the Excel (smallest `network_index`) and mark the others
+            # as Jump.
+            preferred = sorted(incoming, key=lambda node: int(getattr(node, "network_index", 10**9) or 10**9))[0]
+        else:
+            target_no = step_no_by_name.get(target_step, 10**9)
 
-        def _incoming_score(node: GraphTransitionNode) -> tuple[int, int, int]:
-            source_label = str(node.source_step or "").upper()
-            is_wait = 1 if "WAIT" in source_label else 0
-            source_no = step_no_by_name.get(node.source_step, 10**9)
-            distance = abs(target_no - source_no) if source_no < 10**9 and target_no < 10**9 else 10**9
-            # Prefer a stable "main flow" for Direct edges:
-            # 1) avoid WAIT steps (layout/semantics)
-            # 2) prefer earlier source steps (keeps forward flow readable when multiple sources converge)
-            # 3) as tie-breaker, prefer closer steps
-            return (-is_wait, -source_no, -distance)
+            def _incoming_score(node: GraphTransitionNode) -> tuple[int, int, int]:
+                source_label = str(node.source_step or "").upper()
+                is_wait = 1 if "WAIT" in source_label else 0
+                source_no = step_no_by_name.get(node.source_step, 10**9)
+                distance = abs(target_no - source_no) if source_no < 10**9 and target_no < 10**9 else 10**9
+                # Prefer a stable "main flow" for Direct edges:
+                # 1) avoid WAIT steps (layout/semantics)
+                # 2) prefer earlier source steps (keeps forward flow readable when multiple sources converge)
+                # 3) as tie-breaker, prefer closer steps
+                return (-is_wait, -source_no, -distance)
 
-        preferred = sorted(incoming, key=_incoming_score, reverse=True)[0]
+            preferred = sorted(incoming, key=_incoming_score, reverse=True)[0]
         preferred_direct_incoming[target_step] = preferred.name
     for transition in transition_nodes:
         if transition.name in parallel_start_keeper_by_transition:

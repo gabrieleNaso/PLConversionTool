@@ -369,7 +369,9 @@ curl -sS "http://127.0.0.1:8000/api/tia/jobs/<JOB_ID>"
 - **Ingressi multipli** su uno step non iniziale:
   - il primo ingresso puo' essere `Direct` (scelto in modo deterministico);
   - gli ingressi extra devono essere `Jump`.
-  - policy attuale: a parita' di target, il `Direct` viene assegnato preferendo lo step sorgente col `step_number` piu' basso (e non "WAIT"); gli altri ingressi diventano `Jump`.
+  - policy attuale:
+    - flusso **Excel**: a parita' di target, il `Direct` viene assegnato alla prima transizione incontrata nell'Excel (ordine righe = `network_index` minore); le altre diventano `Jump`.
+    - flusso **AWL**: a parita' di target, il `Direct` viene assegnato preferendo lo step sorgente col `step_number` piu' basso (e non "WAIT"); le altre diventano `Jump`.
 - **Guard logiche transizioni (`Trs`)**:
   - il parser preserva operatori booleani `AND` / `OR` / `NOT` da AWL (`A/AN/O/ON`, inclusi gruppi `A(...)`/`O(...)`);
   - le guardie non vanno appiattite in `AND` quando in AWL esistono rami `OR`.

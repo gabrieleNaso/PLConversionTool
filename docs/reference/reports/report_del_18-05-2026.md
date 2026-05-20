@@ -409,7 +409,10 @@ Riferimenti osservati:
 
 - uno step non iniziale non deve ricevere due ingressi `Direct`;
 - le confluenze multiple vanno gestite correttamente con `Jump` o join espliciti;
-- in caso di confluenza (piu' transition verso lo stesso step), il `Direct` deve essere scelto in modo deterministico (consiglio: sorgente con `step_number` piu' basso e non "WAIT"), gli altri ingressi devono essere `Jump`;
+- in caso di confluenza (piu' transition verso lo stesso step), il `Direct` deve essere scelto in modo deterministico:
+  - flusso Excel: prima transizione in ordine foglio (`network_index` minore);
+  - flusso AWL: sorgente con `step_number` piu' basso e non "WAIT";
+  gli altri ingressi devono essere `Jump`;
 - le alternative si modellano con `AltBegin`;
 - i paralleli si modellano con `SimBegin` e `SimEnd`;
 - i rami di allarme devono chiudersi correttamente.

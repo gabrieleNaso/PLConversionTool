@@ -1696,8 +1696,11 @@ def validate_graph_topology(g: GraphIR) -> None:
 Nota pratica: se uno step non iniziale riceve piu' ingressi, uno solo puo' restare
 `Direct` mentre gli ingressi aggiuntivi vanno trasformati in link `Jump` per evitare
 la violazione "doppi ingressi Direct" e ridurre i rischi di crash in TIA.
-Policy deterministica consigliata: a parita' di target, assegnare `Direct` preferendo
-lo step sorgente con `step_number` piu' basso (e non "WAIT"); gli altri diventano `Jump`.
+Policy deterministica consigliata:
+- flusso Excel: a parita' di target, assegnare `Direct` alla prima transizione incontrata nel foglio `sequence`
+  (ordine righe = `network_index` minore); le altre diventano `Jump`.
+- flusso AWL: a parita' di target, assegnare `Direct` preferendo lo step sorgente con `step_number` piu' basso
+  (e non "WAIT"); gli altri diventano `Jump`.
 Nota operativa import/export: il `targetPath` dei job TIA parte sempre da
 `Program blocks/`. Per creare sottocartelle ordinare usare ad esempio
 `Program blocks/generati da tool/<nome>`.
